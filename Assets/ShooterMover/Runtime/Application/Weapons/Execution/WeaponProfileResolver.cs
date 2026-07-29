@@ -34,7 +34,7 @@ namespace ShooterMover.Application.Weapons.Execution
     {
         private WeaponProfileResolution(
             WeaponProfileResolutionStatus status,
-            WeaponRuntimeFiringProfile profile,
+            WeaponLiveFiringProfile profile,
             string rejectionCode)
         {
             Status = status;
@@ -43,11 +43,11 @@ namespace ShooterMover.Application.Weapons.Execution
         }
 
         public WeaponProfileResolutionStatus Status { get; }
-        public WeaponRuntimeFiringProfile Profile { get; }
+        public WeaponLiveFiringProfile Profile { get; }
         public string RejectionCode { get; }
         public bool Succeeded { get { return Status == WeaponProfileResolutionStatus.Resolved; } }
 
-        public static WeaponProfileResolution Resolve(WeaponRuntimeFiringProfile profile)
+        public static WeaponProfileResolution Resolve(WeaponLiveFiringProfile profile)
         {
             return new WeaponProfileResolution(
                 WeaponProfileResolutionStatus.Resolved,
@@ -131,7 +131,7 @@ namespace ShooterMover.Application.Weapons.Execution
             out WeaponDefinitionId weaponDefinitionId);
     }
 
-    public sealed class RuntimeReferenceWeaponDefinitionIdResolver
+    public sealed class LiveReferenceWeaponDefinitionIdResolver
         : IEquipmentWeaponDefinitionIdResolver
     {
         public bool TryResolveWeaponDefinitionId(

@@ -45,7 +45,7 @@ the second owner and reports both diagnostic locations. It never hashes,
 renames, or regenerates the authored ID.
 
 A runtime-spawned object does not invent a durable authored placement. Its
-spawner must supply a `RuntimeSpawnIdentityInput` containing both:
+spawner must supply a `LiveSpawnIdentityInput` containing both:
 
 - the stable runtime object identity; and
 - the stable spawn-operation identity.

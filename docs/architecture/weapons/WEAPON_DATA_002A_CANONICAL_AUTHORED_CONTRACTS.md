@@ -56,31 +56,31 @@ WeaponBlueprint
 + permitted modifiers
     ↓ EffectiveWeaponFactory / EffectiveWeaponStatEvaluator
 EffectiveWeapon
-    ↓ AcceptedEmissionRuntimeAdapter.Adapt(...)
+    ↓ AcceptedEmissionLiveBridge.Adapt(...)
     ↓ canonical branch: ProjectileExecutionProfile.From(EffectiveWeapon)
 ProjectileExecutionProfile
     ↓ one ordered ProjectileLaunchRequest per accepted projectile ordinal
 ProjectileLaunchRequest
     ↓ ProjectileLifecycleState.Launch(...)
 ProjectileLifecycleState
-    ↓ retained as CanonicalProjectileLaunchEffect in WeaponEffectBatch
+    ↓ retained as ProjectileLaunchEffect in WeaponEffectBatch
 existing inventory pending-delivery / sink boundary
 ```
 
 The live call into this route remains
-`InventoryBackedWeaponExecutionAdapter.ProjectAcceptedSchedule(...)` calling
+`InventoryBackedWeaponExecutionBridge.ProjectAcceptedSchedule(...)` calling
 `emissionAdapter.Adapt(effectiveWeapon, emission)`. The canonical branch inside
-`AcceptedEmissionRuntimeAdapter` now calls `ProjectileExecutionProfile.From(effectiveWeapon)` and
+`AcceptedEmissionLiveBridge` now calls `ProjectileExecutionProfile.From(effectiveWeapon)` and
 constructs the immutable launch request and initial lifecycle state immediately. It does not call the
 legacy behaviour registry for canonical travelling definitions.
 
-`CanonicalProjectileLaunchEffect` is not another projectile runtime. It is the immutable payload
+`ProjectileLaunchEffect` is not another projectile runtime. It is the immutable payload
 carried through the already-existing `WeaponEffectBatch` and inventory pending-delivery envelope. It
 contains the canonical `ProjectileLaunchRequest` and its matching initial
 `ProjectileLifecycleState`, so a downstream adapter cannot replace final values with catalogue or
 blueprint values.
 
-The retained `WeaponRuntimeFiringProfile` inside the inventory envelope is compatibility metadata
+The retained `WeaponLiveFiringProfile` inside the inventory envelope is compatibility metadata
 only for the existing delivery contract. Canonical execution authority is the embedded
 `ProjectileExecutionProfile` and lifecycle state, including fixed-point Pierce/Ricochet values that
 the integer compatibility profile cannot represent losslessly.
@@ -151,7 +151,7 @@ bounce. It is not a per-collision chance.
 
 ### Runtime state
 
-`WeaponRicochetRuntimeState` remains immutable and caller-owned. Canonical projectiles carry the
+`WeaponRicochetLiveState` remains immutable and caller-owned. Canonical projectiles carry the
 remaining fixed-point budget as an exact `RicochetValue`; runtime never repeatedly subtracts a
 floating-point value.
 
@@ -256,7 +256,7 @@ ProjectileEffectEmission.Profile.Effects.Explosion
     -> explosion radius and falloff
 ```
 
-`ProjectileExplosionResolutionAdapter.Resolve(...)` is the downstream application call site. For a
+`ProjectileExplosionResolutionBridge.Resolve(...)` is the downstream application call site. For a
 canonical Rocket emission it calls:
 
 ```text
@@ -368,7 +368,7 @@ because an explosion effect exists: it retains normal enemy-impact payload behav
 receive automatic Rocket wall-contact detonation or Rocket victim budgeting.
 
 A future canonical non-Rocket explosion damage policy still needs an explicit semantic contract;
-`ProjectileExplosionResolutionAdapter` therefore rejects a canonical non-Rocket emission rather
+`ProjectileExplosionResolutionBridge` therefore rejects a canonical non-Rocket emission rather
 than silently applying transitional area-damage or Rocket rules.
 
 ### Rocket
@@ -476,7 +476,7 @@ fail-closed rules remain documented in
 This PR now carries canonical Normal, Orb, and Rocket launch data through the production inventory
 pending-delivery envelope, but it does not claim implementation of:
 
-- the Unity adapter that consumes `CanonicalProjectileLaunchEffect.InitialState` and instantiates or updates a Unity projectile presentation;
+- the Unity adapter that consumes `ProjectileLaunchEffect.InitialState` and instantiates or updates a Unity projectile presentation;
 - Unity target-snapshot, collision-contact, line-of-sight, and damage-application adapters needed to exercise the pure projectile and explosion decisions in-game;
 - Unity Laser delivery execution;
 - Unity Special delivery execution;
@@ -496,7 +496,7 @@ silently accept a canonical authored blueprint.
 No automated tests are added under the prototype policy. Validation for this PR is repository-level
 static inspection of:
 
-- the production scheduler-emission call into `AcceptedEmissionRuntimeAdapter`;
+- the production scheduler-emission call into `AcceptedEmissionLiveBridge`;
 - the exact `EffectiveWeapon -> ProjectileExecutionProfile -> ProjectileLaunchRequest -> ProjectileLifecycleState` projection;
 - final speed, range, Pierce, guidance, impact, damage, effects, delivery identity, and movement penalty retention;
 - exact fixed-point Ricochet state transitions and explicit legacy branching;

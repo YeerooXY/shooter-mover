@@ -10,8 +10,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5a0e6731ac234ec6a198f92fbb196c01, type: 3}
-  m_Name: PlayModeCatalogV1
-  m_EditorClassIdentifier: ShooterMover.Content.Definitions::ShooterMover.Content.Definitions.Flow.PlayModes.PlayModeCatalogDefinitionV1
+  m_Name: PlayModeCatalog
+  m_EditorClassIdentifier: ShooterMover.Content.Definitions::ShooterMover.Content.Definitions.Flow.PlayModes.PlayModeCatalogDefinition
   playModes:
   - modeStableId: play-mode.solo
     displayName: SOLO

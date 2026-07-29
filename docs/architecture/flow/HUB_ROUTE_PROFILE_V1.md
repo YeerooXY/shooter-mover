@@ -11,7 +11,7 @@ wallets, XP, rewards, shops, crafting, or skills.
 
 ## Immutable payload
 
-`PlayerRouteProfilePayloadV1` contains:
+`PlayerRouteProfilePayload` contains:
 
 - schema version `1`;
 - contract identity `route-profile.player-v1`;
@@ -38,8 +38,8 @@ new equivalent payload and new slot records. No API exposes a mutable slot list.
 
 ## Validation and fingerprinting
 
-External/session data enters through `PlayerRouteProfileEnvelopeV1` and
-`PlayerRouteProfilePayloadV1.TryImport`.
+External/session data enters through `PlayerRouteProfileEnvelope` and
+`PlayerRouteProfilePayload.TryImport`.
 
 Validation is fail-closed and rejects, without changing any live route state:
 
@@ -59,7 +59,7 @@ Fields are length-prefixed before SHA-256 hashing to avoid delimiter ambiguity.
 
 ## Route state and history
 
-`HubNavigationServiceV1` retains the exact same payload object for its complete
+`HubNavigationActions` retains the exact same payload object for its complete
 lifetime. It owns only:
 
 - current route;
@@ -85,7 +85,7 @@ no-change result.
 
 ## Unity projection
 
-`HubFlowControllerV1` renders real buttons for:
+`HubFlowController` renders real buttons for:
 
 - Character Select continuation;
 - Inventory;
@@ -97,7 +97,7 @@ no-change result.
 - Main Menu.
 
 Destination content is currently presented through
-`IHubRouteDestinationAdapterV1`. Separate screen owners can replace the
+`IHubRouteDestinationBridge`. Separate screen owners can replace the
 placeholder adapter while consuming the same immutable payload read-only.
 
 A runtime bootstrap installs the HUB projection when the accepted

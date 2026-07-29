@@ -94,7 +94,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e688576d380444a7ace9783454a39536, type: 3}
   m_Name:
-  m_EditorClassIdentifier: ShooterMover.UI.PlaySelection::ShooterMover.UI.PlaySelection.PlaySelectionControllerV1
+  m_EditorClassIdentifier: ShooterMover.UI.PlaySelection::ShooterMover.UI.PlaySelection.PlaySelectionController
   playModeCatalog: {fileID: 11400000, guid: 1f7f0c64b5844a3d90bd0679289197ee, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

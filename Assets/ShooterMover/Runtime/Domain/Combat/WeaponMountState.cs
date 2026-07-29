@@ -167,7 +167,7 @@ namespace ShooterMover.Domain.Combat
 
         public bool IsFaulted => Phase == WeaponMountPhase.Faulted;
 
-        public static WeaponMountState Initial(WeaponRuntimeProfile profile)
+        public static WeaponMountState Initial(WeaponLiveProfile profile)
         {
             if (profile == null)
             {

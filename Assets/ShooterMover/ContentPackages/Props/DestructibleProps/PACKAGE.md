@@ -4,7 +4,7 @@ This package provides reusable, definition-driven 2D destructible props.
 
 ## Authority boundary
 
-- `DestructiblePropAuthority` owns stable prop identity, health, confirmed-hit replay
+- `DestructiblePropDamage` owns stable prop identity, health, confirmed-hit replay
   protection, terminal destruction, and restart state.
 - Damage is accepted only through a confirmed `HitMessage`.
 - Exact duplicate events do nothing; conflicting event-ID reuse fails closed.

@@ -17,22 +17,22 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
         [SerializeField] private CircleCollider2D collectionTrigger;
         [SerializeField] private SpriteRenderer spriteRenderer;
         [SerializeField, Min(0.01f)] private float collectionRadius = 0.75f;
-        [SerializeField] private RewardPickupPresentationStyleV1[] presentationStyles =
-            new RewardPickupPresentationStyleV1[0];
+        [SerializeField] private RewardPickupPresentationStyle[] presentationStyles =
+            new RewardPickupPresentationStyle[0];
         [SerializeField] private MonoBehaviour lifecycleAuthority;
         [SerializeField] private GameplaySceneScope2D restartScope;
         [SerializeField] private bool registerForRestart = true;
 
-        private RewardPickupPayloadV1 payload;
+        private RewardPickupPayload payload;
         private bool collectInProgress;
         private bool collected;
-        private RewardPickupCollectResultV1 lastCollectResult;
+        private RewardPickupCollectResult lastCollectResult;
         private RestartParticipantRegistrationResult lastRestartRegistration;
 
-        public RewardPickupPayloadV1 Payload { get { return payload; } }
+        public RewardPickupPayload Payload { get { return payload; } }
         public bool IsCollected { get { return collected; } }
         public float CollectionRadius { get { return collectionRadius; } }
-        public RewardPickupCollectResultV1 LastCollectResult { get { return lastCollectResult; } }
+        public RewardPickupCollectResult LastCollectResult { get { return lastCollectResult; } }
         public RestartParticipantRegistrationResult LastRestartRegistration
         {
             get { return lastRestartRegistration; }
@@ -61,7 +61,7 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
         }
 
         public void Configure(
-            RewardPickupPayloadV1 payload,
+            RewardPickupPayload payload,
             MonoBehaviour lifecycleAuthority,
             GameplaySceneScope2D restartScope)
         {
@@ -70,10 +70,10 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
                 throw new ArgumentNullException(nameof(payload));
             }
 
-            if (!(lifecycleAuthority is IRewardPickupLifecycleAuthorityV1))
+            if (!(lifecycleAuthority is IRewardPickupLifecycleState))
             {
                 throw new ArgumentException(
-                    "Lifecycle authority must implement IRewardPickupLifecycleAuthorityV1.",
+                    "Lifecycle authority must implement IRewardPickupLifecycleState.",
                     nameof(lifecycleAuthority));
             }
 
@@ -104,11 +104,11 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
         }
 
         public void ConfigureForTests(
-            RewardPickupPayloadV1 payload,
+            RewardPickupPayload payload,
             MonoBehaviour lifecycleAuthority,
             GameplaySceneScope2D restartScope,
             float collectionRadius,
-            IEnumerable<RewardPickupPresentationStyleV1> styles,
+            IEnumerable<RewardPickupPresentationStyle> styles,
             bool registerForRestart = true)
         {
             if (collectionRadius <= 0f || float.IsNaN(collectionRadius) || float.IsInfinity(collectionRadius))
@@ -118,18 +118,18 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
 
             this.collectionRadius = collectionRadius;
             presentationStyles = styles == null
-                ? new RewardPickupPresentationStyleV1[0]
-                : new List<RewardPickupPresentationStyleV1>(styles).ToArray();
+                ? new RewardPickupPresentationStyle[0]
+                : new List<RewardPickupPresentationStyle>(styles).ToArray();
             this.registerForRestart = registerForRestart;
             Configure(payload, lifecycleAuthority, restartScope);
         }
 
-        public RewardPickupCollectResultV1 TryCollect(StableId claimantStableId)
+        public RewardPickupCollectResult TryCollect(StableId claimantStableId)
         {
             if (claimantStableId == null)
             {
-                lastCollectResult = new RewardPickupCollectResultV1(
-                    RewardPickupCollectStatusV1.Invalid,
+                lastCollectResult = new RewardPickupCollectResult(
+                    RewardPickupCollectStatus.Invalid,
                     null,
                     "Claimant identity is required.");
                 return lastCollectResult;
@@ -137,8 +137,8 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
 
             if (payload == null)
             {
-                lastCollectResult = new RewardPickupCollectResultV1(
-                    RewardPickupCollectStatusV1.Invalid,
+                lastCollectResult = new RewardPickupCollectResult(
+                    RewardPickupCollectStatus.Invalid,
                     null,
                     "Pickup payload has not been configured.");
                 return lastCollectResult;
@@ -146,8 +146,8 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
 
             if (collected)
             {
-                lastCollectResult = new RewardPickupCollectResultV1(
-                    RewardPickupCollectStatusV1.AlreadyCollectedNoChange,
+                lastCollectResult = new RewardPickupCollectResult(
+                    RewardPickupCollectStatus.AlreadyCollectedNoChange,
                     lastCollectResult == null ? null : lastCollectResult.AuthorityResult,
                     "Repeated collection callback produced no additional reward.");
                 return lastCollectResult;
@@ -155,18 +155,18 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
 
             if (collectInProgress)
             {
-                return new RewardPickupCollectResultV1(
-                    RewardPickupCollectStatusV1.PendingRetry,
+                return new RewardPickupCollectResult(
+                    RewardPickupCollectStatus.PendingRetry,
                     lastCollectResult == null ? null : lastCollectResult.AuthorityResult,
                     "A collection attempt is already in progress.");
             }
 
-            IRewardPickupLifecycleAuthorityV1 authority =
-                lifecycleAuthority as IRewardPickupLifecycleAuthorityV1;
+            IRewardPickupLifecycleState authority =
+                lifecycleAuthority as IRewardPickupLifecycleState;
             if (authority == null)
             {
-                lastCollectResult = new RewardPickupCollectResultV1(
-                    RewardPickupCollectStatusV1.Invalid,
+                lastCollectResult = new RewardPickupCollectResult(
+                    RewardPickupCollectStatus.Invalid,
                     null,
                     "Pickup lifecycle authority is missing or incompatible.");
                 return lastCollectResult;
@@ -176,8 +176,8 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
             try
             {
                 lastCollectResult = authority.Collect(payload, claimantStableId)
-                    ?? new RewardPickupCollectResultV1(
-                        RewardPickupCollectStatusV1.Rejected,
+                    ?? new RewardPickupCollectResult(
+                        RewardPickupCollectStatus.Rejected,
                         null,
                         "Pickup lifecycle authority returned no result.");
                 if (lastCollectResult.IsCollected)
@@ -190,8 +190,8 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
             }
             catch (Exception exception)
             {
-                lastCollectResult = new RewardPickupCollectResultV1(
-                    RewardPickupCollectStatusV1.Rejected,
+                lastCollectResult = new RewardPickupCollectResult(
+                    RewardPickupCollectStatus.Rejected,
                     null,
                     "Pickup collection threw: " + exception.Message);
                 return lastCollectResult;
@@ -315,7 +315,7 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
 
             for (int index = 0; index < presentationStyles.Length; index++)
             {
-                RewardPickupPresentationStyleV1 style = presentationStyles[index];
+                RewardPickupPresentationStyle style = presentationStyles[index];
                 if (style == null || style.Category != payload.Category)
                 {
                     continue;

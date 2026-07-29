@@ -49,7 +49,7 @@ namespace ShooterMover.ContentPackages.Environment.Doors
         public RoomSocket BuildSocket()
         {
             return new RoomSocket(
-                new RoomProjectionIdentity(
+                new RoomViewIdentity(
                     StableId.Parse(roomId),
                     StableId.Parse(projectionId)),
                 StableId.Parse(socketId),

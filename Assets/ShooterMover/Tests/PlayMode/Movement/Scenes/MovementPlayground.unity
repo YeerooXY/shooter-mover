@@ -231,7 +231,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d3f7eb35d3b945efa2e59d7554aa6289, type: 3}
   m_Name:
-  m_EditorClassIdentifier: ShooterMover.UnityAdapters::ShooterMover.UnityAdapters.Input.PlayerMovementIntentAdapter
+  m_EditorClassIdentifier: ShooterMover.UnityAdapters::ShooterMover.UnityAdapters.Input.PlayerMovementIntentBridge
   inputActions: {fileID: 0}
 --- !u!114 &2005
 MonoBehaviour:
@@ -244,7 +244,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fd4e69f2dbc84175a10adf012ade5c5a, type: 3}
   m_Name:
-  m_EditorClassIdentifier: ShooterMover.UnityAdapters::ShooterMover.UnityAdapters.Physics.MovementContact2DAdapter
+  m_EditorClassIdentifier: ShooterMover.UnityAdapters::ShooterMover.UnityAdapters.Physics.MovementContact2DBridge
 --- !u!114 &2006
 MonoBehaviour:
   m_ObjectHideFlags: 0

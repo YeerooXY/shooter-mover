@@ -36,7 +36,7 @@ The Level Grid Editor is a projection and mutation surface over those components
 
 ### Playable metadata
 
-`LevelGridPlayableMetadataV2` on the selected root is authoritative for:
+`LevelGridPlayableMetadata` on the selected root is authoritative for:
 
 - exact start room reference;
 - player start room-local position;
@@ -49,9 +49,9 @@ No room is inferred from coordinates, labels, hierarchy order, folder names, or 
 
 ### Export and compilation
 
-- `LevelGridV2PlayableExporter.Export(...)` owns playable source export.
-- `LevelGridV2AssetCompiler.CompileToAsset(...)` owns compiled TextAsset and `JsonRoomContentDefinition2D` publication.
-- `RoomContentJsonImporterV1` remains the retained runtime compatibility gate.
+- `LevelGridPlayableExporter.Export(...)` owns playable source export.
+- `LevelGridAssetCompiler.CompileToAsset(...)` owns compiled TextAsset and `JsonRoomContentDefinition2D` publication.
+- `RoomContentJsonImporter` remains the retained runtime compatibility gate.
 - `JsonRoomContentDefinition2D` remains the player-build runtime content authority.
 
 The editor window calls these façades directly. It does not invoke menu-item strings or duplicate filesystem writes.
@@ -63,7 +63,7 @@ Production gameplay remains:
 ```text
 Level Selection
 → exact selected stable level ID
-→ ProductionPlayableLevelCatalogV1
+→ PlayableLevelCatalog
 → exact RoomContentResourcePath
 → Resources.Load<JsonRoomContentDefinition2D>
 → existing room importer and runtime composition
@@ -74,7 +74,7 @@ Direct editor-only graph injection is not supported.
 
 ## Playable Level panel
 
-The existing `LevelGridEditorWindowV2` contains a dedicated **Playable Level** pane.
+The existing `LevelGridEditorWindow` contains a dedicated **Playable Level** pane.
 
 When metadata is absent, the pane displays:
 
@@ -201,13 +201,13 @@ foundation validation
 
 ### Export only
 
-Calls `LevelGridV2PlayableExporter.Export(...)` with the configured deterministic source path.
+Calls `LevelGridPlayableExporter.Export(...)` with the configured deterministic source path.
 
 The source package commits only when the validated stage occupies the destination. Pre-commit failure preserves the previous package. Backup cleanup is best-effort after commit.
 
 ### Compile only
 
-Requires a current canonical export, then calls `LevelGridV2AssetCompiler.CompileToAsset(...)`.
+Requires a current canonical export, then calls `LevelGridAssetCompiler.CompileToAsset(...)`.
 
 The accepted publication route:
 
@@ -252,7 +252,7 @@ The production catalogue is currently code-authored in:
 
 ```text
 Assets/ShooterMover/Content/Definitions/Levels/Selection/
-LevelSelectionCatalogDefinitionV1.cs
+LevelSelectionCatalogDefinition.cs
 ```
 
 The editor does not rewrite C# source. For an unregistered generic level, use:

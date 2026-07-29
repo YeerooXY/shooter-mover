@@ -4,19 +4,19 @@
 
 CHAR-001 provides a reusable, presentation-only character and class selection flow between Main Menu and the Inventory / Loadout Hub.
 
-It consumes the HUB-owned `PlayerRouteProfilePayloadV1` contract read-only. It does not create a character-stat, inventory, equipment, wallet, XP, reward, skill, shop, crafting, or gameplay authority.
+It consumes the HUB-owned `PlayerRouteProfilePayload` contract read-only. It does not create a character-stat, inventory, equipment, wallet, XP, reward, skill, shop, crafting, or gameplay authority.
 
 ## Stable content model
 
 The V1 catalog contains two independent identity layers:
 
-- `CharacterSelectionDefinitionV1`
+- `CharacterSelectionDefinition`
   - stable character identity;
   - display name and description;
   - portrait and preview resource keys;
   - default loadout-profile identity;
   - optional stable visual, body, and armor variant metadata.
-- `CharacterClassProfileDefinitionV1`
+- `CharacterClassProfileDefinition`
   - stable loadout-profile identity;
   - owning character identity;
   - Aggressive, Defensive, or Healer class metadata;
@@ -39,10 +39,10 @@ Catalog and definition fingerprints use canonical length-prefixed UTF-8 fields a
 
 ## Selection semantics
 
-`CharacterSelectionServiceV1` receives:
+`CharacterSelectionActions` receives:
 
 1. one validated immutable character catalog; and
-2. one valid incoming `PlayerRouteProfilePayloadV1`.
+2. one valid incoming `PlayerRouteProfilePayload`.
 
 Highlight operations change only local draft selection. They never alter the incoming payload.
 
@@ -58,7 +58,7 @@ The service caches the terminal result. Repeated Confirm calls return the same r
 
 ### Back
 
-Back returns the exact incoming payload object and targets `HubRouteV1.MainMenu`. Character and class highlights do not change that payload. Repeated Back calls return the same cached result.
+Back returns the exact incoming payload object and targets `HubRoute.MainMenu`. Character and class highlights do not change that payload. Repeated Back calls return the same cached result.
 
 The Unity controller has a local two-stage Back behavior:
 
@@ -79,13 +79,13 @@ They are stored as Unity `TextAsset` resources under `UI/CharacterSelect/Resourc
 
 ## Unity flow
 
-`CharacterSelectControllerV1` supports:
+`CharacterSelectController` supports:
 
 - responsive character and class card layout;
 - mouse/touch-compatible code-owned button regions;
 - keyboard arrows, Enter/Space, Escape/Backspace;
 - controller D-pad, South/accept, and East/back;
-- an injected `ICharacterSelectionRouteSinkV1`;
+- an injected `ICharacterSelectionRouteSink`;
 - deterministic local state and terminal-result deduplication.
 
 The standalone scene is:

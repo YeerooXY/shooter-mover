@@ -14,10 +14,10 @@ Production weapon ownership now resolves through:
 
 ```text
 InstanceId
-→ ProductionWeaponHoldingsAuthorityV2
+→ WeaponHoldingsState
 → WeaponEquipmentInstance
 → WeaponDefinitionId
-→ ProductionWeaponCatalogProvider / WeaponCatalog
+→ WeaponCatalogProvider / WeaponCatalog
 ```
 
 `WeaponEquipmentInstance` stores only:
@@ -39,21 +39,21 @@ The equipped weapon authority is now independent from the retained generic slot
 array:
 
 ```text
-WeaponMountLoadoutSnapshotV2
+WeaponMountLoadoutSnapshot
 └── MountId → InstanceId
 ```
 
 It contains exactly one entry per physical mount authored for the character class.
 It does not persist nonexistent weapon-slot placeholders.
 
-The retained `InventoryLoadoutAuthoritySnapshotV1` remains only as:
+The retained `InventoryLoadoutStateSnapshot` remains only as:
 
 - an armor loadout authority;
 - a route compatibility projection for consumers that still read four route slots;
 - deterministic V1 migration input.
 
 V2 saves write all legacy weapon-slot entries as null. Weapon equipped truth is
-read exclusively from `WeaponMountLoadoutSnapshotV2`.
+read exclusively from `WeaponMountLoadoutSnapshot`.
 
 ## Persistence components
 
@@ -96,7 +96,7 @@ Inventory does not grant or repair anything.
 ## Canonical-first rewards
 
 Reward and strongbox systems may still deliver a generic equipment command at the
-compatibility edge. `CanonicalFirstPlayerHoldingsAuthorityV2` handles weapon
+compatibility edge. `FirstPlayerHoldingsState` handles weapon
 commands in this order:
 
 ```text
@@ -123,7 +123,7 @@ Non-weapon holdings continue through the existing generic authority unchanged.
 The Aggressive center mount is visible, has no instance ID, receives no starter,
 rejects Equip, and reports the skill requirement.
 
-`ProductionWeaponMountPolicyV1.ResolveLayout` now fails closed for an unsupported
+`WeaponMountPolicy.ResolveLayout` now fails closed for an unsupported
 or malformed profile ID. It no longer silently gives an unknown class the
 Defensive four-mount layout and four starter weapons.
 
@@ -138,7 +138,7 @@ loadout-profile.<character>-defensive
 
 ## Starter onboarding
 
-Starter creation runs only in `ProductionWeaponOnboardingV2.CreateStarter` during
+Starter creation runs only in `WeaponOnboarding.CreateStarter` during
 fresh character construction:
 
 ```text
@@ -188,13 +188,13 @@ combat statistics; that is not an ownership, persistence or gameplay authority.
 
 ## Gameplay handoff
 
-`ProductionPlayerLoadoutRuntimeV1.TryResolveFirstActiveEquippedWeapon` scans the
+`PlayerLoadoutLive.TryResolveFirstActiveEquippedWeapon` scans the
 class-authored active physical mounts in order and resolves the first bound exact
 instance through canonical holdings.
 
 When the playable player object is spawned,
-`ProductionCanonicalWeaponGameplayBindingV2` now attaches one
-`CanonicalPlayerWeaponSourceV2` directly to that player object. The source:
+`WeaponGameplayBinding` now attaches one
+`PlayerWeaponSource` directly to that player object. The source:
 
 1. is bound once to the selected character and exact first-mount instance;
 2. verifies the instance is owned by that character;
@@ -208,7 +208,7 @@ The current `main` playable scene does not yet contain a player firing loop or a
 This change therefore establishes the authoritative spawned-player weapon source
 and verifies its live executable projection without inventing a fake effect sink.
 When the firing loop is composed, it must consume this player-local source or
-`PlayerInventoryWeaponRuntimeCompositionRoot.CreateCanonical` rather than create a
+`PlayerInventoryWeaponLiveSetupRoot.CreateCanonical` rather than create a
 scene weapon.
 
 Migrated augment assignments may recover immutable V1 `AugmentInstance` payloads
@@ -282,7 +282,7 @@ For a fresh Aggressive, Healer and Defensive character:
 8. Free a second instance and replace the first physical mount with it.
 9. Verify the displaced instance remains owned.
 10. Enter the playable scene and inspect the spawned player's
-    `CanonicalPlayerWeaponSourceV2.ExactWeaponInstanceId`; it must equal the newly
+    `PlayerWeaponSource.ExactWeaponInstanceId`; it must equal the newly
     equipped first-mount instance.
 11. Call `TryResolveLiveEquipment` and verify the returned equipment uses the same
     exact ID and canonical weapon definition.

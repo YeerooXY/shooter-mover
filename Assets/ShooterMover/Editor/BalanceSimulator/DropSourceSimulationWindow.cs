@@ -18,18 +18,18 @@ namespace ShooterMover.EditorTools.BalanceSimulator
     {
         private static readonly StableId[] SourceProfileIds =
         {
-            ProductionRewardSourceCatalogV1.SmallEnemyId,
-            ProductionRewardSourceCatalogV1.NormalEnemyId,
-            ProductionRewardSourceCatalogV1.LargeEnemyId,
-            ProductionRewardSourceCatalogV1.BossEnemyId,
-            ProductionRewardSourceCatalogV1.ExtraBossEnemyId,
-            ProductionRewardSourceCatalogV1.NormalPropId,
-            ProductionRewardSourceCatalogV1.RarePropId,
-            ProductionRewardSourceCatalogV1.ExtraRarePropId,
-            ProductionRewardSourceCatalogV1.NormalHiddenTreasureId,
-            ProductionRewardSourceCatalogV1.LargeHiddenLootId,
-            ProductionRewardSourceCatalogV1.LargeTreasureLootId,
-            ProductionRewardSourceCatalogV1.ExplicitNoDropId,
+            RewardSourceCatalog.SmallEnemyId,
+            RewardSourceCatalog.NormalEnemyId,
+            RewardSourceCatalog.LargeEnemyId,
+            RewardSourceCatalog.BossEnemyId,
+            RewardSourceCatalog.ExtraBossEnemyId,
+            RewardSourceCatalog.NormalPropId,
+            RewardSourceCatalog.RarePropId,
+            RewardSourceCatalog.ExtraRarePropId,
+            RewardSourceCatalog.NormalHiddenTreasureId,
+            RewardSourceCatalog.LargeHiddenLootId,
+            RewardSourceCatalog.LargeTreasureLootId,
+            RewardSourceCatalog.ExplicitNoDropId,
         };
 
         private static readonly string[] SourceProfileLabels =
@@ -68,7 +68,7 @@ namespace ShooterMover.EditorTools.BalanceSimulator
         private bool boxFrenzyEvent;
         private bool lockedVaultPlacement;
         private Vector2 scroll;
-        private RewardSimulationReportV1 report;
+        private RewardSimulationReport report;
         private string diagnostic =
             "Configure one source profile and run 1-4 independent personal reward streams through production services.";
 
@@ -84,7 +84,7 @@ namespace ShooterMover.EditorTools.BalanceSimulator
                 "Production Drop Source Simulator",
                 EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Uses ProductionRewardSourceCatalogV1, RewardProfileResolverV1, ProductionRewardOverrideCatalogV1, ParticipantDropPacingAuthorityV1 and ProductionStrongboxTierSelectionCatalogV1. No simulator-owned probability or pity formula is used.",
+                "Uses RewardSourceCatalog, RewardProfileResolver, RewardOverrideCatalog, ParticipantDropPacingState and StrongboxTierSelectionCatalog. No simulator-owned probability or pity formula is used.",
                 MessageType.Info);
 
             scroll = EditorGUILayout.BeginScrollView(scroll);
@@ -238,29 +238,29 @@ namespace ShooterMover.EditorTools.BalanceSimulator
                 StableId sourceProfileId =
                     SourceProfileIds[sourceProfileIndex];
                 StableId gameModeId = gameModeIndex == 1
-                    ? ProductionRewardOverrideCatalogV1.SurvivalModeId
+                    ? RewardOverrideCatalog.SurvivalModeId
                     : StableId.Parse("game-mode.campaign");
                 StableId missionId = missionIndex == 1
-                    ? ProductionRewardOverrideCatalogV1.BossRushMissionId
+                    ? RewardOverrideCatalog.BossRushMissionId
                     : StableId.Parse("mission-layout.campaign-stage-1");
                 StableId difficultyId = ResolveDifficulty();
                 var eventIds = new List<StableId>();
                 if (doubleRewardsEvent)
                 {
                     eventIds.Add(
-                        ProductionRewardOverrideCatalogV1
+                        RewardOverrideCatalog
                             .DoubleRewardsEventId);
                 }
                 if (boxFrenzyEvent)
                 {
                     eventIds.Add(
-                        ProductionRewardOverrideCatalogV1.BoxFrenzyEventId);
+                        RewardOverrideCatalog.BoxFrenzyEventId);
                 }
                 StableId placementId = lockedVaultPlacement
-                    ? ProductionRewardOverrideCatalogV1.LockedVaultPlacementId
+                    ? RewardOverrideCatalog.LockedVaultPlacementId
                     : StableId.Parse("placement.simulator-default");
-                RewardContextOverrideResolutionV1 overrides =
-                    ProductionRewardOverrideCatalogV1.Resolve(
+                RewardContextOverrideResolution overrides =
+                    RewardOverrideCatalog.Resolve(
                         sourceProfileId,
                         gameModeId,
                         missionId,
@@ -268,17 +268,17 @@ namespace ShooterMover.EditorTools.BalanceSimulator
                         eventIds,
                         placementId);
                 var participants =
-                    new List<RewardSimulationParticipantInputV1>();
+                    new List<RewardSimulationParticipantInput>();
                 for (int index = 0; index < participantCount; index++)
                 {
-                    participants.Add(new RewardSimulationParticipantInputV1(
+                    participants.Add(new RewardSimulationParticipantInput(
                         StableId.Create(
                             "participant",
                             "drop-simulator-" + (index + 1)),
                         playerLevels[index]));
                 }
 
-                var request = new DropSourceSimulationRequestV1(
+                var request = new DropSourceSimulationRequest(
                     sourceProfileId,
                     participants,
                     missionLevel,
@@ -291,7 +291,7 @@ namespace ShooterMover.EditorTools.BalanceSimulator
                     sampleCount,
                     moneyMultiplierPermille,
                     scrapMultiplierPermille,
-                    ProductionRunDropPacingCatalogV1.Resolve(
+                    RunDropPacingCatalog.Resolve(
                         gameModeId,
                         null),
                     overrides.GameModeOverride,
@@ -299,7 +299,7 @@ namespace ShooterMover.EditorTools.BalanceSimulator
                     overrides.DifficultyOverride,
                     overrides.EventOverrides,
                     overrides.PlacementOverride);
-                report = new DropSourceSimulationRuntimeV1().Run(request);
+                report = new DropSourceSimulationLive().Run(request);
                 diagnostic = "Simulation complete: "
                     + report.Fingerprint;
             }
@@ -315,10 +315,10 @@ namespace ShooterMover.EditorTools.BalanceSimulator
         {
             if (difficultyIndex == 1)
             {
-                return ProductionRewardOverrideCatalogV1.HardDifficultyId;
+                return RewardOverrideCatalog.HardDifficultyId;
             }
             return difficultyIndex == 2
-                ? ProductionRewardOverrideCatalogV1.NightmareDifficultyId
+                ? RewardOverrideCatalog.NightmareDifficultyId
                 : StableId.Parse("difficulty.normal");
         }
 

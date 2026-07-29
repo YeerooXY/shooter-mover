@@ -82,11 +82,11 @@ namespace ShooterMover.Tests.EditMode.Enemies
         }
 
         private sealed class TypedNoOpConsumers :
-            IEnemyExperienceFactConsumerV1,
-            IEnemyDropFactConsumerV1,
-            IEnemyKillStatFactConsumerV1
+            IEnemyExperienceFactConsumer,
+            IEnemyDropFactConsumer,
+            IEnemyKillStatFactConsumer
         {
-            public void Consume(EnemyDeathFactV1 fact)
+            public void Consume(EnemyDeathFact fact)
             {
                 if (fact == null) throw new ArgumentNullException(nameof(fact));
             }

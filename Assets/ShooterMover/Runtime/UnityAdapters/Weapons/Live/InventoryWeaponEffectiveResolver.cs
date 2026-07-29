@@ -9,7 +9,7 @@ using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.UnityAdapters.Weapons.Live
 {
-    public static class WeaponLiveExceptionPolicyV1
+    public static class WeaponLiveExceptionPolicy
     {
         public static bool IsFatal(Exception exception)
         {
@@ -30,7 +30,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
     /// Exact authored-blueprint seam for compositions that already own canonical weapon content.
     /// When supplied, live combat does not rebuild mechanics from the flat compatibility catalogue.
     /// </summary>
-    public interface ICanonicalWeaponBlueprintResolver
+    public interface IWeaponBlueprintResolver
     {
         bool TryResolveCanonical(
             WeaponDefinitionId definitionId,
@@ -202,8 +202,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                     equipmentDefinition.RuntimeWeaponReferenceId).Value;
             var definitionId = new WeaponDefinitionId(definitionValue);
             WeaponBlueprint blueprint;
-            ICanonicalWeaponBlueprintResolver canonicalResolver =
-                mappingPolicies as ICanonicalWeaponBlueprintResolver;
+            IWeaponBlueprintResolver canonicalResolver =
+                mappingPolicies as IWeaponBlueprintResolver;
             if (canonicalResolver != null)
             {
                 try
@@ -221,7 +221,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 }
                 catch (Exception exception)
                 {
-                    if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
+                    if (WeaponLiveExceptionPolicy.IsFatal(exception)) throw;
                     rejectionCode =
                         "weapon-live-canonical-blueprint-resolution-exception";
                     return false;
@@ -269,7 +269,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 }
                 catch (Exception exception)
                 {
-                    if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
+                    if (WeaponLiveExceptionPolicy.IsFatal(exception)) throw;
                     rejectionCode = "weapon-live-blueprint-policy-exception";
                     return false;
                 }
@@ -290,7 +290,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 }
                 catch (Exception exception)
                 {
-                    if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
+                    if (WeaponLiveExceptionPolicy.IsFatal(exception)) throw;
                     rejectionCode = "weapon-live-blueprint-mapping-exception";
                     return false;
                 }
@@ -328,7 +328,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             }
             catch (Exception exception)
             {
-                if (WeaponLiveExceptionPolicyV1.IsFatal(exception)) throw;
+                if (WeaponLiveExceptionPolicy.IsFatal(exception)) throw;
                 rejectionCode = "weapon-live-augment-resolution-exception";
                 return false;
             }

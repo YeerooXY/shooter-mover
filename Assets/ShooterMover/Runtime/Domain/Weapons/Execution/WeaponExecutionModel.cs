@@ -441,11 +441,11 @@ namespace ShooterMover.Domain.Weapons.Execution
         }
     }
 
-    public sealed class WeaponRuntimeFiringProfile
+    public sealed class WeaponLiveFiringProfile
     {
         public const int MaximumEffectsPerFire = 64;
 
-        public WeaponRuntimeFiringProfile(
+        public WeaponLiveFiringProfile(
             WeaponDefinitionId definitionId,
             WeaponBehaviorId behaviorId,
             int cooldownTicks,
@@ -484,7 +484,7 @@ namespace ShooterMover.Domain.Weapons.Execution
         {
         }
 
-        public WeaponRuntimeFiringProfile(
+        public WeaponLiveFiringProfile(
             WeaponDefinitionId definitionId,
             WeaponBehaviorId behaviorId,
             int cooldownTicks,

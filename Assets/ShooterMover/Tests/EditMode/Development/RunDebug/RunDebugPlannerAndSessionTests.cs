@@ -17,7 +17,7 @@ namespace ShooterMover.Tests.EditMode.Development.RunDebug
             Assert.Throws<ArgumentOutOfRangeException>(
                 delegate
                 {
-                    RunDebugSpawnRequestV1.Create(
+                    RunDebugSpawnRequest.Create(
                         Id("run", "invalid"),
                         Route("invalid"),
                         -1,
@@ -27,17 +27,17 @@ namespace ShooterMover.Tests.EditMode.Development.RunDebug
             Assert.Throws<ArgumentOutOfRangeException>(
                 delegate
                 {
-                    RunDebugSpawnRequestV1.Create(
+                    RunDebugSpawnRequest.Create(
                         Id("run", "invalid"),
                         Route("invalid"),
-                        RunDebugSpawnRequestV1.MaximumStrongboxCount + 1,
+                        RunDebugSpawnRequest.MaximumStrongboxCount + 1,
                         Id("strongbox", "common"),
                         1UL);
                 });
             Assert.Throws<ArgumentNullException>(
                 delegate
                 {
-                    RunDebugSpawnRequestV1.Create(
+                    RunDebugSpawnRequest.Create(
                         Id("run", "invalid"),
                         Route("invalid"),
                         1,
@@ -49,10 +49,10 @@ namespace ShooterMover.Tests.EditMode.Development.RunDebug
         [Test]
         public void SameInputsProduceByteIdenticalPlan()
         {
-            RunDebugSpawnRequestV1 first = Request("repeat", 4, 77UL);
-            RunDebugSpawnRequestV1 second = Request("repeat", 4, 77UL);
-            IReadOnlyList<RunDebugBoxPlanV1> left = RunDebugPlannerV1.CreatePlan(first);
-            IReadOnlyList<RunDebugBoxPlanV1> right = RunDebugPlannerV1.CreatePlan(second);
+            RunDebugSpawnRequest first = Request("repeat", 4, 77UL);
+            RunDebugSpawnRequest second = Request("repeat", 4, 77UL);
+            IReadOnlyList<RunDebugBoxPlan> left = RunDebugPlanner.CreatePlan(first);
+            IReadOnlyList<RunDebugBoxPlan> right = RunDebugPlanner.CreatePlan(second);
 
             Assert.That(second.Fingerprint, Is.EqualTo(first.Fingerprint));
             Assert.That(right.Count, Is.EqualTo(left.Count));
@@ -72,15 +72,15 @@ namespace ShooterMover.Tests.EditMode.Development.RunDebug
         [TestCase(6)]
         public void PlannerSupportsZeroAndMultipleBoxes(int count)
         {
-            RunDebugSpawnRequestV1 request = Request("count-" + count, count, 4UL);
-            Assert.That(RunDebugPlannerV1.CreatePlan(request).Count, Is.EqualTo(count));
+            RunDebugSpawnRequest request = Request("count-" + count, count, 4UL);
+            Assert.That(RunDebugPlanner.CreatePlan(request).Count, Is.EqualTo(count));
         }
 
         [Test]
         public void SnapshotRejectsDuplicateConcreteBoxIdentity()
         {
-            RunDebugSpawnRequestV1 request = Request("collision", 2, 8UL);
-            IReadOnlyList<RunDebugBoxPlanV1> plan = RunDebugPlannerV1.CreatePlan(request);
+            RunDebugSpawnRequest request = Request("collision", 2, 8UL);
+            IReadOnlyList<RunDebugBoxPlan> plan = RunDebugPlanner.CreatePlan(request);
             StableId duplicate = Id("box-instance", "duplicate");
             var facts = new[]
             {
@@ -89,17 +89,17 @@ namespace ShooterMover.Tests.EditMode.Development.RunDebug
             };
 
             Assert.Throws<ArgumentException>(
-                delegate { new RunDebugSnapshotV1(request, facts, string.Empty); });
+                delegate { new RunDebugSnapshot(request, facts, string.Empty); });
         }
 
         [Test]
         public void ExactInstanceIdentitySurvivesCollectedSnapshot()
         {
-            RunDebugSpawnRequestV1 request = Request("identity", 1, 9UL);
-            RunDebugBoxPlanV1 plan = RunDebugPlannerV1.CreatePlan(request)[0];
+            RunDebugSpawnRequest request = Request("identity", 1, 9UL);
+            RunDebugBoxPlan plan = RunDebugPlanner.CreatePlan(request)[0];
             StableId instance = Id("box-instance", "identity");
-            RunDebugBoxFactV1 fact = Spawned(plan, instance).WithCollection("accepted");
-            RunDebugSnapshotV1 snapshot = new RunDebugSnapshotV1(
+            RunDebugBoxFact fact = Spawned(plan, instance).WithCollection("accepted");
+            RunDebugSnapshot snapshot = new RunDebugSnapshot(
                 request,
                 new[] { fact },
                 string.Empty);
@@ -112,11 +112,11 @@ namespace ShooterMover.Tests.EditMode.Development.RunDebug
         [Test]
         public void SessionCallsEndRunExactlyOnceAcrossReplay()
         {
-            var port = new FakeRuntimePort(Request("end", 0, 1UL));
-            var session = new RunDebugPanelSessionV1(port);
+            var port = new FakeLivePort(Request("end", 0, 1UL));
+            var session = new RunDebugPanelSession(port);
 
-            RunDebugEndResultV1 first = session.EndRun(MissionRunCompletionStateV1.Completed);
-            RunDebugEndResultV1 replay = session.EndRun(MissionRunCompletionStateV1.Completed);
+            RunDebugEndResult first = session.EndRun(MissionRunCompletionState.Completed);
+            RunDebugEndResult replay = session.EndRun(MissionRunCompletionState.Completed);
 
             Assert.That(port.EndCalls, Is.EqualTo(1));
             Assert.That(replay, Is.SameAs(first));
@@ -126,16 +126,16 @@ namespace ShooterMover.Tests.EditMode.Development.RunDebug
         [Test]
         public void BuildGuardRequiresEditorOrDevelopmentBuild()
         {
-            Assert.That(RunDebugBuildGuardV1.Evaluate(false, false), Is.False);
-            Assert.That(RunDebugBuildGuardV1.Evaluate(true, false), Is.True);
-            Assert.That(RunDebugBuildGuardV1.Evaluate(false, true), Is.True);
+            Assert.That(RunDebugBuildGuard.Evaluate(false, false), Is.False);
+            Assert.That(RunDebugBuildGuard.Evaluate(true, false), Is.True);
+            Assert.That(RunDebugBuildGuard.Evaluate(false, true), Is.True);
         }
 
-        private static RunDebugBoxFactV1 Spawned(
-            RunDebugBoxPlanV1 plan,
+        private static RunDebugBoxFact Spawned(
+            RunDebugBoxPlan plan,
             StableId instance)
         {
-            return new RunDebugBoxFactV1(
+            return new RunDebugBoxFact(
                 plan,
                 true,
                 false,
@@ -147,12 +147,12 @@ namespace ShooterMover.Tests.EditMode.Development.RunDebug
                 string.Empty);
         }
 
-        private static RunDebugSpawnRequestV1 Request(
+        private static RunDebugSpawnRequest Request(
             string suffix,
             int count,
             ulong seed)
         {
-            return RunDebugSpawnRequestV1.Create(
+            return RunDebugSpawnRequest.Create(
                 Id("run", suffix),
                 Route(suffix),
                 count,
@@ -160,9 +160,9 @@ namespace ShooterMover.Tests.EditMode.Development.RunDebug
                 seed);
         }
 
-        private static PlayerRouteProfilePayloadV1 Route(string suffix)
+        private static PlayerRouteProfilePayload Route(string suffix)
         {
-            return PlayerRouteProfilePayloadV1.Create(
+            return PlayerRouteProfilePayload.Create(
                 Id("character", suffix),
                 Id("loadout", suffix),
                 new[]
@@ -179,17 +179,17 @@ namespace ShooterMover.Tests.EditMode.Development.RunDebug
             return StableId.Create(namespaceName, value);
         }
 
-        private sealed class FakeRuntimePort : IRunDebugRuntimePortV1
+        private sealed class FakeLivePort : IRunDebugLivePort
         {
-            private readonly RunDebugSnapshotV1 snapshot;
+            private readonly RunDebugSnapshot snapshot;
 
-            public FakeRuntimePort(RunDebugSpawnRequestV1 request)
+            public FakeLivePort(RunDebugSpawnRequest request)
             {
-                var facts = new List<RunDebugBoxFactV1>();
-                IReadOnlyList<RunDebugBoxPlanV1> plan = RunDebugPlannerV1.CreatePlan(request);
+                var facts = new List<RunDebugBoxFact>();
+                IReadOnlyList<RunDebugBoxPlan> plan = RunDebugPlanner.CreatePlan(request);
                 for (int index = 0; index < plan.Count; index++)
                 {
-                    facts.Add(new RunDebugBoxFactV1(
+                    facts.Add(new RunDebugBoxFact(
                         plan[index],
                         false,
                         false,
@@ -201,48 +201,48 @@ namespace ShooterMover.Tests.EditMode.Development.RunDebug
                         string.Empty));
                 }
 
-                snapshot = new RunDebugSnapshotV1(request, facts, string.Empty);
+                snapshot = new RunDebugSnapshot(request, facts, string.Empty);
             }
 
             public int EndCalls;
 
-            public RunDebugSpawnBatchResultV1 Spawn(RunDebugSpawnRequestV1 request)
+            public RunDebugSpawnBatchResult Spawn(RunDebugSpawnRequest request)
             {
-                return new RunDebugSpawnBatchResultV1(
-                    RunDebugSpawnBatchStatusV1.Spawned,
+                return new RunDebugSpawnBatchResult(
+                    RunDebugSpawnBatchStatus.Spawned,
                     snapshot,
                     string.Empty);
             }
 
-            public RunDebugSnapshotV1 RefreshSnapshot() { return snapshot; }
+            public RunDebugSnapshot RefreshSnapshot() { return snapshot; }
 
-            public RunDebugEndResultV1 EndRun(MissionRunCompletionStateV1 completionState)
+            public RunDebugEndResult EndRun(MissionRunCompletionState completionState)
             {
                 EndCalls++;
-                MissionResultPayloadV1 payload = MissionResultPayloadV1.Create(
+                MissionResultPayload payload = MissionResultPayload.Create(
                     snapshot.Request.RunStableId,
                     snapshot.Request.RoutePayload,
                     completionState,
-                    Array.Empty<MissionRunStrongboxResultV1>(),
+                    Array.Empty<MissionRunStrongboxResult>(),
                     1L,
                     0L,
-                    MissionRunCanonicalV1.Fingerprint("holdings"),
+                    MissionRun.Fingerprint("holdings"),
                     0L,
-                    MissionRunCanonicalV1.Fingerprint("openings"));
-                MissionRunAuthorityResultV1 authority =
-                    new MissionRunAuthorityResultV1(
-                        MissionRunAuthorityStatusV1.RunEnded,
+                    MissionRun.Fingerprint("openings"));
+                MissionRunStateResult authority =
+                    new MissionRunStateResult(
+                        MissionRunStateStatus.RunEnded,
                         0L,
                         1L,
                         Id("run-operation", "end"),
-                        MissionRunCanonicalV1.Fingerprint("request"),
+                        MissionRun.Fingerprint("request"),
                         null,
                         null,
                         payload,
                         string.Empty);
-                return new RunDebugEndResultV1(
+                return new RunDebugEndResult(
                     authority,
-                    new MissionResultsSessionV1(payload),
+                    new MissionResultsSession(payload),
                     true,
                     string.Empty);
             }

@@ -177,11 +177,11 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         }
     }
 
-    public sealed class SpriteAnimationCombatDeathVfxDefinitionV1
+    public sealed class SpriteAnimationCombatDeathVfxDefinition
     {
         private readonly Sprite[] frames;
 
-        public SpriteAnimationCombatDeathVfxDefinitionV1(
+        public SpriteAnimationCombatDeathVfxDefinition(
             string sourcePresentationId,
             Sprite[] configuredFrames,
             float secondsPerFrame,
@@ -259,11 +259,11 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
     /// </summary>
     public sealed class SpriteAnimationCombatDeathVfxFactory2D : ICombatDeathVfxFactory2D
     {
-        private readonly SpriteAnimationCombatDeathVfxDefinitionV1 definition;
+        private readonly SpriteAnimationCombatDeathVfxDefinition definition;
         private readonly ICombatDeathVfxFactory2D fallback;
 
         public SpriteAnimationCombatDeathVfxFactory2D(
-            SpriteAnimationCombatDeathVfxDefinitionV1 definition,
+            SpriteAnimationCombatDeathVfxDefinition definition,
             ICombatDeathVfxFactory2D fallback)
         {
             this.definition = definition ?? throw new ArgumentNullException(nameof(definition));
@@ -301,7 +301,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         MonoBehaviour,
         ICombatDeathVfxInstance2D
     {
-        private SpriteAnimationCombatDeathVfxDefinitionV1 definition;
+        private SpriteAnimationCombatDeathVfxDefinition definition;
         private SpriteRenderer rendererComponent;
         private int frameIndex;
         private float frameElapsed;
@@ -311,7 +311,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         public long SpawnSequence { get; private set; }
 
         public void Configure(
-            SpriteAnimationCombatDeathVfxDefinitionV1 configuredDefinition,
+            SpriteAnimationCombatDeathVfxDefinition configuredDefinition,
             SpriteRenderer configuredRenderer)
         {
             definition = configuredDefinition

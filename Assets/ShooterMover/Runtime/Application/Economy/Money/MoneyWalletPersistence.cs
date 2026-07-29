@@ -5,7 +5,7 @@ using ShooterMover.Domain.Economy.Money;
 
 namespace ShooterMover.Application.Economy.Money
 {
-    public sealed partial class MoneyWalletService
+    public sealed partial class MoneyWalletActions
     {
         public MoneyWalletImportResult ImportSnapshot(
             MoneyWalletSnapshot snapshot)
@@ -108,7 +108,7 @@ namespace ShooterMover.Application.Economy.Money
                 MoneyWalletContributionSnapshot contribution =
                     snapshot.Contributions[index];
                 entries.Add(new LedgerSnapshotEntry(
-                    MoneyWalletIdsV1.EntryTypeStableId.ToString(),
+                    MoneyWalletIds.EntryTypeStableId.ToString(),
                     contribution.CurrencyStableId,
                     contribution.CommandFingerprint,
                     contribution.Quantity));
@@ -123,7 +123,7 @@ namespace ShooterMover.Application.Economy.Money
                     snapshot.Transactions[index];
                 transactions.Add(new LedgerTransactionSnapshot(
                     transaction.TransactionStableId,
-                    MoneyWalletIdsV1.EntryTypeStableId.ToString(),
+                    MoneyWalletIds.EntryTypeStableId.ToString(),
                     transaction.CurrencyStableId,
                     transaction.CommandFingerprint,
                     transaction.QuantityDelta,
@@ -237,7 +237,7 @@ namespace ShooterMover.Application.Economy.Money
                 if (!StableId.TryParse(
                     contribution.CurrencyStableId,
                     out currencyStableId)
-                    || currencyStableId != MoneyWalletIdsV1.CurrencyStableId)
+                    || currencyStableId != MoneyWalletIds.CurrencyStableId)
                 {
                     status = MoneyWalletImportStatus.ValidationRejected;
                     rejectionCode = "money-snapshot-contribution-currency-invalid";
@@ -357,7 +357,7 @@ namespace ShooterMover.Application.Economy.Money
                         transaction.RejectionCode,
                         WrongCurrencyCode,
                         StringComparison.Ordinal);
-                if (currencyId != MoneyWalletIdsV1.CurrencyStableId
+                if (currencyId != MoneyWalletIds.CurrencyStableId
                     && !wrongCurrencyRejection)
                 {
                     status = MoneyWalletImportStatus.ValidationRejected;

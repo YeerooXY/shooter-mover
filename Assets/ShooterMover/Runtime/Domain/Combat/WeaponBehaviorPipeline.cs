@@ -6,7 +6,7 @@ namespace ShooterMover.Domain.Combat
 {
     /// <summary>
     /// Explicit registry and deterministic composer for reusable weapon behavior modules.
-    /// Registration order is irrelevant; the validated WeaponRuntimeProfile order is authoritative.
+    /// Registration order is irrelevant; the validated WeaponLiveProfile order is authoritative.
     /// </summary>
     public sealed class WeaponBehaviorPipeline
     {
@@ -177,7 +177,7 @@ namespace ShooterMover.Domain.Combat
                 executions.ToArray());
         }
 
-        private IWeaponBehaviorModule[] ResolveOrderedModules(WeaponRuntimeProfile runtimeProfile)
+        private IWeaponBehaviorModule[] ResolveOrderedModules(WeaponLiveProfile runtimeProfile)
         {
             if (runtimeProfile == null)
             {

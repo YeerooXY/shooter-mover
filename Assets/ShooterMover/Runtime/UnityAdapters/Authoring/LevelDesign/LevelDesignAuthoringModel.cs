@@ -87,7 +87,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         DuplicateSocketIdentity = 21,
     }
 
-    public interface ILevelDoorPackageAdapter
+    public interface ILevelDoorPackageBridge
     {
         bool HasDoorController { get; }
 

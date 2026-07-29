@@ -102,11 +102,11 @@ namespace ShooterMover.Tests.PlayMode.Movement
                 Is.True);
             Assert.That(body.GetComponents<Rigidbody2D>().Length, Is.EqualTo(1));
             Assert.That(body.GetComponents<MovementActorLifecycle>().Length, Is.EqualTo(1));
-            Assert.That(body.GetComponents<PlayerMovementIntentAdapter>().Length, Is.EqualTo(1));
-            Assert.That(body.GetComponents<MovementContact2DAdapter>().Length, Is.EqualTo(1));
+            Assert.That(body.GetComponents<PlayerMovementIntentBridge>().Length, Is.EqualTo(1));
+            Assert.That(body.GetComponents<MovementContact2DBridge>().Length, Is.EqualTo(1));
 
-            PlayerMovementIntentAdapter input = body.GetComponent<PlayerMovementIntentAdapter>();
-            MovementContact2DAdapter contact = body.GetComponent<MovementContact2DAdapter>();
+            PlayerMovementIntentBridge input = body.GetComponent<PlayerMovementIntentBridge>();
+            MovementContact2DBridge contact = body.GetComponent<MovementContact2DBridge>();
             Assert.That(input.IsConfigured, Is.True);
             Assert.That(input.IsAcceptingInput, Is.True);
             Assert.That(contact.IsConfigured, Is.True);

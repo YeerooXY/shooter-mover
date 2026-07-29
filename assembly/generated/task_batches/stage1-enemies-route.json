@@ -178,10 +178,10 @@
                       "summary":  "Connect deterministic enemy decisions to targeting, Rigidbody2D movement, hits and contacts.",
                       "objective":  "Provide bounded Unity 2D adapters shared by enemy packages while preserving plain-C# authority.",
                       "allowed_areas":  [
-                                            "Assets/ShooterMover/Runtime/UnityAdapters/Enemies/EnemyActor2DAdapter.cs",
-                                            "Assets/ShooterMover/Runtime/UnityAdapters/Enemies/EnemyTarget2DAdapter.cs",
-                                            "Assets/ShooterMover/Runtime/UnityAdapters/Enemies/EnemyContact2DAdapter.cs",
-                                            "Assets/ShooterMover/Tests/PlayMode/Enemies/EnemyActor2DAdapterTests.cs"
+                                            "Assets/ShooterMover/Runtime/UnityAdapters/Enemies/EnemyActor2DBridge.cs",
+                                            "Assets/ShooterMover/Runtime/UnityAdapters/Enemies/EnemyTarget2DBridge.cs",
+                                            "Assets/ShooterMover/Runtime/UnityAdapters/Enemies/EnemyContact2DBridge.cs",
+                                            "Assets/ShooterMover/Tests/PlayMode/Enemies/EnemyActor2DBridgeTests.cs"
                                         ],
                       "depends_on":  [
                                          "UF-003",
@@ -221,7 +221,7 @@
                                            "Manual: dependency review confirms package folders can consume adapters without editing them."
                                        ],
                       "proof_required":  [
-                                             "EnemyActor2DAdapterTests log",
+                                             "EnemyActor2DBridgeTests log",
                                              "2D boundary snapshot",
                                              "dependency review note"
                                          ],

@@ -16,8 +16,8 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 
         private LevelDesignValidationResult lastValidation =
             LevelDesignValidationResult.Empty();
-        private LevelGridValidationResultV2 lastGridValidation =
-            LevelGridValidationResultV2.Empty();
+        private LevelGridValidationResult lastGridValidation =
+            LevelGridValidationResult.Empty();
 
         public string LevelIdText
         {
@@ -29,7 +29,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             get { return lastValidation; }
         }
 
-        public LevelGridValidationResultV2 LastGridValidation
+        public LevelGridValidationResult LastGridValidation
         {
             get { return lastGridValidation; }
         }
@@ -39,7 +39,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             if (validateOnEnable)
             {
                 ValidateHierarchy();
-                ValidateGridAuthoring(LevelGridValidationPurposeV2.Draft);
+                ValidateGridAuthoring(LevelGridValidationPurpose.Draft);
             }
         }
 
@@ -92,8 +92,8 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             return lastValidation;
         }
 
-        public LevelGridValidationResultV2 ValidateGridAuthoring(
-            LevelGridValidationPurposeV2 purpose)
+        public LevelGridValidationResult ValidateGridAuthoring(
+            LevelGridValidationPurpose purpose)
         {
             LevelRoomAuthoring2D[] roomComponents =
                 GetComponentsInChildren<LevelRoomAuthoring2D>(includeInactive);
@@ -104,23 +104,23 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 
             List<LevelRoomRecord> rooms =
                 new List<LevelRoomRecord>(roomComponents.Length);
-            List<LevelGridRoomRecordV2> gridRooms =
-                new List<LevelGridRoomRecordV2>(roomComponents.Length);
+            List<LevelGridRoomRecord> gridRooms =
+                new List<LevelGridRoomRecord>(roomComponents.Length);
             for (int index = 0; index < roomComponents.Length; index++)
             {
                 rooms.Add(roomComponents[index].BuildRecord());
                 gridRooms.Add(roomComponents[index].BuildGridRecord());
             }
 
-            List<LevelGridDoorRecordV2> doors =
-                new List<LevelGridDoorRecordV2>(doorComponents.Length);
+            List<LevelGridDoorRecord> doors =
+                new List<LevelGridDoorRecord>(doorComponents.Length);
             for (int index = 0; index < doorComponents.Length; index++)
             {
                 doors.Add(doorComponents[index].BuildRecord());
             }
 
-            List<LevelGridConnectionRecordV2> connections =
-                new List<LevelGridConnectionRecordV2>(connectionComponents.Length);
+            List<LevelGridConnectionRecord> connections =
+                new List<LevelGridConnectionRecord>(connectionComponents.Length);
             for (int index = 0; index < connectionComponents.Length; index++)
             {
                 connections.Add(connectionComponents[index].BuildRecord());
@@ -128,8 +128,8 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 
             string finalExitRoomId = string.Empty;
             string finalExitDoorId = string.Empty;
-            LevelGridPlayableMetadataV2 metadata =
-                GetComponent<LevelGridPlayableMetadataV2>();
+            LevelGridPlayableMetadata metadata =
+                GetComponent<LevelGridPlayableMetadata>();
             if (metadata != null
                 && metadata.FinalExitRoom != null
                 && metadata.FinalExitDoor != null
@@ -143,7 +143,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 finalExitDoorId = metadata.FinalExitDoor.DoorIdText;
             }
 
-            lastGridValidation = LevelGridPlayableValidationV2.Validate(
+            lastGridValidation = LevelGridPlayableValidation.Validate(
                 rooms,
                 gridRooms,
                 doors,

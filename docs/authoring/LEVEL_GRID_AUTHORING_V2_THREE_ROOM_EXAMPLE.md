@@ -248,7 +248,7 @@ encounter scaffold uses the agreed default rather than a generic `items` list:
 ```
 
 The Phase 1 sidecars are authoring placeholders. They are deliberately not
-advertised as the current `RoomContentJsonImporterV1` document package.
+advertised as the current `RoomContentJsonImporter` document package.
 
 ## Graph interpretation
 

@@ -40,28 +40,28 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
             yield return null;
         }
 
-        protected TestAuthoritySet CreateAuthoritySet()
+        protected TestStateSet CreateAuthoritySet()
         {
-            RecordingRewardChildAuthority money = new RecordingRewardChildAuthority(
+            RecordingRewardChildState money = new RecordingRewardChildState(
                 StableId.Parse("authority.money"));
-            RecordingRewardChildAuthority scrap = new RecordingRewardChildAuthority(
+            RecordingRewardChildState scrap = new RecordingRewardChildState(
                 StableId.Parse("authority.scrap"));
-            RecordingRewardChildAuthority holdings = new RecordingRewardChildAuthority(
+            RecordingRewardChildState holdings = new RecordingRewardChildState(
                 StableId.Parse("authority.holdings"));
-            RewardApplicationServiceV1 service = new RewardApplicationServiceV1(
+            RewardApplicationActions service = new RewardApplicationActions(
                 StableId.Parse("authority.rap"),
                 money,
                 scrap,
                 holdings);
             GameObject authorityObject = Track(new GameObject("PickupAuthority"));
-            RewardPickupApplicationAuthority2D adapter =
-                authorityObject.AddComponent<RewardPickupApplicationAuthority2D>();
+            RewardPickupApplicationState2D adapter =
+                authorityObject.AddComponent<RewardPickupApplicationState2D>();
             adapter.ConfigureForTests(
                 service,
                 money.AuthorityStableId,
                 scrap.AuthorityStableId,
                 holdings.AuthorityStableId);
-            return new TestAuthoritySet(adapter, money, scrap, holdings);
+            return new TestStateSet(adapter, money, scrap, holdings);
         }
 
         protected GameplaySceneScope2D CreateScope(string runId)
@@ -78,16 +78,16 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
         }
 
         protected RewardPickupDropFactory2D CreateFactory(
-            TestAuthoritySet authorities,
+            TestStateSet authorities,
             GameplaySceneScope2D scope,
-            IRewardPickupEquipmentPayloadResolverV1 equipmentResolver = null)
+            IRewardPickupEquipmentPayloadResolver equipmentResolver = null)
         {
             GameObject factoryObject = Track(new GameObject("PickupFactory"));
             factoryObject.transform.SetParent(scope.transform);
             RewardPickupDropFactory2D factory =
                 factoryObject.AddComponent<RewardPickupDropFactory2D>();
             factory.ConfigureForTests(
-                new RewardGenerationServiceV1(),
+                new RewardGenerationActions(),
                 ProgressionContext.Create(
                     10,
                     10,
@@ -103,38 +103,38 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
         }
 
         protected RewardPickup2D CreateConfiguredPickup(
-            TestAuthoritySet authorities,
+            TestStateSet authorities,
             GameplaySceneScope2D scope,
-            RewardCommitCommandV1 command)
+            RewardCommitCommand command)
         {
             Assert.That(
                 authorities.Adapter.Commit(command).Status,
-                Is.EqualTo(RewardApplicationResultStatusV1.Generated));
+                Is.EqualTo(RewardApplicationResultStatus.Generated));
             return CreatePickupProjection(authorities, scope, command);
         }
 
         protected RewardPickup2D CreatePickupProjection(
-            TestAuthoritySet authorities,
+            TestStateSet authorities,
             GameplaySceneScope2D scope,
-            RewardCommitCommandV1 command,
+            RewardCommitCommand command,
             bool registerForRestart = true)
         {
             GameObject value = Track(new GameObject("PickupProjection"));
             value.transform.SetParent(scope.transform);
             RewardPickup2D pickup = value.AddComponent<RewardPickup2D>();
             pickup.ConfigureForTests(
-                RewardPickupPayloadV1.Create(command),
+                RewardPickupPayload.Create(command),
                 authorities.Adapter,
                 scope,
                 0.75f,
-                new RewardPickupPresentationStyleV1[0],
+                new RewardPickupPresentationStyle[0],
                 registerForRestart);
             return pickup;
         }
 
         protected RewardSourceResolvedPreview CreatePreview(
             string suffix,
-            RewardGrantKindV1? kind,
+            RewardGrantKind? kind,
             string contentId,
             long quantity = 1L)
         {
@@ -157,8 +157,8 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
                     guaranteed,
                     new IndependentRewardRollAuthoring[0],
                     new ExclusiveRewardGroupAuthoring[0]));
-            RewardProfileV1 profile = asset.BuildProfile();
-            RewardOperationRequestV1 operation = RewardOperationRequestV1.Create(
+            RewardProfile profile = asset.BuildProfile();
+            RewardOperationRequest operation = RewardOperationRequest.Create(
                 StableId.Parse("run." + suffix),
                 StableId.Parse("source." + suffix),
                 StableId.Parse("operation." + suffix),
@@ -171,54 +171,54 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
                 profile,
                 operation,
                 StableId.Parse("restart." + suffix),
-                RewardApplicationCanonicalV1.Fingerprint("preview=" + suffix));
+                RewardApplication.Fingerprint("preview=" + suffix));
         }
 
-        protected static RewardCommitCommandV1 CreateValueCommit(
+        protected static RewardCommitCommand CreateValueCommit(
             string suffix,
-            RewardGrantKindV1 kind,
+            RewardGrantKind kind,
             string contentId,
             long quantity)
         {
-            RewardOperationRequestV1 operation = CreateOperation(suffix);
-            RewardGrantV1 grant = RewardGrantV1.Create(
+            RewardOperationRequest operation = CreateOperation(suffix);
+            RewardGrant grant = RewardGrant.Create(
                 StableId.Parse("grant." + suffix),
                 kind,
                 StableId.Parse(contentId),
                 quantity);
-            RewardResultV1 result = RewardResultV1.CreateGrants(
+            RewardResult result = RewardResult.CreateGrants(
                 operation.CommitmentStableId,
                 operation.SourceOperationStableId,
                 new[] { grant });
-            return RewardCommitCommandV1.Create(
+            return RewardCommitCommand.Create(
                 operation,
                 result,
-                RewardApplicationCanonicalV1.Fingerprint("generation=" + suffix),
-                new[] { RewardGrantApplicationPayloadV1.ForValue(grant) });
+                RewardApplication.Fingerprint("generation=" + suffix),
+                new[] { RewardGrantApplicationPayload.ForValue(grant) });
         }
 
-        protected static RewardCommitCommandV1 CreateStrongboxCommit(
+        protected static RewardCommitCommand CreateStrongboxCommit(
             string suffix,
             string contentId,
             StableId instanceId)
         {
-            RewardOperationRequestV1 operation = CreateOperation(suffix);
-            RewardGrantV1 grant = RewardGrantV1.Create(
+            RewardOperationRequest operation = CreateOperation(suffix);
+            RewardGrant grant = RewardGrant.Create(
                 StableId.Parse("grant." + suffix),
-                RewardGrantKindV1.Strongbox,
+                RewardGrantKind.Strongbox,
                 StableId.Parse(contentId),
                 1L);
-            RewardResultV1 result = RewardResultV1.CreateGrants(
+            RewardResult result = RewardResult.CreateGrants(
                 operation.CommitmentStableId,
                 operation.SourceOperationStableId,
                 new[] { grant });
-            return RewardCommitCommandV1.Create(
+            return RewardCommitCommand.Create(
                 operation,
                 result,
-                RewardApplicationCanonicalV1.Fingerprint("generation=" + suffix),
+                RewardApplication.Fingerprint("generation=" + suffix),
                 new[]
                 {
-                    RewardGrantApplicationPayloadV1.ForStrongboxes(
+                    RewardGrantApplicationPayload.ForStrongboxes(
                         grant,
                         new[] { instanceId })
                 });
@@ -230,24 +230,24 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
             return value;
         }
 
-        private static RewardOperationRequestV1 CreateOperation(string suffix)
+        private static RewardOperationRequest CreateOperation(string suffix)
         {
-            return RewardOperationRequestV1.Create(
+            return RewardOperationRequest.Create(
                 StableId.Parse("run.pickup-tests"),
                 StableId.Parse("source." + suffix),
                 StableId.Parse("operation." + suffix),
                 StableId.Parse("commitment." + suffix),
                 StableId.Parse("profile." + suffix),
-                RewardApplicationCanonicalV1.Fingerprint("profile=" + suffix));
+                RewardApplication.Fingerprint("profile=" + suffix));
         }
 
-        protected sealed class TestAuthoritySet
+        protected sealed class TestStateSet
         {
-            public TestAuthoritySet(
-                RewardPickupApplicationAuthority2D adapter,
-                RecordingRewardChildAuthority money,
-                RecordingRewardChildAuthority scrap,
-                RecordingRewardChildAuthority holdings)
+            public TestStateSet(
+                RewardPickupApplicationState2D adapter,
+                RecordingRewardChildState money,
+                RecordingRewardChildState scrap,
+                RecordingRewardChildState holdings)
             {
                 Adapter = adapter;
                 Money = money;
@@ -255,14 +255,14 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
                 Holdings = holdings;
             }
 
-            public RewardPickupApplicationAuthority2D Adapter { get; }
-            public RecordingRewardChildAuthority Money { get; }
-            public RecordingRewardChildAuthority Scrap { get; }
-            public RecordingRewardChildAuthority Holdings { get; }
+            public RewardPickupApplicationState2D Adapter { get; }
+            public RecordingRewardChildState Money { get; }
+            public RecordingRewardChildState Scrap { get; }
+            public RecordingRewardChildState Holdings { get; }
         }
 
         protected sealed class FixedEquipmentPayloadResolver :
-            IRewardPickupEquipmentPayloadResolverV1
+            IRewardPickupEquipmentPayloadResolver
         {
             private readonly EquipmentInstance equipment;
 
@@ -273,7 +273,7 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
 
             public bool TryResolve(
                 RewardSourceResolvedPreview source,
-                RewardGrantV1 grant,
+                RewardGrant grant,
                 out IReadOnlyList<EquipmentInstance> equipmentInstances,
                 out string rejectionCode)
             {
@@ -294,12 +294,12 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
             }
         }
 
-        protected sealed class RecordingRewardChildAuthority : IRewardChildAuthorityV1
+        protected sealed class RecordingRewardChildState : IRewardChildState
         {
-            private readonly Dictionary<StableId, RewardChildGrantCommandV1> applied =
-                new Dictionary<StableId, RewardChildGrantCommandV1>();
+            private readonly Dictionary<StableId, RewardChildGrantCommand> applied =
+                new Dictionary<StableId, RewardChildGrantCommand>();
 
-            public RecordingRewardChildAuthority(StableId authorityStableId)
+            public RecordingRewardChildState(StableId authorityStableId)
             {
                 AuthorityStableId = authorityStableId;
             }
@@ -307,44 +307,44 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
             public StableId AuthorityStableId { get; }
             public long Sequence { get; private set; }
             public int ApplyCount { get; private set; }
-            public RewardChildGrantCommandV1 LastCommand { get; private set; }
+            public RewardChildGrantCommand LastCommand { get; private set; }
 
-            public RewardAuthorityPreflightResultV1 Preflight(
-                IReadOnlyList<RewardChildGrantCommandV1> commands)
+            public RewardStatePreflightResult Preflight(
+                IReadOnlyList<RewardChildGrantCommand> commands)
             {
-                List<RewardAuthorityPreflightFactV1> facts =
-                    new List<RewardAuthorityPreflightFactV1>();
+                List<RewardStatePreflightFact> facts =
+                    new List<RewardStatePreflightFact>();
                 for (int index = 0; index < commands.Count; index++)
                 {
-                    RewardChildGrantCommandV1 command = commands[index];
-                    RewardAuthorityAdmissionStatusV1 status =
+                    RewardChildGrantCommand command = commands[index];
+                    RewardStateAdmissionStatus status =
                         command.DestinationAuthorityStableId != AuthorityStableId
-                            ? RewardAuthorityAdmissionStatusV1.AuthorityMismatch
+                            ? RewardStateAdmissionStatus.AuthorityMismatch
                             : applied.ContainsKey(command.TransactionStableId)
-                                ? RewardAuthorityAdmissionStatusV1.AlreadyApplied
-                                : RewardAuthorityAdmissionStatusV1.Accepted;
-                    facts.Add(new RewardAuthorityPreflightFactV1(
+                                ? RewardStateAdmissionStatus.AlreadyApplied
+                                : RewardStateAdmissionStatus.Accepted;
+                    facts.Add(new RewardStatePreflightFact(
                         command.TransactionStableId,
                         status,
-                        status == RewardAuthorityAdmissionStatusV1.AuthorityMismatch
+                        status == RewardStateAdmissionStatus.AuthorityMismatch
                             ? "recording-authority-mismatch"
                             : null));
                 }
 
-                return new RewardAuthorityPreflightResultV1(facts);
+                return new RewardStatePreflightResult(facts);
             }
 
-            public RewardChildApplyResultV1 Apply(RewardChildGrantCommandV1 command)
+            public RewardChildApplyResult Apply(RewardChildGrantCommand command)
             {
-                RewardChildGrantCommandV1 prior;
+                RewardChildGrantCommand prior;
                 if (applied.TryGetValue(command.TransactionStableId, out prior))
                 {
                     bool exact = prior.Equals(command);
-                    return new RewardChildApplyResultV1(
+                    return new RewardChildApplyResult(
                         command.TransactionStableId,
                         exact
-                            ? RewardChildApplyStatusV1.ExactDuplicateNoChange
-                            : RewardChildApplyStatusV1.ConflictingDuplicate,
+                            ? RewardChildApplyStatus.ExactDuplicateNoChange
+                            : RewardChildApplyStatus.ConflictingDuplicate,
                         exact,
                         exact ? null : "recording-transaction-conflict");
                 }
@@ -353,9 +353,9 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
                 LastCommand = command;
                 ApplyCount++;
                 Sequence++;
-                return new RewardChildApplyResultV1(
+                return new RewardChildApplyResult(
                     command.TransactionStableId,
-                    RewardChildApplyStatusV1.Applied,
+                    RewardChildApplyStatus.Applied,
                     true,
                     null);
             }

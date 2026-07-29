@@ -26,7 +26,7 @@ The previously playable Resource asset and all generated TextAssets it reference
 | Concept | Authority |
 |---|---|
 | authored topology and room content | exported Level Grid V2 folder |
-| deterministic compiled package | `LevelGridV2Compiler` result in memory |
+| deterministic compiled package | `LevelGridCompiler` result in memory |
 | generated JSON version | content-addressed immutable folder below the selected generated root |
 | playable runtime selection | one `JsonRoomContentDefinition2D` at the selected Resource path |
 | old-version deletion eligibility | references from every `JsonRoomContentDefinition2D` in AssetDatabase |
@@ -77,7 +77,7 @@ The previously playable Resource asset and all generated TextAssets it reference
 
 ## Production changes
 
-- `LevelGridV2AssetCompiler` is now the compile-validation and publication orchestration surface.
+- `LevelGridAssetCompiler` is now the compile-validation and publication orchestration surface.
 - `LevelGridV2AssetCompilerPublication` owns version staging, runtime staging, destination snapshotting, atomic replacement and rollback.
 - `LevelGridV2AssetCompilerCleanup` owns reference-aware reconciliation, version hashing and transaction-owned cleanup.
 - Foundation editor tooling now has a dedicated Editor-only asmdef.
@@ -86,7 +86,7 @@ The previously playable Resource asset and all generated TextAssets it reference
 
 ## Tests authored
 
-`LevelGridV2AssetCompilerPublicationTests` covers:
+`LevelGridAssetCompilerPublicationTests` covers:
 
 1. failure immediately before the authoritative switch preserves exact previous `.asset` bytes, manifest reference and importer validity;
 2. injected failure immediately after filesystem replacement restores exact previous bytes and importer validity;

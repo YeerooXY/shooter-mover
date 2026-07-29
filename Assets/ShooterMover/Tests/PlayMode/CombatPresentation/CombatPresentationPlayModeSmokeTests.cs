@@ -35,12 +35,12 @@ namespace ShooterMover.Tests.PlayMode.CombatPresentation
                 large.transform.localScale = new Vector3(2f, 2f, 1f);
                 third.AddComponent<BoxCollider2D>().size = Vector2.one;
 
-                FakeEnemyAuthority2D ordinaryAuthority =
-                    ordinary.AddComponent<FakeEnemyAuthority2D>();
-                FakeEnemyAuthority2D largeAuthority =
-                    large.AddComponent<FakeEnemyAuthority2D>();
-                FakeEnemyAuthority2D thirdAuthority =
-                    third.AddComponent<FakeEnemyAuthority2D>();
+                FakeEnemyState2D ordinaryAuthority =
+                    ordinary.AddComponent<FakeEnemyState2D>();
+                FakeEnemyState2D largeAuthority =
+                    large.AddComponent<FakeEnemyState2D>();
+                FakeEnemyState2D thirdAuthority =
+                    third.AddComponent<FakeEnemyState2D>();
                 ordinaryAuthority.Configure("ordinary", 100d);
                 largeAuthority.Configure("large", 200d);
                 thirdAuthority.Configure("third", 150d);
@@ -63,7 +63,7 @@ namespace ShooterMover.Tests.PlayMode.CombatPresentation
                         thirdAuthority,
                         pool,
                         Vector3.up);
-                var ordinaryRuntime = new CombatPresentationEnemyActorAuthority2D(
+                var ordinaryRuntime = new CombatPresentationEnemyActorState2D(
                     ordinaryAuthority,
                     ordinaryRegistration);
 
@@ -80,7 +80,7 @@ namespace ShooterMover.Tests.PlayMode.CombatPresentation
                         40d));
                 Assert.That(
                     ordinaryRegistration.Refresh(),
-                    Is.EqualTo(CombatHealthBarRefreshStatusV1.Applied));
+                    Is.EqualTo(CombatHealthBarRefreshStatus.Applied));
                 Assert.That(
                     ordinaryRegistration.HealthBar.CurrentSnapshot.NormalizedFill,
                     Is.EqualTo(0.6d));
@@ -116,7 +116,7 @@ namespace ShooterMover.Tests.PlayMode.CombatPresentation
                     ordinary.transform);
                 float largeBounds = EnemyPresentationBounds2D.MeasureLargestDimension(
                     large.transform);
-                var scalePolicy = new EnemyDeathVfxScaleConfigurationV1();
+                var scalePolicy = new EnemyDeathVfxScaleConfiguration();
                 Assert.That(largeBounds, Is.GreaterThan(ordinaryBounds));
                 Assert.That(
                     scalePolicy.Resolve(largeBounds),
@@ -196,7 +196,7 @@ namespace ShooterMover.Tests.PlayMode.CombatPresentation
             lifetime = frameCount > 0
                 ? Mathf.Max(0.01f, frameCount * secondsPerFrame)
                 : FallbackRingCombatDeathVfxFactory2D.DefaultLifetimeSeconds;
-            var definition = new SpriteAnimationCombatDeathVfxDefinitionV1(
+            var definition = new SpriteAnimationCombatDeathVfxDefinition(
                 "retained.asset:" + animationObject.name,
                 frames,
                 secondsPerFrame,
@@ -214,10 +214,10 @@ namespace ShooterMover.Tests.PlayMode.CombatPresentation
             return StableId.Create(namespaceName, value);
         }
 
-        public sealed class FakeEnemyAuthority2D :
+        public sealed class FakeEnemyState2D :
             MonoBehaviour,
-            IEnemyActor2DAuthority,
-            ICombatPresentationLifecycleSourceV1
+            IEnemyActor2DState,
+            ICombatPresentationLifecycleSource
         {
             private StableId actorId;
             private double maximumHealth;

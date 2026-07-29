@@ -27,22 +27,22 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         {
             Fixture fixture = Fixture.Create("mixed");
             EquipmentInstance equipment = fixture.Equipment("mixed-a", "shared");
-            IReadOnlyList<RunSessionCollectedRewardV1> journal = new[]
+            IReadOnlyList<RunSessionCollectedReward> journal = new[]
             {
-                fixture.Reward("money", RewardGrantKindV1.Money,
-                    MoneyWalletIdsV1.CurrencyStableId, 25L, 1L),
-                fixture.Reward("scrap", RewardGrantKindV1.Scrap,
+                fixture.Reward("money", RewardGrantKind.Money,
+                    MoneyWalletIds.CurrencyStableId, 25L, 1L),
+                fixture.Reward("scrap", RewardGrantKind.Scrap,
                     fixture.Graph.ScrapWallet.CurrencyStableId, 9L, 2L),
-                fixture.Reward("equipment", RewardGrantKindV1.EquipmentReference,
+                fixture.Reward("equipment", RewardGrantKind.EquipmentReference,
                     equipment.DefinitionId, 1L, 3L, equipment.InstanceId),
-                fixture.Reward("box", RewardGrantKindV1.Strongbox,
+                fixture.Reward("box", RewardGrantKind.Strongbox,
                     fixture.StrongboxTier, 1L, 4L),
             };
             fixture.Payloads.Add(equipment);
 
-            CollectedRunRewardPreparedTransferV1 awaiting =
+            CollectedRunRewardPreparedTransfer awaiting =
                 fixture.CreateAwaiting(journal);
-            CollectedRunRewardAtomicPlanV2 plan =
+            CollectedRunRewardAtomicPlan plan =
                 fixture.AcceptAndBuild(awaiting);
 
             Assert.That(awaiting.Rewards.Count, Is.EqualTo(4));
@@ -54,10 +54,10 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             Assert.That(plan.Rewards.Select(item => item.RewardKind),
                 Is.EquivalentTo(new[]
                 {
-                    RewardGrantKindV1.Money,
-                    RewardGrantKindV1.Scrap,
-                    RewardGrantKindV1.EquipmentReference,
-                    RewardGrantKindV1.Strongbox,
+                    RewardGrantKind.Money,
+                    RewardGrantKind.Scrap,
+                    RewardGrantKind.EquipmentReference,
+                    RewardGrantKind.Strongbox,
                 }));
             Assert.That(plan.Fingerprint,
                 Is.EqualTo(plan.PreparedTransfer.ApplicationPlanFingerprint));
@@ -67,22 +67,22 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         public void RewardsAbsentFromCollectedJournalAreExcluded()
         {
             Fixture fixture = Fixture.Create("uncollected");
-            RunSessionCollectedRewardV1 collected = fixture.Reward(
+            RunSessionCollectedReward collected = fixture.Reward(
                 "collected",
-                RewardGrantKindV1.Money,
-                MoneyWalletIdsV1.CurrencyStableId,
+                RewardGrantKind.Money,
+                MoneyWalletIds.CurrencyStableId,
                 7L,
                 1L);
-            RunSessionCollectedRewardV1 uncollected = fixture.Reward(
+            RunSessionCollectedReward uncollected = fixture.Reward(
                 "left-on-floor",
-                RewardGrantKindV1.Money,
-                MoneyWalletIdsV1.CurrencyStableId,
+                RewardGrantKind.Money,
+                MoneyWalletIds.CurrencyStableId,
                 99L,
                 2L);
 
-            CollectedRunRewardPreparedTransferV1 awaiting =
+            CollectedRunRewardPreparedTransfer awaiting =
                 fixture.CreateAwaiting(new[] { collected });
-            CollectedRunRewardAtomicPlanV2 plan =
+            CollectedRunRewardAtomicPlan plan =
                 fixture.AcceptAndBuild(awaiting);
 
             Assert.That(plan.Rewards.Count, Is.EqualTo(1));
@@ -97,17 +97,17 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         public void WrongRunOrLifecycleIsRejectedBeforeAcceptedEnd()
         {
             Fixture fixture = Fixture.Create("wrong-run");
-            RunSessionCollectedRewardV1 wrongRun = fixture.Reward(
+            RunSessionCollectedReward wrongRun = fixture.Reward(
                 "wrong-run",
-                RewardGrantKindV1.Money,
-                MoneyWalletIdsV1.CurrencyStableId,
+                RewardGrantKind.Money,
+                MoneyWalletIds.CurrencyStableId,
                 1L,
                 1L,
                 runOverride: Id("run-instance.somewhere-else"));
-            RunSessionCollectedRewardV1 wrongLifecycle = fixture.Reward(
+            RunSessionCollectedReward wrongLifecycle = fixture.Reward(
                 "wrong-lifecycle",
-                RewardGrantKindV1.Money,
-                MoneyWalletIdsV1.CurrencyStableId,
+                RewardGrantKind.Money,
+                MoneyWalletIds.CurrencyStableId,
                 1L,
                 2L,
                 lifecycleOverride: fixture.Lifecycle + 1L);
@@ -131,9 +131,9 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         public void UnsupportedRewardKindIsRejectedBeforeAcceptedEnd()
         {
             Fixture fixture = Fixture.Create("unsupported");
-            RunSessionCollectedRewardV1 unsupported = fixture.Reward(
+            RunSessionCollectedReward unsupported = fixture.Reward(
                 "misc",
-                RewardGrantKindV1.Miscellaneous,
+                RewardGrantKind.Miscellaneous,
                 Id("misc.future-widget"),
                 1L,
                 1L);
@@ -152,9 +152,9 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         {
             Fixture fixture = Fixture.Create("equipment-missing");
             EquipmentInstance equipment = fixture.Equipment("missing", "shared");
-            RunSessionCollectedRewardV1 reward = fixture.Reward(
+            RunSessionCollectedReward reward = fixture.Reward(
                 "equipment-missing",
-                RewardGrantKindV1.EquipmentReference,
+                RewardGrantKind.EquipmentReference,
                 equipment.DefinitionId,
                 1L,
                 1L,
@@ -177,9 +177,9 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 "mismatch",
                 "wrong-definition");
             fixture.Payloads.Add(retained);
-            RunSessionCollectedRewardV1 reward = fixture.Reward(
+            RunSessionCollectedReward reward = fixture.Reward(
                 "equipment-mismatch",
-                RewardGrantKindV1.EquipmentReference,
+                RewardGrantKind.EquipmentReference,
                 Id("equipment-definition.expected"),
                 1L,
                 1L,
@@ -202,17 +202,17 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             EquipmentInstance second = fixture.Equipment("second", "shared");
             fixture.Payloads.Add(first);
             fixture.Payloads.Add(second);
-            IReadOnlyList<RunSessionCollectedRewardV1> journal = new[]
+            IReadOnlyList<RunSessionCollectedReward> journal = new[]
             {
-                fixture.Reward("first", RewardGrantKindV1.EquipmentReference,
+                fixture.Reward("first", RewardGrantKind.EquipmentReference,
                     first.DefinitionId, 1L, 1L, first.InstanceId),
-                fixture.Reward("second", RewardGrantKindV1.EquipmentReference,
+                fixture.Reward("second", RewardGrantKind.EquipmentReference,
                     second.DefinitionId, 1L, 2L, second.InstanceId),
             };
 
-            CollectedRunRewardPreparedTransferV1 awaiting =
+            CollectedRunRewardPreparedTransfer awaiting =
                 fixture.CreateAwaiting(journal);
-            CollectedRunRewardAtomicPlanV2 plan =
+            CollectedRunRewardAtomicPlan plan =
                 fixture.AcceptAndBuild(awaiting);
 
             Assert.That(awaiting.Equipment.Select(item => item.DefinitionId)
@@ -227,17 +227,17 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         public void EqualTierStrongboxesRetainSeparateInstanceIdentities()
         {
             Fixture fixture = Fixture.Create("duplicate-box-tier");
-            IReadOnlyList<RunSessionCollectedRewardV1> journal = new[]
+            IReadOnlyList<RunSessionCollectedReward> journal = new[]
             {
-                fixture.Reward("box-first", RewardGrantKindV1.Strongbox,
+                fixture.Reward("box-first", RewardGrantKind.Strongbox,
                     fixture.StrongboxTier, 1L, 1L),
-                fixture.Reward("box-second", RewardGrantKindV1.Strongbox,
+                fixture.Reward("box-second", RewardGrantKind.Strongbox,
                     fixture.StrongboxTier, 1L, 2L),
             };
 
-            CollectedRunRewardPreparedTransferV1 awaiting =
+            CollectedRunRewardPreparedTransfer awaiting =
                 fixture.CreateAwaiting(journal);
-            CollectedRunRewardAtomicPlanV2 plan =
+            CollectedRunRewardAtomicPlan plan =
                 fixture.AcceptAndBuild(awaiting);
 
             Assert.That(awaiting.Strongboxes.Select(item => item.TierStableId)
@@ -254,20 +254,20 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             Fixture fixture = Fixture.Create("canonical-journal");
             EquipmentInstance equipment = fixture.Equipment("canonical", "shared");
             fixture.Payloads.Add(equipment);
-            var journal = new List<RunSessionCollectedRewardV1>
+            var journal = new List<RunSessionCollectedReward>
             {
-                fixture.Reward("money", RewardGrantKindV1.Money,
-                    MoneyWalletIdsV1.CurrencyStableId, 3L, 1L),
-                fixture.Reward("equipment", RewardGrantKindV1.EquipmentReference,
+                fixture.Reward("money", RewardGrantKind.Money,
+                    MoneyWalletIds.CurrencyStableId, 3L, 1L),
+                fixture.Reward("equipment", RewardGrantKind.EquipmentReference,
                     equipment.DefinitionId, 1L, 2L, equipment.InstanceId),
-                fixture.Reward("box", RewardGrantKindV1.Strongbox,
+                fixture.Reward("box", RewardGrantKind.Strongbox,
                     fixture.StrongboxTier, 1L, 3L),
             };
 
-            CollectedRunRewardAtomicPlanV2 forward = fixture.AcceptAndBuild(
+            CollectedRunRewardAtomicPlan forward = fixture.AcceptAndBuild(
                 fixture.CreateAwaiting(journal));
             journal.Reverse();
-            CollectedRunRewardAtomicPlanV2 reversed = fixture.AcceptAndBuild(
+            CollectedRunRewardAtomicPlan reversed = fixture.AcceptAndBuild(
                 fixture.CreateAwaiting(journal));
 
             Assert.That(reversed.BatchFingerprint,
@@ -281,29 +281,29 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             Fixture fixture = Fixture.Create("recovery-plan");
             EquipmentInstance equipment = fixture.Equipment("recovery", "shared");
             fixture.Payloads.Add(equipment);
-            CollectedRunRewardPreparedTransferV1 awaiting =
+            CollectedRunRewardPreparedTransfer awaiting =
                 fixture.CreateAwaiting(new[]
                 {
                     fixture.Reward("equipment",
-                        RewardGrantKindV1.EquipmentReference,
+                        RewardGrantKind.EquipmentReference,
                         equipment.DefinitionId,
                         1L,
                         1L,
                         equipment.InstanceId),
                     fixture.Reward("box",
-                        RewardGrantKindV1.Strongbox,
+                        RewardGrantKind.Strongbox,
                         fixture.StrongboxTier,
                         1L,
                         2L),
                 });
-            CollectedRunRewardPreparedTransferV1 prepared;
-            CollectedRunRewardAtomicPlanV2 original = fixture.AcceptAndBuild(
+            CollectedRunRewardPreparedTransfer prepared;
+            CollectedRunRewardAtomicPlan original = fixture.AcceptAndBuild(
                 awaiting,
                 out prepared);
 
-            CollectedRunRewardAtomicPlanV2 rebuilt;
+            CollectedRunRewardAtomicPlan rebuilt;
             string diagnostic;
-            bool accepted = CollectedRunRewardTransferPreparationFactoryV2
+            bool accepted = CollectedRunRewardTransferPreparationFactory
                 .TryBuildPlanFromPrepared(
                     prepared,
                     fixture.Graph,
@@ -327,32 +327,32 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
 
         private static string Fingerprint(string material)
         {
-            return StrongboxCanonicalV1.Fingerprint(material);
+            return Strongbox.Fingerprint(material);
         }
 
         private sealed class Fixture
         {
             private Fixture(
                 string suffix,
-                ProductionCharacterRuntimeGraphV1 graph,
-                RewardApplicationServiceV1 rewardApplication)
+                CharacterLiveGraph graph,
+                RewardApplicationActions rewardApplication)
             {
                 Suffix = suffix;
                 Graph = graph;
                 RewardApplication = rewardApplication;
-                Receipts = new CollectedRunRewardTransferReceiptAuthorityV1();
+                Receipts = new CollectedRunRewardTransferReceiptState();
                 PreparedTransfers =
-                    new CollectedRunRewardPreparedTransferAuthorityV1();
+                    new CollectedRunRewardPreparedTransferStore();
                 Payloads = new EquipmentPayloadSource();
                 RunStableId = Id("run-instance." + suffix);
                 Lifecycle = 1L;
-                EndCommand = new EndRunSessionCommandV1(
+                EndCommand = new EndRunSessionCommand(
                     Id("operation.end-" + suffix),
                     RunStableId,
                     Lifecycle,
-                    MissionRunCompletionStateV1.Completed,
+                    MissionRunCompletionState.Completed,
                     100L);
-                GenerationContext = new CollectedRunRewardGenerationContextV2(
+                GenerationContext = new CollectedRunRewardGenerationContext(
                     0xC0FFEEUL,
                     2,
                     ProgressionContext.Create(
@@ -367,43 +367,43 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             }
 
             public string Suffix { get; }
-            public ProductionCharacterRuntimeGraphV1 Graph { get; }
-            public RewardApplicationServiceV1 RewardApplication { get; }
-            public CollectedRunRewardTransferReceiptAuthorityV1 Receipts { get; }
-            public CollectedRunRewardPreparedTransferAuthorityV1 PreparedTransfers { get; }
+            public CharacterLiveGraph Graph { get; }
+            public RewardApplicationActions RewardApplication { get; }
+            public CollectedRunRewardTransferReceiptState Receipts { get; }
+            public CollectedRunRewardPreparedTransferStore PreparedTransfers { get; }
             public EquipmentPayloadSource Payloads { get; }
             public StableId RunStableId { get; }
             public long Lifecycle { get; }
-            public EndRunSessionCommandV1 EndCommand { get; }
-            public CollectedRunRewardGenerationContextV2 GenerationContext { get; }
+            public EndRunSessionCommand EndCommand { get; }
+            public CollectedRunRewardGenerationContext GenerationContext { get; }
             public StableId StrongboxTier { get; }
 
             public static Fixture Create(string suffix)
             {
                 StableId characterId = Id("character-instance." + suffix);
                 StableId classId = Id("loadout-profile.striker");
-                PlayerRouteProfilePayloadV1 route =
-                    PlayerRouteProfilePayloadV1.Create(
+                PlayerRouteProfilePayload route =
+                    PlayerRouteProfilePayload.Create(
                         characterId,
                         classId,
                         new StableId[] { null, null, null, null });
-                ProductionCharacterRuntimeGraphFactoryV1 factory =
-                    ProductionCharacterRuntimeGraphFactoryV1
+                CharacterLiveGraphFactory factory =
+                    CharacterLiveGraphFactory
                         .CreateVerticalSliceDefaults();
-                var graph = (ProductionCharacterRuntimeGraphV1)
+                var graph = (CharacterLiveGraph)
                     factory.CreateStarter(
                         0,
                         characterId,
                         classId,
                         "Preparation Pilot " + suffix,
                         route);
-                var rewardApplication = new RewardApplicationServiceV1(
+                var rewardApplication = new RewardApplicationActions(
                     Id("authority.reward-application-" + suffix),
-                    new MoneyRewardChildAuthorityV1(graph.MoneyWallet),
-                    new ScrapRewardChildAuthorityV1(graph.ScrapWallet),
-                    new PlayerHoldingsRewardChildAuthorityV1(
+                    new MoneyRewardChildState(graph.MoneyWallet),
+                    new ScrapRewardChildState(graph.ScrapWallet),
+                    new PlayerHoldingsRewardChildState(
                         graph.LoadoutRuntime.Holdings,
-                        graph.LoadoutRuntime.CatalogAdapter));
+                        graph.LoadoutRuntime.CatalogBridge));
                 return new Fixture(suffix, graph, rewardApplication);
             }
 
@@ -426,9 +426,9 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     });
             }
 
-            public RunSessionCollectedRewardV1 Reward(
+            public RunSessionCollectedReward Reward(
                 string rewardSuffix,
-                RewardGrantKindV1 kind,
+                RewardGrantKind kind,
                 StableId content,
                 long quantity,
                 long collectionOrder,
@@ -438,7 +438,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             {
                 StableId child = exactInstance
                     ?? Id("reward-instance." + Suffix + "-" + rewardSuffix);
-                return new RunSessionCollectedRewardV1(
+                return new RunSessionCollectedReward(
                     Id("pickup." + Suffix + "-" + rewardSuffix),
                     child,
                     Id("grant." + Suffix + "-" + rewardSuffix),
@@ -469,10 +469,10 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     70L + collectionOrder);
             }
 
-            public CollectedRunRewardPreparedTransferV1 CreateAwaiting(
-                IReadOnlyList<RunSessionCollectedRewardV1> journal)
+            public CollectedRunRewardPreparedTransfer CreateAwaiting(
+                IReadOnlyList<RunSessionCollectedReward> journal)
             {
-                CollectedRunRewardPreparedTransferV1 awaiting;
+                CollectedRunRewardPreparedTransfer awaiting;
                 string diagnostic = TryCreateAwaiting(journal, out awaiting);
                 Assert.That(awaiting, Is.Not.Null, diagnostic);
                 Assert.That(diagnostic, Is.Empty);
@@ -480,11 +480,11 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             }
 
             public string TryCreateAwaiting(
-                IReadOnlyList<RunSessionCollectedRewardV1> journal,
-                out CollectedRunRewardPreparedTransferV1 awaiting)
+                IReadOnlyList<RunSessionCollectedReward> journal,
+                out CollectedRunRewardPreparedTransfer awaiting)
             {
                 string diagnostic;
-                bool accepted = CollectedRunRewardTransferPreparationFactoryV2
+                bool accepted = CollectedRunRewardTransferPreparationFactory
                     .TryCreateAwaitingAcceptedEnd(
                         EndCommand,
                         journal,
@@ -505,21 +505,21 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 return diagnostic;
             }
 
-            public CollectedRunRewardAtomicPlanV2 AcceptAndBuild(
-                CollectedRunRewardPreparedTransferV1 awaiting)
+            public CollectedRunRewardAtomicPlan AcceptAndBuild(
+                CollectedRunRewardPreparedTransfer awaiting)
             {
-                CollectedRunRewardPreparedTransferV1 prepared;
+                CollectedRunRewardPreparedTransfer prepared;
                 return AcceptAndBuild(awaiting, out prepared);
             }
 
-            public CollectedRunRewardAtomicPlanV2 AcceptAndBuild(
-                CollectedRunRewardPreparedTransferV1 awaiting,
-                out CollectedRunRewardPreparedTransferV1 prepared)
+            public CollectedRunRewardAtomicPlan AcceptAndBuild(
+                CollectedRunRewardPreparedTransfer awaiting,
+                out CollectedRunRewardPreparedTransfer prepared)
             {
-                RunSessionEndResultV1 acceptedEnd = AcceptedEnd();
-                CollectedRunRewardAtomicPlanV2 plan;
+                RunSessionEndResult acceptedEnd = AcceptedEnd();
+                CollectedRunRewardAtomicPlan plan;
                 string diagnostic;
-                bool accepted = CollectedRunRewardTransferPreparationFactoryV2
+                bool accepted = CollectedRunRewardTransferPreparationFactory
                     .TryAcceptEndAndBuildPlan(
                         acceptedEnd,
                         awaiting,
@@ -534,24 +534,24 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 return plan;
             }
 
-            private RunSessionEndResultV1 AcceptedEnd()
+            private RunSessionEndResult AcceptedEnd()
             {
-                MissionResultPayloadV1 mission = MissionResultPayloadV1.Create(
+                MissionResultPayload mission = MissionResultPayload.Create(
                     RunStableId,
                     Graph.RoutePayload,
-                    MissionRunCompletionStateV1.Completed,
-                    Array.Empty<MissionRunStrongboxResultV1>(),
+                    MissionRunCompletionState.Completed,
+                    Array.Empty<MissionRunStrongboxResult>(),
                     1L,
                     Graph.LoadoutRuntime.Holdings.Sequence,
                     Graph.LoadoutRuntime.Holdings.ExportSnapshot().Fingerprint,
                     Graph.StrongboxAuthority.Sequence,
                     Graph.StrongboxAuthority.ExportSnapshot().Fingerprint);
-                var local = new RunLocalStateSnapshotV1(
+                var local = new RunLocalStateSnapshot(
                     0L,
                     new Dictionary<string, long>(),
                     new Dictionary<string, long>(),
                     new Dictionary<string, long>());
-                var receipt = new RunSessionEndReceiptV1(
+                var receipt = new RunSessionEndReceipt(
                     RunStableId,
                     Graph.Character.CharacterInstanceStableId,
                     Graph.Character.Revision,
@@ -563,8 +563,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     Fingerprint("combat-profile-" + Suffix),
                     local,
                     mission);
-                return new RunSessionEndResultV1(
-                    RunSessionEndStatusV1.Ended,
+                return new RunSessionEndResult(
+                    RunSessionEndStatus.Ended,
                     EndCommand,
                     receipt,
                     string.Empty);
@@ -572,7 +572,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         }
 
         private sealed class EquipmentPayloadSource :
-            ICollectedRunEquipmentPayloadSourceV2
+            ICollectedRunWeaponPayloadSource
         {
             private readonly Dictionary<StableId, EquipmentInstance> equipment =
                 new Dictionary<StableId, EquipmentInstance>();

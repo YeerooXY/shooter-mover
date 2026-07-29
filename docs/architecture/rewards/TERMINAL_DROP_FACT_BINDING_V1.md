@@ -6,26 +6,26 @@
 
 The source authorities remain unchanged:
 
-- the enemy runtime owns health, terminal transition and `EnemyDeathFactV1`;
-- the prop runtime owns health, destruction and `PropFactBatchV1`;
+- the enemy runtime owns health, terminal transition and `EnemyDeathFact`;
+- the prop runtime owns health, destruction and `PropFactBatch`;
 - enemy and prop definitions own the configured drop-profile reference;
 - Run Session owns the active run identity, lifecycle generation and frozen deterministic seed context;
-- DROP owns the canonical `RewardOperationRequestV1` identity contract;
+- DROP owns the canonical `RewardOperationRequest` identity contract;
 - GEN owns reward selection, quantities, ordering and explicit no-drop behavior;
-- `PendingTerminalDropAdmissionAuthorityV1` owns only pending-batch admission identity.
+- `PendingTerminalDropAdmissionState` owns only pending-batch admission identity.
 
-`TerminalDropGenerationAuthorityV1` owns terminal-event replay records and the immutable binding result. Neither authority owns health, definitions, inventories, strongboxes, mission results, physical pickups or persistence.
+`TerminalDropGenerationState` owns terminal-event replay records and the immutable binding result. Neither authority owns health, definitions, inventories, strongboxes, mission results, physical pickups or persistence.
 
 ## Authoritative flow
 
 ```text
-accepted EnemyDeathFactV1 or PropFactBatchV1
+accepted EnemyDeathFact or PropFactBatch
     -> registered terminal-fact adapter
     -> definition-owned drop-profile resolution
     -> exact Run Session lifecycle/context validation
-    -> canonical RewardOperationRequestV1
-    -> existing RewardGenerationServiceV1
-    -> immutable GeneratedTerminalDropResultV1
+    -> canonical RewardOperationRequest
+    -> existing RewardGenerationActions
+    -> immutable GeneratedTerminalDropResult
     -> idempotent pending-batch admission by DROP operation ID
 ```
 
@@ -33,14 +33,14 @@ The generated result remains a pending, uncollected run-local fact. It is not a 
 
 ## Adapter and registration extension point
 
-`TerminalDropFactAdapterRegistryV1` is keyed by the exact terminal fact CLR type and carries an explicit stable fact-kind identity. Registrations are sorted before the registry fingerprint is calculated, so input order cannot change canonical behavior.
+`TerminalDropFactBridgeRegistry` is keyed by the exact terminal fact CLR type and carries an explicit stable fact-kind identity. Registrations are sorted before the registry fingerprint is calculated, so input order cannot change canonical behavior.
 
 The built-in complete adapters are:
 
-- `ContextResolvedEnemyDeathTerminalDropFactAdapterV1` for `EnemyDeathFactV1`;
-- `PropDestructionTerminalDropFactAdapterV1` for `PropFactBatchV1`.
+- `ContextResolvedEnemyDeathTerminalDropFactBridge` for `EnemyDeathFact`;
+- `PropDestructionTerminalDropFactBridge` for `PropFactBatch`.
 
-Enemy definition/profile validation lives in the internal `EnemyDeathTerminalDropDefinitionProjectorV1`. It is not an `ITerminalDropFactAdapterV1` and cannot construct a `TerminalDropSourceFactV1`; only the context-resolved enemy adapter can combine catalog facts with production-owned Run Session lifecycle context.
+Enemy definition/profile validation lives in the internal `EnemyDeathTerminalDropDefinitionProjector`. It is not an `ITerminalDropFactBridge` and cannot construct a `TerminalDropSourceFact`; only the context-resolved enemy adapter can combine catalog facts with production-owned Run Session lifecycle context.
 
 Adding another source that uses the same DROP/GEN mechanics normally requires one adapter registration, definition/profile data and focused tests. The shared generation authority contains no enemy-ID, prop-ID or drop-profile-ID switch.
 
@@ -48,29 +48,29 @@ Unknown terminal fact types fail closed with `UnsupportedFactType` and generate 
 
 ## Definition and profile resolution
 
-The enemy projector resolves the exact `EnemyDefinitionV1` from `EnemyCatalogV1`. The definition's `DropProfileId` is authoritative. A profile identity already present on the death fact may confirm the definition but may not override or conflict with it.
+The enemy projector resolves the exact `EnemyDefinition` from `EnemyCatalog`. The definition's `DropProfileId` is authoritative. A profile identity already present on the death fact may confirm the definition but may not override or conflict with it.
 
-The prop adapter resolves the exact `PropDefinitionV1` from `PropCatalogV1` and reads the `DropOnDestroy` capability's `profile-id`. A runtime `DropRequest` fact, when present, must belong to the same prop/source and match the definition-owned profile.
+The prop adapter resolves the exact `PropDefinition` from `PropCatalog` and reads the `DropOnDestroy` capability's `profile-id`. A runtime `DropRequest` fact, when present, must belong to the same prop/source and match the definition-owned profile.
 
-`PropTerminalFactV1.PropParticipantId` is the authoritative prop source entity. Resolver-provided source context is rejected if its `SourceEntityStableId` identifies a different prop, and accepted source facts always use the terminal fact's participant identity.
+`PropTerminalFact.PropParticipantId` is the authoritative prop source entity. Resolver-provided source context is rejected if its `SourceEntityStableId` identifies a different prop, and accepted source facts always use the terminal fact's participant identity.
 
-A definition with no drop profile is converted to a deterministic synthetic `RewardProfileV1.CreateExplicitNoDrop` profile. This keeps no-drop inside the existing DROP/GEN contract instead of treating an absent profile as accidental success or inventing a fallback table.
+A definition with no drop profile is converted to a deterministic synthetic `RewardProfile.CreateExplicitNoDrop` profile. This keeps no-drop inside the existing DROP/GEN contract instead of treating an absent profile as accidental success or inventing a fallback table.
 
 A configured but missing profile rejects with `MissingDropProfile`. Invalid or incompatible profile references reject before GEN is called.
 
 ## Source and Run Session context
 
-Enemy death facts preserve run, room, placement, entity, enemy lifecycle and attribution facts, but they do not own the Run Session lifecycle generation. `IEnemyTerminalSourceContextResolverV1` supplies that separate production fact and validates the entity, placement and enemy source generation against the death fact.
+Enemy death facts preserve run, room, placement, entity, enemy lifecycle and attribution facts, but they do not own the Run Session lifecycle generation. `IEnemyTerminalSourceContextResolver` supplies that separate production fact and validates the entity, placement and enemy source generation against the death fact.
 
-Prop terminal facts do not contain run/placement lifecycle data, so `IPropTerminalSourceContextResolverV1` is the narrow typed lookup port that projects those facts from the existing production prop composition.
+Prop terminal facts do not contain run/placement lifecycle data, so `IPropTerminalSourceContextResolver` is the narrow typed lookup port that projects those facts from the existing production prop composition.
 
-`ITerminalDropRunContextResolverV1` validates the exact run and expected lifecycle. `RunSessionTerminalDropContextResolverV1` is the read-only bridge to `RunSessionAuthorityV1`; it rejects missing, stale/future or ended runs and exposes the frozen run seed plus progression/event context through a dedicated provider. It performs no Run Session mutation.
+`ITerminalDropRunContextResolver` validates the exact run and expected lifecycle. `RunSessionTerminalDropContextResolver` is the read-only bridge to `RunSessionState`; it rejects missing, stale/future or ended runs and exposes the frozen run seed plus progression/event context through a dedicated provider. It performs no Run Session mutation.
 
 The explicit unattributed policy in v1 is fail-closed: a terminal fact without an attributed run participant rejects with `UnattributedTerminalFact`. No arbitrary player is selected.
 
 ## Operation identity and deterministic seed
 
-The DROP operation ID is derived with the existing `RewardApplicationCanonicalV1.DeriveStableId` convention from immutable authoritative material including:
+The DROP operation ID is derived with the existing `RewardApplication.DeriveStableId` convention from immutable authoritative material including:
 
 - terminal event identity;
 - run identity and Run Session lifecycle generation;
@@ -99,7 +99,7 @@ The complete uncommitted pipeline is exception-contained. Adapter/source-context
 
 Generation idempotency and downstream admission idempotency are separate responsibilities.
 
-`PendingTerminalDropAdmissionAuthorityV1` keys pending entries by the canonical `RewardOperationRequestV1.SourceOperationStableId` and returns:
+`PendingTerminalDropAdmissionState` keys pending entries by the canonical `RewardOperationRequest.SourceOperationStableId` and returns:
 
 - `Accepted` when the operation is first admitted;
 - `ExactReplay` when the same operation and batch fingerprint are redelivered;
@@ -110,7 +110,7 @@ Typed enemy and prop consumers always redeliver generation results to this admis
 
 ## Generated batch contract
 
-`GeneratedTerminalDropResultV1` preserves:
+`GeneratedTerminalDropResult` preserves:
 
 - terminal event and upstream source facts;
 - source entity/placement, definition and lifecycle identity;

@@ -26,29 +26,29 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             if (GUILayout.Button("Open Level Grid Editor"))
             {
-                LevelGridEditorWindowV2.OpenForRoot(root);
+                LevelGridEditorWindow.OpenForRoot(root);
             }
 
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("Validate Draft"))
             {
-                Validate(root, LevelGridValidationPurposeV2.Draft);
+                Validate(root, LevelGridValidationPurpose.Draft);
             }
             if (GUILayout.Button("Validate Production"))
             {
-                Validate(root, LevelGridValidationPurposeV2.ProductionPublish);
+                Validate(root, LevelGridValidationPurpose.ProductionPublish);
             }
             EditorGUILayout.EndHorizontal();
 
             if (GUILayout.Button("Open Problems In Level Grid Editor"))
             {
-                LevelGridProblemsWindowV2.Open(root);
+                LevelGridProblemsWindow.Open(root);
             }
 
             LevelDesignValidationResult foundation = root.LastValidation;
-            LevelGridValidationResultV2 grid = root.LastGridValidation;
+            LevelGridValidationResult grid = root.LastGridValidation;
             bool productionValidationRun = grid.Purpose
-                == LevelGridValidationPurposeV2.ProductionPublish;
+                == LevelGridValidationPurpose.ProductionPublish;
             bool combinedPublishAllowed = productionValidationRun
                 && foundation.IsValid
                 && grid.CanPublish;
@@ -102,7 +102,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         internal static void LogGridResult(
             LevelDesignSceneAuthoringRoot2D root,
-            LevelGridValidationResultV2 result)
+            LevelGridValidationResult result)
         {
             if (result.Problems.Count == 0)
             {
@@ -115,7 +115,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
             for (int index = 0; index < result.Problems.Count; index++)
             {
-                LevelGridProblemV2 problem = result.Problems[index];
+                LevelGridProblem problem = result.Problems[index];
                 if (problem.Severity == LevelDesignValidationSeverity.Error)
                 {
                     Debug.LogError(problem.ToString(), root);
@@ -129,12 +129,12 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         private static void Validate(
             LevelDesignSceneAuthoringRoot2D root,
-            LevelGridValidationPurposeV2 purpose)
+            LevelGridValidationPurpose purpose)
         {
-            LevelGridEditorOperationsV2.Validate(root, purpose);
+            LevelGridEditorOperations.Validate(root, purpose);
             LogResult(root, root.LastValidation);
             LogGridResult(root, root.LastGridValidation);
-            LevelGridEditorWindowV2.OpenForRoot(root);
+            LevelGridEditorWindow.OpenForRoot(root);
         }
     }
 
@@ -155,14 +155,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelGridEditorOperationsV2.Validate(
+            LevelGridEditorOperations.Validate(
                 root,
-                LevelGridValidationPurposeV2.Draft);
+                LevelGridValidationPurpose.Draft);
             LevelDesignSceneAuthoringRoot2DEditor.LogResult(root, root.LastValidation);
             LevelDesignSceneAuthoringRoot2DEditor.LogGridResult(
                 root,
                 root.LastGridValidation);
-            LevelGridEditorWindowV2.OpenForRoot(root);
+            LevelGridEditorWindow.OpenForRoot(root);
         }
 
         [MenuItem(
@@ -187,9 +187,9 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             int warnings = 0;
             for (int index = 0; index < roots.Length; index++)
             {
-                LevelGridEditorOperationsV2.Validate(
+                LevelGridEditorOperations.Validate(
                     roots[index],
-                    LevelGridValidationPurposeV2.Draft);
+                    LevelGridValidationPurpose.Draft);
                 errors += roots[index].LastValidation.ErrorCount;
                 errors += roots[index].LastGridValidation.ErrorCount;
                 warnings += roots[index].LastValidation.WarningCount;
@@ -234,10 +234,10 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             if (gridObject != null)
             {
                 LevelDesignSceneAuthoringRoot2D root =
-                    LevelGridEditorOperationsV2.ResolveRoot(gridObject);
+                    LevelGridEditorOperations.ResolveRoot(gridObject);
                 if (root != null)
                 {
-                    LevelGridEditorWindowV2.OpenForRoot(root);
+                    LevelGridEditorWindow.OpenForRoot(root);
                     EditorUtility.DisplayDialog(
                         "Use Canonical Level Grid Commands",
                         "Room and Grid V2 door placement is owned by the Level Grid editor. "

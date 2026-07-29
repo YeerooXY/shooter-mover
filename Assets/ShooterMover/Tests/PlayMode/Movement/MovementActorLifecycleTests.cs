@@ -272,10 +272,10 @@ namespace ShooterMover.Tests.PlayMode.Movement
 
             Rigidbody2D body = gameObject.AddComponent<Rigidbody2D>();
             body.gravityScale = 0f;
-            PlayerMovementIntentAdapter input =
-                gameObject.AddComponent<PlayerMovementIntentAdapter>();
-            MovementContact2DAdapter contact =
-                gameObject.AddComponent<MovementContact2DAdapter>();
+            PlayerMovementIntentBridge input =
+                gameObject.AddComponent<PlayerMovementIntentBridge>();
+            MovementContact2DBridge contact =
+                gameObject.AddComponent<MovementContact2DBridge>();
             MovementActorLifecycle lifecycle =
                 gameObject.AddComponent<MovementActorLifecycle>();
             MovementThrusterTuningProfile tuning = BuildTuning();
@@ -362,9 +362,9 @@ namespace ShooterMover.Tests.PlayMode.Movement
             public Fixture(
                 GameObject gameObject,
                 Rigidbody2D body,
-                PlayerMovementIntentAdapter input,
+                PlayerMovementIntentBridge input,
                 InputActionAsset inputActions,
-                MovementContact2DAdapter contact,
+                MovementContact2DBridge contact,
                 MovementActorLifecycle lifecycle,
                 MovementThrusterTuningProfile tuning)
             {
@@ -381,11 +381,11 @@ namespace ShooterMover.Tests.PlayMode.Movement
 
             public Rigidbody2D Body { get; }
 
-            public PlayerMovementIntentAdapter Input { get; }
+            public PlayerMovementIntentBridge Input { get; }
 
             public InputActionAsset InputActions { get; }
 
-            public MovementContact2DAdapter Contact { get; }
+            public MovementContact2DBridge Contact { get; }
 
             public MovementActorLifecycle Lifecycle { get; }
 

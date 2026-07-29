@@ -27,19 +27,19 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         [Test]
         public void CanonicalReceiptCannotReceiveGenericUpgradeQuote()
         {
-            var fixture = new CanonicalReceiptFixture();
+            var fixture = new ReceiptFixture();
             long moneyBefore = fixture.Money.Balance;
             long walletSequenceBefore = fixture.Money.Sequence;
             long holdingsSequenceBefore = fixture.Holdings.Sequence;
 
-            AugmentUpgradeQuoteResultV1 result = fixture.Service.Quote(
-                new AugmentUpgradeQuoteRequestV1(
+            AugmentUpgradeQuoteResult result = fixture.Service.Quote(
+                new AugmentUpgradeQuoteRequest(
                     fixture.Equipment.InstanceId,
                     StableId.Parse("augment-instance.unsupported"),
                     2));
 
             Assert.That(result.Status,
-                Is.EqualTo(AugmentUpgradeQuoteStatusV1.InvalidRequest));
+                Is.EqualTo(AugmentUpgradeQuoteStatus.InvalidRequest));
             Assert.That(result.RejectionCode,
                 Is.EqualTo("canonical-weapon-upgrade-route-unsupported"));
             Assert.That(result.Quote, Is.Null);
@@ -52,11 +52,11 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         [Test]
         public void StaleCanonicalQuoteCannotBypassPreparationGuard()
         {
-            var fixture = new CanonicalReceiptFixture();
+            var fixture = new ReceiptFixture();
             long moneyBefore = fixture.Money.Balance;
             long walletSequenceBefore = fixture.Money.Sequence;
             long holdingsSequenceBefore = fixture.Holdings.Sequence;
-            AugmentUpgradeQuoteV1 staleQuote = AugmentUpgradeQuoteV1.Create(
+            AugmentUpgradeQuote staleQuote = AugmentUpgradeQuote.Create(
                 fixture.Equipment.InstanceId,
                 fixture.Equipment.Fingerprint,
                 0,
@@ -72,13 +72,13 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
                 fixture.Catalog.Fingerprint,
                 fixture.Policy.Fingerprint);
 
-            AugmentUpgradeFactV1 fact = fixture.Service.Confirm(
-                AugmentUpgradeConfirmationV1.Create(
+            AugmentUpgradeFact fact = fixture.Service.Confirm(
+                AugmentUpgradeConfirmation.Create(
                     StableId.Parse("confirmation.canonical-blocked"),
                     staleQuote));
 
             Assert.That(fact.Status,
-                Is.EqualTo(AugmentUpgradeConfirmationStatusV1.InvalidRequest));
+                Is.EqualTo(AugmentUpgradeConfirmationStatus.InvalidRequest));
             Assert.That(fact.RejectionCode,
                 Is.EqualTo("canonical-weapon-upgrade-route-unsupported"));
             Assert.That(fixture.Money.Balance, Is.EqualTo(moneyBefore));
@@ -90,19 +90,19 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         [Test]
         public void OverclockBearingFixtureFailsClosedAtLiveProjection()
         {
-            ProductionWeaponMarkV1 mark = FirstProductionMark();
+            WeaponMark mark = FirstProductionMark();
             WeaponEquipmentInstance instance = WeaponEquipmentInstance.Create(
                 StableId.Parse("instance.overclock-fixture"),
                 mark.Blueprint.DefinitionId,
                 Array.Empty<StableId>(),
                 new[] { StableId.Parse("overclock-instance.unsupported") });
-            var holdings = new ProductionWeaponHoldingsAuthorityV2(
-                WeaponHoldingsSnapshotV2.CreateCanonical(
+            var holdings = new WeaponHoldingsState(
+                WeaponHoldingsSnapshot.CreateCanonical(
                     0L,
                     new[] { instance }));
-            var lookup = new CanonicalWeaponEquipmentProjectionLookupV2(
+            var lookup = new WeaponEquipmentViewLookup(
                 holdings,
-                ProductionWeaponCatalogProvider.EquipmentCatalog);
+                WeaponCatalogProvider.EquipmentCatalog);
 
             EquipmentInstance ignored;
             bool resolved = lookup.TryResolve(
@@ -119,13 +119,13 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         [Test]
         public void UnmodifiedCanonicalWeaponRemainsLiveEligible()
         {
-            ProductionWeaponMarkV1 mark = FirstProductionMark();
+            WeaponMark mark = FirstProductionMark();
             WeaponEquipmentInstance instance = WeaponEquipmentInstance.CreateUnmodified(
                 StableId.Parse("instance.unmodified-fixture"),
                 mark.Blueprint.DefinitionId);
 
-            CanonicalWeaponOperationAvailabilityV1 decision =
-                CanonicalWeaponSafetyPolicyV1.EvaluateLiveExecution(
+            WeaponOperationAvailability decision =
+                WeaponSafetyPolicy.EvaluateLiveExecution(
                     instance,
                     true);
 
@@ -136,13 +136,13 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         [Test]
         public void DirectCanonicalAddRejectsUnsupportedOverclockWithoutMutation()
         {
-            ProductionWeaponMarkV1 mark = FirstProductionMark();
+            WeaponMark mark = FirstProductionMark();
             WeaponEquipmentInstance instance = WeaponEquipmentInstance.Create(
                 StableId.Parse("instance.direct-overclock-add"),
                 mark.Blueprint.DefinitionId,
                 Array.Empty<StableId>(),
                 new[] { StableId.Parse("overclock-instance.direct-add") });
-            var holdings = new ProductionWeaponHoldingsAuthorityV2();
+            var holdings = new WeaponHoldingsState();
             long sequenceBefore = holdings.Sequence;
 
             string rejectionCode;
@@ -162,8 +162,8 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
             WeaponEquipmentInstance unresolved = WeaponEquipmentInstance.CreateUnmodified(
                 StableId.Parse("instance.direct-unresolved-remove"),
                 new WeaponDefinitionId("weapon-definition.missing"));
-            var holdings = new ProductionWeaponHoldingsAuthorityV2(
-                WeaponHoldingsSnapshotV2.CreateCanonical(
+            var holdings = new WeaponHoldingsState(
+                WeaponHoldingsSnapshot.CreateCanonical(
                     7L,
                     new[] { unresolved }));
             long sequenceBefore = holdings.Sequence;
@@ -196,26 +196,26 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
                 definition.QualityTiers[0].QualityId,
                 Array.Empty<AugmentInstance>());
             var validator = new CatalogValidator(syntheticCatalog);
-            var receipts = new PlayerHoldingsService(authorityId, 10L, validator);
-            HoldingProvenanceV1 provenance = HoldingProvenanceV1.Create(
+            var receipts = new PlayerHoldingsActions(authorityId, 10L, validator);
+            HoldingProvenance provenance = HoldingProvenance.Create(
                 StableId.Parse("grant.synthetic-unresolved"),
                 StableId.Parse("source.synthetic-unresolved"));
-            PlayerHoldingsMutationResultV1 added = receipts.Apply(
-                PlayerHoldingsCommandV1.AddEquipment(
+            PlayerHoldingsMutationResult added = receipts.Apply(
+                PlayerHoldingsCommand.AddEquipment(
                     StableId.Parse("transaction.synthetic-unresolved-add"),
                     StableId.Parse("operation.synthetic-unresolved-add"),
                     authorityId,
                     receipt,
                     provenance));
             Assert.That(added.Status,
-                Is.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
-            var canonical = new ProductionWeaponHoldingsAuthorityV2();
-            var boundary = new CanonicalFirstPlayerHoldingsAuthorityV2(
+                Is.EqualTo(PlayerHoldingsMutationStatus.Applied));
+            var canonical = new WeaponHoldingsState();
+            var boundary = new FirstPlayerHoldingsState(
                 receipts,
                 canonical);
             long receiptSequenceBefore = receipts.Sequence;
             long canonicalSequenceBefore = canonical.Sequence;
-            PlayerHoldingsCommandV1 remove = PlayerHoldingsCommandV1.RemoveEquipment(
+            PlayerHoldingsCommand remove = PlayerHoldingsCommand.RemoveEquipment(
                 StableId.Parse("transaction.synthetic-unresolved-remove"),
                 StableId.Parse("operation.synthetic-unresolved-remove"),
                 authorityId,
@@ -230,14 +230,14 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
                 Does.StartWith("canonical-weapon-definition-unresolved:"));
             Assert.That(receipts.Sequence, Is.EqualTo(receiptSequenceBefore));
             Assert.That(canonical.Sequence, Is.EqualTo(canonicalSequenceBefore));
-            UniqueHoldingSnapshotV1 retained;
+            UniqueHoldingSnapshot retained;
             Assert.That(receipts.TryGetUnique(receipt.InstanceId, out retained), Is.True);
             Assert.That(retained, Is.Not.Null);
         }
 
-        private static ProductionWeaponMarkV1 FirstProductionMark()
+        private static WeaponMark FirstProductionMark()
         {
-            return ProductionWeaponCatalogProvider.Current.Families[0].Marks[0];
+            return WeaponCatalogProvider.Current.Families[0].Marks[0];
         }
 
         private static EquipmentCatalog BuildSyntheticUnknownWeaponCatalog()
@@ -264,7 +264,7 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
             return result.Catalog;
         }
 
-        private sealed class CanonicalReceiptFixture
+        private sealed class ReceiptFixture
         {
             private static readonly StableId HoldingsAuthority =
                 StableId.Parse("holdings.inventory-economy-safety");
@@ -273,10 +273,10 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
             private static readonly StableId ScrapCurrency =
                 StableId.Parse("currency.scrap");
 
-            public CanonicalReceiptFixture()
+            public ReceiptFixture()
             {
-                ProductionWeaponMarkV1 mark = FirstProductionMark();
-                Catalog = ProductionWeaponCatalogProvider.EquipmentCatalog;
+                WeaponMark mark = FirstProductionMark();
+                Catalog = WeaponCatalogProvider.EquipmentCatalog;
                 EquipmentDefinition definition = Catalog.FindEquipmentDefinition(
                     mark.EquipmentDefinitionId);
                 Assert.That(definition, Is.Not.Null);
@@ -289,24 +289,24 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
                     definition.QualityTiers[0].QualityId,
                     Array.Empty<AugmentInstance>());
                 Validator = new CatalogValidator(Catalog);
-                Holdings = new PlayerHoldingsService(
+                Holdings = new PlayerHoldingsActions(
                     HoldingsAuthority,
                     100L,
                     Validator);
-                HoldingProvenanceV1 provenance = HoldingProvenanceV1.Create(
+                HoldingProvenance provenance = HoldingProvenance.Create(
                     StableId.Parse("grant.canonical-receipt"),
                     StableId.Parse("source.canonical-receipt"));
-                PlayerHoldingsMutationResultV1 holdingResult = Holdings.Apply(
-                    PlayerHoldingsCommandV1.AddEquipment(
+                PlayerHoldingsMutationResult holdingResult = Holdings.Apply(
+                    PlayerHoldingsCommand.AddEquipment(
                         StableId.Parse("transaction.canonical-receipt"),
                         StableId.Parse("operation.canonical-receipt"),
                         HoldingsAuthority,
                         Equipment,
                         provenance));
                 Assert.That(holdingResult.Status,
-                    Is.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
+                    Is.EqualTo(PlayerHoldingsMutationStatus.Applied));
 
-                Money = new MoneyWalletService();
+                Money = new MoneyWalletActions();
                 MoneyWalletChangeFact moneyResult = Money.Grant(
                     StableId.Parse("transaction.initial-money.safety"),
                     StableId.Parse("operation.initial-money.safety"),
@@ -314,27 +314,27 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
                 Assert.That(moneyResult.Status,
                     Is.EqualTo(MoneyWalletTransactionStatus.Applied));
 
-                var scrap = new ScrapWalletServiceV1(
+                var scrap = new ScrapWalletActions(
                     ScrapAuthority,
                     ScrapCurrency);
-                var rewardApplication = new RewardApplicationServiceV1(
+                var rewardApplication = new RewardApplicationActions(
                     StableId.Parse("authority.reward-application.safety"),
-                    new MoneyRewardChildAuthorityV1(Money),
-                    new ScrapRewardChildAuthorityV1(scrap),
-                    new PlayerHoldingsRewardChildAuthorityV1(Holdings, Validator));
-                Policy = AugmentUpgradeCostPolicyV1.Create(
+                    new MoneyRewardChildState(Money),
+                    new ScrapRewardChildState(scrap),
+                    new PlayerHoldingsRewardChildState(Holdings, Validator));
+                Policy = AugmentUpgradeCostPolicy.Create(
                     StableId.Parse("policy.inventory-economy-safety"),
                     1,
                     false,
-                    new[] { AugmentTierCostCurveV1.Create(1, 100L, 10L) });
-                Service = new AugmentUpgradeServiceV1(
+                    new[] { AugmentTierCostCurve.Create(1, 100L, 10L) });
+                Service = new AugmentUpgradeActions(
                     Money,
                     Holdings,
                     rewardApplication,
                     new CatalogProvider(Catalog),
                     Validator,
                     Policy,
-                    new AugmentUpgradeIdentityContextV1(
+                    new AugmentUpgradeIdentityContext(
                         StableId.Parse("run.inventory-economy-safety"),
                         StableId.Parse("source-instance.inventory-economy-safety"),
                         StableId.Parse("player.inventory-economy-safety"),
@@ -342,17 +342,17 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
                         ScrapAuthority));
             }
 
-            public MoneyWalletService Money { get; }
-            public PlayerHoldingsService Holdings { get; }
+            public MoneyWalletActions Money { get; }
+            public PlayerHoldingsActions Holdings { get; }
             public EquipmentCatalog Catalog { get; }
             public EquipmentInstance Equipment { get; }
             public CatalogValidator Validator { get; }
-            public AugmentUpgradeCostPolicyV1 Policy { get; }
-            public AugmentUpgradeServiceV1 Service { get; }
+            public AugmentUpgradeCostPolicy Policy { get; }
+            public AugmentUpgradeActions Service { get; }
 
             public bool ContainsOriginal()
             {
-                UniqueHoldingSnapshotV1 holding;
+                UniqueHoldingSnapshot holding;
                 return Holdings.TryGetUnique(Equipment.InstanceId, out holding)
                     && holding != null;
             }

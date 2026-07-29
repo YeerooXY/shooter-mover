@@ -20,11 +20,11 @@ The foundation keeps five concepts deliberately separate:
 
 | State or behaviour | Authority |
 | --- | --- |
-| Stable entity-instance, participant, character, faction identity | `PlayerActorAuthority` construction inputs; immutable for the authority lifetime |
-| Current lifecycle generation | `PlayerActorAuthority`, projected separately from stable identity |
-| Maximum/current health, alive/dead state | `PlayerActorAuthority` |
-| Generation-scoped damage/healing deduplication | `PlayerActorAuthority` |
-| Monotonic accepted state-transition sequence | `PlayerActorAuthority` |
+| Stable entity-instance, participant, character, faction identity | `PlayerActorState` construction inputs; immutable for the authority lifetime |
+| Current lifecycle generation | `PlayerActorState`, projected separately from stable identity |
+| Maximum/current health, alive/dead state | `PlayerActorState` |
+| Generation-scoped damage/healing deduplication | `PlayerActorState` |
+| Monotonic accepted state-transition sequence | `PlayerActorState` |
 | Damage envelope/channel and health projection vocabulary | Existing `CombatChannel`, `DamageMessage`, and `VitalState` |
 | Character catalog/profile metadata | Existing character-selection domain |
 | Movement generation/velocity/thruster state | Existing movement actor; unchanged |
@@ -39,7 +39,7 @@ The foundation keeps five concepts deliberately separate:
 - The existing combat envelope does not carry run-participant attribution or lifecycle generation. `DamageReceiverCommand` therefore composes those missing fields around, rather than modifying or duplicating, Combat Messages v1.
 - `PlayerActorHealingCommand` likewise carries optional source run-participant attribution. This field is evidence supplied by the authoritative combat pipeline. A network/client adapter must not trust a client-provided participant ID directly; it must resolve or validate attribution against the authenticated run participant before constructing the command.
 - `EnemyActorState` / `EnemyActorStepper` remain unchanged. They demonstrate immutable state and deterministic event deduplication, but their role/contact/encounter semantics and lack of restart generation do not fit a player actor directly.
-- `DestructiblePropAuthority` remains unchanged. Its current restart clears event history without accepting a generation, so a later prop adapter should adopt the shared identity/damage capability and explicit generation vocabulary rather than silently treating the current prop restart method as generation-safe.
+- `DestructiblePropDamage` remains unchanged. Its current restart clears event history without accepting a generation, so a later prop adapter should adopt the shared identity/damage capability and explicit generation vocabulary rather than silently treating the current prop restart method as generation-safe.
 - Existing character/profile and route/run identities remain `StableId` inputs. This task does not create a second character catalog, profile, or run coordinator.
 - The movement actor's generation remains movement-owned. Live integration must deliberately coordinate its restart with the player actor generation; ENTITY-001 does not modify movement.
 - `IRestartParticipant` and `RestartContext` remain orchestration contracts. The player authority exposes an explicit restart command/result and does not implement the presentation/registration callback itself.
@@ -50,9 +50,9 @@ The foundation keeps five concepts deliberately separate:
 
 Later migrations can use adapters:
 
-- a player adapter can forward validated hit/network input to `PlayerActorAuthority`;
+- a player adapter can forward validated hit/network input to `PlayerActorState`;
 - an enemy adapter can translate the shared command into the existing `EnemyActorCommand`/stepper flow while preserving enemy-specific contact and encounter facts;
-- a prop adapter can translate the command into `DestructiblePropAuthority` while adding explicit lifecycle-generation rejection.
+- a prop adapter can translate the command into `DestructiblePropDamage` while adding explicit lifecycle-generation rejection.
 
 These adapters should preserve their existing authorities instead of forcing all gameplay objects into one inheritance tree.
 
@@ -71,7 +71,7 @@ Players, enemies, destructible props, attacks, and rooms share only selected cap
 ```text
 input / network / hit adapter
     -> authoritative attribution and command validation
-    -> PlayerActorAuthority transition
+    -> PlayerActorState transition
     -> explicit result + DamageMessage / death or healing attribution
     -> Unity presentation and run coordinator observers
 ```

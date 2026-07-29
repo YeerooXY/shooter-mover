@@ -41,7 +41,7 @@ Status is assigned to the migration area, not to the quality of an isolated foun
 
 PR #213 correctly identified the retained controller, local player health, non-authoritative live weapon path, non-atomic multi-effect risk, broad restart transaction, room-clear ownership, and Stage1/demo naming pressure. The following statements are now current:
 
-- PR #215 is merged. `PlayerActorAuthority` and shared gameplay identity/ownership capabilities exist on main, but Stage 1 still uses local `playerHealth`.
+- PR #215 is merged. `PlayerActorState` and shared gameplay identity/ownership capabilities exist on main, but Stage 1 still uses local `playerHealth`.
 - PR #216 is merged. Reusable enemy projections, decisions, generic attack intents, room-clear roles, attributed death facts, and truthful debug snapshots exist on main.
 - PR #217 is merged. Geometric perception, distinct vision and attack arcs, and the representative Mobile Blaster Droid projection factory exist on main.
 - PR #210 is merged. The live scene has a working two-room loop, retained room state, locked exits, a moving droid sprite, and killable droid behavior.
@@ -64,7 +64,7 @@ A migration area advances to **Partially Live** only when the playable Stage 1 p
 4. focused Unity proof exists when runtime behavior changed; and
 5. the controller no longer owns the migrated responsibility.
 
-By this rule, `PlayerActorAuthority`, enemy decision/perception foundations, and the Mobile Blaster Droid projection are valuable merged foundations but are not yet the live Stage 1 player/enemy migration.
+By this rule, `PlayerActorState`, enemy decision/perception foundations, and the Mobile Blaster Droid projection are valuable merged foundations but are not yet the live Stage 1 player/enemy migration.
 
 ## Migration status overview
 
@@ -74,7 +74,7 @@ By this rule, `PlayerActorAuthority`, enemy decision/perception foundations, and
 | 2 | Exact equipment-instance weapon resolution | **Foundation** | No current-main handoff carries equipment-instance ID, definition ID, runtime weapon ID, owner participant, operation ID, and lifecycle generation together into live firing. |
 | 3 | Atomic effect runtime | **Not Started** | Shotgun pellets and future multi-effect attacks can only be emitted as independent side effects. No current-main batch reserve/validate/commit boundary exists. |
 | 4 | Reusable player runtime/presentation | **Not Started** | Current main has no reusable player installer/view that is the sole owner of construction, restart, presentation refresh, and disposal. |
-| 5 | Player vital/damage authority integration | **Foundation** | No Stage 1 adapter constructs or invokes PlayerActorAuthority. The merged foundation explicitly states that Stage 1 migration is incomplete. |
+| 5 | Player vital/damage authority integration | **Foundation** | No Stage 1 adapter constructs or invokes PlayerActorState. The merged foundation explicitly states that Stage 1 migration is incomplete. |
 | 6 | Enemy package migration | **Foundation** | The representative projection is not the live Stage 1 decision path. Other packages still need projection/adapters, and the controller still branches on Stage 1 enemy IDs. |
 | 7 | Reusable room occupancy/clear runtime | **Partially Live** | Graph/traversal is live, but occupant registration, exact occupant identity, terminal reporting, clear transitions, and door projection are still controller-local. |
 | 8 | Restart lifecycle | **Partially Live** | Subsystem restart calls are live, but registration, phases, ordering, failure behavior, and disposal are not owned by a reusable lifecycle coordinator. |
@@ -130,55 +130,55 @@ By this rule, `PlayerActorAuthority`, enemy decision/perception foundations, and
 - **Dependencies:** Stable player identity; class/loadout configuration; movement lifecycle coordination; later player vital adapter; explicit ownership/disposal contract.
 - **Relevant PRs:** #211, #213, #215
 - **Acceptance tests:** Exactly one player runtime owner and one `InputActionAsset` exist; movement/input/collision/boost behavior matches current Stage 1; restart preserves stable identity while advancing lifecycle generation; Stage 2/survival fixtures reuse the same installer without Stage1 dependencies.
-- **Evidence paths:** `Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs`; `Assets/ShooterMover/Runtime/GameplayEntities/PlayerActorAuthority.cs`; `docs/architecture/gameplay/PLAYER_ACTOR_FOUNDATION_V1.md`
+- **Evidence paths:** `Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs`; `Assets/ShooterMover/Runtime/GameplayEntities/PlayerActorState.cs`; `docs/architecture/gameplay/PLAYER_ACTOR_FOUNDATION_V1.md`
 
 ### 5. Player vital/damage authority integration
 
 - **Status:** Foundation
 - **Current source of truth:** `Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs.playerHealth` is live truth; hazards and enemy projectile callbacks mutate it directly; HUD and restart read/reset it.
-- **Completed foundation:** PR #215 merged `PlayerActorAuthority`, shared `GameplayEntityIdentity`/ownership, generation-scoped damage/healing deduplication, death attribution, and deterministic restart commands/results.
-- **Live integration status:** No Stage 1 adapter constructs or invokes `PlayerActorAuthority`. The merged foundation explicitly states that Stage 1 migration is incomplete.
+- **Completed foundation:** PR #215 merged `PlayerActorState`, shared `GameplayEntityIdentity`/ownership, generation-scoped damage/healing deduplication, death attribution, and deterministic restart commands/results.
+- **Live integration status:** No Stage 1 adapter constructs or invokes `PlayerActorState`. The merged foundation explicitly states that Stage 1 migration is incomplete.
 - **Remaining legacy owner:** `Stage1VisibleSliceController.RequestDamage`, `RequestInstantDeath`, `ApplyTurretProjectileDamageToPlayer`, HUD snapshot creation, and `QuickRestart` health reset.
 - **Dependencies:** Trusted participant/source attribution; Unity hit/hazard adapters; movement/restart generation coordination; read-only HUD projection; run/death observers.
 - **Relevant PRs:** #210, #213, #215
 - **Acceptance tests:** Hazard and enemy projectile damage enter one authority; exact replay does not damage twice; conflicting reuse rejects; death emits once with source actor/participant attribution; HUD reads immutable snapshots; restart rejects stale generation and removes local `playerHealth`.
-- **Evidence paths:** `Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs`; `Assets/ShooterMover/Runtime/GameplayEntities/PlayerActorAuthority.cs`; `docs/architecture/gameplay/PLAYER_ACTOR_FOUNDATION_V1.md`
+- **Evidence paths:** `Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs`; `Assets/ShooterMover/Runtime/GameplayEntities/PlayerActorState.cs`; `docs/architecture/gameplay/PLAYER_ACTOR_FOUNDATION_V1.md`
 
 ### 6. Enemy package migration
 
 - **Status:** Foundation
 - **Current source of truth:** Existing enemy packages remain canonical for enemy health/runtime behavior. `Stage1VisibleSliceController` selects package types, constructs definitions/contexts, activates/deactivates packages, applies some hits, and interprets destruction.
-- **Completed foundation:** PRs #216 and #217 merged `EnemyRuntimeProjection`, generic attack intents, deterministic decision/debug snapshots, room-clear roles, geometric perception, separate vision/attack arcs, and a representative Mobile Blaster Droid projection factory.
+- **Completed foundation:** PRs #216 and #217 merged `EnemyLiveView`, generic attack intents, deterministic decision/debug snapshots, room-clear roles, geometric perception, separate vision/attack arcs, and a representative Mobile Blaster Droid projection factory.
 - **Live integration status:** The representative projection is not the live Stage 1 decision path. Blaster Turret, Pursuer Drone, Ram Droid, and Four Blaster Elite still need package-specific projection/adapters; the controller still branches on Stage 1 enemy IDs.
 - **Remaining legacy owner:** `Stage1VisibleSliceController.BuildAuthoredRooms`, `BuildMobileBlasterDroid`, `BuildTurret`, hit forwarding, activation/projection switching, and enemy-specific HUD interpretation.
 - **Dependencies:** Per-package projection factories/adapters; Unity perception facts; generic attack executors; attributed terminal facts; room occupancy registration.
 - **Relevant PRs:** #210, #213, #215, #216, #217
 - **Acceptance tests:** Each package projects canonical actor state without copying health; vision and attack arcs remain distinct; decisions are deterministic; attack intents execute through capability IDs; required/optional roles project correctly; controller contains no enemy package construction or decision ownership.
-- **Evidence paths:** `Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs`; `Assets/ShooterMover/Runtime/GameplayEntities/Enemies/EnemyRuntimeProjection.cs`; `Assets/ShooterMover/Runtime/GameplayEntities/Enemies/EnemyDecisionPolicy.cs`; `Assets/ShooterMover/Runtime/GameplayEntities/Enemies/EnemyPerceptionBuilder.cs`; `docs/architecture/gameplay/ENEMY_RUNTIME_FOUNDATION_V1.md`
+- **Evidence paths:** `Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs`; `Assets/ShooterMover/Runtime/GameplayEntities/Enemies/EnemyLiveView.cs`; `Assets/ShooterMover/Runtime/GameplayEntities/Enemies/EnemyDecisionPolicy.cs`; `Assets/ShooterMover/Runtime/GameplayEntities/Enemies/EnemyPerceptionBuilder.cs`; `docs/architecture/gameplay/ENEMY_RUNTIME_FOUNDATION_V1.md`
 
 ### 7. Reusable room occupancy/clear runtime
 
 - **Status:** Partially Live
-- **Current source of truth:** `RoomMissionLayoutV1` is live for graph progress and traversal. `Stage1VisibleSliceController.DemoRoomProjection` and `enemyDestroyedReaders` remain the live occupancy/clear truth and drive doors/objectives.
-- **Completed foundation:** PR #181 merged immutable room graph definitions and `RoomMissionLayoutV1`. PR #210 merged the working two-room loop and retained room state. PR #216 merged `EnemyRuntimeProjection.BlocksRoomClear` role semantics.
+- **Current source of truth:** `RoomMissionLayout` is live for graph progress and traversal. `Stage1VisibleSliceController.DemoRoomProjection` and `enemyDestroyedReaders` remain the live occupancy/clear truth and drive doors/objectives.
+- **Completed foundation:** PR #181 merged immutable room graph definitions and `RoomMissionLayout`. PR #210 merged the working two-room loop and retained room state. PR #216 merged `EnemyLiveView.BlocksRoomClear` role semantics.
 - **Live integration status:** Graph/traversal is live, but occupant registration, exact occupant identity, terminal reporting, clear transitions, and door projection are still controller-local.
 - **Remaining legacy owner:** `Stage1VisibleSliceController.DemoRoomProjection`, `BuildAuthoredRooms` enemy branches, `RefreshArenaFlow`, door condition reading, and room activation logic.
 - **Dependencies:** Enemy runtime projections/terminal facts; exact room and occupant IDs; deterministic registration/removal; layout completion command; door/read-only objective projections.
 - **Relevant PRs:** #181, #210, #213, #216, #217
 - **Acceptance tests:** Zero/one/many required occupants; optional/non-blocking occupants; duplicate terminal notifications; independent actors sharing a definition; leave/revisit retained state; locked exits; restart; no controller-owned occupancy list or clear calculation.
-- **Evidence paths:** `Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs`; `Assets/ShooterMover/Runtime/Application/Missions/Rooms/RoomMissionLayoutV1.cs`; `Assets/ShooterMover/Content/Definitions/Missions/Rooms/Level1RoomGraphDefinitionV1.cs`; `docs/architecture/missions/ROOM_GRAPH_V1.md`; `Assets/ShooterMover/Runtime/GameplayEntities/Enemies/EnemyRuntimeProjection.cs`
+- **Evidence paths:** `Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs`; `Assets/ShooterMover/Runtime/Application/Missions/Rooms/RoomMissionLayout.cs`; `Assets/ShooterMover/Content/Definitions/Missions/Rooms/Level1RoomGraphDefinition.cs`; `docs/architecture/missions/ROOM_GRAPH_V1.md`; `Assets/ShooterMover/Runtime/GameplayEntities/Enemies/EnemyLiveView.cs`
 
 ### 8. Restart lifecycle
 
 - **Status:** Partially Live
 - **Current source of truth:** `Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs.QuickRestart` manually advances `restartGeneration` and resets player health, shot/damage counters, loadout, room layout, movement, enemies, gameplay scope, hit adapter, HUD, camera, and transient visuals in one ordered transaction.
-- **Completed foundation:** Movement, room, enemy packages, gameplay scope, HUD/camera, and `PlayerActorAuthority` expose bounded restart/reset seams; shared restart vocabulary and lifecycle generation exist.
+- **Completed foundation:** Movement, room, enemy packages, gameplay scope, HUD/camera, and `PlayerActorState` expose bounded restart/reset seams; shared restart vocabulary and lifecycle generation exist.
 - **Live integration status:** Subsystem restart calls are live, but registration, phases, ordering, failure behavior, and disposal are not owned by a reusable lifecycle coordinator.
 - **Remaining legacy owner:** `Stage1VisibleSliceController.QuickRestart` and `OnDestroy` cleanup order.
 - **Dependencies:** Explicit restart participant registry; stable participant IDs; deterministic phases only where required; rollback/fail-closed policy; weapon/effect/player/enemy/room adapters.
 - **Relevant PRs:** #210, #211, #212, #213, #215
 - **Acceptance tests:** Initial run and restarted run satisfy identical construction invariants; stable identities remain stable while generations advance; stale commands/effects reject; no old projectiles/cooldowns/subscriptions survive; participant order is explicit; controller has no broad restart transaction.
-- **Evidence paths:** `Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs`; `Assets/ShooterMover/Runtime/GameplayEntities/PlayerActorAuthority.cs`
+- **Evidence paths:** `Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs`; `Assets/ShooterMover/Runtime/GameplayEntities/PlayerActorState.cs`
 
 ### 9. HUD/camera projection
 
@@ -214,7 +214,7 @@ By this rule, `PlayerActorAuthority`, enemy decision/perception foundations, and
 - **Dependencies:** One authoritative live path per subsystem; serialized GUID preservation; assembly dependency audit; no concurrent controller migration.
 - **Relevant PRs:** #211, #212, #213, #215, #216, #217
 - **Acceptance tests:** No production-routed gameplay lives under TestSupport; generic systems do not depend on Stage1 namespaces; stage-specific definitions retain Stage1/Level1 names; Unity GUIDs and serialized references remain valid; focused compile/tests pass after each narrow move.
-- **Evidence paths:** `Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs`; `Assets/ShooterMover/Runtime/GameplayEntities/PlayerActorAuthority.cs`; `Assets/ShooterMover/Runtime/GameplayEntities/Enemies/EnemyRuntimeProjection.cs`
+- **Evidence paths:** `Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs`; `Assets/ShooterMover/Runtime/GameplayEntities/PlayerActorState.cs`; `Assets/ShooterMover/Runtime/GameplayEntities/Enemies/EnemyLiveView.cs`
 
 ## ADR-WPN-001 — Weapon runtime alternatives remain evidence, not an approved implementation
 
@@ -284,7 +284,7 @@ The successor PR must first prove, on current main:
 | 2 | `WPN-LIVE-001` | **Yes — exclusive** | Resolve authoritative active equipment, bind the Unity effect adapter, delete controller weapon-ID branches/fallback, and prove all starter behaviors/restart. |
 | 3 | `PLAYER-RUNTIME-001` | No | Build the reusable player runtime/view installer with explicit ownership, configuration, restart, and disposal. |
 | 4 | `PLAYER-RUNTIME-LIVE-001` | **Yes — exclusive** | Delegate player construction/boost/restart/disposal and delete duplicate controller fields/helpers. |
-| 5 | `PLAYER-VITAL-ADAPTER-001` | No | Adapt hit/hazard facts and trusted attribution into merged `PlayerActorAuthority`; expose immutable projections. |
+| 5 | `PLAYER-VITAL-ADAPTER-001` | No | Adapt hit/hazard facts and trusted attribution into merged `PlayerActorState`; expose immutable projections. |
 | 6 | `PLAYER-VITAL-LIVE-001` | **Yes — exclusive** | Replace direct health writes/HUD health truth and delete local `playerHealth`. |
 | 7 | `ENEMY-PACKAGES-001` | No | Add/complete package projections, perception adapters, attack executors, and attributed terminal facts without editing Stage 1 composition. |
 | 8 | `ENEMY-LIVE-001` | **Yes — exclusive** | Register packages through reusable composition and remove controller enemy construction/decision ownership. |
@@ -321,12 +321,12 @@ A smaller file is expected after these gates, but no arbitrary target line count
 ### Current-main paths verified at `b2bf4348ab6f827a737add53278d57568684f552`
 
 - `Assets/ShooterMover/TestSupport/VisibleSlice/Stage1VisibleSliceController.cs`
-- `Assets/ShooterMover/Runtime/GameplayEntities/PlayerActorAuthority.cs`
-- `Assets/ShooterMover/Runtime/GameplayEntities/Enemies/EnemyRuntimeProjection.cs`
+- `Assets/ShooterMover/Runtime/GameplayEntities/PlayerActorState.cs`
+- `Assets/ShooterMover/Runtime/GameplayEntities/Enemies/EnemyLiveView.cs`
 - `Assets/ShooterMover/Runtime/GameplayEntities/Enemies/EnemyDecisionPolicy.cs`
 - `Assets/ShooterMover/Runtime/GameplayEntities/Enemies/EnemyPerceptionBuilder.cs`
-- `Assets/ShooterMover/Runtime/Application/Missions/Rooms/RoomMissionLayoutV1.cs`
-- `Assets/ShooterMover/Content/Definitions/Missions/Rooms/Level1RoomGraphDefinitionV1.cs`
+- `Assets/ShooterMover/Runtime/Application/Missions/Rooms/RoomMissionLayout.cs`
+- `Assets/ShooterMover/Content/Definitions/Missions/Rooms/Level1RoomGraphDefinition.cs`
 - `Assets/ShooterMover/Runtime/Application/Weapons/Catalog/WeaponCatalogJsonImporter.cs`
 - `docs/architecture/gameplay/PLAYER_ACTOR_FOUNDATION_V1.md`
 - `docs/architecture/gameplay/ENEMY_RUNTIME_FOUNDATION_V1.md`

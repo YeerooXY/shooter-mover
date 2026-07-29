@@ -14,7 +14,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class RunPickupSourcePositionRegistry2D : MonoBehaviour,
-        IRunPickupSourcePositionPortV1
+        IRunPickupSourcePositionPort
     {
         private sealed class Registration
         {
@@ -23,7 +23,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
                 long lifecycleGeneration,
                 StableId sourceEntityStableId,
                 StableId sourcePlacementStableId,
-                RunPickupWorldSpawnContextV1 context,
+                RunPickupWorldSpawnContext context,
                 string fingerprint)
             {
                 RunStableId = runStableId;
@@ -38,7 +38,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
             public long LifecycleGeneration { get; }
             public StableId SourceEntityStableId { get; }
             public StableId SourcePlacementStableId { get; }
-            public RunPickupWorldSpawnContextV1 Context { get; }
+            public RunPickupWorldSpawnContext Context { get; }
             public string Fingerprint { get; }
         }
 
@@ -82,7 +82,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
                 return false;
             }
 
-            var context = new RunPickupWorldSpawnContextV1(
+            var context = new RunPickupWorldSpawnContext(
                 roomStableId,
                 committedPosition.x,
                 committedPosition.y,
@@ -131,7 +131,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
             long runLifecycleGeneration,
             StableId sourceEntityStableId,
             StableId sourcePlacementStableId,
-            out RunPickupWorldSpawnContextV1 worldSpawnContext,
+            out RunPickupWorldSpawnContext worldSpawnContext,
             out string diagnostic)
         {
             worldSpawnContext = null;

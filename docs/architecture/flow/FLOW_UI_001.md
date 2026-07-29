@@ -4,17 +4,17 @@
 
 FLOW-UI-001 does not define another route or character authority.
 
-- `HubNavigationServiceV1` remains the sole Main Menu / Character Selection /
+- `HubNavigationActions` remains the sole Main Menu / Character Selection /
   Hub route-history owner.
-- `CharacterSelectionServiceV1` remains the sole character/class selection
+- `CharacterSelectionActions` remains the sole character/class selection
   coordinator and preserves the exact incoming equipment-instance identities.
-- `PlayerRouteProfilePayloadV1` remains the character/profile/loadout route
+- `PlayerRouteProfilePayload` remains the character/profile/loadout route
   contract.
-- RUN-001 `MissionResultPayloadV1` and
-  `MissionRunStrongboxResultV1` remain Results facts.
-- `StrongboxOpeningServiceV1` remains the BOX opening authority.
+- RUN-001 `MissionResultPayload` and
+  `MissionRunStrongboxResult` remain Results facts.
+- `StrongboxOpeningActions` remains the BOX opening authority.
 
-`ProductionSceneTransitionCoordinatorV1` owns only one accepted in-flight scene
+`SceneTransitionFlow` owns only one accepted in-flight scene
 request. It checks the existing route service before loading, rejects further
 input while pending, and reconciles an unexpected scene completion back to the
 accepted destination.
@@ -43,11 +43,11 @@ Bootstrap
 Character Selection and Character Creation intentionally share the same scene
 and one controller. Creation adds only a required display name; character and
 class identities are selected through the existing catalog and
-`CharacterSelectionServiceV1`.
+`CharacterSelectionActions`.
 
 ## Profile persistence
 
-`PlayerPrefsProductionFlowProfileStoreV1` stores:
+`PlayerPrefsFlowProfileStore` stores:
 
 - the display name;
 - the existing route-profile envelope;
@@ -71,11 +71,11 @@ shows an artwork-backed disconnected state and creates no fallback authority.
 
 ## Results and Strongbox Opening
 
-Results receives the exact immutable `MissionResultPayloadV1`. Selecting a box
+Results receives the exact immutable `MissionResultPayload`. Selecting a box
 requires reference identity with one object in
 `Result.UnopenedStrongboxes`. The exact object is passed to the injected command
 factory, and the resulting immutable command plus the real
-`StrongboxOpeningServiceV1` are bound to `StrongboxOpeningController`.
+`StrongboxOpeningActions` are bound to `StrongboxOpeningController`.
 
 After opening, Results is refreshed only through an injected authoritative
 RUN/BOX composition function. The refresh is rejected unless the same run and

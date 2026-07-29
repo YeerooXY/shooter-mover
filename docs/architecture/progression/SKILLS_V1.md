@@ -11,7 +11,7 @@ SKILL-001 introduced the engine-independent skill progression authority. SKILL-0
 - Specialized fixtures may contain five skills.
 - Mixed catalogs may combine trees of different sizes in one authority.
 - `CreateCompatibilityTwentySkillCatalog()` preserves the original 20 skill IDs (`offense.1` through `utility.5`) as a compatibility fixture.
-- The original `SkillDefinitionV1` constructor and its single-prerequisite projection remain available for existing callers; new definitions should use the explicit tree/category constructor.
+- The original `SkillDefinition` constructor and its single-prerequisite projection remain available for existing callers; new definitions should use the explicit tree/category constructor.
 
 Catalog construction rejects empty trees, duplicate tree or skill IDs, unknown prerequisite skills, duplicate requirements, unknown tree/category gates and prerequisite cycles. Definitions and requirement lists retain author order so validation and allocation rejection are deterministic.
 
@@ -45,7 +45,7 @@ A rejection returns a stable status, rejection code, related requirement ID, req
 
 ## Presentation compatibility
 
-The existing Skills scene still consumes `SkillCatalogV1`, `Definitions`, rank snapshots and `Allocate`. It can render variable catalog sizes without owning progression truth. SKILL-002 does not add or implement gameplay effects.
+The existing Skills scene still consumes `SkillCatalog`, `Definitions`, rank snapshots and `Allocate`. It can render variable catalog sizes without owning progression truth. SKILL-002 does not add or implement gameplay effects.
 
 ## Authority boundaries
 

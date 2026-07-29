@@ -20,7 +20,7 @@ Existing production scene transitions remain owned by `ProductionFlowCoordinator
 
 ### Level Selection availability
 
-`LevelSelectionControllerV1` builds the immutable level catalogue and delegates selection to `LevelSelectionServiceV1`. Locked entries are represented by `LevelAvailabilityV1.Locked`; the view renders those entries as a disabled `UNAVAILABLE` action. Unknown stable IDs are rejected by the service without emitting a scene route.
+`LevelSelectionController` builds the immutable level catalogue and delegates selection to `LevelSelectionActions`. Locked entries are represented by `LevelAvailability.Locked`; the view renders those entries as a disabled `UNAVAILABLE` action. Unknown stable IDs are rejected by the service without emitting a scene route.
 
 This change exposes exactly one unlocked live gameplay entry through the default production catalogue.
 
@@ -41,10 +41,10 @@ It references the existing manifest and JSON sidecars by Unity asset reference. 
 The implementation reuses:
 
 - `JsonRoomContentDefinition2D`
-- `RoomContentJsonImporterV1`
+- `RoomContentJsonImporter`
 - the existing importer validation and object catalogue
-- `JsonRoomRuntimeBootstrap2D`
-- `RoomRuntimeComposition2D`
+- `JsonRoomLiveBootstrap2D`
+- `RoomLiveSetup2D`
 - `RoomPresentationScene2D`
 - `JsonRoomVisualPresentation2D`
 - `RoomEnemySpawner2D`
@@ -62,7 +62,7 @@ No deleted gameplay composition, combat authority, health system, or Stage1 cont
 
 ### Authored player spawn
 
-The room schema already supported stable spawn identity, position, rotation, and `RoomSpawnPointKindV1.Player`. No schema extension was necessary.
+The room schema already supported stable spawn identity, position, rotation, and `RoomSpawnPointKind.Player`. No schema extension was necessary.
 
 The exact authored initial spawn is:
 
@@ -76,7 +76,7 @@ The gameplay composition rejects a missing or duplicated player spawn before cre
 
 ### Authored exit
 
-The room schema already supported `RoomLiveLinkKindV1.FinalExit`. No level-specific exit controller was added.
+The room schema already supported `RoomLiveLinkKind.FinalExit`. No level-specific exit controller was added.
 
 The exact authored completion exit is:
 
@@ -89,15 +89,15 @@ The traversal slice changes the existing Level 1 encounter door gates to `always
 
 ### Character route and runtime graph handoff
 
-The selected level is captured in the existing `LevelSelectionRouteContextV1` before scene presentation. Gameplay then resolves the current `ProductionCharacterRuntimeGraphV1` from `ProductionCharacterAccountCompositionV1` and verifies that its route payload equals both the selected route payload and the current profile payload.
+The selected level is captured in the existing `LevelSelectionRouteContext` before scene presentation. Gameplay then resolves the current `CharacterLiveGraph` from `ProductionCharacterAccountCompositionV1` and verifies that its route payload equals both the selected route payload and the current profile payload.
 
 Gameplay adopts, without cloning or reconstruction:
 
 - the existing character instance identity
 - the existing class definition identity
 - the exact route payload and fingerprint
-- the exact `PlayerHoldingsService` instance
-- the exact `ProductionInventoryLoadoutAuthorityV1` instance
+- the exact `PlayerHoldingsActions` instance
+- the exact `InventoryLoadoutState` instance
 
 The final exit checks reference equality for holdings and loadout plus the unchanged route fingerprint before requesting the Hub return.
 
@@ -116,7 +116,7 @@ No retained production gameplay scene existed in build settings. The deleted Sta
 - Enemy catalogue resource: `ProductionLevels/Level1EnemyCatalog`
 - Player presentation ID: `presentation.player-production-default`
 
-`ProductionPlayableLevelCatalogV1` is immutable and contains no runtime state. Selection and gameplay resolve through the stable ID and registered definition; there is no `if`/`switch` branch for Level 1.
+`PlayableLevelCatalog` is immutable and contains no runtime state. Selection and gameplay resolve through the stable ID and registered definition; there is no `if`/`switch` branch for Level 1.
 
 ## Spawn and camera handling
 
@@ -136,12 +136,12 @@ Movement uses the Input System keyboard, normalizes diagonal input with `Vector2
 
 - Authored blocking prop and enemy presentations use generic colliders through the existing room presentation catalogue.
 - Door blocking colliders remain controlled by `RoomDoorInstance2D.SetOpen`.
-- Generic boundary colliders are derived from each authored room's validated `RoomBoundsV1`; no level-specific world coordinates are embedded in the controller.
+- Generic boundary colliders are derived from each authored room's validated `RoomBounds`; no level-specific world coordinates are embedded in the controller.
 - Door traversal uses a trigger bound directly to each spawned `RoomDoorInstance2D`.
 
 ## Exit and cleanup handling
 
-The authored final-exit door calls the existing room authority's `Traverse` operation. `RoomRuntimeComposition2D` emits `FinalExitReached` only after the authority accepts the final exit.
+The authored final-exit door calls the existing room authority's `Traverse` operation. `RoomLiveSetup2D` emits `FinalExitReached` only after the authority accepts the final exit.
 
 The production traversal composition then:
 
@@ -177,7 +177,7 @@ No arbitrary level, room, player coordinate, inventory, or scene fallback is fab
 
 ### Production definitions and authored content
 
-- `Assets/ShooterMover/Content/Definitions/Levels/Selection/LevelSelectionCatalogDefinitionV1.cs`
+- `Assets/ShooterMover/Content/Definitions/Levels/Selection/LevelSelectionCatalogDefinition.cs`
 - `Assets/ShooterMover/Content/Definitions/Missions/Rooms/Json/Level1/level1.entry.layout.json`
 - `Assets/ShooterMover/Content/Definitions/Missions/Rooms/Json/Level1/level1.entry.encounter.json`
 - `Assets/ShooterMover/Content/Definitions/Missions/Rooms/Json/Level1/level1.terminal.layout.json`
@@ -186,13 +186,13 @@ No arbitrary level, room, player coordinate, inventory, or scene fallback is fab
 ### Existing runtime integration points
 
 - `Assets/ShooterMover/Runtime/UnityAdapters/Authoring/LevelDesign/RoomPresentationCatalog2D.cs`
-- `Assets/ShooterMover/Runtime/UnityAdapters/Missions/Rooms/JsonRoomRuntimeBootstrap2D.cs`
-- `Assets/ShooterMover/UI/LevelSelection/LevelSelectionControllerV1.cs`
+- `Assets/ShooterMover/Runtime/UnityAdapters/Missions/Rooms/JsonRoomLiveBootstrap2D.cs`
+- `Assets/ShooterMover/UI/LevelSelection/LevelSelectionController.cs`
 - `Assets/ShooterMover/UI/ProductionFlow/ShooterMover.UI.ProductionFlow.asmdef`
 
 ### Generic gameplay composition and Unity assets
 
-- `Assets/ShooterMover/UI/ProductionFlow/ProductionPlayableLevelControllerV1.cs`
+- `Assets/ShooterMover/UI/ProductionFlow/PlayableLevelController.cs`
 - `Assets/ShooterMover/Scenes/Gameplay/PlayableLevel.unity`
 - `Assets/ShooterMover/Resources/ProductionLevels/Level1RoomContent.asset`
 - `Assets/ShooterMover/Resources/ProductionLevels/Level1EnemyCatalog.asset`
@@ -273,7 +273,7 @@ The requested in-game acceptance run was **not performed** because no Unity Edit
 1. Add a new authored manifest and room JSON sidecars using the existing schema and object catalogue.
 2. Add a `JsonRoomContentDefinition2D` asset that references those files; place the asset under a Unity runtime-addressable content boundary such as `Resources/ProductionLevels`.
 3. Add any new immutable presentation/object registrations needed by the generic room presentation catalogue.
-4. Register one new `ProductionPlayableLevelDefinitionV1` entry with a new stable level ID, display metadata, the shared `PlayableLevel.unity` scene path, and the new content reference.
+4. Register one new `PlayableLevelDefinition` entry with a new stable level ID, display metadata, the shared `PlayableLevel.unity` scene path, and the new content reference.
 5. Do not add or modify a production gameplay controller for the new level.
 
 The intended workflow is therefore:

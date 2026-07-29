@@ -4,7 +4,7 @@ using ShooterMover.Domain.Weapons.Execution;
 
 namespace ShooterMover.Application.Weapons.Execution
 {
-    public sealed partial class WeaponCatalogRuntimeProfileResolver
+    public sealed partial class WeaponCatalogLiveProfileResolver
     {
         private static WeaponProfileResolution Reject(
             WeaponProfileResolutionStatus status,
@@ -23,7 +23,7 @@ namespace ShooterMover.Application.Weapons.Execution
 
             if (!IsPositive(definition.FireRate)
                 || definition.ProjectilesPerTrigger < 1
-                || definition.ProjectilesPerTrigger > WeaponRuntimeFiringProfile.MaximumEffectsPerFire
+                || definition.ProjectilesPerTrigger > WeaponLiveFiringProfile.MaximumEffectsPerFire
                 || !IsInRange(definition.SpreadDegrees, 0d, 360d)
                 || !IsPositive(definition.ProjectileSpeed)
                 || !IsPositive(definition.Range)

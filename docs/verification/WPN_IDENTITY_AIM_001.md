@@ -92,7 +92,7 @@ after equipping.
 
 ## Authored regression coverage
 
-### EditMode — `ProductionExactWeaponInstanceLoadoutTests`
+### EditMode — `ExactWeaponInstanceLoadoutTests`
 
 The fixture owns exactly four items:
 
@@ -129,11 +129,11 @@ Unity is unavailable in the connected authoring environment. No compilation or t
 pass is claimed. Run:
 
 ```text
-Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Flow.Hub.ProductionExactWeaponInstanceLoadoutTests -testResults Temp/wpn-identity-aim-001-editmode.xml -logFile Temp/wpn-identity-aim-001-editmode.log
+Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Flow.Hub.ExactWeaponInstanceLoadoutTests -testResults Temp/wpn-identity-aim-001-editmode.xml -logFile Temp/wpn-identity-aim-001-editmode.log
 ```
 
 ```text
-Unity -batchmode -nographics -projectPath . -runTests -testPlatform PlayMode -testFilter ShooterMover.Tests.PlayMode.Weapons.Live.InventoryWeaponRuntimePlayModeTests -testResults Temp/wpn-identity-aim-001-playmode.xml -logFile Temp/wpn-identity-aim-001-playmode.log
+Unity -batchmode -nographics -projectPath . -runTests -testPlatform PlayMode -testFilter ShooterMover.Tests.PlayMode.Weapons.Live.InventoryWeaponLivePlayModeTests -testResults Temp/wpn-identity-aim-001-playmode.xml -logFile Temp/wpn-identity-aim-001-playmode.log
 ```
 
 Do not add `-quit`; `-runTests` exits Unity after the test run.

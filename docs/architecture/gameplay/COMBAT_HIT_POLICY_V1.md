@@ -9,7 +9,7 @@
 
 ## Ownership
 
-`CombatHitPolicyV1` is a stateless engine-neutral decision boundary. Unity physics may
+`CombatHitPolicy` is a stateless engine-neutral decision boundary. Unity physics may
 prefilter contacts, but layers, collider names, prefabs, enemy types, and scene
 controllers never authorize damage.
 
@@ -28,7 +28,7 @@ health.
   and run-participant attribution.
 - `WeaponEffectIdentity` / `IWeaponEffectDescription` from WPN-CORE-002.
 - `DamageReceiverCommand` / `IDamageReceiver` for downstream health mutation.
-- `PropDamageCommandV1` for existing prop health/destruction routing.
+- `PropDamageCommand` for existing prop health/destruction routing.
 
 No second player, enemy, prop, projectile, or damage authority is introduced.
 
@@ -85,22 +85,22 @@ The result is independent from Unity callback order and dictionary iteration.
 ## Integration seams
 
 - WPN-CORE-002 projectile and chain descriptions use
-  `WeaponEffectHitPolicyAdapterV1`.
+  `WeaponEffectHitPolicyBridge`.
 - Explosion and persistent-field owners construct a distinct effect snapshot for the
   area or field lifetime while retaining source actor and generation facts.
 - Enemy projectile, melee, and contact adapters supply the same actor/contact/history
   input.
 - Accepted actor results convert to `DamageReceiverCommand` through
-  `CombatHitDamageCommandAdapterV1`; rejected, blocker, and reflective results cannot
+  `CombatHitDamageCommandBridge`; rejected, blocker, and reflective results cannot
   produce a command.
-- PROP-RUNTIME-001 consumers use `CombatHitPropDamageCommandAdapterV1` without moving
+- PROP-RUNTIME-001 consumers use `CombatHitPropDamageCommandBridge` without moving
   prop health or destruction ownership into the policy.
 
 ## Focused validation
 
 EditMode fixture:
 
-`ShooterMover.Tests.EditMode.CombatHitPolicy.CombatHitPolicyV1Tests`
+`ShooterMover.Tests.EditMode.CombatHitPolicy.CombatHitPolicyTests`
 
 Coverage includes player/enemy/neutral-prop relations, chaotic policy, blocker
 termination and reflection, per-target limits, pierce exhaustion, stale generations,

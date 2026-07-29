@@ -11,18 +11,18 @@
 
 The implementation separates three immutable or independently owned concepts:
 
-1. `PropDefinitionV1` describes one reusable content definition and presentation ID.
-2. `PropPlacementV1` supplies one exact `PlacedObjectIdentity` plus the selected definition ID.
-3. `PropRuntimeV1` owns only run-local state for that one placement.
+1. `PropDefinition` describes one reusable content definition and presentation ID.
+2. `PropPlacement` supplies one exact `PlacedObjectIdentity` plus the selected definition ID.
+3. `PropLive` owns only run-local state for that one placement.
 
-`PropRuntimeFactoryV1` is the generic placement-to-runtime port. `ROOM-JSON-LIVE-001`
+`PropLiveFactory` is the generic placement-to-runtime port. `ROOM-JSON-LIVE-001`
 can later adapt imported room placements into this factory without introducing room-, prop-,
 or prefab-name branches.
 
 ## Capability model
 
-Definitions use immutable `PropCapabilityV1` descriptors while placements reuse the existing
-`PlacedObjectIdentity` authoring contract. A `PropCapabilityRegistryV1` maps stable capability
+Definitions use immutable `PropCapability` descriptors while placements reuse the existing
+`PlacedObjectIdentity` authoring contract. A `PropCapabilityRegistry` maps stable capability
 IDs to validators. The built-in registry supports:
 
 - solid or non-solid collision;
@@ -46,7 +46,7 @@ mapping, and a placement. No runtime class or controller branch is required.
 
 ## Authority, replay, and fact identity rules
 
-`PropRuntimeV1` owns the health and switch state of exactly one placement. Two placements using
+`PropLive` owns the health and switch state of exactly one placement. Two placements using
 one definition therefore have separate state and snapshot fingerprints.
 
 Damage and interaction commands use stable root operation IDs:
@@ -74,13 +74,13 @@ downstream consumers.
 
 The definition records neutral/hostile alignment and an open damage-policy ID. The runtime does
 not decide friendly-fire semantics. Every combat-capable prop requires an injected
-`IPropDamageEligibilityPolicyV1`, which receives source participant/faction, target participant,
+`IPropDamageEligibilityPolicy`, which receives source participant/faction, target participant,
 alignment, policy ID, and damage channel before health can change.
 
 ## Focused test command
 
 ```text
-Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Props.PropRuntimeV1Tests -testResults Temp/prop-runtime-001-editmode.xml -logFile Temp/prop-runtime-001-editmode.log
+Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Props.PropLiveTests -testResults Temp/prop-runtime-001-editmode.xml -logFile Temp/prop-runtime-001-editmode.log
 ```
 
 The focused suite covers decorative props, independent placement health, lost-response replay

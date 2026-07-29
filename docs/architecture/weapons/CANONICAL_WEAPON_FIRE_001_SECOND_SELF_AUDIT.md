@@ -27,9 +27,9 @@ The initial visual renderer was attached to the projectile root and scaled throu
 
 ### Participant and inner-effect identity preservation
 
-`CanonicalProjectileSourceIdentity2D` now projects `RunParticipantId` as well as actor, lifecycle, mount, equipment instance and definition.
+`ProjectileSourceIdentity2D` now projects `RunParticipantId` as well as actor, lifecycle, mount, equipment instance and definition.
 
-The sink validates that the inner `CanonicalProjectileLaunchEffect.Identity` exactly matches the outer `InventoryWeaponEffectBatch.Identity`. The current five-argument controller binding remains source-compatible; the participant is latched from the first scheduler-authorized canonical batch and enforced for all later batches. A conflicting participant cannot rebind an already-created projectile identity projection.
+The sink validates that the inner `ProjectileLaunchEffect.Identity` exactly matches the outer `InventoryWeaponEffectBatch.Identity`. The current five-argument controller binding remains source-compatible; the participant is latched from the first scheduler-authorized canonical batch and enforced for all later batches. A conflicting participant cannot rebind an already-created projectile identity projection.
 
 ## Confirmed integration blocker
 
@@ -59,10 +59,10 @@ The current slice has no authoritative player-defeat callback. Disable/destructi
 
 ### Two inherited fatal-exception catches remain on the activated path
 
-- `AcceptedEmissionRuntimeAdapter.AdaptCanonicalProjectile` converts a broad exception during canonical launch construction into an ordinary invalid-launch rejection.
-- `InventoryWeaponRuntimeComposition.DrainDueLocked` converts a broad exception during delivered-receipt commit into an ordinary retryable failure.
+- `AcceptedEmissionLiveBridge.AdaptCanonicalProjectile` converts a broad exception during canonical launch construction into an ordinary invalid-launch rejection.
+- `InventoryWeaponLiveSetup.DrainDueLocked` converts a broad exception during delivered-receipt commit into an ordinary retryable failure.
 
-The earlier self-audit repaired the three broad catches in `InventoryBackedWeaponExecutionAdapter`; these two deeper shared boundaries still need the same fatal-exception policy before the PR can claim complete propagation.
+The earlier self-audit repaired the three broad catches in `InventoryBackedWeaponExecutionBridge`; these two deeper shared boundaries still need the same fatal-exception policy before the PR can claim complete propagation.
 
 ### Redundant same-tick drain
 

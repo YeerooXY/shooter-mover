@@ -78,7 +78,7 @@ namespace ShooterMover.Tests.EditMode.Weapons.Catalog
             Assert.That(reverse.Catalog.Fingerprint, Is.EqualTo(forward.Catalog.Fingerprint));
             Assert.That(reverse.Catalog.Definitions[0].DefinitionId, Is.EqualTo("family_000.mk1"));
             Assert.That(reverse.Catalog.Definitions[14].DefinitionId, Is.EqualTo("family_004.mk3"));
-            Assert.That(WeaponCatalogCanonicalJson.Export(reverse.Catalog), Is.EqualTo(WeaponCatalogCanonicalJson.Export(forward.Catalog)));
+            Assert.That(WeaponCatalogJson.Export(reverse.Catalog), Is.EqualTo(WeaponCatalogJson.Export(forward.Catalog)));
         }
 
         [Test]
@@ -86,11 +86,11 @@ namespace ShooterMover.Tests.EditMode.Weapons.Catalog
         {
             WeaponCatalogImportResult original = WeaponCatalogJsonImporter.Import(BuildCatalogJson(3, 3, true, 1, 8, false, false));
             Assert.That(original.IsSuccess, Is.True, JoinIssues(original));
-            string firstExport = WeaponCatalogCanonicalJson.Export(original.Catalog);
+            string firstExport = WeaponCatalogJson.Export(original.Catalog);
             WeaponCatalogImportResult roundTrip = WeaponCatalogJsonImporter.Import(firstExport);
             Assert.That(roundTrip.IsSuccess, Is.True, JoinIssues(roundTrip));
             Assert.That(roundTrip.Catalog.Fingerprint, Is.EqualTo(original.Catalog.Fingerprint));
-            Assert.That(WeaponCatalogCanonicalJson.Export(roundTrip.Catalog), Is.EqualTo(firstExport));
+            Assert.That(WeaponCatalogJson.Export(roundTrip.Catalog), Is.EqualTo(firstExport));
         }
 
         [Test]

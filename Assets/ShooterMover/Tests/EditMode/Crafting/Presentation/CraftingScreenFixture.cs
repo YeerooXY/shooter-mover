@@ -12,20 +12,20 @@ namespace ShooterMover.Tests.EditMode.Crafting.Presentation
 {
     internal sealed class CraftingScreenFixture
     {
-        private CraftingScreenFixture(PlayerRouteProfilePayloadV1 route, ProgressionContext progression, FakeCraftingAuthority authority)
+        private CraftingScreenFixture(PlayerRouteProfilePayload route, ProgressionContext progression, FakeCraftingState authority)
         {
             Route = route;
             Progression = progression;
             Authority = authority;
         }
 
-        public PlayerRouteProfilePayloadV1 Route { get; }
+        public PlayerRouteProfilePayload Route { get; }
         public ProgressionContext Progression { get; }
-        public FakeCraftingAuthority Authority { get; }
+        public FakeCraftingState Authority { get; }
 
-        public CraftingScreenServiceV1 Service()
+        public CraftingScreenActions Service()
         {
-            return new CraftingScreenServiceV1(Route, Progression, 991827UL,
+            return new CraftingScreenActions(Route, Progression, 991827UL,
                 StableId.Parse("crafting-screen.session-1"), StableId.Parse("run.test-1"),
                 StableId.Parse("claimant.player-1"), Authority);
         }
@@ -40,30 +40,30 @@ namespace ShooterMover.Tests.EditMode.Crafting.Presentation
             EquipmentCatalogBuildResult equipment = EquipmentCatalog.Build(new[] { weapon }, Array.Empty<AugmentDefinition>());
             Assert.That(equipment.IsValid, Is.True);
 
-            CraftingRecipeV1 available = Recipe("recipe.available", 2, 3, 25);
-            CraftingRecipeV1[] recipes = includeLocked
+            CraftingRecipe available = Recipe("recipe.available", 2, 3, 25);
+            CraftingRecipe[] recipes = includeLocked
                 ? new[] { available, Recipe("recipe.locked", 8, 3, 25) }
                 : new[] { available };
-            FakeCraftingAuthority authority = new FakeCraftingAuthority(
-                scrap, new CraftingRecipeCatalogV1(recipes), equipment.Catalog);
+            FakeCraftingState authority = new FakeCraftingState(
+                scrap, new CraftingRecipeCatalog(recipes), equipment.Catalog);
             ProgressionContext progression = ProgressionContext.Create(
                 level, level, StableId.Parse("difficulty.test"), 1);
-            PlayerRouteProfilePayloadV1 route = PlayerRouteProfilePayloadV1.Create(
+            PlayerRouteProfilePayload route = PlayerRouteProfilePayload.Create(
                 StableId.Parse("character.test"), StableId.Parse("loadout.test"),
                 new[] { StableId.Parse("equipment.route-1"), StableId.Parse("equipment.route-2"),
                     StableId.Parse("equipment.route-3"), StableId.Parse("equipment.route-4") });
             return new CraftingScreenFixture(route, progression, authority);
         }
 
-        private static CraftingRecipeV1 Recipe(string id, int natural, int delay, long cost)
+        private static CraftingRecipe Recipe(string id, int natural, int delay, long cost)
         {
-            return new CraftingRecipeV1(
+            return new CraftingRecipe(
                 1, StableId.Parse(id), StableId.Parse("weapon.shared"), StableId.Parse("discovery.test-source"),
-                natural, natural, delay, new CraftingDelayVarianceV1(0, 0), cost,
-                CraftingQualityPolicyKindV1.Fixed,
-                new[] { new CraftingWeightedDefinitionV1(StableId.Parse("quality.standard"), 1UL) },
-                1, 20, 0, 0, 1, 1, Array.Empty<CraftingWeightedDefinitionV1>(),
-                new CraftingGeneratorPolicyV1(StableId.Parse("crafting-policy.test"), 1,
+                natural, natural, delay, new CraftingDelayVariance(0, 0), cost,
+                CraftingQualityPolicyKind.Fixed,
+                new[] { new CraftingWeightedDefinition(StableId.Parse("quality.standard"), 1UL) },
+                1, 20, 0, 0, 1, 1, Array.Empty<CraftingWeightedDefinition>(),
+                new CraftingGeneratorPolicy(StableId.Parse("crafting-policy.test"), 1,
                     new SoftActivationCurveParameters(0.1, 2, 2),
                     new ObsolescenceCurveParameters(2, 4.0, 0.1)));
         }

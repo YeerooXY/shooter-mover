@@ -36,7 +36,7 @@ Profiles use the shared REW-001 reward vocabulary and support:
 - money, scrap, strongbox, premium-ammunition, and miscellaneous grants;
 - any mixed combination of the above.
 
-Sampling is not implemented here. `RewardGenerationServiceV1` remains the sole
+Sampling is not implemented here. `RewardGenerationActions` remains the sole
 deterministic generator.
 
 ## Manual override semantics
@@ -49,7 +49,7 @@ Each placed source has exactly one explicit mode:
 - **Append guaranteed reward**: retain the profile and append one guaranteed
   grant.
 
-Overrides resolve through the existing immutable `RewardSourceOverrideV1`
+Overrides resolve through the existing immutable `RewardSourceOverride`
 model. They do not perform generation or application.
 
 ## Identity and replay safety
@@ -65,14 +65,14 @@ Names, tags, hierarchy positions, Unity instance IDs, frame numbers, and callbac
 counts do not participate.
 
 Repeated terminal callbacks submit the exact same
-`RewardOperationRequestV1`. Existing sinks classify that as
+`RewardOperationRequest`. Existing sinks classify that as
 `ExactDuplicateNoChange`; PICK reuses the same projection and RAP retains the
 exactly-once commitment and claim lifecycle. A reused source-operation identity
 with a different profile fingerprint is rejected as a conflicting duplicate.
 
 ## Host integration
 
-`IGameplayDropSourceV1` is host-agnostic. Destructible props, turrets, mobile
+`IGameplayDropSource` is host-agnostic. Destructible props, turrets, mobile
 droids, pursuers, ram units, bosses, and future objects attach or reference the
 same component and interface. DROP contains no checks for concrete gameplay
 types.

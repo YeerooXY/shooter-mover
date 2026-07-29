@@ -19,14 +19,14 @@ Exact-resolution failure must create no fallback weapon, controller-owned substi
 
 | Concept | Authoritative owner |
 |---|---|
-| selected character | `ProductionCharacterRuntimeGraphV1` / existing production account composition |
-| weapon ownership | `ProductionWeaponHoldingsAuthorityV2` via `WeaponEquipmentInstance.InstanceId` |
-| equipped mount state | `ProductionWeaponMountLoadoutAuthorityV2` via `MountId -> InstanceId` |
-| weapon definition and mechanics | `ProductionWeaponCatalogueV1` canonical `WeaponBlueprint` |
-| compatibility equipment projection | `CanonicalWeaponEquipmentProjectionLookupV2`, read-only over canonical holdings |
+| selected character | `CharacterLiveGraph` / existing production account composition |
+| weapon ownership | `WeaponHoldingsState` via `WeaponEquipmentInstance.InstanceId` |
+| equipped mount state | `WeaponMountLoadoutState` via `MountId -> InstanceId` |
+| weapon definition and mechanics | `WeaponCatalogue` canonical `WeaponBlueprint` |
+| compatibility equipment projection | `WeaponEquipmentViewLookup`, read-only over canonical holdings |
 | effective weapon derivation | `EffectiveWeaponFactory` |
 | cadence, trigger edges, cooldown and burst scheduling | `WeaponFiringScheduler` |
-| pending launch delivery | `InventoryWeaponRuntimeComposition` |
+| pending launch delivery | `InventoryWeaponLiveSetup` |
 | accepted presentation receipts | scene-local canonical projectile effect sink |
 | projectile movement/contact lifecycle | scene-local canonical projectile component using canonical projectile domain state |
 | enemy health, death and terminal state | existing `RoomEnemyActor2D` canonical enemy runtime |
@@ -36,33 +36,33 @@ Compatibility `WeaponCatalog`, generic reward receipts, route-slot projections a
 
 ## Expected files and responsibilities
 
-- `InventoryBackedWeaponExecutionAdapter.cs`
+- `InventoryBackedWeaponExecutionBridge.cs`
   - preserve fatal exception propagation through effective resolution, scheduling and sink delivery;
   - retain ordinary rejection/retry containment unchanged.
 - `InventoryWeaponEffectiveResolver.cs`
   - add an explicit canonical-blueprint resolver seam;
   - use the canonical blueprint directly for production composition;
   - retain the flat-catalogue mapping path only for compatibility callers.
-- `ProductionCanonicalWeaponFireControllerV1.cs`
+- `WeaponFireController.cs`
   - bounded scene/player composition;
   - exact source, character, mount, instance and definition validation;
-  - resolve execution equipment through `CanonicalWeaponEquipmentProjectionLookupV2`, never the generic receipt ledger;
+  - resolve execution equipment through `WeaponEquipmentViewLookup`, never the generic receipt ledger;
   - revalidate current graph, ownership, mount and live projection before every firing tick;
   - mouse aim and held/released input;
   - simulation-tick advancement into the retained runtime;
   - rollback and lifecycle cleanup.
-- `ProductionCanonicalProjectileEffectSink2D.cs`
+- `ProjectileEffectSink2D.cs`
   - bind once to exact actor/lifecycle/mount/equipment/definition identity;
   - reject mismatched batches;
   - retain replay-safe accepted-batch receipts keyed by full canonical effect identity;
   - stage one supported canonical Normal launch per accepted batch;
   - attach a read-only exact source-identity projection to each projectile object.
-- `ProductionCanonicalNormalProjectile2D.cs`
+- `NormalProjectile2D.cs`
   - explicit player-hierarchy collider suppression;
   - canonical movement, contact and effect resolution;
   - exact retryable enemy damage command delivery;
   - retirement of uncommitted scene presentation.
-- `CanonicalWeaponProjectileSourceIdentityTests.cs`
+- `WeaponProjectileSourceIdentityTests.cs`
   - prove a fresh V2 starter is absent from the generic receipt ledger but resolves through canonical holdings into the exact canonical blueprint and `EffectiveWeapon`;
   - narrow exact-replay/conflicting-mount identity guard;
   - fail-closed unbound sink guard.
@@ -127,7 +127,7 @@ No identity may be derived from display name, hierarchy position, route slot ind
 
 ### Enemy impact
 
-- Before commit: canonical contact resolution and effect emission produce one enemy-impact damage emission; construct one exact `EnemyRuntimeDamageCommandV1` and capture one occurrence timestamp.
+- Before commit: canonical contact resolution and effect emission produce one enemy-impact damage emission; construct one exact `EnemyLiveDamageCommand` and capture one occurrence timestamp.
 - Commit point: the projectile marks impact committed, disables further travel/contact and stores the exact command and timestamp.
 - Retryable failure: retain the same command object and timestamp and retry from `FixedUpdate`.
 - Accepted or exact replay: continue or terminate according to canonical projectile lifecycle state.
@@ -177,9 +177,9 @@ No identity may be derived from display name, hierarchy position, route slot ind
 
 ### Blocker repaired: wrong equipment lookup
 
-The initially published controller passed `graph.LoadoutRuntime.Holdings` into the retained adapter. That overload resolves equipment from the generic reward-receipt ledger. Fresh V2 starter weapons are intentionally created only in `ProductionWeaponHoldingsAuthorityV2`, so the player could bind an exact Rattler yet fail the first actual firing request as unresolved equipment.
+The initially published controller passed `graph.LoadoutRuntime.Holdings` into the retained adapter. That overload resolves equipment from the generic reward-receipt ledger. Fresh V2 starter weapons are intentionally created only in `WeaponHoldingsState`, so the player could bind an exact Rattler yet fail the first actual firing request as unresolved equipment.
 
-The controller now supplies `CanonicalWeaponEquipmentProjectionLookupV2`, keyed by the exact canonical instance. The generic receipt ledger is used only as immutable augment payload support where applicable. Focused test coverage encodes the fresh-starter boundary explicitly.
+The controller now supplies `WeaponEquipmentViewLookup`, keyed by the exact canonical instance. The generic receipt ledger is used only as immutable augment payload support where applicable. Focused test coverage encodes the fresh-starter boundary explicitly.
 
 ### Authority repair: cached scene state
 
@@ -191,7 +191,7 @@ The initially published composition could leave a source-bound retired sink afte
 
 ### Exception-policy repair
 
-Three inherited broad catches in `InventoryBackedWeaponExecutionAdapter` swallowed fatal runtime exceptions. The exact previously reviewed three-boundary patch is applied: fatal exceptions propagate, while ordinary resolver, scheduler and sink failures retain their existing rejection/retry behavior.
+Three inherited broad catches in `InventoryBackedWeaponExecutionBridge` swallowed fatal runtime exceptions. The exact previously reviewed three-boundary patch is applied: fatal exceptions propagate, while ordinary resolver, scheduler and sink failures retain their existing rejection/retry behavior.
 
 ### Investigated and dismissed: sink receipt capacity
 
@@ -201,7 +201,7 @@ A suspected mismatch between scheduler replay-record capacity and sink batch rec
 
 1. Open the project in Unity and allow import/compilation to finish.
 2. Confirm the Console has no missing-script, missing-assembly or compilation errors.
-3. Run `CanonicalWeaponProjectileSourceIdentityTests` in EditMode.
+3. Run `WeaponProjectileSourceIdentityTests` in EditMode.
 4. Start from the production menu flow.
 5. Select a real persisted character whose first active physical mount owns an exact canonical Rattler instance.
 6. Enter the authored production combat room through the existing level-selection route.

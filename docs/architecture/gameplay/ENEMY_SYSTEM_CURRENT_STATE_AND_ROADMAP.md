@@ -48,7 +48,7 @@ room JSON object ID
     -> room object catalogue
     -> enemy definition ID + presentation ID
     -> authored placement ID
-    -> EnemyPlacementRuntimeFactoryV1
+    -> EnemyPlacementLiveFactory
     -> generated run-local enemy actor ID
     -> RoomEnemyActor2D on the room-owned GameObject
     -> canonical damage/death transition
@@ -104,7 +104,7 @@ This is sufficient for structural binding tests, but not for visually proving:
 
 ### Dual enemy-terminal routes
 
-`RoomPresentationScene2D` still adds the older `EnemyActorTerminalFactSource2D` and `RoomOccupantTerminalRelay2D` to enemy presentations. That route polls an `IEnemyActor2DAuthority` and reports room terminal state.
+`RoomPresentationScene2D` still adds the older `EnemyActorTerminalFactSource2D` and `RoomOccupantTerminalRelay2D` to enemy presentations. That route polls an `IEnemyActor2DState` and reports room terminal state.
 
 The factory-backed `RoomEnemyActor2D` reports canonical death through a typed room terminal port. While bound, it disables the legacy relay and restores the old enabled state on unbind.
 
@@ -271,10 +271,10 @@ The roadmap therefore separates architecture findings from runtime proof. Future
 ## Primary inspected sources
 
 - `Assets/ShooterMover/Resources/EnemyCatalog/enemy_catalog_v2.json`
-- `Assets/ShooterMover/Content/Definitions/Enemies/BuiltInEnemyCatalogRegistryV1.cs`
-- `Assets/ShooterMover/Runtime/Application/Enemies/Catalog/EnemyCatalogJsonImporterV1.cs`
+- `Assets/ShooterMover/Content/Definitions/Enemies/BuiltInEnemyCatalogRegistry.cs`
+- `Assets/ShooterMover/Runtime/Application/Enemies/Catalog/EnemyCatalogJsonImporter.cs`
 - `Assets/ShooterMover/Runtime/EnemyRuntimeComposition/`
-- `Assets/ShooterMover/Content/Definitions/Missions/Rooms/BuiltInRoomContentObjectCatalogV1.cs`
+- `Assets/ShooterMover/Content/Definitions/Missions/Rooms/BuiltInRoomContentObjectCatalog.cs`
 - `Assets/ShooterMover/Runtime/UnityAdapters/Missions/Rooms/RoomEnemyActor2D.cs`
 - `Assets/ShooterMover/Runtime/UnityAdapters/Missions/Rooms/RoomEnemySpawner2D.cs`
 - `Assets/ShooterMover/Runtime/UnityAdapters/Missions/Rooms/RoomPresentationScene2D.cs`

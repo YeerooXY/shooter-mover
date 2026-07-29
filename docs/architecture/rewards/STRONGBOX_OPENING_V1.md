@@ -4,7 +4,7 @@ Status: BOX-001 runtime baseline, corrected SAS4-style equipment-roll model
 
 ## Authority boundaries
 
-`StrongboxOpeningServiceV1` owns strongbox registration context, opening identity, the frozen generated outcome, retry stage, terminal opening fact, and its deterministic snapshot. It does not own balances, equipment definitions, equipment validation, or player inventory.
+`StrongboxOpeningActions` owns strongbox registration context, opening identity, the frozen generated outcome, retry stage, terminal opening fact, and its deterministic snapshot. It does not own balances, equipment definitions, equipment validation, or player inventory.
 
 - GEN-001 resolves the reward profile and performs each concrete equipment roll.
 - RAP-001 owns the immutable reward commitment, claim, child transactions, and roll-forward application.
@@ -15,27 +15,27 @@ No scene, prefab, pickup, UI, or Unity object owns opening truth.
 
 ## Data-driven definitions
 
-A `StrongboxDefinitionV1` is identified by a stable tier ID and contains the reward-profile and transaction-facing data:
+A `StrongboxDefinition` is identified by a stable tier ID and contains the reward-profile and transaction-facing data:
 
 - display order;
 - reward-profile scaling values;
 - minimum and maximum generated grant count;
 - a strictly positive mandatory-scrap quantity range and scrap currency identity;
 - a compatible equipment-generation-policy reference;
-- a base `RewardProfileV1` consumed by GEN-001.
+- a base `RewardProfile` consumed by GEN-001.
 
-Equipment generation for a tier is bound separately through `StrongboxEquipmentGenerationDefinitionV1`. The binding contains:
+Equipment generation for a tier is bound separately through `StrongboxEquipmentGenerationDefinition`. The binding contains:
 
 - the same strongbox tier ID;
-- one `StrongboxPowerBudgetPolicyV1`;
-- one accepted shared `EquipmentGenerationPolicyV1`;
+- one `StrongboxPowerBudgetPolicy`;
+- one accepted shared `EquipmentGenerationPolicy`;
 - the accepted EQP equipment catalog.
 
-`StrongboxEquipmentGenerationDefinitionCatalogV1` is enum-free, rejects duplicate tier identities, uses canonical tier ordering, and has a stable fingerprint. The final production tier count and balance values remain content decisions.
+`StrongboxEquipmentGenerationDefinitionCatalog` is enum-free, rejects duplicate tier identities, uses canonical tier ordering, and has a stable fingerprint. The final production tier count and balance values remain content decisions.
 
 ## Owned instance context
 
-Every registered `StrongboxInstanceContextV1` retains immutable opening inputs:
+Every registered `StrongboxInstanceContext` retains immutable opening inputs:
 
 - strongbox instance ID;
 - tier/definition ID;
@@ -54,7 +54,7 @@ Mandatory scrap is intentionally additional to the SAS4-style equipment result. 
 
 Consequences:
 
-1. Scrap is included in the immutable `RewardResultV1`.
+1. Scrap is included in the immutable `RewardResult`.
 2. The same box seed and context reproduce the same scrap quantity.
 3. RAP applies scrap through the real SCR adapter together with the other frozen rewards.
 4. A generated result without positive scrap is rejected before commitment.
@@ -72,7 +72,7 @@ slot 1 -> weapon.ak47 / equipment-instance.a2
 
 The definition may repeat. The immutable equipment instance identity may not.
 
-For each equipment slot, `StrongboxEquipmentGenerationResolverV1` performs the following order:
+For each equipment slot, `StrongboxEquipmentGenerationResolver` performs the following order:
 
 1. calculate the box-adjusted mean item level;
 2. roll a target item level on a bounded bell-shaped distribution;
@@ -97,7 +97,7 @@ minimumItemLevel = max(1, meanItemLevel - 12)
 maximumItemLevel = meanItemLevel + 12
 ```
 
-`StrongboxPowerBudgetPolicyV1` uses a deterministic, fixed-point bell-curve approximation built from twelve centered uniform samples. The authored item-level standard deviation controls concentration around the mean, and the result is always clamped to the V1 `+/- 12` range.
+`StrongboxPowerBudgetPolicy` uses a deterministic, fixed-point bell-curve approximation built from twelve centered uniform samples. The authored item-level standard deviation controls concentration around the mean, and the result is always clamped to the V1 `+/- 12` range.
 
 The roll uses the named RNG substream `strongbox-rng.item-level-v1` and the equipment-slot ordinal. Adding or changing the scrap roll does not shift equipment-level results.
 
@@ -180,11 +180,11 @@ A second opening identity for the same physical box is rejected once the first o
 
 ## Reward payloads and equipment
 
-`DeterministicStrongboxGrantPayloadResolverV1` maps money, scrap, stackable holdings, generated strongboxes, and equipment into RAP payloads. `StrongboxEquipmentGenerationResolverV1` is the concrete BOX-to-GEN equipment implementation. RAP and INV retain the exact immutable generated instances; BOX does not mutate their stats afterward.
+`DeterministicStrongboxGrantPayloadResolver` maps money, scrap, stackable holdings, generated strongboxes, and equipment into RAP payloads. `StrongboxEquipmentGenerationResolver` is the concrete BOX-to-GEN equipment implementation. RAP and INV retain the exact immutable generated instances; BOX does not mutate their stats afterward.
 
 ## Snapshot and replay
 
-`StrongboxOpeningSnapshotV1` retains the registered box context, opening command and stage, frozen reward result and reward-generation trace, resolved immutable payloads, RAP commands, INV consumption command, terminal opening fact, and a canonical snapshot fingerprint.
+`StrongboxOpeningSnapshot` retains the registered box context, opening command and stage, frozen reward result and reward-generation trace, resolved immutable payloads, RAP commands, INV consumption command, terminal opening fact, and a canonical snapshot fingerprint.
 
 The resolved equipment instances are frozen inside the payload before RAP. Restoring and retrying an opening therefore cannot reroll its weapon definition, item level, quality, augment slots, augments, or instance identities.
 

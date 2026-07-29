@@ -11,7 +11,7 @@
 - Inventory exposes only the selected character's physical mounts.
 - One equipment instance cannot occupy two mounts simultaneously.
 - Different owned instances may resolve to the same authored weapon definition.
-- Confirm applies the bindings through `ProductionInventoryLoadoutAuthorityV1` and returns the exact route projection to Hub.
+- Confirm applies the bindings through `InventoryLoadoutState` and returns the exact route projection to Hub.
 - Level 1 adopts the selected character holdings/loadout authorities rather than rebuilding them.
 - One fire input executes every enabled mount. Each mount retains its own cooldown, replay state, deterministic seed, exact equipment ID, and muzzle origin.
 - Number keys do not select a weapon in the production mounted path.

@@ -20,9 +20,9 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
     {
         public RewardSourceResolvedPreview(
             RewardSourceOverrideAuthoringMode mode,
-            RewardProfileV1 inheritedProfile,
-            RewardProfileV1 resolvedProfile,
-            RewardOperationRequestV1 operationRequest,
+            RewardProfile inheritedProfile,
+            RewardProfile resolvedProfile,
+            RewardOperationRequest operationRequest,
             StableId restartParticipantId,
             string fingerprint)
         {
@@ -40,11 +40,11 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
 
         public RewardSourceOverrideAuthoringMode Mode { get; }
 
-        public RewardProfileV1 InheritedProfile { get; }
+        public RewardProfile InheritedProfile { get; }
 
-        public RewardProfileV1 ResolvedProfile { get; }
+        public RewardProfile ResolvedProfile { get; }
 
-        public RewardOperationRequestV1 OperationRequest { get; }
+        public RewardOperationRequest OperationRequest { get; }
 
         public StableId RestartParticipantId { get; }
 

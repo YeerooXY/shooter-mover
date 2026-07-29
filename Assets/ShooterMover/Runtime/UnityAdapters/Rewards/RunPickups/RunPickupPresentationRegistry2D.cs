@@ -9,9 +9,9 @@ using UnityEngine;
 namespace ShooterMover.UnityAdapters.Rewards.RunPickups
 {
     [Serializable]
-    public sealed class RunPickupPresentationEntryV1
+    public sealed class RunPickupPresentationEntry
     {
-        [SerializeField] private RewardGrantKindV1 rewardKind = RewardGrantKindV1.Money;
+        [SerializeField] private RewardGrantKind rewardKind = RewardGrantKind.Money;
         [SerializeField] private string contentStableId;
         [SerializeField] private GameObject prefab;
         [SerializeField] private Sprite sprite;
@@ -19,7 +19,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
         [SerializeField, Min(0.01f)] private float triggerRadius = 0.75f;
         [SerializeField] private string label;
 
-        public RewardGrantKindV1 RewardKind { get { return rewardKind; } }
+        public RewardGrantKind RewardKind { get { return rewardKind; } }
         public GameObject Prefab { get { return prefab; } }
         public Sprite Sprite { get { return sprite; } }
         public Vector3 LocalScale { get { return localScale; } }
@@ -34,7 +34,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
                 && StableId.TryParse(contentStableId.Trim(), out value);
         }
 
-        public bool Matches(RunPickupSnapshotV1 pickup, bool exactContent)
+        public bool Matches(RunPickupSnapshot pickup, bool exactContent)
         {
             if (pickup == null || pickup.Reward.Kind != rewardKind)
                 return false;
@@ -47,7 +47,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
 
         public bool IsUsable(out string diagnostic)
         {
-            if (!Enum.IsDefined(typeof(RewardGrantKindV1), rewardKind))
+            if (!Enum.IsDefined(typeof(RewardGrantKind), rewardKind))
             {
                 diagnostic = "run-pickup-presentation-kind-invalid";
                 return false;
@@ -78,7 +78,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
         }
 
         public void Configure(
-            RewardGrantKindV1 kind,
+            RewardGrantKind kind,
             StableId contentId,
             GameObject prefab,
             Sprite sprite,
@@ -100,7 +100,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
         }
 
         public void ConfigureForTests(
-            RewardGrantKindV1 kind,
+            RewardGrantKind kind,
             string contentId,
             GameObject prefab,
             Sprite sprite,
@@ -125,12 +125,12 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
     [DisallowMultipleComponent]
     public sealed class RunPickupPresentationRegistry2D : MonoBehaviour
     {
-        [SerializeField] private RunPickupPresentationEntryV1[] entries =
-            new RunPickupPresentationEntryV1[0];
+        [SerializeField] private RunPickupPresentationEntry[] entries =
+            new RunPickupPresentationEntry[0];
 
         public bool TryResolve(
-            RunPickupSnapshotV1 pickup,
-            out RunPickupPresentationEntryV1 entry,
+            RunPickupSnapshot pickup,
+            out RunPickupPresentationEntry entry,
             out string diagnostic)
         {
             entry = null;
@@ -141,10 +141,10 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
                 return false;
             }
 
-            RunPickupPresentationEntryV1 fallback = null;
+            RunPickupPresentationEntry fallback = null;
             for (int index = 0; index < entries.Length; index++)
             {
-                RunPickupPresentationEntryV1 candidate = entries[index];
+                RunPickupPresentationEntry candidate = entries[index];
                 if (candidate == null) continue;
                 if (candidate.Matches(pickup, true))
                 {
@@ -170,15 +170,15 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
         }
 
         public void Configure(
-            IEnumerable<RunPickupPresentationEntryV1> configuredEntries)
+            IEnumerable<RunPickupPresentationEntry> configuredEntries)
         {
             entries = configuredEntries == null
-                ? new RunPickupPresentationEntryV1[0]
-                : new List<RunPickupPresentationEntryV1>(configuredEntries).ToArray();
+                ? new RunPickupPresentationEntry[0]
+                : new List<RunPickupPresentationEntry>(configuredEntries).ToArray();
         }
 
         public void ConfigureForTests(
-            IEnumerable<RunPickupPresentationEntryV1> configuredEntries)
+            IEnumerable<RunPickupPresentationEntry> configuredEntries)
         {
             Configure(configuredEntries);
         }

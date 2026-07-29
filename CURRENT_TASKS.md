@@ -109,7 +109,7 @@ These tasks touch central production composition and should not be assigned conc
 
 ### Task
 
-Connect the existing immutable subsystem snapshots to `PlayerAccountSnapshotV1` and `CharacterInstanceSnapshotV1` through typed, versioned save-component adapters.
+Connect the existing immutable subsystem snapshots to `PlayerAccountSnapshot` and `CharacterInstanceSnapshot` through typed, versioned save-component adapters.
 
 ### Requirements
 
@@ -180,9 +180,9 @@ Implement the engine-neutral service that deterministically derives character an
   - weapon/ability capacity;
   - reward/drop modifiers.
 - Compose sources in a documented deterministic order.
-- Reuse `RuntimeModifierSnapshotV1`; do not create a second modifier language.
+- Reuse `LiveModifierSnapshot`; do not create a second modifier language.
 - Distinguish permanent character inputs from run-only active conditions.
-- Produce an immutable `DerivedCharacterStatsSnapshotV1` and immutable `RunCombatProfileV1` with complete input fingerprints.
+- Produce an immutable `DerivedCharacterStatsSnapshot` and immutable `RunCombatProfile` with complete input fingerprints.
 - Clamp impossible values through explicit policies, not hidden ad hoc conditionals.
 - Class identity must be data-defined. Do not introduce healer/aggressive/juggernaut subclasses.
 - Derived values must be rebuildable after equipment, skill, level, event, or achievement changes.
@@ -367,7 +367,7 @@ Implement versioned special-event definitions and deterministic active-event pro
 
 - Define stable event IDs, schema/content versions, activation windows, priority, compatibility/exclusion rules, and modifier descriptors.
 - Active event selection must consume an injected authoritative clock/time-window port; domain code must not call local system time directly.
-- Project active events into one immutable `ActiveEventModifierSnapshotV1`.
+- Project active events into one immutable `ActiveEventModifierSnapshot`.
 - Support at least reward strongbox weight, money quantity, XP quantity, and future open target IDs through the merged modifier language.
 - Reward/drop/opening commands must be able to record the exact event snapshot fingerprint applied.
 - Once an opening or mission result is frozen, later event changes must not alter that result.
@@ -436,7 +436,7 @@ Replace fresh starter-runtime reconstruction with authoritative composition from
 
 ### Requirements
 
-- Selecting a slot loads the exact `CharacterInstanceSnapshotV1` and reconstructs its existing authorities through save adapters.
+- Selecting a slot loads the exact `CharacterInstanceSnapshot` and reconstructs its existing authorities through save adapters.
 - Keep all six character slots isolated.
 - Persist confirmed mutations from inventory/loadout, skills, crafting, shops, strongbox opening, XP, and wallets through an explicit save coordinator.
 - Switching characters disposes/unbinds the previous runtime graph before activating the next.
@@ -586,7 +586,7 @@ Wire accepted gameplay facts into generic condition activation and temporary mod
 ### Requirements
 
 - Convert accepted enemy death facts into stable `enemy-killed` observed facts for the correct participant.
-- Feed facts exactly once into `FactWindowConditionAuthorityV1`.
+- Feed facts exactly once into `FactWindowConditionState`.
 - Resolve active condition IDs into status-effect applications and modifier projections.
 - Include at least one data-defined killing-spree fixture: configurable kill count, window, active duration, and damage modifier.
 - Do not create `KillingSpreeController`, enemy-type branches, or polling over kill counters.

@@ -18,15 +18,15 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         [Test]
         public void Projection_DisplaysXpTotalsAndAllDefinitionFields()
         {
-            PlayerExperienceAuthorityV1 experience = CreateExperience(7);
-            var skills = new SkillProgressionAuthorityV1(
-                SkillCatalogV1.CreateDefault(),
+            PlayerExperienceState experience = CreateExperience(7);
+            var skills = new SkillProgressionState(
+                SkillCatalog.CreateDefault(),
                 1);
-            PlayerRouteProfilePayloadV1 route = CreateRoute();
-            var session = new SkillsScreenSessionV1(route, experience, skills);
+            PlayerRouteProfilePayload route = CreateRoute();
+            var session = new SkillsScreenSession(route, experience, skills);
 
-            SkillsScreenProjectionV1 projection = session.CurrentProjection;
-            SkillsScreenSkillProjectionV1 offenseOne;
+            SkillsScreenView projection = session.CurrentProjection;
+            SkillsScreenSkillView offenseOne;
 
             Assert.That(projection.RoutePayload, Is.SameAs(route));
             Assert.That(projection.PlayerLevel, Is.EqualTo(7));
@@ -41,59 +41,59 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
             Assert.That(offenseOne.PrerequisiteLabel, Is.EqualTo("None"));
             Assert.That(offenseOne.CurrentRank, Is.Zero);
             Assert.That(offenseOne.MaximumRank, Is.EqualTo(5));
-            Assert.That(offenseOne.State, Is.EqualTo(SkillsScreenSkillStateV1.Available));
+            Assert.That(offenseOne.State, Is.EqualTo(SkillsScreenSkillState.Available));
             Assert.That(offenseOne.CanAllocate, Is.True);
         }
 
         [Test]
         public void Allocation_UsesRealAuthorityAndDuplicateOperationDoesNotSpendTwice()
         {
-            PlayerExperienceAuthorityV1 experience = CreateExperience(4);
-            var skills = new SkillProgressionAuthorityV1(
-                SkillCatalogV1.CreateDefault(),
+            PlayerExperienceState experience = CreateExperience(4);
+            var skills = new SkillProgressionState(
+                SkillCatalog.CreateDefault(),
                 experience.CurrentState.Level);
-            var session = new SkillsScreenSessionV1(CreateRoute(), experience, skills);
+            var session = new SkillsScreenSession(CreateRoute(), experience, skills);
 
-            SkillsScreenAllocationResultV1 applied = session.Allocate(
+            SkillsScreenAllocationResult applied = session.Allocate(
                 "skill-operation.same",
                 "offense.1");
-            SkillsScreenAllocationResultV1 duplicate = session.Allocate(
+            SkillsScreenAllocationResult duplicate = session.Allocate(
                 "skill-operation.same",
                 "offense.1");
-            SkillsScreenSkillProjectionV1 projected;
+            SkillsScreenSkillView projected;
 
-            Assert.That(applied.MutationFact.Status, Is.EqualTo(SkillMutationStatusV1.Applied));
+            Assert.That(applied.MutationFact.Status, Is.EqualTo(SkillMutationStatus.Applied));
             Assert.That(duplicate.MutationFact.Status, Is.EqualTo(
-                SkillMutationStatusV1.DuplicateNoChange));
+                SkillMutationStatus.DuplicateNoChange));
             Assert.That(duplicate.Projection.SpentSkillPoints, Is.EqualTo(1));
             Assert.That(duplicate.Projection.AvailableSkillPoints, Is.EqualTo(3));
             Assert.That(duplicate.Projection.SkillAuthoritySequence, Is.EqualTo(1L));
             Assert.That(duplicate.Projection.TryGetSkill("offense.1", out projected), Is.True);
             Assert.That(projected.CurrentRank, Is.EqualTo(1));
-            Assert.That(projected.State, Is.EqualTo(SkillsScreenSkillStateV1.Purchased));
+            Assert.That(projected.State, Is.EqualTo(SkillsScreenSkillState.Purchased));
         }
 
         [Test]
         public void Projection_ReportsLockedAvailablePurchasedAndCappedStates()
         {
-            PlayerExperienceAuthorityV1 experience = CreateExperience(10);
-            var skills = new SkillProgressionAuthorityV1(
-                SkillCatalogV1.CreateDefault(),
+            PlayerExperienceState experience = CreateExperience(10);
+            var skills = new SkillProgressionState(
+                SkillCatalog.CreateDefault(),
                 experience.CurrentState.Level);
-            var session = new SkillsScreenSessionV1(CreateRoute(), experience, skills);
+            var session = new SkillsScreenSession(CreateRoute(), experience, skills);
 
-            SkillsScreenSkillProjectionV1 offenseOne;
-            SkillsScreenSkillProjectionV1 offenseTwo;
+            SkillsScreenSkillView offenseOne;
+            SkillsScreenSkillView offenseTwo;
             Assert.That(session.CurrentProjection.TryGetSkill("offense.1", out offenseOne), Is.True);
             Assert.That(session.CurrentProjection.TryGetSkill("offense.2", out offenseTwo), Is.True);
-            Assert.That(offenseOne.State, Is.EqualTo(SkillsScreenSkillStateV1.Available));
-            Assert.That(offenseTwo.State, Is.EqualTo(SkillsScreenSkillStateV1.Locked));
+            Assert.That(offenseOne.State, Is.EqualTo(SkillsScreenSkillState.Available));
+            Assert.That(offenseTwo.State, Is.EqualTo(SkillsScreenSkillState.Locked));
 
             session.Allocate("skill-operation.offense-1-rank-1", "offense.1");
             Assert.That(session.CurrentProjection.TryGetSkill("offense.1", out offenseOne), Is.True);
             Assert.That(session.CurrentProjection.TryGetSkill("offense.2", out offenseTwo), Is.True);
-            Assert.That(offenseOne.State, Is.EqualTo(SkillsScreenSkillStateV1.Purchased));
-            Assert.That(offenseTwo.State, Is.EqualTo(SkillsScreenSkillStateV1.Available));
+            Assert.That(offenseOne.State, Is.EqualTo(SkillsScreenSkillState.Purchased));
+            Assert.That(offenseTwo.State, Is.EqualTo(SkillsScreenSkillState.Available));
             Assert.That(offenseTwo.PrerequisiteSatisfied, Is.True);
 
             for (int rank = 2; rank <= 5; rank++)
@@ -102,7 +102,7 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
             }
 
             Assert.That(session.CurrentProjection.TryGetSkill("offense.1", out offenseOne), Is.True);
-            Assert.That(offenseOne.State, Is.EqualTo(SkillsScreenSkillStateV1.Capped));
+            Assert.That(offenseOne.State, Is.EqualTo(SkillsScreenSkillState.Capped));
             Assert.That(offenseOne.CanAllocate, Is.False);
             Assert.That(offenseOne.AllocationBlockCode, Is.EqualTo("skill-rank-capped"));
         }
@@ -110,17 +110,17 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         [Test]
         public void Allocation_ReportsMissingPrerequisite()
         {
-            var session = new SkillsScreenSessionV1(
+            var session = new SkillsScreenSession(
                 CreateRoute(),
                 CreateExperience(5),
-                new SkillProgressionAuthorityV1(SkillCatalogV1.CreateDefault(), 5));
+                new SkillProgressionState(SkillCatalog.CreateDefault(), 5));
 
-            SkillsScreenAllocationResultV1 result = session.Allocate(
+            SkillsScreenAllocationResult result = session.Allocate(
                 "skill-operation.missing-prerequisite",
                 "offense.2");
 
             Assert.That(result.MutationFact.Status, Is.EqualTo(
-                SkillMutationStatusV1.PrerequisiteMissing));
+                SkillMutationStatus.PrerequisiteMissing));
             Assert.That(result.MutationFact.RejectionCode, Is.EqualTo(
                 "skill-prerequisite-missing"));
             Assert.That(result.Projection.SpentSkillPoints, Is.Zero);
@@ -129,23 +129,23 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         [Test]
         public void Allocation_ReportsInsufficientPoints()
         {
-            PlayerExperienceAuthorityV1 experience = CreateExperience(1);
-            var session = new SkillsScreenSessionV1(
+            PlayerExperienceState experience = CreateExperience(1);
+            var session = new SkillsScreenSession(
                 CreateRoute(),
                 experience,
-                new SkillProgressionAuthorityV1(SkillCatalogV1.CreateDefault(), 1));
+                new SkillProgressionState(SkillCatalog.CreateDefault(), 1));
 
             session.Allocate("skill-operation.first-point", "defense.1");
-            SkillsScreenAllocationResultV1 result = session.Allocate(
+            SkillsScreenAllocationResult result = session.Allocate(
                 "skill-operation.no-points",
                 "offense.1");
-            SkillsScreenSkillProjectionV1 offenseOne;
+            SkillsScreenSkillView offenseOne;
 
             Assert.That(result.MutationFact.Status, Is.EqualTo(
-                SkillMutationStatusV1.InsufficientPoints));
+                SkillMutationStatus.InsufficientPoints));
             Assert.That(result.Projection.AvailableSkillPoints, Is.Zero);
             Assert.That(result.Projection.TryGetSkill("offense.1", out offenseOne), Is.True);
-            Assert.That(offenseOne.State, Is.EqualTo(SkillsScreenSkillStateV1.Available));
+            Assert.That(offenseOne.State, Is.EqualTo(SkillsScreenSkillState.Available));
             Assert.That(offenseOne.CanAllocate, Is.False);
             Assert.That(offenseOne.AllocationBlockCode, Is.EqualTo(
                 "skill-points-insufficient"));
@@ -154,23 +154,23 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         [Test]
         public void Allocation_ReportsMaxRankWithoutChangingSequence()
         {
-            PlayerExperienceAuthorityV1 experience = CreateExperience(10);
-            var session = new SkillsScreenSessionV1(
+            PlayerExperienceState experience = CreateExperience(10);
+            var session = new SkillsScreenSession(
                 CreateRoute(),
                 experience,
-                new SkillProgressionAuthorityV1(SkillCatalogV1.CreateDefault(), 10));
+                new SkillProgressionState(SkillCatalog.CreateDefault(), 10));
 
             for (int rank = 1; rank <= 5; rank++)
             {
                 session.Allocate("skill-operation.cap-" + rank, "utility.1");
             }
 
-            SkillsScreenAllocationResultV1 capped = session.Allocate(
+            SkillsScreenAllocationResult capped = session.Allocate(
                 "skill-operation.cap-rejected",
                 "utility.1");
 
             Assert.That(capped.MutationFact.Status, Is.EqualTo(
-                SkillMutationStatusV1.RankCapped));
+                SkillMutationStatus.RankCapped));
             Assert.That(capped.MutationFact.PreviousRank, Is.EqualTo(5));
             Assert.That(capped.MutationFact.CurrentRank, Is.EqualTo(5));
             Assert.That(capped.Projection.SkillAuthoritySequence, Is.EqualTo(5L));
@@ -179,16 +179,16 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
         [Test]
         public void BackAndRevisit_PreserveExactPayloadAndAuthorityState()
         {
-            PlayerExperienceAuthorityV1 experience = CreateExperience(3);
-            var skills = new SkillProgressionAuthorityV1(SkillCatalogV1.CreateDefault(), 3);
-            PlayerRouteProfilePayloadV1 route = CreateRoute();
+            PlayerExperienceState experience = CreateExperience(3);
+            var skills = new SkillProgressionState(SkillCatalog.CreateDefault(), 3);
+            PlayerRouteProfilePayload route = CreateRoute();
             string originalFingerprint = route.Fingerprint;
-            var firstVisit = new SkillsScreenSessionV1(route, experience, skills);
+            var firstVisit = new SkillsScreenSession(route, experience, skills);
 
             firstVisit.Allocate("skill-operation.visit-one", "mobility.1");
-            SkillsScreenBackResultV1 back = firstVisit.Back();
-            var revisit = new SkillsScreenSessionV1(route, experience, skills);
-            SkillsScreenSkillProjectionV1 mobilityOne;
+            SkillsScreenBackResult back = firstVisit.Back();
+            var revisit = new SkillsScreenSession(route, experience, skills);
+            SkillsScreenSkillView mobilityOne;
 
             Assert.That(back.RoutePayload, Is.SameAs(route));
             Assert.That(back.Projection.RoutePayload, Is.SameAs(route));
@@ -199,14 +199,14 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
             Assert.That(revisit.CurrentProjection.AvailableSkillPoints, Is.EqualTo(2));
         }
 
-        private static PlayerExperienceAuthorityV1 CreateExperience(int level)
+        private static PlayerExperienceState CreateExperience(int level)
         {
-            var curve = new PlayerExperienceCurveV1(
+            var curve = new PlayerExperienceCurve(
                 100L,
                 100L,
                 50,
                 new SoftActivationCurveParameters(0.1, 10L, 10L));
-            var authority = new PlayerExperienceAuthorityV1(
+            var authority = new PlayerExperienceState(
                 curve,
                 ProgressionContext.Create(
                     1,
@@ -216,7 +216,7 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
                     new List<StableId>()));
             if (level > 1)
             {
-                authority.Grant(new PlayerExperienceGrantRequestV1(
+                authority.Grant(new PlayerExperienceGrantRequest(
                     StableId.Parse("xp-source.skills-screen-level-" + level),
                     (level - 1L) * 100L));
             }
@@ -224,9 +224,9 @@ namespace ShooterMover.Tests.EditMode.Skills.Presentation
             return authority;
         }
 
-        private static PlayerRouteProfilePayloadV1 CreateRoute()
+        private static PlayerRouteProfilePayload CreateRoute()
         {
-            return PlayerRouteProfilePayloadV1.Create(
+            return PlayerRouteProfilePayload.Create(
                 StableId.Parse("character.skills-screen-tests"),
                 StableId.Parse("loadout-profile.skills-screen-tests"),
                 new List<StableId>

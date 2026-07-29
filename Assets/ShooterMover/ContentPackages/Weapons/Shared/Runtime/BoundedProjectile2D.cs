@@ -19,7 +19,7 @@ namespace ShooterMover.ContentPackages.Weapons.Shared.Runtime
 
     /// <summary>
     /// One finite package-neutral Physics2D projectile shell. It translates a physical
-    /// contact through the accepted CombatHit2DAdapter and never applies damage or owns
+    /// contact through the accepted CombatHit2DBridge and never applies damage or owns
     /// target state.
     /// </summary>
     [DisallowMultipleComponent]
@@ -43,7 +43,7 @@ namespace ShooterMover.ContentPackages.Weapons.Shared.Runtime
         private TemporaryHitPresentation temporaryHitPresentation;
 
         private readonly List<Collider2D> ignoredOwnerColliders = new List<Collider2D>();
-        private CombatHit2DAdapter hitAdapter;
+        private CombatHit2DBridge hitAdapter;
         private StableId hitEventId;
         private CombatChannel channel;
         private float remainingLifetimeSeconds;
@@ -106,7 +106,7 @@ namespace ShooterMover.ContentPackages.Weapons.Shared.Runtime
             float lifetimeSeconds,
             float radius,
             CombatChannel configuredChannel,
-            CombatHit2DAdapter configuredHitAdapter,
+            CombatHit2DBridge configuredHitAdapter,
             IEnumerable<Collider2D> ownerColliders,
             bool enablePresentation,
             float configuredPresentationLifetimeSeconds)

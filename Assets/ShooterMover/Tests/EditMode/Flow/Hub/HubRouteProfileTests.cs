@@ -13,9 +13,9 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
         public void PayloadFingerprintIsDeterministicAndCopyIsDeeplyImmutable()
         {
             var sourceInstances = CreateInstanceIds();
-            PlayerRouteProfilePayloadV1 first = CreatePayload(sourceInstances);
-            PlayerRouteProfilePayloadV1 second = CreatePayload(CreateInstanceIds());
-            PlayerRouteProfilePayloadV1 copy = first.Copy();
+            PlayerRouteProfilePayload first = CreatePayload(sourceInstances);
+            PlayerRouteProfilePayload second = CreatePayload(CreateInstanceIds());
+            PlayerRouteProfilePayload copy = first.Copy();
 
             Assert.That(first.Fingerprint, Is.EqualTo(second.Fingerprint));
             Assert.That(first, Is.EqualTo(second));
@@ -30,64 +30,64 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 first.WeaponSlots[0].EquipmentInstanceStableId.ToString(),
                 Is.EqualTo("equipment-instance.route-weapon-1"));
 
-            var readOnlyView = (IList<PlayerRouteWeaponSlotV1>)first.WeaponSlots;
+            var readOnlyView = (IList<PlayerRouteWeaponSlot>)first.WeaponSlots;
             Assert.Throws<NotSupportedException>(delegate { readOnlyView.Clear(); });
         }
 
         [Test]
         public void ImportRejectsUnsupportedMalformedDuplicateAndTamperedDataWithoutMutation()
         {
-            PlayerRouteProfilePayloadV1 payload = CreatePayload(CreateInstanceIds());
-            PlayerRouteProfileEnvelopeV1 valid = payload.ToEnvelope();
-            var originalSlots = new List<PlayerRouteWeaponSlotEnvelopeV1>(valid.WeaponSlots);
+            PlayerRouteProfilePayload payload = CreatePayload(CreateInstanceIds());
+            PlayerRouteProfileEnvelope valid = payload.ToEnvelope();
+            var originalSlots = new List<PlayerRouteWeaponSlotEnvelope>(valid.WeaponSlots);
 
             AssertStatus(
-                new PlayerRouteProfileEnvelopeV1(
+                new PlayerRouteProfileEnvelope(
                     2,
                     valid.ContractStableId,
                     valid.SelectedCharacterStableId,
                     valid.LoadoutProfileStableId,
                     valid.WeaponSlots,
                     valid.Fingerprint),
-                PlayerRouteProfileValidationStatusV1.UnsupportedSchemaVersion);
+                PlayerRouteProfileValidationStatus.UnsupportedSchemaVersion);
 
             AssertStatus(
-                new PlayerRouteProfileEnvelopeV1(
+                new PlayerRouteProfileEnvelope(
                     valid.SchemaVersion,
                     valid.ContractStableId,
                     "NOT-CANONICAL",
                     valid.LoadoutProfileStableId,
                     valid.WeaponSlots,
                     valid.Fingerprint),
-                PlayerRouteProfileValidationStatusV1.MalformedCharacterIdentity);
+                PlayerRouteProfileValidationStatus.MalformedCharacterIdentity);
 
-            var duplicateSlotIds = new List<PlayerRouteWeaponSlotEnvelopeV1>(
+            var duplicateSlotIds = new List<PlayerRouteWeaponSlotEnvelope>(
                 valid.WeaponSlots);
-            duplicateSlotIds[1] = new PlayerRouteWeaponSlotEnvelopeV1(
+            duplicateSlotIds[1] = new PlayerRouteWeaponSlotEnvelope(
                 valid.WeaponSlots[0].WeaponSlotStableId,
                 valid.WeaponSlots[1].EquipmentInstanceStableId);
             AssertStatus(
                 Rebuild(valid, duplicateSlotIds, valid.Fingerprint),
-                PlayerRouteProfileValidationStatusV1.DuplicateWeaponSlotIdentity);
+                PlayerRouteProfileValidationStatus.DuplicateWeaponSlotIdentity);
 
-            var duplicateEquipmentIds = new List<PlayerRouteWeaponSlotEnvelopeV1>(
+            var duplicateEquipmentIds = new List<PlayerRouteWeaponSlotEnvelope>(
                 valid.WeaponSlots);
-            duplicateEquipmentIds[3] = new PlayerRouteWeaponSlotEnvelopeV1(
+            duplicateEquipmentIds[3] = new PlayerRouteWeaponSlotEnvelope(
                 valid.WeaponSlots[3].WeaponSlotStableId,
                 valid.WeaponSlots[0].EquipmentInstanceStableId);
             AssertStatus(
                 Rebuild(valid, duplicateEquipmentIds, valid.Fingerprint),
-                PlayerRouteProfileValidationStatusV1.DuplicateEquipmentInstanceIdentity);
+                PlayerRouteProfileValidationStatus.DuplicateEquipmentInstanceIdentity);
 
-            var missingSlot = new List<PlayerRouteWeaponSlotEnvelopeV1>(valid.WeaponSlots);
+            var missingSlot = new List<PlayerRouteWeaponSlotEnvelope>(valid.WeaponSlots);
             missingSlot.RemoveAt(3);
             AssertStatus(
                 Rebuild(valid, missingSlot, valid.Fingerprint),
-                PlayerRouteProfileValidationStatusV1.WeaponSlotCountMismatch);
+                PlayerRouteProfileValidationStatus.WeaponSlotCountMismatch);
 
             AssertStatus(
                 Rebuild(valid, valid.WeaponSlots, new string('0', 64)),
-                PlayerRouteProfileValidationStatusV1.FingerprintMismatch);
+                PlayerRouteProfileValidationStatus.FingerprintMismatch);
 
             Assert.That(valid.WeaponSlots.Count, Is.EqualTo(4));
             for (int index = 0; index < originalSlots.Count; index++)
@@ -99,12 +99,12 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
         [Test]
         public void ValidEnvelopeRoundTripsToEquivalentPayload()
         {
-            PlayerRouteProfilePayloadV1 payload = CreatePayload(CreateInstanceIds());
-            PlayerRouteProfileValidationResultV1 result =
-                PlayerRouteProfilePayloadV1.TryImport(payload.ToEnvelope());
+            PlayerRouteProfilePayload payload = CreatePayload(CreateInstanceIds());
+            PlayerRouteProfileValidationResult result =
+                PlayerRouteProfilePayload.TryImport(payload.ToEnvelope());
 
             Assert.That(result.IsValid, Is.True);
-            Assert.That(result.Status, Is.EqualTo(PlayerRouteProfileValidationStatusV1.Valid));
+            Assert.That(result.Status, Is.EqualTo(PlayerRouteProfileValidationStatus.Valid));
             Assert.That(result.Payload, Is.EqualTo(payload));
             Assert.That(result.Payload, Is.Not.SameAs(payload));
         }
@@ -112,37 +112,37 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
         [Test]
         public void RouteHistoryRetainsOnePayloadAndRejectsInvalidTransitions()
         {
-            PlayerRouteProfilePayloadV1 payload = CreatePayload(CreateInstanceIds());
-            var navigation = new HubNavigationServiceV1(payload);
+            PlayerRouteProfilePayload payload = CreatePayload(CreateInstanceIds());
+            var navigation = new HubNavigationActions(payload);
 
-            HubNavigationResultV1 invalid =
-                navigation.TryNavigateTo(HubRouteV1.Shop);
-            Assert.That(invalid.Status, Is.EqualTo(HubNavigationStatusV1.InvalidTransition));
+            HubNavigationResult invalid =
+                navigation.TryNavigateTo(HubRoute.Shop);
+            Assert.That(invalid.Status, Is.EqualTo(HubNavigationStatus.InvalidTransition));
             Assert.That(invalid.Snapshot.RouteHistory, Is.Empty);
-            Assert.That(navigation.CurrentRoute, Is.EqualTo(HubRouteV1.MainMenu));
+            Assert.That(navigation.CurrentRoute, Is.EqualTo(HubRoute.MainMenu));
 
             Assert.That(
-                navigation.TryNavigateTo(HubRouteV1.CharacterSelect).Changed,
+                navigation.TryNavigateTo(HubRoute.CharacterSelect).Changed,
                 Is.True);
             Assert.That(
-                navigation.TryNavigateTo(HubRouteV1.InventoryLoadoutHub).Changed,
+                navigation.TryNavigateTo(HubRoute.InventoryLoadoutHub).Changed,
                 Is.True);
             Assert.That(
-                navigation.TryNavigateTo(HubRouteV1.Skills).Changed,
+                navigation.TryNavigateTo(HubRoute.Skills).Changed,
                 Is.True);
             Assert.That(navigation.NavigateBack().Changed, Is.True);
             Assert.That(
                 navigation.CurrentRoute,
-                Is.EqualTo(HubRouteV1.InventoryLoadoutHub));
+                Is.EqualTo(HubRoute.InventoryLoadoutHub));
             Assert.That(navigation.NavigateBack().Changed, Is.True);
-            Assert.That(navigation.CurrentRoute, Is.EqualTo(HubRouteV1.CharacterSelect));
+            Assert.That(navigation.CurrentRoute, Is.EqualTo(HubRoute.CharacterSelect));
             Assert.That(navigation.NavigateBack().Changed, Is.True);
-            Assert.That(navigation.CurrentRoute, Is.EqualTo(HubRouteV1.MainMenu));
+            Assert.That(navigation.CurrentRoute, Is.EqualTo(HubRoute.MainMenu));
 
-            HubNavigationResultV1 rootBack = navigation.NavigateBack();
-            Assert.That(rootBack.Status, Is.EqualTo(HubNavigationStatusV1.BackAtRoot));
+            HubNavigationResult rootBack = navigation.NavigateBack();
+            Assert.That(rootBack.Status, Is.EqualTo(HubNavigationStatus.BackAtRoot));
 
-            HubNavigationSnapshotV1 snapshot = navigation.ExportSnapshot();
+            HubNavigationSnapshot snapshot = navigation.ExportSnapshot();
             Assert.That(snapshot.Payload, Is.SameAs(payload));
             Assert.That(snapshot.RouteHistory.Count, Is.EqualTo(6));
             for (int index = 0; index < snapshot.RouteHistory.Count; index++)
@@ -153,10 +153,10 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
             }
         }
 
-        private static PlayerRouteProfilePayloadV1 CreatePayload(
+        private static PlayerRouteProfilePayload CreatePayload(
             IEnumerable<StableId> instances)
         {
-            return PlayerRouteProfilePayloadV1.Create(
+            return PlayerRouteProfilePayload.Create(
                 StableId.Parse("character.test-pilot"),
                 StableId.Parse("loadout-profile.test-assault"),
                 instances);
@@ -173,12 +173,12 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
             };
         }
 
-        private static PlayerRouteProfileEnvelopeV1 Rebuild(
-            PlayerRouteProfileEnvelopeV1 source,
-            IEnumerable<PlayerRouteWeaponSlotEnvelopeV1> slots,
+        private static PlayerRouteProfileEnvelope Rebuild(
+            PlayerRouteProfileEnvelope source,
+            IEnumerable<PlayerRouteWeaponSlotEnvelope> slots,
             string fingerprint)
         {
-            return new PlayerRouteProfileEnvelopeV1(
+            return new PlayerRouteProfileEnvelope(
                 source.SchemaVersion,
                 source.ContractStableId,
                 source.SelectedCharacterStableId,
@@ -188,11 +188,11 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
         }
 
         private static void AssertStatus(
-            PlayerRouteProfileEnvelopeV1 envelope,
-            PlayerRouteProfileValidationStatusV1 expected)
+            PlayerRouteProfileEnvelope envelope,
+            PlayerRouteProfileValidationStatus expected)
         {
-            PlayerRouteProfileValidationResultV1 result =
-                PlayerRouteProfilePayloadV1.TryImport(envelope);
+            PlayerRouteProfileValidationResult result =
+                PlayerRouteProfilePayload.TryImport(envelope);
             Assert.That(result.Status, Is.EqualTo(expected));
             Assert.That(result.Payload, Is.Null);
         }

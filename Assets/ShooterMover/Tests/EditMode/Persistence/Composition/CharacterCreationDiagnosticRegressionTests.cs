@@ -15,12 +15,12 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void SingleProfileMigrationReportsRootStarterFailureWithoutPartialCharacter()
         {
-            var authority = new PlayerAccountSaveAuthorityV1(
-                PlayerAccountSnapshotV1.Empty(
+            var authority = new PlayerAccountSaveState(
+                PlayerAccountSnapshot.Empty(
                     Id("account.character-creation-diagnostic-regression")));
             var factory = new ThrowingStarterFactory(0);
             int saveCalls = 0;
-            var composition = new CharacterCompositionCoordinatorV1(
+            var composition = new CharacterSetupFlow(
                 authority,
                 factory,
                 snapshot =>
@@ -31,8 +31,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
 
             try
             {
-                LegacyCharacterProfileMigrationResultV1 result =
-                    new LegacyCharacterProfileMigrationV1(
+                LegacyCharacterProfileMigrationResult result =
+                    new LegacyCharacterProfileMigration(
                         authority,
                         factory,
                         snapshot =>
@@ -67,12 +67,12 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void BatchMigrationReportsRootStarterFailureAndRollsBackEarlierSlot()
         {
-            var authority = new PlayerAccountSaveAuthorityV1(
-                PlayerAccountSnapshotV1.Empty(
+            var authority = new PlayerAccountSaveState(
+                PlayerAccountSnapshot.Empty(
                     Id("account.batch-migration-diagnostic-regression")));
             var factory = new ThrowingStarterFactory(1);
             int saveCalls = 0;
-            var migration = new LegacyCharacterProfileMigrationV1(
+            var migration = new LegacyCharacterProfileMigration(
                 authority,
                 factory,
                 snapshot =>
@@ -81,7 +81,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     return Saved(snapshot);
                 });
 
-            LegacyCharacterProfileMigrationResultV1 result = migration.Migrate(
+            LegacyCharacterProfileMigrationResult result = migration.Migrate(
                 new[]
                 {
                     LegacyProfile(0),
@@ -104,18 +104,18 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             Assert.That(factory.Created[0].IsDisposed, Is.True);
         }
 
-        private static LegacyCharacterProfileV1 LegacyProfile(int slotIndex)
+        private static LegacyCharacterProfile LegacyProfile(int slotIndex)
         {
             StableId classId = Id("loadout-profile.juggernaut");
-            PlayerRouteProfilePayloadV1 route =
-                PlayerRouteProfilePayloadV1.Create(
+            PlayerRouteProfilePayload route =
+                PlayerRouteProfilePayload.Create(
                     Id(
                         "character.creation-diagnostic-regression-"
                             + slotIndex),
                     classId,
                     new StableId[
-                        PlayerRouteProfilePayloadV1.WeaponSlotCount]);
-            return new LegacyCharacterProfileV1(
+                        PlayerRouteProfilePayload.WeaponSlotCount]);
+            return new LegacyCharacterProfile(
                 slotIndex,
                 "Diagnostic Pilot " + slotIndex,
                 route.SelectedCharacterStableId,
@@ -124,25 +124,25 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 route);
         }
 
-        private static IReadOnlyList<SaveComponentDefinitionV1> Definitions()
+        private static IReadOnlyList<SaveComponentDefinition> Definitions()
         {
             return new[]
             {
-                KnownSaveComponentDefinitionsV1.PlayerExperience(),
-                KnownSaveComponentDefinitionsV1.PlayerHoldings(),
-                KnownSaveComponentDefinitionsV1.MoneyWallet(),
-                KnownSaveComponentDefinitionsV1.ScrapWallet(),
-                KnownSaveComponentDefinitionsV1.RankedSkillAllocation(),
-                KnownSaveComponentDefinitionsV1.ExactInstanceLoadout(),
-                KnownSaveComponentDefinitionsV1.StrongboxState(),
+                KnownSaveComponentDefinitions.PlayerExperience(),
+                KnownSaveComponentDefinitions.PlayerHoldings(),
+                KnownSaveComponentDefinitions.MoneyWallet(),
+                KnownSaveComponentDefinitions.ScrapWallet(),
+                KnownSaveComponentDefinitions.RankedSkillAllocation(),
+                KnownSaveComponentDefinitions.ExactInstanceLoadout(),
+                KnownSaveComponentDefinitions.StrongboxState(),
             };
         }
 
-        private static PlayerAccountStoreResultV1 Saved(
-            PlayerAccountSnapshotV1 snapshot)
+        private static PlayerAccountStoreResult Saved(
+            PlayerAccountSnapshot snapshot)
         {
-            return new PlayerAccountStoreResultV1(
-                PlayerAccountStoreStatusV1.Saved,
+            return new PlayerAccountStoreResult(
+                PlayerAccountStoreStatus.Saved,
                 string.Empty,
                 snapshot);
         }
@@ -153,8 +153,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         }
 
         private sealed class ThrowingStarterFactory :
-            ICharacterRuntimeGraphFactoryV1,
-            IStarterCharacterRuntimeGraphFactoryV1
+            ICharacterLiveGraphFactory,
+            IStarterCharacterLiveGraphFactory
         {
             private readonly int throwOnSlotIndex;
 
@@ -165,14 +165,14 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
 
             public List<TestGraph> Created { get; } = new List<TestGraph>();
 
-            public ICharacterRuntimeGraphV1 CreateRestoreTarget(
-                CharacterInstanceSnapshotV1 character)
+            public ICharacterLiveGraph CreateRestoreTarget(
+                CharacterInstanceSnapshot character)
             {
                 throw new InvalidOperationException(
                     "Restore target creation was not expected.");
             }
 
-            public ICharacterRuntimeGraphV1 CreateStarter(
+            public ICharacterLiveGraph CreateStarter(
                 int slotIndex,
                 StableId exactCharacterInstanceStableId,
                 StableId classDefinitionStableId,
@@ -188,7 +188,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 }
 
                 TestGraph graph = TestGraph.Create(
-                    new CharacterInstanceSnapshotV1(
+                    new CharacterInstanceSnapshot(
                         exactCharacterInstanceStableId,
                         classDefinitionStableId,
                         slotIndex,
@@ -200,32 +200,32 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             }
         }
 
-        private sealed class TestGraph : ICharacterRuntimeGraphV1
+        private sealed class TestGraph : ICharacterLiveGraph
         {
             private TestGraph(
-                CharacterInstanceSnapshotV1 character,
-                IReadOnlyList<ISaveComponentAdapterV1> saveAdapters)
+                CharacterInstanceSnapshot character,
+                IReadOnlyList<ISaveComponentBridge> saveAdapters)
             {
                 Character = character;
                 SaveAdapters = saveAdapters;
             }
 
-            public CharacterInstanceSnapshotV1 Character { get; private set; }
+            public CharacterInstanceSnapshot Character { get; private set; }
 
-            public IReadOnlyList<ISaveComponentAdapterV1> SaveAdapters { get; }
+            public IReadOnlyList<ISaveComponentBridge> SaveAdapters { get; }
 
             public bool IsDisposed { get; private set; }
 
-            public static TestGraph Create(CharacterInstanceSnapshotV1 character)
+            public static TestGraph Create(CharacterInstanceSnapshot character)
             {
-                var adapters = new List<ISaveComponentAdapterV1>();
-                foreach (SaveComponentDefinitionV1 definition in Definitions())
+                var adapters = new List<ISaveComponentBridge>();
+                foreach (SaveComponentDefinition definition in Definitions())
                 {
                     var state = new MutableState(
                         "diagnostic-" + definition.ComponentStableId);
                     var codec = new TestCodec();
                     adapters.Add(
-                        new AuthoritySnapshotSaveComponentAdapterV1<TestSnapshot>(
+                        new StateSnapshotSaveComponentBridge<TestSnapshot>(
                             definition,
                             codec,
                             () => new TestSnapshot(state.Value),
@@ -233,13 +233,13 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                             snapshot =>
                             {
                                 state.Value = snapshot.Value;
-                                return SaveComponentApplyResultV1.Applied();
+                                return SaveComponentApplyResult.Applied();
                             }));
                 }
                 return new TestGraph(character, adapters);
             }
 
-            public void MarkPersisted(CharacterInstanceSnapshotV1 character)
+            public void MarkPersisted(CharacterInstanceSnapshot character)
             {
                 Character = character;
             }
@@ -271,7 +271,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         }
 
         private sealed class TestCodec :
-            ISaveComponentPayloadCodecV1<TestSnapshot>
+            ISaveComponentPayloadCodec<TestSnapshot>
         {
             public string ContractId
             {
@@ -293,13 +293,13 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 return true;
             }
 
-            public SaveComponentValidationResultV1 Validate(
+            public SaveComponentValidationResult Validate(
                 TestSnapshot snapshot)
             {
                 return snapshot == null || snapshot.Value == null
-                    ? SaveComponentValidationResultV1.Reject(
+                    ? SaveComponentValidationResult.Reject(
                         "character-creation-diagnostic-test-snapshot-null")
-                    : SaveComponentValidationResultV1.Accept();
+                    : SaveComponentValidationResult.Accept();
             }
         }
     }

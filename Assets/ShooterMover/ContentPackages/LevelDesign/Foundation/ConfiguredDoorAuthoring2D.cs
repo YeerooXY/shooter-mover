@@ -17,7 +17,7 @@ namespace ShooterMover.ContentPackages.LevelDesign.Foundation
     [RequireComponent(typeof(LevelDoorConnectionAuthoring2D))]
     public sealed class ConfiguredDoorAuthoring2D :
         MonoBehaviour,
-        ILevelDoorPackageAdapter
+        ILevelDoorPackageBridge
     {
         [Header("Existing package components")]
         [SerializeField] private PlacedObjectAuthoring2D placedObject;

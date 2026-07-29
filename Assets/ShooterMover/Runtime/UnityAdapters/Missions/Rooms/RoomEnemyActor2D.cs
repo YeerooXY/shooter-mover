@@ -14,7 +14,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
     [DisallowMultipleComponent]
     public sealed class RoomEnemyActor2D : DamageableTarget2D
     {
-        private EnemyPlacementRuntimeInstanceV1 runtime;
+        private EnemyPlacementLiveInstance runtime;
         private RoomOccupantTerminalRelay2D legacyRelay;
         private bool legacyRelayEnabled;
         private bool legacyRelayStateCaptured;
@@ -45,7 +45,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             get { return runtime == null ? 0L : runtime.LifecycleGeneration; }
         }
 
-        public EnemyPlacementRuntimeInstanceV1 Runtime
+        public EnemyPlacementLiveInstance Runtime
         {
             get { return runtime; }
         }
@@ -75,7 +75,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             get { return IsBound && IsAlive; }
         }
 
-        internal void Bind(EnemyPlacementRuntimeInstanceV1 value)
+        internal void Bind(EnemyPlacementLiveInstance value)
         {
             if (value == null) throw new ArgumentNullException(nameof(value));
             if (runtime != null)
@@ -129,11 +129,11 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                     "The direct hit does not match the bound enemy lifecycle.");
             }
 
-            EnemyRuntimeDamageResultV1 result;
+            EnemyLiveDamageResult result;
             try
             {
                 result = runtime.ApplyDamage(
-                    new EnemyRuntimeDamageCommandV1(
+                    new EnemyLiveDamageCommand(
                         hit.EventStableId,
                         hit.SourceEntityStableId,
                         hit.SourceRunParticipantStableId,
@@ -157,7 +157,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 throw new InvalidOperationException(
                     "The enemy damage authority returned no result.");
             }
-            if (result.Status == EnemyRuntimeOperationStatusV1.Rejected)
+            if (result.Status == EnemyLiveOperationStatus.Rejected)
             {
                 throw new InvalidOperationException(
                     "The enemy rejected a direct hit: " + result.Rejection + ".");
@@ -171,8 +171,8 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             }
         }
 
-        public EnemyRuntimeDamageResultV1 ApplyDamage(
-            EnemyRuntimeDamageCommandV1 command,
+        public EnemyLiveDamageResult ApplyDamage(
+            EnemyLiveDamageCommand command,
             double occurredAtSeconds)
         {
             if (runtime == null)
@@ -184,7 +184,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             return runtime.ApplyDamage(command, occurredAtSeconds);
         }
 
-        internal void SetTerminal(EnemyTerminalCollisionFactV1 fact)
+        internal void SetTerminal(EnemyTerminalCollisionFact fact)
         {
             if (fact == null) throw new ArgumentNullException(nameof(fact));
             if (runtime == null

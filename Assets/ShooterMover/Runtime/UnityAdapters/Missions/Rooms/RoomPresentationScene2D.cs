@@ -69,11 +69,11 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         }
 
         public void BuildCurrentRoom(
-            RoomRuntimeComposition2D owner,
-            AuthorableRoomGraphDefinitionV1 definition,
+            RoomLiveSetup2D owner,
+            AuthorableRoomGraphDefinition definition,
             RoomPresentationCatalog2D catalog,
             Transform root,
-            IRoomLiveRuntimeQueryV1 query)
+            IRoomLiveQuery query)
         {
             if (owner == null) throw new ArgumentNullException(nameof(owner));
             if (definition == null) throw new ArgumentNullException(nameof(definition));
@@ -82,14 +82,14 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             if (query == null) throw new ArgumentNullException(nameof(query));
 
             Clear();
-            AuthorableRoomDefinitionV1 room = definition.GetRoom(
+            AuthorableRoomDefinition room = definition.GetRoom(
                 query.CurrentProjection.CurrentRoomStableId);
-            RoomLiveRoomProjectionV1 projection = query.GetRoomProjection(
+            RoomLiveRoomView projection = query.GetRoomProjection(
                 room.RoomStableId);
 
             for (int index = 0; index < room.Placements.Count; index++)
             {
-                RoomPlacedEntityDefinitionV1 placement = room.Placements[index];
+                RoomPlacedEntityDefinition placement = room.Placements[index];
                 if (IsDefeated(projection, placement.InstanceStableId))
                 {
                     continue;
@@ -108,7 +108,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 marker.Configure(owner, room.RoomStableId, placement);
                 spawnedPlacements.Add(placement.InstanceStableId, marker);
 
-                if (placement.PlacementKind == RoomLivePlacementKindV1.Enemy)
+                if (placement.PlacementKind == RoomLivePlacementKind.Enemy)
                 {
                     EnemyActorTerminalFactSource2D terminalSource =
                         instance.GetComponent<EnemyActorTerminalFactSource2D>()
@@ -122,7 +122,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
 
             for (int index = 0; index < room.Doors.Count; index++)
             {
-                RoomDoorDefinitionV1 doorDefinition = room.Doors[index];
+                RoomDoorDefinition doorDefinition = room.Doors[index];
                 GameObject instance = InstantiatePresentation(
                     catalog,
                     root,
@@ -139,7 +139,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             SynchronizeDoors(query.GetRoomProjection(room.RoomStableId));
         }
 
-        public void SynchronizeDoors(RoomLiveRoomProjectionV1 room)
+        public void SynchronizeDoors(RoomLiveRoomView room)
         {
             if (room == null) throw new ArgumentNullException(nameof(room));
             foreach (KeyValuePair<StableId, RoomDoorInstance2D> pair in spawnedDoors)
@@ -151,7 +151,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             }
         }
 
-        public void RemoveDefeated(RoomLiveRoomProjectionV1 room)
+        public void RemoveDefeated(RoomLiveRoomView room)
         {
             if (room == null) throw new ArgumentNullException(nameof(room));
             var remove = new List<StableId>();
@@ -190,7 +190,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             RoomPresentationCatalog2D catalog,
             Transform root,
             StableId presentationStableId,
-            RoomVector2V1 localPosition,
+            RoomVector2 localPosition,
             double localRotationDegrees,
             string instanceName)
         {
@@ -287,7 +287,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         }
 
         private static bool IsDefeated(
-            RoomLiveRoomProjectionV1 room,
+            RoomLiveRoomView room,
             StableId instanceStableId)
         {
             for (int index = 0; index < room.DefeatedOccupants.Count; index++)

@@ -63,9 +63,9 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
         public StrongboxSimulationScenario Comparison { get; }
     }
 
-    public sealed class StrongboxProductionFingerprints
+    public sealed class StrongboxFingerprints
     {
-        public StrongboxProductionFingerprints(
+        public StrongboxFingerprints(
             string equipmentCatalog,
             string equipmentProjection,
             string strongboxPolicy,
@@ -212,9 +212,9 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
         public string GenerationFingerprint { get; }
     }
 
-    public interface IStrongboxSimulationProductionGateway
+    public interface IStrongboxSimulationGateway
     {
-        StrongboxProductionFingerprints Fingerprints { get; }
+        StrongboxFingerprints Fingerprints { get; }
         IReadOnlyList<StrongboxEquipmentMetadata> EquipmentDefinitions { get; }
         bool TryGenerate(
             StrongboxSimulationScenario scenario,

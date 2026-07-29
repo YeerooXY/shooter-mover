@@ -14,7 +14,7 @@ namespace ShooterMover.ContentPackages.Environment.Doors
         Open = 2,
     }
 
-    public enum DoorRuntimeState
+    public enum DoorLiveState
     {
         Closed = 1,
         Open = 2,
@@ -82,8 +82,8 @@ namespace ShooterMover.ContentPackages.Environment.Doors
     {
         public DoorStateChange(
             StableId doorPlacedInstanceId,
-            DoorRuntimeState previousState,
-            DoorRuntimeState currentState,
+            DoorLiveState previousState,
+            DoorLiveState currentState,
             bool restartProjection)
         {
             DoorPlacedInstanceId = doorPlacedInstanceId
@@ -95,9 +95,9 @@ namespace ShooterMover.ContentPackages.Environment.Doors
 
         public StableId DoorPlacedInstanceId { get; }
 
-        public DoorRuntimeState PreviousState { get; }
+        public DoorLiveState PreviousState { get; }
 
-        public DoorRuntimeState CurrentState { get; }
+        public DoorLiveState CurrentState { get; }
 
         public bool IsRestartProjection { get; }
     }
@@ -116,8 +116,8 @@ namespace ShooterMover.ContentPackages.Environment.Doors
         [SerializeField] private bool initializeOnEnable = true;
 
         [Header("Door conditions")]
-        [SerializeField] private DoorConditionComposition conditionComposition =
-            DoorConditionComposition.All;
+        [SerializeField] private DoorConditionSetup conditionComposition =
+            DoorConditionSetup.All;
         [SerializeField] private DoorConditionAuthoring[] conditions =
             Array.Empty<DoorConditionAuthoring>();
         [SerializeField] private MonoBehaviour encounterConditionReader;
@@ -157,7 +157,7 @@ namespace ShooterMover.ContentPackages.Environment.Doors
         private bool interactionRequested;
         private bool initialized;
         private bool restartRegistered;
-        private DoorRuntimeState state;
+        private DoorLiveState state;
         private DoorAuthoringValidationResult lastValidation =
             DoorAuthoringValidationResult.Failed(
                 DoorAuthoringValidationCode.MissingPlacedObjectAuthoring,
@@ -173,10 +173,10 @@ namespace ShooterMover.ContentPackages.Environment.Doors
 
         public bool IsOpen
         {
-            get { return initialized && state == DoorRuntimeState.Open; }
+            get { return initialized && state == DoorLiveState.Open; }
         }
 
-        public DoorRuntimeState State
+        public DoorLiveState State
         {
             get { return state; }
         }
@@ -294,14 +294,14 @@ namespace ShooterMover.ContentPackages.Environment.Doors
             initialized = true;
             ApplyState(
                 initialState == DoorInitialState.Open
-                    ? DoorRuntimeState.Open
-                    : DoorRuntimeState.Closed,
+                    ? DoorLiveState.Open
+                    : DoorLiveState.Closed,
                 true,
                 false);
 
             if (initialEvaluation.IsSatisfied)
             {
-                ApplyState(DoorRuntimeState.Open, false, false);
+                ApplyState(DoorLiveState.Open, false, false);
             }
 
             lastValidation = DoorAuthoringValidationResult.Valid();
@@ -327,7 +327,7 @@ namespace ShooterMover.ContentPackages.Environment.Doors
                 return false;
             }
 
-            ApplyState(DoorRuntimeState.Open, false, false);
+            ApplyState(DoorLiveState.Open, false, false);
             return true;
         }
 
@@ -366,7 +366,7 @@ namespace ShooterMover.ContentPackages.Environment.Doors
                 return false;
             }
 
-            ApplyState(DoorRuntimeState.Open, false, false);
+            ApplyState(DoorLiveState.Open, false, false);
             return true;
         }
 
@@ -374,14 +374,14 @@ namespace ShooterMover.ContentPackages.Environment.Doors
         {
             if (initialized)
             {
-                ApplyState(DoorRuntimeState.Closed, false, false);
+                ApplyState(DoorLiveState.Closed, false, false);
             }
         }
 
         public DoorTransitionRequestResult TryRequestTransition(
             DoorTravelDirection direction)
         {
-            if (!initialized || state != DoorRuntimeState.Open)
+            if (!initialized || state != DoorLiveState.Open)
             {
                 return new DoorTransitionRequestResult(
                     DoorTransitionRequestStatus.DoorClosed,
@@ -473,8 +473,8 @@ namespace ShooterMover.ContentPackages.Environment.Doors
                 case RestartLifecyclePhase.ApplyResetProjection:
                     ApplyState(
                         initialState == DoorInitialState.Open
-                            ? DoorRuntimeState.Open
-                            : DoorRuntimeState.Closed,
+                            ? DoorLiveState.Open
+                            : DoorLiveState.Closed,
                         true,
                         true);
                     break;
@@ -498,7 +498,7 @@ namespace ShooterMover.ContentPackages.Environment.Doors
         public void ConfigureForTests(
             PlacedObjectAuthoring2D configuredPlacedObject,
             DoorInitialState configuredInitialState,
-            DoorConditionComposition configuredComposition,
+            DoorConditionSetup configuredComposition,
             DoorConditionRequirement[] configuredRequirements,
             Collider2D[] configuredClosedColliders,
             GameObject configuredClosedPresentationRoot,
@@ -733,18 +733,18 @@ namespace ShooterMover.ContentPackages.Environment.Doors
         }
 
         private void ApplyState(
-            DoorRuntimeState nextState,
+            DoorLiveState nextState,
             bool force,
             bool restartProjection)
         {
-            DoorRuntimeState previous = state;
+            DoorLiveState previous = state;
             if (!force && previous == nextState)
             {
                 return;
             }
 
             state = nextState;
-            bool isClosed = nextState == DoorRuntimeState.Closed;
+            bool isClosed = nextState == DoorLiveState.Closed;
             for (int index = 0; index < closedColliders.Length; index++)
             {
                 if (closedColliders[index] != null)

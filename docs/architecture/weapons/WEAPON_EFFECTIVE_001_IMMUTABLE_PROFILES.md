@@ -142,6 +142,6 @@ No automated test files are included in this PR. During the current prototype ph
 - automated test coverage after the prototype phase;
 - item-level combat scaling;
 - heat, charge, ammo, magazines, cooldown resources, and power banks;
-- mapping `EffectiveWeapon` into current `WeaponRuntimeFiringProfile` or behavior selection;
+- mapping `EffectiveWeapon` into current `WeaponLiveFiringProfile` or behavior selection;
 - Unity firing, projectile, scene, strongbox, simulator, or production adoption;
 - fractional-pierce execution behavior.

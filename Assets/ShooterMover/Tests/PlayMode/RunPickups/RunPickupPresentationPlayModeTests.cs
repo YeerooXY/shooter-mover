@@ -23,17 +23,17 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
 
         private readonly List<GameObject> objects = new List<GameObject>();
 
-        private sealed class FixedPositionPort : IRunPickupSourcePositionPortV1
+        private sealed class FixedPositionPort : IRunPickupSourcePositionPort
         {
             public bool TryResolve(
                 StableId runStableId,
                 long runLifecycleGeneration,
                 StableId sourceEntityStableId,
                 StableId sourcePlacementStableId,
-                out RunPickupWorldSpawnContextV1 worldSpawnContext,
+                out RunPickupWorldSpawnContext worldSpawnContext,
                 out string diagnostic)
             {
-                worldSpawnContext = new RunPickupWorldSpawnContextV1(
+                worldSpawnContext = new RunPickupWorldSpawnContext(
                     RoomId,
                     2d,
                     3d,
@@ -43,7 +43,7 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
             }
         }
 
-        private sealed class FakeRunSessionPort : IRunPickupRunSessionPortV1
+        private sealed class FakeRunSessionPort : IRunPickupRunSessionPort
         {
             private readonly Dictionary<StableId, string> replay =
                 new Dictionary<StableId, string>();
@@ -58,10 +58,10 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
             public int PermanentGrantCount { get; private set; }
 
             public bool TryReadContext(
-                out RunPickupRunSessionContextV1 context,
+                out RunPickupRunSessionContext context,
                 out string diagnostic)
             {
-                context = new RunPickupRunSessionContextV1(
+                context = new RunPickupRunSessionContext(
                     RunStableId,
                     LifecycleGeneration,
                     AuthoritativeTick,
@@ -73,18 +73,18 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
                 return true;
             }
 
-            public RunPickupSessionRecordResultV1 RecordCollection(
-                RunPickupCollectionFactV1 fact)
+            public RunPickupSessionRecordResult RecordCollection(
+                RunPickupCollectionFact fact)
             {
                 string existing;
                 if (replay.TryGetValue(
                     fact.Command.CollectionOperationStableId,
                     out existing))
                 {
-                    return new RunPickupSessionRecordResultV1(
+                    return new RunPickupSessionRecordResult(
                         string.Equals(existing, fact.Fingerprint, StringComparison.Ordinal)
-                            ? RunPickupSessionRecordStatusV1.ExactReplay
-                            : RunPickupSessionRecordStatusV1.ConflictingDuplicate,
+                            ? RunPickupSessionRecordStatus.ExactReplay
+                            : RunPickupSessionRecordStatus.ConflictingDuplicate,
                         fact,
                         string.Empty);
                 }
@@ -92,8 +92,8 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
                     fact.Command.CollectionOperationStableId,
                     fact.Fingerprint);
                 CollectionRecordCount++;
-                return new RunPickupSessionRecordResultV1(
-                    RunPickupSessionRecordStatusV1.Accepted,
+                return new RunPickupSessionRecordResult(
+                    RunPickupSessionRecordStatus.Accepted,
                     fact,
                     string.Empty);
             }
@@ -102,8 +102,8 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
         private sealed class SceneFixture
         {
             public FakeRunSessionPort Session;
-            public RunLocalPickupAuthorityV1 Authority;
-            public RunPickupAuthorityHost2D Host;
+            public RunLocalPickupState Authority;
+            public RunPickupStateHost2D Host;
             public RunPickupPresentationRegistry2D Registry;
             public RunPickupPresenter2D Presenter;
             public GameObject Prefab;
@@ -125,12 +125,12 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
         [UnityTest]
         public IEnumerator GeneratedReward_AppearsAsOnePhysicalPickup()
         {
-            SceneFixture fixture = CreateSceneFixture(RewardGrantKindV1.Money);
-            RunPickupSnapshotV1 pickup = Realize(
+            SceneFixture fixture = CreateSceneFixture(RewardGrantKind.Money);
+            RunPickupSnapshot pickup = Realize(
                 fixture,
-                Child("money", RewardGrantKindV1.Money, "credits", 5L)).Single();
+                Child("money", RewardGrantKind.Money, "credits", 5L)).Single();
 
-            RunPickupPresentationSyncResultV1 sync = fixture.Presenter.Synchronize(RoomId);
+            RunPickupPresentationSyncResult sync = fixture.Presenter.Synchronize(RoomId);
             RunRewardPickup2D view;
 
             Assert.That(sync.Succeeded, Is.True);
@@ -145,10 +145,10 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
         [UnityTest]
         public IEnumerator PlayerTrigger_CollectsImmediatelyAndDestroysAfterFeedback()
         {
-            SceneFixture fixture = CreateSceneFixture(RewardGrantKindV1.Money);
-            RunPickupSnapshotV1 pickup = Realize(
+            SceneFixture fixture = CreateSceneFixture(RewardGrantKind.Money);
+            RunPickupSnapshot pickup = Realize(
                 fixture,
-                Child("money", RewardGrantKindV1.Money, "credits", 5L)).Single();
+                Child("money", RewardGrantKind.Money, "credits", 5L)).Single();
             fixture.Presenter.Synchronize(RoomId);
             RunRewardPickup2D view;
             Assert.That(fixture.Presenter.TryGetView(pickup.PickupStableId, out view), Is.True);
@@ -158,7 +158,7 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
 
             Assert.That(
                 view.LastCollectionResult.Status,
-                Is.EqualTo(RunPickupCollectionStatusV1.Collected));
+                Is.EqualTo(RunPickupCollectionStatus.Collected));
             Assert.That(view.gameObject.activeSelf, Is.True);
             Assert.That(view.IsRetirementFeedbackPending, Is.True);
             Assert.That(fixture.Presenter.VisiblePickupCount, Is.EqualTo(0));
@@ -175,10 +175,10 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
         [UnityTest]
         public IEnumerator RepeatedTriggerCallbacks_DoNotDuplicateCollection()
         {
-            SceneFixture fixture = CreateSceneFixture(RewardGrantKindV1.Money);
-            RunPickupSnapshotV1 pickup = Realize(
+            SceneFixture fixture = CreateSceneFixture(RewardGrantKind.Money);
+            RunPickupSnapshot pickup = Realize(
                 fixture,
-                Child("money", RewardGrantKindV1.Money, "credits", 5L)).Single();
+                Child("money", RewardGrantKind.Money, "credits", 5L)).Single();
             fixture.Presenter.Synchronize(RoomId);
             RunRewardPickup2D view;
             fixture.Presenter.TryGetView(pickup.PickupStableId, out view);
@@ -196,10 +196,10 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
         [UnityTest]
         public IEnumerator LeavingAndReturning_DoesNotRespawnCollectedPickup()
         {
-            SceneFixture fixture = CreateSceneFixture(RewardGrantKindV1.Strongbox);
-            RunPickupSnapshotV1 pickup = Realize(
+            SceneFixture fixture = CreateSceneFixture(RewardGrantKind.Strongbox);
+            RunPickupSnapshot pickup = Realize(
                 fixture,
-                Child("box", RewardGrantKindV1.Strongbox, "emerald", 1L)).Single();
+                Child("box", RewardGrantKind.Strongbox, "emerald", 1L)).Single();
             fixture.Presenter.Synchronize(RoomId);
             RunRewardPickup2D view;
             fixture.Presenter.TryGetView(pickup.PickupStableId, out view);
@@ -207,7 +207,7 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
             yield return null;
 
             fixture.Presenter.Synchronize(OtherRoomId);
-            RunPickupPresentationSyncResultV1 returned =
+            RunPickupPresentationSyncResult returned =
                 fixture.Presenter.Synchronize(RoomId);
 
             Assert.That(returned.AvailableCount, Is.EqualTo(0));
@@ -217,10 +217,10 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
         [UnityTest]
         public IEnumerator PresenterReconstruction_RestoresUncollectedPickupWithSameIdentity()
         {
-            SceneFixture fixture = CreateSceneFixture(RewardGrantKindV1.Scrap);
-            RunPickupSnapshotV1 pickup = Realize(
+            SceneFixture fixture = CreateSceneFixture(RewardGrantKind.Scrap);
+            RunPickupSnapshot pickup = Realize(
                 fixture,
-                Child("scrap", RewardGrantKindV1.Scrap, "scrap", 8L)).Single();
+                Child("scrap", RewardGrantKind.Scrap, "scrap", 8L)).Single();
             fixture.Presenter.Synchronize(RoomId);
             RunRewardPickup2D firstView;
             fixture.Presenter.TryGetView(pickup.PickupStableId, out firstView);
@@ -246,25 +246,25 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
         public IEnumerator StrongboxMoneyAndScrap_UseOneGenericPresentationPath()
         {
             SceneFixture fixture = CreateSceneFixture(
-                RewardGrantKindV1.Money,
-                RewardGrantKindV1.Scrap,
-                RewardGrantKindV1.Strongbox);
-            IReadOnlyList<RunPickupSnapshotV1> pickups = Realize(
+                RewardGrantKind.Money,
+                RewardGrantKind.Scrap,
+                RewardGrantKind.Strongbox);
+            IReadOnlyList<RunPickupSnapshot> pickups = Realize(
                 fixture,
-                Child("money", RewardGrantKindV1.Money, "credits", 5L, 0),
-                Child("scrap", RewardGrantKindV1.Scrap, "scrap", 7L, 1),
-                Child("box", RewardGrantKindV1.Strongbox, "emerald", 1L, 2));
+                Child("money", RewardGrantKind.Money, "credits", 5L, 0),
+                Child("scrap", RewardGrantKind.Scrap, "scrap", 7L, 1),
+                Child("box", RewardGrantKind.Strongbox, "emerald", 1L, 2));
 
-            RunPickupPresentationSyncResultV1 sync = fixture.Presenter.Synchronize(RoomId);
+            RunPickupPresentationSyncResult sync = fixture.Presenter.Synchronize(RoomId);
 
             Assert.That(sync.CreatedCount, Is.EqualTo(3));
             Assert.That(fixture.Presenter.VisiblePickupCount, Is.EqualTo(3));
             Assert.That(pickups.Select(item => item.Reward.Kind),
                 Is.EquivalentTo(new[]
                 {
-                    RewardGrantKindV1.Money,
-                    RewardGrantKindV1.Scrap,
-                    RewardGrantKindV1.Strongbox
+                    RewardGrantKind.Money,
+                    RewardGrantKind.Scrap,
+                    RewardGrantKind.Strongbox
                 }));
             yield return null;
         }
@@ -273,11 +273,11 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
         public IEnumerator MissingPresentation_IsRetryableAndDoesNotCollectOrDiscard()
         {
             SceneFixture fixture = CreateSceneFixture();
-            RunPickupSnapshotV1 pickup = Realize(
+            RunPickupSnapshot pickup = Realize(
                 fixture,
-                Child("money", RewardGrantKindV1.Money, "credits", 5L)).Single();
+                Child("money", RewardGrantKind.Money, "credits", 5L)).Single();
 
-            RunPickupPresentationSyncResultV1 failed = fixture.Presenter.Synchronize(RoomId);
+            RunPickupPresentationSyncResult failed = fixture.Presenter.Synchronize(RoomId);
 
             Assert.That(failed.FailedCount, Is.EqualTo(1));
             Assert.That(fixture.Authority.ExportAvailablePickups().Single().PickupStableId,
@@ -285,10 +285,10 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
             Assert.That(fixture.Session.CollectionRecordCount, Is.EqualTo(0));
             fixture.Registry.ConfigureForTests(new[]
             {
-                Presentation(RewardGrantKindV1.Money, fixture.Prefab)
+                Presentation(RewardGrantKind.Money, fixture.Prefab)
             });
 
-            RunPickupPresentationSyncResultV1 retry = fixture.Presenter.Synchronize(RoomId);
+            RunPickupPresentationSyncResult retry = fixture.Presenter.Synchronize(RoomId);
 
             Assert.That(retry.CreatedCount, Is.EqualTo(1));
             Assert.That(retry.FailedCount, Is.EqualTo(0));
@@ -298,10 +298,10 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
         [UnityTest]
         public IEnumerator PickupCollection_DoesNotGrantPermanentCharacterReward()
         {
-            SceneFixture fixture = CreateSceneFixture(RewardGrantKindV1.Strongbox);
-            RunPickupSnapshotV1 pickup = Realize(
+            SceneFixture fixture = CreateSceneFixture(RewardGrantKind.Strongbox);
+            RunPickupSnapshot pickup = Realize(
                 fixture,
-                Child("box", RewardGrantKindV1.Strongbox, "emerald", 1L)).Single();
+                Child("box", RewardGrantKind.Strongbox, "emerald", 1L)).Single();
             fixture.Presenter.Synchronize(RoomId);
             RunRewardPickup2D view;
             fixture.Presenter.TryGetView(pickup.PickupStableId, out view);
@@ -314,16 +314,16 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
         }
 
         private SceneFixture CreateSceneFixture(
-            params RewardGrantKindV1[] presentationKinds)
+            params RewardGrantKind[] presentationKinds)
         {
             var session = new FakeRunSessionPort();
-            var authority = new RunLocalPickupAuthorityV1(
+            var authority = new RunLocalPickupState(
                 session,
                 new FixedPositionPort());
 
             GameObject hostObject = Track(new GameObject("PickupAuthorityHost"));
-            RunPickupAuthorityHost2D host =
-                hostObject.AddComponent<RunPickupAuthorityHost2D>();
+            RunPickupStateHost2D host =
+                hostObject.AddComponent<RunPickupStateHost2D>();
             host.Configure(authority);
 
             GameObject registryObject = Track(new GameObject("PickupPresentationRegistry"));
@@ -332,7 +332,7 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
 
             GameObject prefab = Track(new GameObject("GenericPickupPrefab"));
             prefab.SetActive(false);
-            var entries = new List<RunPickupPresentationEntryV1>();
+            var entries = new List<RunPickupPresentationEntry>();
             for (int index = 0; index < presentationKinds.Length; index++)
                 entries.Add(Presentation(presentationKinds[index], prefab));
             registry.ConfigureForTests(entries);
@@ -361,11 +361,11 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
             };
         }
 
-        private static RunPickupPresentationEntryV1 Presentation(
-            RewardGrantKindV1 kind,
+        private static RunPickupPresentationEntry Presentation(
+            RewardGrantKind kind,
             GameObject prefab)
         {
-            var entry = new RunPickupPresentationEntryV1();
+            var entry = new RunPickupPresentationEntry();
             entry.ConfigureForTests(
                 kind,
                 string.Empty,
@@ -377,11 +377,11 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
             return entry;
         }
 
-        private static IReadOnlyList<RunPickupSnapshotV1> Realize(
+        private static IReadOnlyList<RunPickupSnapshot> Realize(
             SceneFixture fixture,
-            params RunPickupGeneratedRewardV1[] children)
+            params RunPickupGeneratedReward[] children)
         {
-            return fixture.Authority.Realize(new RunPickupGeneratedBatchV1(
+            return fixture.Authority.Realize(new RunPickupGeneratedBatch(
                 Id("terminaldropoperation", "playmode-drop"),
                 Id("terminal", "playmode-terminal"),
                 Id("trigger", "playmode-trigger"),
@@ -396,14 +396,14 @@ namespace ShooterMover.Tests.PlayMode.RunPickups
                 children)).Pickups;
         }
 
-        private static RunPickupGeneratedRewardV1 Child(
+        private static RunPickupGeneratedReward Child(
             string instance,
-            RewardGrantKindV1 kind,
+            RewardGrantKind kind,
             string content,
             long quantity,
             int ordinal = 0)
         {
-            return new RunPickupGeneratedRewardV1(
+            return new RunPickupGeneratedReward(
                 Id("terminaldropchild", instance),
                 ordinal,
                 Id("grant", "grant-" + instance),

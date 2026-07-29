@@ -46,7 +46,7 @@ owned exact strongbox instance
 ```
 
 The difficult anti-duplication and partial-failure behavior is therefore not just
-an idea. `StrongboxOpeningServiceV1` binds an opening to an exact instance,
+an idea. `StrongboxOpeningActions` binds an opening to an exact instance,
 rejects conflicting retries, replays exact completed operations without minting
 new rewards, handles pending reward application, and consumes the box only after
 the reward is applied.
@@ -100,7 +100,7 @@ instances. Selection and opening must resolve back to the exact identities.
 
 ### The opening service is the canonical transaction route
 
-`StrongboxOpeningServiceV1` coordinates the production definition catalog,
+`StrongboxOpeningActions` coordinates the production definition catalog,
 reward generator, holdings authority, reward application service and payload
 resolver. It validates the requested box and its content fingerprint before
 opening.
@@ -214,7 +214,7 @@ Build a production-backed Hub or development flow that can:
 - create an isolated profile at a chosen level;
 - grant exact production strongbox instances;
 - display owned boxes grouped by tier while preserving exact identities;
-- open one selected instance through `StrongboxOpeningServiceV1`;
+- open one selected instance through `StrongboxOpeningActions`;
 - show the production result through the existing reveal presentation;
 - confirm the source box disappears and the exact equipment instance appears in
   the real holdings/inventory projection.

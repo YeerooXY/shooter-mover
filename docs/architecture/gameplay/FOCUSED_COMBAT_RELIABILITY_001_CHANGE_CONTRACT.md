@@ -12,7 +12,7 @@
 
 ### Projectile
 
-`ProductionCanonicalNormalProjectile2D` owns:
+`NormalProjectile2D` owns:
 
 - movement and remaining range;
 - pierce state;

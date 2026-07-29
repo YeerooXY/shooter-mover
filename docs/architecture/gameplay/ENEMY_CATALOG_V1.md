@@ -2,16 +2,16 @@
 
 ## Purpose
 
-`EnemyCatalogV1` is the engine-neutral content boundary between authored enemy data and the later placement-to-runtime factory. It describes enemy content; it does not instantiate actors, mutate health, execute attacks, award experience, or roll drops.
+`EnemyCatalog` is the engine-neutral content boundary between authored enemy data and the later placement-to-runtime factory. It describes enemy content; it does not instantiate actors, mutate health, execute attacks, award experience, or roll drops.
 
 The exact task launch point is `af83d72e80d216dbe78678754d6a66189967127f` on `main`. The implementation branch is `agent/enemy-data-001-definition-catalog` and the draft review is PR #257.
 
 ## Ownership boundary
 
-- `EnemyDefinitionV1` owns immutable authored facts shared by all of one enemy definition's attacks, including health, faction identity, detection radius, and vision arc.
-- `EnemyAttackCapabilityDescriptorV1` owns complete immutable eligibility and execution-input facts for one attack: deterministic priority, attack arc, minimum/preferred/maximum range, cooldown, damage, damage channel, and typed projectile/area/melee parameters.
-- `EnemyCatalogValidatorV1` validates syntax, numerical bounds, per-attack geometry, compatible parameter shapes, and registry references.
-- `EnemyCatalogJsonImporterV1` converts JSON into typed definitions and returns path-specific diagnostics without a partial catalog.
+- `EnemyDefinition` owns immutable authored facts shared by all of one enemy definition's attacks, including health, faction identity, detection radius, and vision arc.
+- `EnemyAttackCapabilityDescriptor` owns complete immutable eligibility and execution-input facts for one attack: deterministic priority, attack arc, minimum/preferred/maximum range, cooldown, damage, damage channel, and typed projectile/area/melee parameters.
+- `EnemyCatalogValidator` validates syntax, numerical bounds, per-attack geometry, compatible parameter shapes, and registry references.
+- `EnemyCatalogJsonImporter` converts JSON into typed definitions and returns path-specific diagnostics without a partial catalog.
 - Existing enemy actor and decision authorities continue to own live health, lifecycle, target selection, committed intent, and attack admission.
 - Existing weapon/projectile execution, XP, and drop systems remain downstream owners. The catalog stores stable profile references and content facts only.
 - `ENEMY-FACTORY-001` will resolve one room placement plus one catalog definition into an independent live actor. This task deliberately performs no such composition.
@@ -56,7 +56,7 @@ Projectile travel distance must support that attack's own maximum range. Melee/c
 
 ## Registry resolution and fail-closed behavior
 
-`IEnemyCatalogRegistryV1` resolves:
+`IEnemyCatalogRegistry` resolves:
 
 - movement policies;
 - decision policies;
@@ -101,7 +101,7 @@ The fixture is content proof only. It is not loaded into any deleted demo compos
 Run from a Unity `6000.3.19f1` checkout:
 
 ```text
-D:\6000.3.19f1\Editor\Unity.exe -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Enemies.EnemyCatalogJsonImporterV1Tests -testResults artifacts/enemy-data-001-editmode.xml -logFile artifacts/enemy-data-001-editmode.log
+D:\6000.3.19f1\Editor\Unity.exe -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Enemies.EnemyCatalogJsonImporterTests -testResults artifacts/enemy-data-001-editmode.xml -logFile artifacts/enemy-data-001-editmode.log
 ```
 
 The focused suite covers known/unknown/malformed projectile profiles, non-projectile attacks without projectile registration, mixed melee/ranged definitions, per-attack arc/range/travel/reach validation, duplicate priorities, authored attack-order fingerprint independence, definition-order independence, fail-closed behavior, and the original ranged/pounce/turret/pursuit fixtures.

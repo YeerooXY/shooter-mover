@@ -152,7 +152,7 @@ namespace ShooterMover.Tests.PlayMode.Props
                 {
                     new RewardGrantAuthoring(
                         "reward-grant.rewarded-prop",
-                        RewardGrantKindV1.Money,
+                        RewardGrantKind.Money,
                         "currency.money",
                         1L,
                         3L),

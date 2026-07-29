@@ -283,7 +283,7 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Sources
                     {
                         new RewardGrantAuthoring(
                             grantId,
-                            RewardGrantKindV1.Money,
+                            RewardGrantKind.Money,
                             "currency.money",
                             1L,
                             3L)
@@ -377,11 +377,11 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Sources
                     "Accepted first source operation.");
             }
 
-            RewardOperationIdentityComparisonV1 comparison =
-                RewardOperationIdentityV1.Classify(
+            RewardOperationIdentityComparison comparison =
+                RewardOperationIdentity.Classify(
                     AcceptedPreview.OperationRequest,
                     preview.OperationRequest);
-            if (comparison == RewardOperationIdentityComparisonV1.ExactDuplicateNoChange)
+            if (comparison == RewardOperationIdentityComparison.ExactDuplicateNoChange)
             {
                 return new RewardSourceSubmissionResult(
                     RewardSourceSubmissionStatus.ExactDuplicateNoChange,

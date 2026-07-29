@@ -10,7 +10,7 @@ using UnityEngine;
 namespace ShooterMover.UnityAdapters.CombatPresentation
 {
     /// <summary>Optional typed lifecycle seam preferred over reflective package discovery.</summary>
-    public interface ICombatPresentationLifecycleSourceV1
+    public interface ICombatPresentationLifecycleSource
     {
         long Generation { get; }
     }
@@ -24,7 +24,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
     {
         private StableId entityInstanceStableId;
         private Func<long> readLifecycleGeneration;
-        private Func<EnemyRuntimeProjection> readRuntimeProjection;
+        private Func<EnemyLiveView> readRuntimeProjection;
         private CombatHealthBarPresenter2D healthBar;
         private EnemyDeathVfxPresenter2D deathVfx;
         private bool configured;
@@ -40,10 +40,10 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
 
         public static CombatEnemyPresentationRegistration2D Attach(
             GameObject presentationRoot,
-            IEnemyActor2DAuthority authority,
+            IEnemyActor2DState authority,
             CombatDeathVfxPool2D sharedExplosionPool,
             Vector3 worldOffset,
-            EnemyDeathVfxScaleConfigurationV1 scaleConfiguration = null)
+            EnemyDeathVfxScaleConfiguration scaleConfiguration = null)
         {
             if (presentationRoot == null)
             {
@@ -72,7 +72,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             registration.Configure(
                 initialState.ActorId,
                 lifecycle,
-                new EnemyActorCombatHealthSnapshotSourceV1(
+                new EnemyActorCombatHealthSnapshotSource(
                     initialState.ActorId,
                     lifecycle,
                     authority.TryReadState,
@@ -86,10 +86,10 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
 
         public static CombatEnemyPresentationRegistration2D Attach(
             GameObject presentationRoot,
-            Func<EnemyRuntimeProjection> readRuntime,
+            Func<EnemyLiveView> readRuntime,
             CombatDeathVfxPool2D sharedExplosionPool,
             Vector3 worldOffset,
-            EnemyDeathVfxScaleConfigurationV1 scaleConfiguration = null)
+            EnemyDeathVfxScaleConfiguration scaleConfiguration = null)
         {
             if (presentationRoot == null)
             {
@@ -99,7 +99,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             {
                 throw new ArgumentNullException(nameof(readRuntime));
             }
-            EnemyRuntimeProjection initial = readRuntime();
+            EnemyLiveView initial = readRuntime();
             if (initial == null)
             {
                 throw new InvalidOperationException(
@@ -108,7 +108,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
 
             Func<long> lifecycle = delegate
             {
-                EnemyRuntimeProjection current = readRuntime();
+                EnemyLiveView current = readRuntime();
                 return current == null ? -1L : current.LifecycleGeneration;
             };
             CombatEnemyPresentationRegistration2D registration =
@@ -121,7 +121,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             registration.Configure(
                 initial.Identity.EntityInstanceId,
                 lifecycle,
-                new EnemyRuntimeCombatHealthSnapshotSourceV1(
+                new EnemyLiveCombatHealthSnapshotSource(
                     readRuntime,
                     CreateAnchor(initial.Identity.EntityInstanceId, worldOffset)),
                 readRuntime,
@@ -131,10 +131,10 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             return registration;
         }
 
-        public CombatHealthBarRefreshStatusV1 Refresh()
+        public CombatHealthBarRefreshStatus Refresh()
         {
             return healthBar == null
-                ? CombatHealthBarRefreshStatusV1.NotConfigured
+                ? CombatHealthBarRefreshStatus.NotConfigured
                 : healthBar.Refresh();
         }
 
@@ -164,7 +164,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
                 EnemyDestroyedNotification destruction =
                     result.Notifications[index] as EnemyDestroyedNotification;
                 if (destruction == null) continue;
-                Present(EnemyTerminalPresentationFactProjectorV1.FromLegacy(
+                Present(EnemyTerminalPresentationFactProjector.FromLegacy(
                     destruction,
                     readLifecycleGeneration(),
                     transform.position,
@@ -174,13 +174,13 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         }
 
         /// <summary>Canonical factory-runtime terminal path.</summary>
-        public void Observe(EnemyDeathFactV1 fact)
+        public void Observe(EnemyDeathFact fact)
         {
             if (!configured || fact == null)
             {
                 return;
             }
-            Present(EnemyTerminalPresentationFactProjectorV1.FromCanonical(
+            Present(EnemyTerminalPresentationFactProjector.FromCanonical(
                 fact,
                 transform.position,
                 EnemyPresentationBounds2D.MeasureLargestDimension(transform)));
@@ -189,11 +189,11 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         private void Configure(
             StableId actorId,
             Func<long> lifecycleSource,
-            ICombatHealthBarSnapshotSourceV1 healthSource,
-            Func<EnemyRuntimeProjection> runtimeSource,
+            ICombatHealthBarSnapshotSource healthSource,
+            Func<EnemyLiveView> runtimeSource,
             CombatDeathVfxPool2D sharedExplosionPool,
             Vector3 worldOffset,
-            EnemyDeathVfxScaleConfigurationV1 scaleConfiguration)
+            EnemyDeathVfxScaleConfiguration scaleConfiguration)
         {
             if (actorId == null) throw new ArgumentNullException(nameof(actorId));
             if (lifecycleSource == null)
@@ -238,11 +238,11 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
                 generation,
                 healthBar,
                 sharedExplosionPool,
-                scaleConfiguration ?? new EnemyDeathVfxScaleConfigurationV1());
+                scaleConfiguration ?? new EnemyDeathVfxScaleConfiguration());
             configured = true;
         }
 
-        private void Present(EnemyTerminalPresentationFactV1 fact)
+        private void Present(EnemyTerminalPresentationFact fact)
         {
             if (fact == null || fact.EntityInstanceStableId != entityInstanceStableId)
             {
@@ -260,11 +260,11 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             }
         }
 
-        private static CombatPresentationAnchorFactsV1 CreateAnchor(
+        private static CombatPresentationAnchorFacts CreateAnchor(
             StableId actorId,
             Vector3 worldOffset)
         {
-            return new CombatPresentationAnchorFactsV1(
+            return new CombatPresentationAnchorFacts(
                 actorId,
                 worldOffset.x,
                 worldOffset.y,
@@ -273,7 +273,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
 
         private static Func<long> ResolveLifecycleSource(
             GameObject root,
-            IEnemyActor2DAuthority authority)
+            IEnemyActor2DState authority)
         {
             MonoBehaviour[] components = root.GetComponentsInChildren<MonoBehaviour>(true);
             for (int index = 0; index < components.Length; index++)
@@ -281,8 +281,8 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
                 MonoBehaviour component = components[index];
                 if (component == null) continue;
 
-                ICombatPresentationLifecycleSourceV1 typed =
-                    component as ICombatPresentationLifecycleSourceV1;
+                ICombatPresentationLifecycleSource typed =
+                    component as ICombatPresentationLifecycleSource;
                 if (typed != null && OwnsAuthority(component, authority))
                 {
                     return () => typed.Generation;
@@ -311,9 +311,9 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
 
         private static bool OwnsAuthority(
             MonoBehaviour component,
-            IEnemyActor2DAuthority authority)
+            IEnemyActor2DState authority)
         {
-            if (object.ReferenceEquals(component as IEnemyActor2DAuthority, authority))
+            if (object.ReferenceEquals(component as IEnemyActor2DState, authority))
             {
                 return true;
             }
@@ -322,7 +322,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
                 BindingFlags.Public | BindingFlags.Instance);
             if (property == null
                 || property.GetIndexParameters().Length != 0
-                || !typeof(IEnemyActor2DAuthority).IsAssignableFrom(property.PropertyType))
+                || !typeof(IEnemyActor2DState).IsAssignableFrom(property.PropertyType))
             {
                 return false;
             }

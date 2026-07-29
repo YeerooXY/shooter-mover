@@ -11,14 +11,14 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
     public sealed class RoomAccessReferenceAuthoring2D
     {
         [SerializeField] private string referenceStableId = string.Empty;
-        [SerializeField] private RoomAccessReferenceKindV1 kind =
-            RoomAccessReferenceKindV1.Holding;
-        [SerializeField] private RoomAccessReferenceSourceV1 source =
-            RoomAccessReferenceSourceV1.RunHolding;
+        [SerializeField] private RoomAccessReferenceKind kind =
+            RoomAccessReferenceKind.Holding;
+        [SerializeField] private RoomAccessReferenceSource source =
+            RoomAccessReferenceSource.RunHolding;
 
-        public RoomAccessReferenceRegistrationV1 Build()
+        public RoomAccessReferenceRegistration Build()
         {
-            return new RoomAccessReferenceRegistrationV1(
+            return new RoomAccessReferenceRegistration(
                 StableId.Parse(referenceStableId),
                 kind,
                 source);
@@ -26,8 +26,8 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 
         public void ConfigureForTests(
             string configuredReferenceStableId,
-            RoomAccessReferenceKindV1 configuredKind,
-            RoomAccessReferenceSourceV1 configuredSource)
+            RoomAccessReferenceKind configuredKind,
+            RoomAccessReferenceSource configuredSource)
         {
             referenceStableId = configuredReferenceStableId;
             kind = configuredKind;
@@ -45,9 +45,9 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         [SerializeField] private RoomAccessReferenceAuthoring2D[] references =
             Array.Empty<RoomAccessReferenceAuthoring2D>();
 
-        public RoomAccessImportResultV1 Import()
+        public RoomAccessImportResult Import()
         {
-            IRoomAccessReferenceRegistryV1 referenceRegistry;
+            IRoomAccessReferenceRegistry referenceRegistry;
             try
             {
                 referenceRegistry = BuildReferenceRegistry();
@@ -61,14 +61,14 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             }
 
             return Import(
-                BuiltInRoomContentObjectCatalogV1.Create(),
+                BuiltInRoomContentObjectCatalog.Create(),
                 referenceRegistry);
         }
 
-        public RoomAccessImportResultV1 Import(
-            IRoomContentObjectCatalogV1 objectCatalog)
+        public RoomAccessImportResult Import(
+            IRoomContentObjectCatalog objectCatalog)
         {
-            IRoomAccessReferenceRegistryV1 referenceRegistry;
+            IRoomAccessReferenceRegistry referenceRegistry;
             try
             {
                 referenceRegistry = BuildReferenceRegistry();
@@ -84,9 +84,9 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             return Import(objectCatalog, referenceRegistry);
         }
 
-        public RoomAccessImportResultV1 Import(
-            IRoomContentObjectCatalogV1 objectCatalog,
-            IRoomAccessReferenceRegistryV1 referenceRegistry)
+        public RoomAccessImportResult Import(
+            IRoomContentObjectCatalog objectCatalog,
+            IRoomAccessReferenceRegistry referenceRegistry)
         {
             if (roomContent == null)
             {
@@ -110,7 +110,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                     "An immutable room access reference registry is required.");
             }
 
-            RoomContentImportResultV1 content = roomContent.Import(objectCatalog);
+            RoomContentImportResult content = roomContent.Import(objectCatalog);
             if (content == null || !content.IsValid)
             {
                 string detail = content == null || content.Issues.Count == 0
@@ -126,7 +126,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                     detail);
             }
 
-            return RoomAccessJsonImporterV1.Import(
+            return RoomAccessJsonImporter.Import(
                 accessDocument.text,
                 content.Bundle.RuntimeDefinition,
                 referenceRegistry);
@@ -144,12 +144,12 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 : (RoomAccessReferenceAuthoring2D[])configuredReferences.Clone();
         }
 
-        private RoomAccessReferenceCatalogV1 BuildReferenceRegistry()
+        private RoomAccessReferenceCatalog BuildReferenceRegistry()
         {
             RoomAccessReferenceAuthoring2D[] authored = references
                 ?? Array.Empty<RoomAccessReferenceAuthoring2D>();
             var registrations =
-                new RoomAccessReferenceRegistrationV1[authored.Length];
+                new RoomAccessReferenceRegistration[authored.Length];
             for (int index = 0; index < authored.Length; index++)
             {
                 if (authored[index] == null)
@@ -159,17 +159,17 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 }
                 registrations[index] = authored[index].Build();
             }
-            return new RoomAccessReferenceCatalogV1(registrations);
+            return new RoomAccessReferenceCatalog(registrations);
         }
 
-        private static RoomAccessImportResultV1 Failure(
+        private static RoomAccessImportResult Failure(
             string code,
             string path,
             string message)
         {
-            return new RoomAccessImportResultV1(
+            return new RoomAccessImportResult(
                 null,
-                new[] { new RoomAccessImportIssueV1(code, path, message) });
+                new[] { new RoomAccessImportIssue(code, path, message) });
         }
     }
 }

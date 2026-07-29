@@ -2,9 +2,9 @@
 
 ## Purpose
 
-`RoomRuntimeAuthorityV1` is the engine-neutral authority for room occupancy and room-clear state within one concrete run/runtime instance.
+`RoomOccupancyState` is the engine-neutral authority for room occupancy and room-clear state within one concrete run/runtime instance.
 
-It is bound to the existing validated `RoomGraphDefinitionV1`. It does **not** define another room graph or placement schema. The graph continues to own room IDs, connectivity, exits, start/terminal identities, and topology. Unity-authored `RoomContentDefinition2D` continues to own prefab and placement data.
+It is bound to the existing validated `RoomGraphDefinition`. It does **not** define another room graph or placement schema. The graph continues to own room IDs, connectivity, exits, start/terminal identities, and topology. Unity-authored `RoomContentDefinition2D` continues to own prefab and placement data.
 
 The runtime owns only:
 
@@ -36,7 +36,7 @@ Two occupants may share the same definition identity and still remain independen
 
 ## Registration
 
-A Unity adapter registers the complete authored occupancy set for one graph room with `RegisterRoomOccupantsCommandV1`.
+A Unity adapter registers the complete authored occupancy set for one graph room with `RegisterRoomOccupantsCommand`.
 
 Registration is atomic. An empty set is valid and immediately clears the room. Duplicate entity identities in one room are rejected. A second independent registration of the same room is rejected; an exact replay of the original operation is a duplicate no-op.
 
@@ -55,17 +55,17 @@ Clear logic does not inspect hierarchy names, package names, object counts, pref
 
 ## Terminal facts and retention
 
-`ReportRoomOccupantTerminalCommandV1` submits a positive terminal fact for one registered entity identity.
+`ReportRoomOccupantTerminalCommand` submits a positive terminal fact for one registered entity identity.
 
 Terminal facts are accepted for active or inactive rooms, provided the runtime identity and lifecycle generation match. This allows late accepted facts to remain deterministic while a room is transitioning out of presentation.
 
-The first operation that makes every blocking occupant terminal emits one `RoomClearTransitionV1`. Exact operation replay and later terminal notifications for an already-terminal entity never emit a second transition.
+The first operation that makes every blocking occupant terminal emits one `RoomClearTransition`. Exact operation replay and later terminal notifications for an already-terminal entity never emit a second transition.
 
 Leaving and returning changes only room activation. Registered occupants and terminal state remain retained for the lifecycle.
 
 ## Exit eligibility
 
-Each immutable `RoomOccupancyProjectionV1` contains exactly the exits connected from that room in `RoomGraphDefinitionV1`.
+Each immutable `RoomOccupancyView` contains exactly the exits connected from that room in `RoomGraphDefinition`.
 
 A connected exit is projected eligible only when:
 
@@ -73,7 +73,7 @@ A connected exit is projected eligible only when:
 2. occupancy has been registered; and
 3. the room is cleared.
 
-This projection is presentation eligibility, not mission traversal authority. `RoomMissionLayoutV1` still owns completion, unlock, and traversal semantics. A live coordinator must require both authorities where appropriate rather than copying either authority's state.
+This projection is presentation eligibility, not mission traversal authority. `RoomMissionLayout` still owns completion, unlock, and traversal semantics. A live coordinator must require both authorities where appropriate rather than copying either authority's state.
 
 ## Replay and conflict behavior
 
@@ -87,7 +87,7 @@ Every mutation command carries an operation identity. The runtime stores the can
 
 ## Restart
 
-`RestartRoomRuntimeCommandV1` increments the lifecycle generation, restores every registered room's authored occupant set with all occupants non-terminal, marks the graph start room active, marks other rooms inactive, and recomputes clear state.
+`RestartRoomLiveCommand` increments the lifecycle generation, restores every registered room's authored occupant set with all occupants non-terminal, marks the graph start room active, marks other rooms inactive, and recomputes clear state.
 
 Rooms containing only optional/non-participating occupants are therefore cleared in the restored authored state. Restart does not emit room-clear transitions; the coordinator can read the immutable projection after restart.
 
@@ -125,11 +125,11 @@ Replace the occupancy/clear responsibility of:
 - `DemoRoomProjection.AreAllEnemiesDestroyed`;
 - `DemoRoomProjection.RegisterEnemyDestroyedReader`.
 
-Add one `RoomRuntimeAuthorityV1` field plus small Unity-only bindings from concrete occupant entity IDs to their scene adapters. Keep `roomMissionLayout`, `RoomContentDefinition2D`, and door fields because they still own topology/placement lookup and presentation.
+Add one `RoomOccupancyState` field plus small Unity-only bindings from concrete occupant entity IDs to their scene adapters. Keep `roomMissionLayout`, `RoomContentDefinition2D`, and door fields because they still own topology/placement lookup and presentation.
 
 ### `BuildSession()`
 
-Immediately after creating `RoomMissionLayoutV1`, create `RoomRuntimeAuthorityV1` from the **same** `roomMissionLayout.Definition` and one concrete run-scoped runtime identity. Do not call `Level1RoomGraphDefinitionV1.Create()` a second time for a separate topology truth.
+Immediately after creating `RoomMissionLayout`, create `RoomOccupancyState` from the **same** `roomMissionLayout.Definition` and one concrete run-scoped runtime identity. Do not call `Level1RoomGraphDefinition.Create()` a second time for a separate topology truth.
 
 ### `BuildAuthoredRooms()`
 
@@ -140,7 +140,7 @@ For each authored room:
 1. build its Unity objects as today;
 2. obtain each concrete placement/entity ID and reusable definition ID;
 3. obtain an explicit clear role from authored/package projection data;
-4. submit one atomic `RegisterRoomOccupantsCommandV1`, including an empty list when appropriate;
+4. submit one atomic `RegisterRoomOccupantsCommand`, including an empty list when appropriate;
 5. retain only presentation bindings keyed by entity identity;
 6. keep door construction as presentation wiring.
 
@@ -159,13 +159,13 @@ Use event/command identities sourced from the accepted terminal authority. Do no
 
 Remove `currentProjection.AreAllEnemiesDestroyed`.
 
-Read the current immutable room projection instead. When a `RoomClearTransitionV1` is accepted, let the mode coordinator call `roomMissionLayout.CompleteCurrentRoom()` exactly once. Door presentation should read `RoomOccupancyProjectionV1.IsExitEligible(exitId)` and the corresponding mission-layout exit state; room runtime itself must not call mission completion or traversal.
+Read the current immutable room projection instead. When a `RoomClearTransition` is accepted, let the mode coordinator call `roomMissionLayout.CompleteCurrentRoom()` exactly once. Door presentation should read `RoomOccupancyView.IsExitEligible(exitId)` and the corresponding mission-layout exit state; room runtime itself must not call mission completion or traversal.
 
 Keep player-position door-lane detection and terminal mission completion in the controller/mode coordination layer.
 
 ### `SwitchRoom(...)`
 
-After `roomMissionLayout.Traverse(...)` succeeds, call `RoomRuntimeAuthorityV1.ActivateRoom(...)` with the exact destination room, operation identity, runtime identity, and lifecycle generation. Then render the returned immutable projection.
+After `roomMissionLayout.Traverse(...)` succeeds, call `RoomOccupancyState.ActivateRoom(...)` with the exact destination room, operation identity, runtime identity, and lifecycle generation. Then render the returned immutable projection.
 
 Do not reactivate occupants by enemy type or room-name comparison.
 
@@ -183,7 +183,7 @@ Keep only package-specific activation/deactivation mechanics that cannot yet be 
 
 ### `QuickRestart()`
 
-Before re-rendering room content, submit one `RestartRoomRuntimeCommandV1` using the current room-runtime lifecycle generation and a unique restart operation identity. Use the returned generation for all subsequent room terminal/activation commands. Then restart Unity enemy adapters and render the restored projection.
+Before re-rendering room content, submit one `RestartRoomLiveCommand` using the current room-runtime lifecycle generation and a unique restart operation identity. Use the returned generation for all subsequent room terminal/activation commands. Then restart Unity enemy adapters and render the restored projection.
 
 Do not clear and rebuild occupancy by scanning scene objects.
 
@@ -193,7 +193,7 @@ Delete the entire nested `DemoRoomProjection` type after the live authority path
 
 ## Validation scope
 
-Focused EditMode coverage is provided in `RoomRuntimeAuthorityTests` for:
+Focused EditMode coverage is provided in `RoomOccupancyStateTests` for:
 
 - zero, one, and many occupants;
 - required versus optional roles;
@@ -211,7 +211,7 @@ Focused EditMode coverage is provided in `RoomRuntimeAuthorityTests` for:
 The intended focused Unity command is:
 
 ```text
-Unity -batchmode -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Missions.Rooms.RoomRuntimeAuthorityTests -testResults Temp/room-runtime-001-editmode.xml
+Unity -batchmode -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Missions.Rooms.RoomOccupancyStateTests -testResults Temp/room-runtime-001-editmode.xml
 ```
 
 `-quit` is intentionally omitted because `-runTests` exits Unity automatically.

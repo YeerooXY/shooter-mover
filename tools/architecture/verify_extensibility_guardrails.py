@@ -12,8 +12,8 @@ from pathlib import Path
 LAUNCH_SHA = "7b2dfb1dadb13a6d8c0631a56d10fc44f3080472"
 
 ALLOWED_PATHS = {
-    "Assets/ShooterMover/Tests/EditMode/ExtensibilityGuardrailsV1Tests.cs",
-    "Assets/ShooterMover/Tests/EditMode/ExtensibilityGuardrailsV1Tests.cs.meta",
+    "Assets/ShooterMover/Tests/EditMode/ExtensibilityGuardrailsTests.cs",
+    "Assets/ShooterMover/Tests/EditMode/ExtensibilityGuardrailsTests.cs.meta",
     "Assets/ShooterMover/Tests/EditMode/extensibility_guardrails_enemy_catalog_v1.json",
     "Assets/ShooterMover/Tests/EditMode/extensibility_guardrails_enemy_catalog_v1.json.meta",
     "Assets/ShooterMover/Tests/EditMode/extensibility_guardrails_access_v1.json",

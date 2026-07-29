@@ -22,7 +22,7 @@ It does **not** introduce replacement authorities for:
 - strongboxes;
 - the six-slot player account aggregate.
 
-The selected runtime graph constructs the existing production authority implementations once for the exact selected character. Their state is restored and exported through the merged `ISaveComponentAdapterV1` contracts. The existing `PlayerAccountSaveAuthorityV1` remains the only aggregate mutation boundary, and `AtomicPlayerAccountStoreV1` remains the durable file protocol.
+The selected runtime graph constructs the existing production authority implementations once for the exact selected character. Their state is restored and exported through the merged `ISaveComponentBridge` contracts. The existing `PlayerAccountSaveState` remains the only aggregate mutation boundary, and `AtomicPlayerAccountStore` remains the durable file protocol.
 
 ## Transactional selection and switching
 
@@ -32,9 +32,9 @@ The explicit existing-slot activation sequence is:
 2. If another runtime graph is active, every current authority snapshot is exported and durably saved first.
 3. A rejected export, aggregate mutation, or atomic file save rejects activation. The old graph and old published profile remain active.
 4. Only after successful persistence is the previous runtime graph fully unbound and disposed.
-5. The account aggregate resolves the exact `CharacterInstanceSnapshotV1` in the target slot.
+5. The account aggregate resolves the exact `CharacterInstanceSnapshot` in the target slot.
 6. A fresh graph of the existing subsystem authorities is created.
-7. `PlayerAccountRestoreCoordinatorV1` validates the complete account, stages the selected character components, and restores the graph through the merged adapters.
+7. `PlayerAccountRestoreFlow` validates the complete account, stages the selected character components, and restores the graph through the merged adapters.
 8. Non-selected slots are bound with no runtime adapters, so their immutable snapshots stay opaque and untouched.
 9. Hub, inventory, and gameplay-facing adapters publish the selected restored graph instead of reconstructing starter state from a route payload.
 
@@ -42,14 +42,14 @@ Selecting the already-active exact character is an identity-preserving no-op. Th
 
 ## Transactional empty-slot creation
 
-A new character is not installed by saving a migration result before the old character. `CharacterCompositionCoordinatorV1.CreateAndSelect` owns the complete sequence:
+A new character is not installed by saving a migration result before the old character. `CharacterSetupFlow.CreateAndSelect` owns the complete sequence:
 
 1. Persist the currently active graph, when present.
 2. Reject immediately if that pre-save fails; the target slot remains empty and the old graph remains published.
 3. Capture the complete post-pre-save account authority snapshot as the rollback point.
 4. Build the starter graph from the existing production authority factory and export its merged save components.
 5. Apply one deterministic `CreateCharacter` command to the account authority in memory only.
-6. Restore and validate the candidate graph through `PlayerAccountRestoreCoordinatorV1` while the old graph remains active.
+6. Restore and validate the candidate graph through `PlayerAccountRestoreFlow` while the old graph remains active.
 7. Durably save the aggregate containing the persisted old character and the restored new character.
 8. If creation, restore, or durable save fails, restore the rollback authority snapshot, attempt a compensating save of that snapshot, dispose only the candidate graph, and keep the old graph published.
 9. After durable success, dispose the old graph and publish the exact new slot.
@@ -60,7 +60,7 @@ A process interruption before the new aggregate commit leaves the previously per
 
 ## Explicit persistence
 
-Confirmed mutations export immutable component snapshots from the active authority graph. Only changed component fingerprints are installed into the selected exact slot through `PlayerAccountSaveAuthorityV1`. The resulting aggregate is committed through `AtomicPlayerAccountStoreV1`.
+Confirmed mutations export immutable component snapshots from the active authority graph. Only changed component fingerprints are installed into the selected exact slot through `PlayerAccountSaveState`. The resulting aggregate is committed through `AtomicPlayerAccountStore`.
 
 If aggregate mutation or durable file replacement fails, the account save authority is rolled back to its previous snapshot and replay state. Save operation IDs are deterministic from the mutation scope and immutable result fingerprint, preserving idempotent retry behavior.
 
@@ -68,12 +68,12 @@ The UI cutover persists confirmed exact-instance loadout changes, every explicit
 
 ## Character-owned strongbox authority
 
-`ProductionCharacterRuntimeGraphV1` now always contains the real `StrongboxOpeningServiceV1` and its merged `StrongboxState` save adapter. It shares the selected graph's existing:
+`CharacterLiveGraph` now always contains the real `StrongboxOpeningActions` and its merged `StrongboxState` save adapter. It shares the selected graph's existing:
 
-- `PlayerHoldingsService`;
-- `MoneyWalletService`;
-- `ScrapWalletServiceV1`;
-- `RewardApplicationServiceV1` child-authority bindings;
+- `PlayerHoldingsActions`;
+- `MoneyWalletActions`;
+- `ScrapWalletActions`;
+- `RewardApplicationActions` child-authority bindings;
 - GEN equipment resolver and production strongbox definition catalog.
 
 The current starter equipment catalog has no augment definitions or augment capacity. Character BOX composition therefore clamps each tier's augment budget to the actual equipment catalog capacity, producing valid zero-augment equipment rather than an impossible roll. Future catalogs with real compatible augments automatically expose their candidates and capacity through the same composition.
@@ -98,7 +98,7 @@ Retries derive the same character and operation identities. Already migrated mat
 
 ## Exact-instance loadout restore
 
-`ProductionInventoryLoadoutAuthorityV1.ImportSnapshot` is a restore-only path for the existing loadout authority. It:
+`InventoryLoadoutState.ImportSnapshot` is a restore-only path for the existing loadout authority. It:
 
 - verifies the component fingerprint;
 - validates every exact equipment binding against the already-restored holdings authority and equipment catalog;
@@ -110,7 +110,7 @@ It does not replay an equip command or create a second loadout model.
 
 ## Regression coverage authored
 
-`CharacterCompositionCoordinatorV1Tests` covers:
+`CharacterSetupFlowTests` covers:
 
 - six-slot state isolation and restart restoration;
 - complete known-component restoration;

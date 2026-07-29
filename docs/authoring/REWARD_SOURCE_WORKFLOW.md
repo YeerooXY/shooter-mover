@@ -25,7 +25,7 @@ Create **Shooter Mover > Rewards > Reward Profile Definition** under
    `BuildDefinition()` reject malformed IDs, invalid ranges, duplicate identities,
    null entries, empty configured profiles, and inconsistent no-drop shapes.
 
-The asset first builds `RewardProfileV1`, then publishes a flattened generic
+The asset first builds `RewardProfile`, then publishes a flattened generic
 capability snapshot. Entries are canonicalized by REW-001 identity before the
 snapshot is written, so changing serialized list order does not change the
 profile or preview fingerprint.

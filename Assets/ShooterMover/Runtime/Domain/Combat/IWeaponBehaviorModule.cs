@@ -35,7 +35,7 @@ namespace ShooterMover.Domain.Combat
             StableId weaponId,
             StableId mountId,
             long simulationStep,
-            WeaponRuntimeProfile runtimeProfile,
+            WeaponLiveProfile runtimeProfile,
             bool isEmpowered,
             double originX,
             double originY,
@@ -116,7 +116,7 @@ namespace ShooterMover.Domain.Combat
 
         public long SimulationStep { get; }
 
-        public WeaponRuntimeProfile RuntimeProfile { get; }
+        public WeaponLiveProfile RuntimeProfile { get; }
 
         public bool IsEmpowered { get; }
 

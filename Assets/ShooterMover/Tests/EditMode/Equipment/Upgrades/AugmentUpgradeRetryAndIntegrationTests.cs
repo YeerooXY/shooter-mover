@@ -18,27 +18,27 @@ using ShooterMover.Domain.Rewards.Model;
 
 namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
 {
-    public sealed partial class AugmentUpgradeServiceV1Tests
+    public sealed partial class AugmentUpgradeActionsTests
     {
         [Test]
         public void RetryUsesIdenticalTransactionAndReplacementIdentities()
         {
             var fixture = new Fixture(interruptFirstRewardApply: true);
-            AugmentUpgradeQuoteV1 quote = fixture.Quote(2);
+            AugmentUpgradeQuote quote = fixture.Quote(2);
 
-            AugmentUpgradeFactV1 pending = fixture.Confirm(
+            AugmentUpgradeFact pending = fixture.Confirm(
                 quote,
                 "confirmation.retry");
             long balanceAfterPending = fixture.Money.Balance;
             long holdingsAfterPending = fixture.Holdings.Sequence;
-            AugmentUpgradeFactV1 applied = fixture.Service.Retry(
-                new AugmentUpgradeRetryCommandV1(
+            AugmentUpgradeFact applied = fixture.Service.Retry(
+                new AugmentUpgradeRetryCommand(
                     Id("confirmation.retry")));
 
             Assert.That(pending.Status,
-                Is.EqualTo(AugmentUpgradeConfirmationStatusV1.PendingRetry));
+                Is.EqualTo(AugmentUpgradeConfirmationStatus.PendingRetry));
             Assert.That(applied.Status,
-                Is.EqualTo(AugmentUpgradeConfirmationStatusV1.Applied));
+                Is.EqualTo(AugmentUpgradeConfirmationStatus.Applied));
             Assert.That(applied.MoneyTransactionStableId,
                 Is.EqualTo(pending.MoneyTransactionStableId));
             Assert.That(applied.HoldingsRemoveTransactionStableId,
@@ -60,16 +60,16 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         public void RealMonInvAndRapIntegrationPasses()
         {
             var fixture = new Fixture();
-            AugmentUpgradeQuoteV1 quote = fixture.Quote(2);
+            AugmentUpgradeQuote quote = fixture.Quote(2);
             long rapBefore = fixture.Rap.Sequence;
 
-            AugmentUpgradeFactV1 fact = fixture.Confirm(
+            AugmentUpgradeFact fact = fixture.Confirm(
                 quote,
                 "confirmation.real-integration");
-            UniqueHoldingSnapshotV1 replacement = fixture.GetUnique(
+            UniqueHoldingSnapshot replacement = fixture.GetUnique(
                 fact.ReplacementEquipmentInstanceStableId);
 
-            Assert.That(fact.Status, Is.EqualTo(AugmentUpgradeConfirmationStatusV1.Applied));
+            Assert.That(fact.Status, Is.EqualTo(AugmentUpgradeConfirmationStatus.Applied));
             Assert.That(fixture.Money.Balance,
                 Is.EqualTo(quote.CurrentWalletBalance - quote.MoneyCost));
             Assert.That(fixture.Holdings.Sequence,
@@ -83,15 +83,15 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
                 Is.True);
         }
 
-        private static AugmentUpgradeQuoteV1 CopyQuote(
-            AugmentUpgradeQuoteV1 source,
+        private static AugmentUpgradeQuote CopyQuote(
+            AugmentUpgradeQuote source,
             string equipmentFingerprint = null,
             int? augmentSlotIndex = null,
             StableId augmentInstanceStableId = null,
             int? targetLevel = null,
             long? moneyCost = null)
         {
-            return AugmentUpgradeQuoteV1.Create(
+            return AugmentUpgradeQuote.Create(
                 source.EquipmentInstanceStableId,
                 equipmentFingerprint ?? source.EquipmentFingerprint,
                 augmentSlotIndex ?? source.AugmentSlotIndex,
@@ -123,19 +123,19 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
             return null;
         }
 
-        private static AugmentUpgradeCostPolicyV1 Policy(
+        private static AugmentUpgradeCostPolicy Policy(
             int version = 1,
             long tierOneBase = 100L)
         {
-            return AugmentUpgradeCostPolicyV1.Create(
+            return AugmentUpgradeCostPolicy.Create(
                 Id("augment-upgrade-policy.standard"),
                 version,
                 false,
                 new[]
                 {
-                    AugmentTierCostCurveV1.Create(1, tierOneBase, 10L),
-                    AugmentTierCostCurveV1.Create(2, 250L, 25L),
-                    AugmentTierCostCurveV1.Create(3, 500L, 50L),
+                    AugmentTierCostCurve.Create(1, tierOneBase, 10L),
+                    AugmentTierCostCurve.Create(2, 250L, 25L),
+                    AugmentTierCostCurve.Create(3, 500L, 50L),
                 });
         }
 
@@ -146,7 +146,7 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
 
         private static string Hash(char value)
         {
-            return AugmentUpgradeCanonicalV1.Fingerprint(value.ToString());
+            return AugmentUpgrade.Fingerprint(value.ToString());
         }
 
         private sealed class Fixture
@@ -157,14 +157,14 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
                 int currentLevel = 1,
                 int augmentTier = 1,
                 bool interruptFirstRewardApply = false,
-                AugmentUpgradeCostPolicyV1 policy = null)
+                AugmentUpgradeCostPolicy policy = null)
             {
                 Catalog = BuildCatalog(maximumLevel);
                 Provider = new CatalogProvider(Catalog);
                 Validator = new CatalogValidator(Catalog);
-                Money = new MoneyWalletService();
-                Scrap = new ScrapWalletServiceV1(ScrapAuthority, ScrapCurrency);
-                Holdings = new PlayerHoldingsService(
+                Money = new MoneyWalletActions();
+                Scrap = new ScrapWalletActions(ScrapAuthority, ScrapCurrency);
+                Holdings = new PlayerHoldingsActions(
                     HoldingsAuthority,
                     1000L,
                     Validator);
@@ -186,18 +186,18 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
                             2,
                             1),
                     });
-                HoldingProvenanceV1 provenance = HoldingProvenanceV1.Create(
+                HoldingProvenance provenance = HoldingProvenance.Create(
                     Id("grant.initial-equipment"),
                     Id("source.initial-equipment"));
-                PlayerHoldingsMutationResultV1 holdingResult = Holdings.Apply(
-                    PlayerHoldingsCommandV1.AddEquipment(
+                PlayerHoldingsMutationResult holdingResult = Holdings.Apply(
+                    PlayerHoldingsCommand.AddEquipment(
                         Id("initial-equipment.transaction"),
                         Id("initial-equipment.operation"),
                         HoldingsAuthority,
                         Equipment,
                         provenance));
                 Assert.That(holdingResult.Status,
-                    Is.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
+                    Is.EqualTo(PlayerHoldingsMutationStatus.Applied));
                 MoneyWalletChangeFact moneyResult = Money.Grant(
                     Id("initial-money.transaction"),
                     Id("initial-money.operation"),
@@ -205,66 +205,66 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
                 Assert.That(moneyResult.Status,
                     Is.EqualTo(MoneyWalletTransactionStatus.Applied));
 
-                IRewardChildAuthorityV1 holdingsChild =
-                    new PlayerHoldingsRewardChildAuthorityV1(Holdings, Validator);
+                IRewardChildState holdingsChild =
+                    new PlayerHoldingsRewardChildState(Holdings, Validator);
                 if (interruptFirstRewardApply)
                 {
-                    holdingsChild = new ThrowOnceRewardChildAuthority(holdingsChild);
+                    holdingsChild = new ThrowOnceRewardChildState(holdingsChild);
                 }
 
-                Rap = new RewardApplicationServiceV1(
+                Rap = new RewardApplicationActions(
                     RapAuthority,
-                    new MoneyRewardChildAuthorityV1(Money),
-                    new ScrapRewardChildAuthorityV1(Scrap),
+                    new MoneyRewardChildState(Money),
+                    new ScrapRewardChildState(Scrap),
                     holdingsChild);
                 CostPolicy = policy ?? Policy();
                 Service = CreateService(CostPolicy);
             }
 
-            public MoneyWalletService Money { get; }
-            public ScrapWalletServiceV1 Scrap { get; }
-            public PlayerHoldingsService Holdings { get; }
-            public RewardApplicationServiceV1 Rap { get; }
+            public MoneyWalletActions Money { get; }
+            public ScrapWalletActions Scrap { get; }
+            public PlayerHoldingsActions Holdings { get; }
+            public RewardApplicationActions Rap { get; }
             public EquipmentCatalog Catalog { get; }
             public CatalogProvider Provider { get; }
             public CatalogValidator Validator { get; }
             public EquipmentInstance Equipment { get; }
-            public AugmentUpgradeCostPolicyV1 CostPolicy { get; }
-            public AugmentUpgradeServiceV1 Service { get; }
+            public AugmentUpgradeCostPolicy CostPolicy { get; }
+            public AugmentUpgradeActions Service { get; }
 
-            public AugmentUpgradeQuoteV1 Quote(int targetLevel)
+            public AugmentUpgradeQuote Quote(int targetLevel)
             {
-                AugmentUpgradeQuoteResultV1 result = Service.Quote(
-                    new AugmentUpgradeQuoteRequestV1(
+                AugmentUpgradeQuoteResult result = Service.Quote(
+                    new AugmentUpgradeQuoteRequest(
                         EquipmentInstanceId,
                         PrimaryAugmentInstanceId,
                         targetLevel));
-                Assert.That(result.Status, Is.EqualTo(AugmentUpgradeQuoteStatusV1.Quoted));
+                Assert.That(result.Status, Is.EqualTo(AugmentUpgradeQuoteStatus.Quoted));
                 Assert.That(result.Quote, Is.Not.Null);
                 return result.Quote;
             }
 
-            public AugmentUpgradeFactV1 Confirm(
-                AugmentUpgradeQuoteV1 quote,
+            public AugmentUpgradeFact Confirm(
+                AugmentUpgradeQuote quote,
                 string confirmationId)
             {
-                return Service.Confirm(AugmentUpgradeConfirmationV1.Create(
+                return Service.Confirm(AugmentUpgradeConfirmation.Create(
                     Id(confirmationId),
                     quote));
             }
 
-            public UniqueHoldingSnapshotV1 GetUnique(StableId instanceId)
+            public UniqueHoldingSnapshot GetUnique(StableId instanceId)
             {
-                UniqueHoldingSnapshotV1 holding;
+                UniqueHoldingSnapshot holding;
                 Assert.That(Holdings.TryGetUnique(instanceId, out holding), Is.True);
                 return holding;
             }
 
             public void RemoveOriginal(string identityPrefix)
             {
-                UniqueHoldingSnapshotV1 holding = GetUnique(EquipmentInstanceId);
-                PlayerHoldingsMutationResultV1 result = Holdings.Apply(
-                    PlayerHoldingsCommandV1.RemoveEquipment(
+                UniqueHoldingSnapshot holding = GetUnique(EquipmentInstanceId);
+                PlayerHoldingsMutationResult result = Holdings.Apply(
+                    PlayerHoldingsCommand.RemoveEquipment(
                         Id(identityPrefix + "-tx"),
                         Id(identityPrefix + "-op"),
                         HoldingsAuthority,
@@ -273,15 +273,15 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
                         holding.Provenance,
                         Holdings.Sequence));
                 Assert.That(result.Status,
-                    Is.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
+                    Is.EqualTo(PlayerHoldingsMutationStatus.Applied));
             }
 
-            public AugmentUpgradeQuoteV1 CreateManualQuote(
+            public AugmentUpgradeQuote CreateManualQuote(
                 int targetLevel,
                 long moneyCost)
             {
                 AugmentInstance augment = FindAugment(Equipment, PrimaryAugmentInstanceId);
-                return AugmentUpgradeQuoteV1.Create(
+                return AugmentUpgradeQuote.Create(
                     Equipment.InstanceId,
                     Equipment.Fingerprint,
                     0,
@@ -298,17 +298,17 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
                     CostPolicy.Fingerprint);
             }
 
-            public AugmentUpgradeServiceV1 CreateService(
-                AugmentUpgradeCostPolicyV1 policy)
+            public AugmentUpgradeActions CreateService(
+                AugmentUpgradeCostPolicy policy)
             {
-                return new AugmentUpgradeServiceV1(
+                return new AugmentUpgradeActions(
                     Money,
                     Holdings,
                     Rap,
                     Provider,
                     Validator,
                     policy,
-                    new AugmentUpgradeIdentityContextV1(
+                    new AugmentUpgradeIdentityContext(
                         Id("run.upgrade-tests"),
                         Id("source-instance.upgrade-tests"),
                         Id("player.upgrade-tests"),
@@ -392,12 +392,12 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
             }
         }
 
-        private sealed class ThrowOnceRewardChildAuthority : IRewardChildAuthorityV1
+        private sealed class ThrowOnceRewardChildState : IRewardChildState
         {
-            private readonly IRewardChildAuthorityV1 inner;
+            private readonly IRewardChildState inner;
             private bool shouldThrow = true;
 
-            public ThrowOnceRewardChildAuthority(IRewardChildAuthorityV1 inner)
+            public ThrowOnceRewardChildState(IRewardChildState inner)
             {
                 this.inner = inner;
             }
@@ -412,18 +412,18 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
                 get { return inner.Sequence; }
             }
 
-            public RewardAuthorityPreflightResultV1 Preflight(
-                IReadOnlyList<RewardChildGrantCommandV1> commands)
+            public RewardStatePreflightResult Preflight(
+                IReadOnlyList<RewardChildGrantCommand> commands)
             {
                 return inner.Preflight(commands);
             }
 
-            public RewardChildApplyResultV1 Apply(
-                RewardChildGrantCommandV1 command)
+            public RewardChildApplyResult Apply(
+                RewardChildGrantCommand command)
             {
                 if (shouldThrow
                     && command != null
-                    && command.GrantKind == RewardGrantKindV1.EquipmentReference)
+                    && command.GrantKind == RewardGrantKind.EquipmentReference)
                 {
                     shouldThrow = false;
                     throw new InvalidOperationException("forced-upgrade-retry");

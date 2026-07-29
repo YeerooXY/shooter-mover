@@ -18,13 +18,13 @@ using ShooterMover.Domain.Rewards.Model;
 
 namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
 {
-    public sealed partial class AugmentUpgradeServiceV1Tests
+    public sealed partial class AugmentUpgradeActionsTests
     {
         [Test]
         public void WalletSequenceConflictIsRejected()
         {
             var fixture = new Fixture();
-            AugmentUpgradeQuoteV1 quote = fixture.Quote(2);
+            AugmentUpgradeQuote quote = fixture.Quote(2);
             fixture.Money.Grant(
                 Id("wallet-conflict.transaction"),
                 Id("wallet-conflict.operation"),
@@ -33,13 +33,13 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
             long balance = fixture.Money.Balance;
             long sequence = fixture.Money.Sequence;
 
-            AugmentUpgradeFactV1 fact = fixture.Confirm(
+            AugmentUpgradeFact fact = fixture.Confirm(
                 quote,
                 "confirmation.wallet-conflict");
 
             Assert.That(fact.Status,
                 Is.EqualTo(
-                    AugmentUpgradeConfirmationStatusV1.WalletSequenceConflict));
+                    AugmentUpgradeConfirmationStatus.WalletSequenceConflict));
             Assert.That(fixture.Money.Balance, Is.EqualTo(balance));
             Assert.That(fixture.Money.Sequence, Is.EqualTo(sequence));
             Assert.That(fixture.Holdings.Sequence, Is.EqualTo(quote.HoldingsSequence));
@@ -49,15 +49,15 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         public void HoldingsSequenceConflictIsRejected()
         {
             var fixture = new Fixture();
-            AugmentUpgradeQuoteV1 quote = fixture.Quote(2);
-            HoldingProvenanceV1 provenance = HoldingProvenanceV1.Create(
+            AugmentUpgradeQuote quote = fixture.Quote(2);
+            HoldingProvenance provenance = HoldingProvenance.Create(
                 Id("grant.unrelated"),
                 Id("source.unrelated"));
-            fixture.Holdings.Apply(PlayerHoldingsCommandV1.AddStack(
+            fixture.Holdings.Apply(PlayerHoldingsCommand.AddStack(
                 Id("holdings-conflict.transaction"),
                 Id("holdings-conflict.operation"),
                 HoldingsAuthority,
-                RewardGrantKindV1.Miscellaneous,
+                RewardGrantKind.Miscellaneous,
                 Id("item.unrelated"),
                 1L,
                 provenance,
@@ -65,13 +65,13 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
             long sequence = fixture.Holdings.Sequence;
             long balance = fixture.Money.Balance;
 
-            AugmentUpgradeFactV1 fact = fixture.Confirm(
+            AugmentUpgradeFact fact = fixture.Confirm(
                 quote,
                 "confirmation.holdings-conflict");
 
             Assert.That(fact.Status,
                 Is.EqualTo(
-                    AugmentUpgradeConfirmationStatusV1.HoldingsSequenceConflict));
+                    AugmentUpgradeConfirmationStatus.HoldingsSequenceConflict));
             Assert.That(fixture.Holdings.Sequence, Is.EqualTo(sequence));
             Assert.That(fixture.Money.Balance, Is.EqualTo(balance));
             Assert.That(fixture.Money.Sequence, Is.EqualTo(quote.WalletSequence));
@@ -82,11 +82,11 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         {
             var fixture = new Fixture(maximumLevel: 10, currentLevel: 9);
 
-            AugmentUpgradeFactV1 fact = fixture.Confirm(
+            AugmentUpgradeFact fact = fixture.Confirm(
                 fixture.Quote(10),
                 "confirmation.level-ten");
 
-            Assert.That(fact.Status, Is.EqualTo(AugmentUpgradeConfirmationStatusV1.Applied));
+            Assert.That(fact.Status, Is.EqualTo(AugmentUpgradeConfirmationStatus.Applied));
             Assert.That(
                 FindAugment(
                     fixture.GetUnique(fact.ReplacementEquipmentInstanceStableId)
@@ -100,11 +100,11 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         {
             var fixture = new Fixture(maximumLevel: 25, currentLevel: 10);
 
-            AugmentUpgradeFactV1 fact = fixture.Confirm(
+            AugmentUpgradeFact fact = fixture.Confirm(
                 fixture.Quote(11),
                 "confirmation.above-ten");
 
-            Assert.That(fact.Status, Is.EqualTo(AugmentUpgradeConfirmationStatusV1.Applied));
+            Assert.That(fact.Status, Is.EqualTo(AugmentUpgradeConfirmationStatus.Applied));
             Assert.That(
                 FindAugment(
                     fixture.GetUnique(fact.ReplacementEquipmentInstanceStableId)

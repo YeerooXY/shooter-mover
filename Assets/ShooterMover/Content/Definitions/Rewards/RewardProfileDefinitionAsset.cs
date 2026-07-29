@@ -12,8 +12,8 @@ namespace ShooterMover.Content.Definitions.Rewards
     public sealed class RewardScalingInputAuthoring
     {
         [SerializeField] private string inputId = "reward-input.unassigned";
-        [SerializeField] private RewardScalingInputKindV1 kind =
-            RewardScalingInputKindV1.CharacterLevel;
+        [SerializeField] private RewardScalingInputKind kind =
+            RewardScalingInputKind.CharacterLevel;
 
         public RewardScalingInputAuthoring()
         {
@@ -21,15 +21,15 @@ namespace ShooterMover.Content.Definitions.Rewards
 
         public RewardScalingInputAuthoring(
             string inputId,
-            RewardScalingInputKindV1 kind)
+            RewardScalingInputKind kind)
         {
             this.inputId = inputId ?? throw new ArgumentNullException(nameof(inputId));
             this.kind = kind;
         }
 
-        public RewardScalingInputDescriptorV1 Build()
+        public RewardScalingInputDescriptor Build()
         {
-            return RewardScalingInputDescriptorV1.Create(
+            return RewardScalingInputDescriptor.Create(
                 StableId.Parse(inputId),
                 kind);
         }
@@ -39,7 +39,7 @@ namespace ShooterMover.Content.Definitions.Rewards
     public sealed class RewardGrantAuthoring
     {
         [SerializeField] private string grantId = "reward-grant.unassigned";
-        [SerializeField] private RewardGrantKindV1 kind = RewardGrantKindV1.Money;
+        [SerializeField] private RewardGrantKind kind = RewardGrantKind.Money;
         [SerializeField] private string contentId = "reward-content.unassigned";
         [SerializeField] private long minimumQuantity = 1L;
         [SerializeField] private long maximumQuantity = 1L;
@@ -52,7 +52,7 @@ namespace ShooterMover.Content.Definitions.Rewards
 
         public RewardGrantAuthoring(
             string grantId,
-            RewardGrantKindV1 kind,
+            RewardGrantKind kind,
             string contentId,
             long minimumQuantity,
             long maximumQuantity,
@@ -66,10 +66,10 @@ namespace ShooterMover.Content.Definitions.Rewards
             this.scalingInputs = scalingInputs ?? Array.Empty<RewardScalingInputAuthoring>();
         }
 
-        public RewardGrantSpecificationV1 Build()
+        public RewardGrantSpecification Build()
         {
-            List<RewardScalingInputDescriptorV1> builtInputs =
-                new List<RewardScalingInputDescriptorV1>(
+            List<RewardScalingInputDescriptor> builtInputs =
+                new List<RewardScalingInputDescriptor>(
                     scalingInputs == null ? 0 : scalingInputs.Length);
             if (scalingInputs != null)
             {
@@ -86,11 +86,11 @@ namespace ShooterMover.Content.Definitions.Rewards
                 }
             }
 
-            return RewardGrantSpecificationV1.Create(
+            return RewardGrantSpecification.Create(
                 StableId.Parse(grantId),
                 kind,
                 StableId.Parse(contentId),
-                RewardQuantityRangeV1.Create(minimumQuantity, maximumQuantity),
+                RewardQuantityRange.Create(minimumQuantity, maximumQuantity),
                 builtInputs);
         }
     }
@@ -116,7 +116,7 @@ namespace ShooterMover.Content.Definitions.Rewards
             this.grant = grant ?? throw new ArgumentNullException(nameof(grant));
         }
 
-        public IndependentRewardRollV1 Build()
+        public IndependentRewardRoll Build()
         {
             if (grant == null)
             {
@@ -124,7 +124,7 @@ namespace ShooterMover.Content.Definitions.Rewards
                     $"Independent reward roll '{rollId}' requires a grant.");
             }
 
-            return IndependentRewardRollV1.Create(
+            return IndependentRewardRoll.Create(
                 StableId.Parse(rollId),
                 probabilityMillionths,
                 grant.Build());
@@ -136,8 +136,8 @@ namespace ShooterMover.Content.Definitions.Rewards
     {
         [SerializeField] private string outcomeId = "reward-outcome.unassigned";
         [SerializeField] private long weight = 1L;
-        [SerializeField] private WeightedRewardOutcomeKindV1 kind =
-            WeightedRewardOutcomeKindV1.Grant;
+        [SerializeField] private WeightedRewardOutcomeKind kind =
+            WeightedRewardOutcomeKind.Grant;
         [SerializeField] private RewardGrantAuthoring grant = new RewardGrantAuthoring();
 
         public WeightedRewardOutcomeAuthoring()
@@ -147,7 +147,7 @@ namespace ShooterMover.Content.Definitions.Rewards
         private WeightedRewardOutcomeAuthoring(
             string outcomeId,
             long weight,
-            WeightedRewardOutcomeKindV1 kind,
+            WeightedRewardOutcomeKind kind,
             RewardGrantAuthoring grant)
         {
             this.outcomeId = outcomeId ?? throw new ArgumentNullException(nameof(outcomeId));
@@ -164,7 +164,7 @@ namespace ShooterMover.Content.Definitions.Rewards
             return new WeightedRewardOutcomeAuthoring(
                 outcomeId,
                 weight,
-                WeightedRewardOutcomeKindV1.Grant,
+                WeightedRewardOutcomeKind.Grant,
                 grant ?? throw new ArgumentNullException(nameof(grant)));
         }
 
@@ -175,13 +175,13 @@ namespace ShooterMover.Content.Definitions.Rewards
             return new WeightedRewardOutcomeAuthoring(
                 outcomeId,
                 weight,
-                WeightedRewardOutcomeKindV1.ExplicitNoDrop,
+                WeightedRewardOutcomeKind.ExplicitNoDrop,
                 null);
         }
 
-        public WeightedRewardOutcomeV1 Build()
+        public WeightedRewardOutcome Build()
         {
-            if (kind == WeightedRewardOutcomeKindV1.Grant)
+            if (kind == WeightedRewardOutcomeKind.Grant)
             {
                 if (grant == null)
                 {
@@ -189,13 +189,13 @@ namespace ShooterMover.Content.Definitions.Rewards
                         $"Weighted reward outcome '{outcomeId}' requires a grant.");
                 }
 
-                return WeightedRewardOutcomeV1.CreateGrant(
+                return WeightedRewardOutcome.CreateGrant(
                     StableId.Parse(outcomeId),
                     weight,
                     grant.Build());
             }
 
-            if (kind == WeightedRewardOutcomeKindV1.ExplicitNoDrop)
+            if (kind == WeightedRewardOutcomeKind.ExplicitNoDrop)
             {
                 if (grant != null)
                 {
@@ -203,7 +203,7 @@ namespace ShooterMover.Content.Definitions.Rewards
                         $"No-drop outcome '{outcomeId}' must not carry a grant.");
                 }
 
-                return WeightedRewardOutcomeV1.CreateExplicitNoDrop(
+                return WeightedRewardOutcome.CreateExplicitNoDrop(
                     StableId.Parse(outcomeId),
                     weight);
             }
@@ -232,10 +232,10 @@ namespace ShooterMover.Content.Definitions.Rewards
             this.outcomes = outcomes ?? Array.Empty<WeightedRewardOutcomeAuthoring>();
         }
 
-        public ExclusiveRewardGroupV1 Build()
+        public ExclusiveRewardGroup Build()
         {
-            List<WeightedRewardOutcomeV1> builtOutcomes =
-                new List<WeightedRewardOutcomeV1>(
+            List<WeightedRewardOutcome> builtOutcomes =
+                new List<WeightedRewardOutcome>(
                     outcomes == null ? 0 : outcomes.Length);
             if (outcomes != null)
             {
@@ -252,7 +252,7 @@ namespace ShooterMover.Content.Definitions.Rewards
                 }
             }
 
-            return ExclusiveRewardGroupV1.Create(
+            return ExclusiveRewardGroup.Create(
                 StableId.Parse(groupId),
                 builtOutcomes);
         }
@@ -286,7 +286,7 @@ namespace ShooterMover.Content.Definitions.Rewards
             get { return StableId.Parse(CapabilityIdText); }
         }
 
-        public RewardProfileV1 BuildProfile()
+        public RewardProfile BuildProfile()
         {
             StableId parsedProfileId = StableId.Parse(profileId);
             if (explicitNoDrop)
@@ -299,26 +299,26 @@ namespace ShooterMover.Content.Definitions.Rewards
                         "An explicit no-drop reward profile must not contain entries.");
                 }
 
-                return RewardProfileV1.CreateExplicitNoDrop(parsedProfileId);
+                return RewardProfile.CreateExplicitNoDrop(parsedProfileId);
             }
 
-            List<RewardGrantSpecificationV1> builtGuaranteed =
+            List<RewardGrantSpecification> builtGuaranteed =
                 BuildAll(
                     guaranteedEntries,
                     "guaranteed reward entry",
                     delegate(RewardGrantAuthoring value) { return value.Build(); });
-            List<IndependentRewardRollV1> builtIndependent =
+            List<IndependentRewardRoll> builtIndependent =
                 BuildAll(
                     independentRolls,
                     "independent reward roll",
                     delegate(IndependentRewardRollAuthoring value) { return value.Build(); });
-            List<ExclusiveRewardGroupV1> builtExclusive =
+            List<ExclusiveRewardGroup> builtExclusive =
                 BuildAll(
                     exclusiveGroups,
                     "exclusive reward group",
                     delegate(ExclusiveRewardGroupAuthoring value) { return value.Build(); });
 
-            return RewardProfileV1.Create(
+            return RewardProfile.Create(
                 parsedProfileId,
                 builtGuaranteed,
                 builtIndependent,
@@ -411,7 +411,7 @@ namespace ShooterMover.Content.Definitions.Rewards
     {
         private const string FieldNamespace = "reward-profile";
 
-        public static CapabilityDefinition Build(RewardProfileV1 profile)
+        public static CapabilityDefinition Build(RewardProfile profile)
         {
             if (profile == null)
             {
@@ -434,7 +434,7 @@ namespace ShooterMover.Content.Definitions.Rewards
             AddInteger(fields, "independent-count", profile.IndependentRolls.Count);
             for (int index = 0; index < profile.IndependentRolls.Count; index++)
             {
-                IndependentRewardRollV1 roll = profile.IndependentRolls[index];
+                IndependentRewardRoll roll = profile.IndependentRolls[index];
                 string prefix = "independent-" + Index(index);
                 AddStableId(fields, prefix + "-roll-id", roll.RollStableId);
                 AddInteger(fields, prefix + "-probability", roll.ProbabilityMillionths);
@@ -446,7 +446,7 @@ namespace ShooterMover.Content.Definitions.Rewards
                 groupIndex < profile.ExclusiveGroups.Count;
                 groupIndex++)
             {
-                ExclusiveRewardGroupV1 group = profile.ExclusiveGroups[groupIndex];
+                ExclusiveRewardGroup group = profile.ExclusiveGroups[groupIndex];
                 string groupPrefix = "exclusive-" + Index(groupIndex);
                 AddStableId(fields, groupPrefix + "-group-id", group.GroupStableId);
                 AddInteger(fields, groupPrefix + "-outcome-count", group.Outcomes.Count);
@@ -454,7 +454,7 @@ namespace ShooterMover.Content.Definitions.Rewards
                     outcomeIndex < group.Outcomes.Count;
                     outcomeIndex++)
                 {
-                    WeightedRewardOutcomeV1 outcome = group.Outcomes[outcomeIndex];
+                    WeightedRewardOutcome outcome = group.Outcomes[outcomeIndex];
                     string outcomePrefix = groupPrefix + "-outcome-" + Index(outcomeIndex);
                     AddStableId(fields, outcomePrefix + "-outcome-id", outcome.OutcomeStableId);
                     AddInteger(fields, outcomePrefix + "-weight", outcome.Weight);
@@ -474,7 +474,7 @@ namespace ShooterMover.Content.Definitions.Rewards
         private static void WriteGrant(
             List<CapabilityField> fields,
             string prefix,
-            RewardGrantSpecificationV1 grant)
+            RewardGrantSpecification grant)
         {
             AddStableId(fields, prefix + "-grant-id", grant.GrantStableId);
             AddInteger(fields, prefix + "-kind", (int)grant.Kind);
@@ -484,7 +484,7 @@ namespace ShooterMover.Content.Definitions.Rewards
             AddInteger(fields, prefix + "-scaling-count", grant.ScalingInputs.Count);
             for (int index = 0; index < grant.ScalingInputs.Count; index++)
             {
-                RewardScalingInputDescriptorV1 input = grant.ScalingInputs[index];
+                RewardScalingInputDescriptor input = grant.ScalingInputs[index];
                 string inputPrefix = prefix + "-scaling-" + Index(index);
                 AddStableId(fields, inputPrefix + "-input-id", input.InputStableId);
                 AddInteger(fields, inputPrefix + "-kind", (int)input.Kind);

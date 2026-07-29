@@ -104,8 +104,8 @@ Run the following in Unity `6000.3.19f1` on a scene containing a valid
 
 ## Focused EditMode coverage
 
-`LevelGridEditorWindowV2Tests`, `LevelGridEditorTargetedFixesV2Tests`, and
-`LevelGridEditorSecondAuditV2Tests` cover:
+`LevelGridEditorWindowTests`, `LevelGridEditorTargetedFixesTests`, and
+`LevelGridEditorSecondAuditTests` cover:
 
 - opening with no selected root;
 - projection of existing scene rooms and doors;

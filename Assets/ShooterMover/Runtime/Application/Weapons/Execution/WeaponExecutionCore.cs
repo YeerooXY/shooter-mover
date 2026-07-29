@@ -17,7 +17,7 @@ namespace ShooterMover.Application.Weapons.Execution
     {
         private readonly IWeaponActorOwnershipResolver ownershipResolver;
         private readonly IEquippedWeaponInstanceResolver equippedResolver;
-        private readonly WeaponCatalogRuntimeProfileResolver profileResolver;
+        private readonly WeaponCatalogLiveProfileResolver profileResolver;
         private readonly WeaponBehaviorRegistry behaviorRegistry;
         private readonly IWeaponEffectBatchSink effectSink;
         private readonly Dictionary<StateKey, FireState> states =
@@ -28,7 +28,7 @@ namespace ShooterMover.Application.Weapons.Execution
         public WeaponExecutionCore(
             IWeaponActorOwnershipResolver ownershipResolver,
             IEquippedWeaponInstanceResolver equippedResolver,
-            WeaponCatalogRuntimeProfileResolver profileResolver,
+            WeaponCatalogLiveProfileResolver profileResolver,
             WeaponBehaviorRegistry behaviorRegistry,
             IWeaponEffectBatchSink effectSink)
         {

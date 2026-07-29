@@ -19,7 +19,7 @@ rewards, routes, checkpoints, objectives and mission completion.
 
 ## Identity
 
-`RoomProjectionIdentity` separates two identities:
+`RoomViewIdentity` separates two identities:
 
 - `RoomId` is the stable durable identity referenced by mission state;
 - `ProjectionId` identifies one loaded presentation instance.
@@ -30,7 +30,7 @@ instance the durable room record.
 
 ## Projection keys
 
-`RoomProjectionKey` contains:
+`RoomViewKey` contains:
 
 ```text
 run_id
@@ -45,7 +45,7 @@ mission sequence.
 
 The projection contract does not define mission state fields. A future
 authoritative application service supplies an immutable projection DTO through
-`IRoomProjectionStateReader.Read<TProjection>`.
+`IRoomViewStateReader.Read<TProjection>`.
 
 Reads return one explicit status:
 
@@ -58,9 +58,9 @@ request a later valid key.
 
 ## Services and authority boundary
 
-`RoomProjectionServices` supplies exactly two ports:
+`RoomViewServices` supplies exactly two ports:
 
-1. `IRoomProjectionStateReader` reads an authoritative projection by key;
+1. `IRoomViewStateReader` reads an authoritative projection by key;
 2. `IRoomMissionCommandSubmitter` submits a typed `MissionCommandEnvelope` for
    authoritative validation.
 
@@ -103,8 +103,8 @@ graph and mission-domain work.
 
 ## Lifecycle
 
-`RoomProjectionLifecycle` is immutable and functional. Every operation returns a
-`RoomProjectionTransition` containing the current and next state. Rejected and
+`RoomViewLifecycle` is immutable and functional. Every operation returns a
+`RoomViewTransition` containing the current and next state. Rejected and
 idempotent transitions retain the same state object.
 
 ```text
@@ -167,7 +167,7 @@ deactivate checkpoints, reset objectives or write persistence.
 
 ## Two additive rooms
 
-Two additive rooms use distinct `RoomProjectionIdentity` values and independent
+Two additive rooms use distinct `RoomViewIdentity` values and independent
 lifecycles. They may share a run and committed mission sequence while retaining
 different durable room IDs and projection IDs. Refreshing, unloading or
 recovering one lifecycle has no effect on the other.

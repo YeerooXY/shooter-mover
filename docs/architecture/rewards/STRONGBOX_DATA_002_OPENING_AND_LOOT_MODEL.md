@@ -42,12 +42,12 @@ An owned strongbox does not copy its tier's odds. An owned equipment instance do
 
 The current repository already contains the main pieces of this model:
 
-- `ProductionStrongboxCatalogV1` for the eleven production tier identities and broad tier balance;
-- `ProductionStrongboxHybridLootCatalogV1` for per-tier target-level, rarity, augment-slot and augment-level balance;
-- `StrongboxHybridLootPolicyV1` for deterministic target, definition-weight, item-level and augment-signature decisions;
-- `StrongboxHybridEquipmentGenerationResolverV1` for production candidate selection and equipment construction;
-- `GeneratedEquipmentAugmentSignatureAuthorityV1` for rolled capacity/shared-level metadata;
-- `StrongboxOpeningServiceV1` and the reward-application pipeline for authoritative opening and grant behavior;
+- `StrongboxCatalog` for the eleven production tier identities and broad tier balance;
+- `StrongboxHybridLootCatalog` for per-tier target-level, rarity, augment-slot and augment-level balance;
+- `StrongboxHybridLootPolicy` for deterministic target, definition-weight, item-level and augment-signature decisions;
+- `StrongboxHybridEquipmentGenerationResolver` for production candidate selection and equipment construction;
+- `GeneratedEquipmentAugmentSignatureState` for rolled capacity/shared-level metadata;
+- `StrongboxOpeningActions` and the reward-application pipeline for authoritative opening and grant behavior;
 - the production-backed strongbox simulator gateway, which must continue to call the real opening route.
 
 The implementation task may reorganize authored data into clearer files or names, but it must not create a second rarity table, item selector, augment roller, random authority or simulator-only loot formula.

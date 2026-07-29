@@ -137,7 +137,7 @@ namespace ShooterMover.Application.Weapons.Execution
             DeterministicRandom random)
         {
             RicochetValue authoredBudget = ricochet.FixedPointBudget.Value;
-            WeaponRicochetRuntimeState state =
+            WeaponRicochetLiveState state =
                 request.RicochetState.BeginCanonicalBudget(authoredBudget);
             RicochetValue remaining = state.RemainingFixedPointBudget.Value;
 
@@ -157,7 +157,7 @@ namespace ShooterMover.Application.Weapons.Execution
                 WeaponFixedPointBudgetRules.ResolveEligibleRicochetCollision(
                     remaining,
                     fractionalRollSucceeded);
-            WeaponRicochetRuntimeState resolvedState = state.AfterCanonicalWallContact(
+            WeaponRicochetLiveState resolvedState = state.AfterCanonicalWallContact(
                 request.SimulationStep,
                 request.WallContactId,
                 resolution);
@@ -182,7 +182,7 @@ namespace ShooterMover.Application.Weapons.Execution
             if (request.RicochetState.SuccessfulBounceCount
                 >= ricochet.MaximumSuccessfulBounces)
             {
-                WeaponRicochetRuntimeState exhaustedState =
+                WeaponRicochetLiveState exhaustedState =
                     request.RicochetState.AfterWallContact(
                         request.SimulationStep,
                         request.WallContactId,
@@ -194,7 +194,7 @@ namespace ShooterMover.Application.Weapons.Execution
             DeterministicRandom nextRandom = random.NextUnitInterval(out chanceRoll);
             if (chanceRoll >= ricochet.BounceChance)
             {
-                WeaponRicochetRuntimeState failedState =
+                WeaponRicochetLiveState failedState =
                     request.RicochetState.AfterWallContact(
                         request.SimulationStep,
                         request.WallContactId,
@@ -202,7 +202,7 @@ namespace ShooterMover.Application.Weapons.Execution
                 return BuildWallFallback(request, failedState, nextRandom);
             }
 
-            WeaponRicochetRuntimeState bouncedState =
+            WeaponRicochetLiveState bouncedState =
                 request.RicochetState.AfterWallContact(
                     request.SimulationStep,
                     request.WallContactId,
@@ -217,7 +217,7 @@ namespace ShooterMover.Application.Weapons.Execution
         private static WeaponImpactDecision BuildSuccessfulBounce(
             WeaponImpactRequest request,
             WeaponRicochetSpec ricochet,
-            WeaponRicochetRuntimeState bouncedState,
+            WeaponRicochetLiveState bouncedState,
             DeterministicRandom random)
         {
             WeaponVector2 reflected = Reflect(

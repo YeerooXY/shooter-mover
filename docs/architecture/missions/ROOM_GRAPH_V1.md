@@ -13,7 +13,7 @@ The implementation is split into four owned layers:
 
 ## Authority boundary
 
-`RoomGraphDefinitionV1` is the only graph-truth owner. Runtime state and snapshots never duplicate room entries, connections, targets, directionality, door links, ordering, or unlock rules. They contain only:
+`RoomGraphDefinition` is the only graph-truth owner. Runtime state and snapshots never duplicate room entries, connections, targets, directionality, door links, ordering, or unlock rules. They contain only:
 
 - the layout identity;
 - the exact definition fingerprint;
@@ -22,7 +22,7 @@ The implementation is split into four owned layers:
 - per-exit availability state;
 - the deterministic snapshot fingerprint.
 
-Consumers such as gameplay, transition presentation, maps, save transport, and authoring tools read the validated definition and `IRoomMissionLayoutV1`; they must not build a second topology model from scene names or UI positions.
+Consumers such as gameplay, transition presentation, maps, save transport, and authoring tools read the validated definition and `IRoomMissionLayout`; they must not build a second topology model from scene names or UI positions.
 
 ## Stable identities
 
@@ -57,7 +57,7 @@ A connection may reference one stable door-link identity. Door links are optiona
 
 ## Validation
 
-`RoomGraphDefinitionV1.ValidateAndCreate` validates the entire graph before constructing an immutable definition. Invalid input returns ordered actionable issues and no partial graph.
+`RoomGraphDefinition.ValidateAndCreate` validates the entire graph before constructing an immutable definition. Invalid input returns ordered actionable issues and no partial graph.
 
 Validation includes:
 
@@ -74,11 +74,11 @@ Validation includes:
 - invalid start or terminal room;
 - unreachable required rooms and terminal room.
 
-A successful result supplies the only constructible `RoomGraphDefinitionV1` instance. Invalid definitions cannot become live runtime state.
+A successful result supplies the only constructible `RoomGraphDefinition` instance. Invalid definitions cannot become live runtime state.
 
 ## Runtime state
 
-`RoomMissionLayoutV1` starts from the definition's configured start room:
+`RoomMissionLayout` starts from the definition's configured start room:
 
 - start room: `Available`, `Current`, `Visited`, not completed;
 - other rooms: configured `Locked` or `Available`;
@@ -114,7 +114,7 @@ The model does not load a scene or animate a door. ROOMTRANS-001 may later trans
 
 ## Snapshots and import
 
-`RoomGraphSnapshotV1` uses string identities so external persistence data can be parsed and rejected before live state changes. Canonicalization uses length-prefixed tokens and SHA-256 (`sha256:<lowercase hex>`).
+`RoomGraphSnapshot` uses string identities so external persistence data can be parsed and rejected before live state changes. Canonicalization uses length-prefixed tokens and SHA-256 (`sha256:<lowercase hex>`).
 
 Import is atomic and fail-closed. It validates:
 
@@ -136,7 +136,7 @@ No field is applied until every check succeeds. Importing the current snapshot r
 
 ## Authored Level 1 graph
 
-`Level1RoomGraphDefinitionV1` contains exactly two required rooms:
+`Level1RoomGraphDefinition` contains exactly two required rooms:
 
 1. `room.level1-entry` — start room, initially available;
 2. `room.level1-terminal` — terminal room, initially locked.

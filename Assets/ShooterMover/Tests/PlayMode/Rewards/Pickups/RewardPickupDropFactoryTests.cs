@@ -16,12 +16,12 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
         [UnityTest]
         public IEnumerator ProfileBasedSrcSubmissionSpawnsOneMoneyPickupAcrossDuplicateCallbacks()
         {
-            TestAuthoritySet authorities = CreateAuthoritySet();
+            TestStateSet authorities = CreateAuthoritySet();
             GameplaySceneScope2D scope = CreateScope("run.profile-drop");
             RewardPickupDropFactory2D factory = CreateFactory(authorities, scope);
             RewardSourceResolvedPreview preview = CreatePreview(
                 "profile-drop",
-                RewardGrantKindV1.Money,
+                RewardGrantKind.Money,
                 "currency.money",
                 7L);
 
@@ -32,8 +32,8 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
             Assert.That(first.Status, Is.EqualTo(RewardSourceSubmissionStatus.Accepted));
             Assert.That(duplicate.Status, Is.EqualTo(RewardSourceSubmissionStatus.ExactDuplicateNoChange));
             Assert.That(factory.SpawnedPickupCount, Is.EqualTo(1));
-            Assert.That(pickup.Payload.PickupStableId, Is.EqualTo(RewardPickupPayloadV1.Create(pickup.Payload.CommitCommand).PickupStableId));
-            Assert.That(pickup.TryCollect(StableId.Parse("claimant.profile-player")).Status, Is.EqualTo(RewardPickupCollectStatusV1.Collected));
+            Assert.That(pickup.Payload.PickupStableId, Is.EqualTo(RewardPickupPayload.Create(pickup.Payload.CommitCommand).PickupStableId));
+            Assert.That(pickup.TryCollect(StableId.Parse("claimant.profile-player")).Status, Is.EqualTo(RewardPickupCollectStatus.Collected));
             Assert.That(authorities.Money.ApplyCount, Is.EqualTo(1));
             Assert.That(authorities.Scrap.ApplyCount, Is.EqualTo(0));
             Assert.That(authorities.Holdings.ApplyCount, Is.EqualTo(0));
@@ -43,7 +43,7 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
         [UnityTest]
         public IEnumerator ProfileBasedEquipmentReferenceUsesResolvedImmutableInstance()
         {
-            TestAuthoritySet authorities = CreateAuthoritySet();
+            TestStateSet authorities = CreateAuthoritySet();
             GameplaySceneScope2D scope = CreateScope("run.equipment-drop");
             EquipmentInstance equipment = EquipmentInstance.Create(
                 StableId.Parse("equipment-instance.profile-drop"),
@@ -57,13 +57,13 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
                 new FixedEquipmentPayloadResolver(equipment));
             RewardSourceResolvedPreview preview = CreatePreview(
                 "equipment-drop",
-                RewardGrantKindV1.EquipmentReference,
+                RewardGrantKind.EquipmentReference,
                 "equipment-definition.profile-drop");
 
             Assert.That(factory.Submit(preview).Status, Is.EqualTo(RewardSourceSubmissionStatus.Accepted));
             RewardPickup2D pickup = factory.LastSpawnResult.Pickup;
-            Assert.That(pickup.Payload.Category, Is.EqualTo(RewardPickupCategoryV1.Equipment));
-            Assert.That(pickup.TryCollect(StableId.Parse("claimant.equipment-player")).Status, Is.EqualTo(RewardPickupCollectStatusV1.Collected));
+            Assert.That(pickup.Payload.Category, Is.EqualTo(RewardPickupCategory.Equipment));
+            Assert.That(pickup.TryCollect(StableId.Parse("claimant.equipment-player")).Status, Is.EqualTo(RewardPickupCollectStatus.Collected));
             Assert.That(authorities.Holdings.ApplyCount, Is.EqualTo(1));
             Assert.That(authorities.Holdings.LastCommand.EquipmentInstance, Is.EqualTo(equipment));
             Assert.That(authorities.Holdings.LastCommand.InstanceStableId, Is.EqualTo(equipment.InstanceId));
@@ -73,17 +73,17 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
         [UnityTest]
         public IEnumerator ForcedScrapDropRoutesOnlyThroughScrapAuthority()
         {
-            TestAuthoritySet authorities = CreateAuthoritySet();
+            TestStateSet authorities = CreateAuthoritySet();
             GameplaySceneScope2D scope = CreateScope("run.pickup-tests");
             RewardPickupDropFactory2D factory = CreateFactory(authorities, scope);
-            var command = CreateValueCommit("scrap-drop", RewardGrantKindV1.Scrap, "currency.scrap", 11L);
+            var command = CreateValueCommit("scrap-drop", RewardGrantKind.Scrap, "currency.scrap", 11L);
 
-            RewardPickupSpawnResultV1 spawn = factory.SpawnForced(command);
-            RewardPickupCollectResultV1 collect = spawn.Pickup.TryCollect(StableId.Parse("claimant.scrap-player"));
+            RewardPickupSpawnResult spawn = factory.SpawnForced(command);
+            RewardPickupCollectResult collect = spawn.Pickup.TryCollect(StableId.Parse("claimant.scrap-player"));
 
-            Assert.That(spawn.Status, Is.EqualTo(RewardPickupSpawnStatusV1.Spawned));
-            Assert.That(spawn.Pickup.Payload.Category, Is.EqualTo(RewardPickupCategoryV1.Scrap));
-            Assert.That(collect.Status, Is.EqualTo(RewardPickupCollectStatusV1.Collected));
+            Assert.That(spawn.Status, Is.EqualTo(RewardPickupSpawnStatus.Spawned));
+            Assert.That(spawn.Pickup.Payload.Category, Is.EqualTo(RewardPickupCategory.Scrap));
+            Assert.That(collect.Status, Is.EqualTo(RewardPickupCollectStatus.Collected));
             Assert.That(authorities.Scrap.ApplyCount, Is.EqualTo(1));
             Assert.That(authorities.Money.ApplyCount, Is.EqualTo(0));
             Assert.That(authorities.Holdings.ApplyCount, Is.EqualTo(0));
@@ -93,7 +93,7 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
         [UnityTest]
         public IEnumerator ExplicitNoDropCommitsSourceTruthWithoutPhysicalProjection()
         {
-            TestAuthoritySet authorities = CreateAuthoritySet();
+            TestStateSet authorities = CreateAuthoritySet();
             GameplaySceneScope2D scope = CreateScope("run.no-drop");
             RewardPickupDropFactory2D factory = CreateFactory(authorities, scope);
             RewardSourceResolvedPreview preview = CreatePreview("no-drop", null, null);
@@ -113,22 +113,22 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
         [UnityTest]
         public IEnumerator ForcedStrongboxDropReusesPreparedInstanceAndRoutesThroughHoldings()
         {
-            TestAuthoritySet authorities = CreateAuthoritySet();
+            TestStateSet authorities = CreateAuthoritySet();
             GameplaySceneScope2D scope = CreateScope("run.pickup-tests");
             RewardPickupDropFactory2D factory = CreateFactory(authorities, scope);
             StableId instanceId = StableId.Parse("strongbox-instance.forced-a");
             var command = CreateStrongboxCommit("forced-box", "strongbox.tier-a", instanceId);
 
-            RewardPickupSpawnResultV1 first = factory.SpawnForced(command);
-            RewardPickupSpawnResultV1 duplicate = factory.SpawnForced(command);
+            RewardPickupSpawnResult first = factory.SpawnForced(command);
+            RewardPickupSpawnResult duplicate = factory.SpawnForced(command);
 
-            Assert.That(first.Status, Is.EqualTo(RewardPickupSpawnStatusV1.Spawned));
-            Assert.That(duplicate.Status, Is.EqualTo(RewardPickupSpawnStatusV1.ExactDuplicateNoChange));
+            Assert.That(first.Status, Is.EqualTo(RewardPickupSpawnStatus.Spawned));
+            Assert.That(duplicate.Status, Is.EqualTo(RewardPickupSpawnStatus.ExactDuplicateNoChange));
             Assert.That(factory.SpawnedPickupCount, Is.EqualTo(1));
-            Assert.That(first.Pickup.Payload.Category, Is.EqualTo(RewardPickupCategoryV1.Strongbox));
-            Assert.That(first.Pickup.TryCollect(StableId.Parse("claimant.forced-box-player")).Status, Is.EqualTo(RewardPickupCollectStatusV1.Collected));
+            Assert.That(first.Pickup.Payload.Category, Is.EqualTo(RewardPickupCategory.Strongbox));
+            Assert.That(first.Pickup.TryCollect(StableId.Parse("claimant.forced-box-player")).Status, Is.EqualTo(RewardPickupCollectStatus.Collected));
             Assert.That(authorities.Holdings.ApplyCount, Is.EqualTo(1));
-            Assert.That(authorities.Holdings.LastCommand.GrantKind, Is.EqualTo(RewardGrantKindV1.Strongbox));
+            Assert.That(authorities.Holdings.LastCommand.GrantKind, Is.EqualTo(RewardGrantKind.Strongbox));
             Assert.That(authorities.Holdings.LastCommand.InstanceStableId, Is.EqualTo(instanceId));
             yield return null;
         }

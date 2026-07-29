@@ -21,7 +21,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
         private const string ProjectilePath =
             "Assets/ShooterMover/ContentPackages/Weapons/Shared/Runtime/BoundedProjectile2D.cs";
         private const string PlanAdapterPath =
-            "Assets/ShooterMover/ContentPackages/Weapons/Shared/Runtime/ProjectileExecutionPlanAdapter.cs";
+            "Assets/ShooterMover/ContentPackages/Weapons/Shared/Runtime/ProjectileExecutionPlanBridge.cs";
         private const string PresentationPath =
             "Assets/ShooterMover/ContentPackages/Weapons/Shared/Presentation/TemporaryHitPresentation.cs";
         private const string PrefabPath =
@@ -61,7 +61,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
         [Test]
         public void ValidatedPlan_SpawnsConfiguredFinite2DProjectile()
         {
-            CombatHit2DAdapter hitAdapter = new CombatHit2DAdapter(SourceId);
+            CombatHit2DBridge hitAdapter = new CombatHit2DBridge(SourceId);
             object adapter = CreateExecutionAdapter(hitAdapter, true, out Component template);
             WeaponMount2DExecutionResult result = Execute(
                 adapter,
@@ -90,7 +90,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
         [UnityTest]
         public IEnumerator FiniteLifetime_ExpiresAndReleasesAdapterOwnership()
         {
-            CombatHit2DAdapter hitAdapter = new CombatHit2DAdapter(SourceId);
+            CombatHit2DBridge hitAdapter = new CombatHit2DBridge(SourceId);
             object adapter = CreateExecutionAdapter(hitAdapter, true, out Component ignoredTemplate);
             WeaponMount2DExecutionResult result = Execute(
                 adapter,
@@ -111,7 +111,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
         {
             Collider2D target = CreateTarget("WP-002 Confirmed Target");
             StableId targetId = StableId.Parse("enemy.wp002-confirmed-target");
-            CombatHit2DAdapter hitAdapter = new CombatHit2DAdapter(SourceId);
+            CombatHit2DBridge hitAdapter = new CombatHit2DBridge(SourceId);
             Assert.That(
                 hitAdapter.RegisterTarget(target, targetId),
                 Is.EqualTo(CombatHit2DTargetRegistrationStatus.Registered));
@@ -125,7 +125,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
 
             Component projectile = GetProperty<Component>(adapter, "LastSpawnedProjectile");
             Track(projectile.gameObject);
-            Component presentation = projectile.transform.GetChild(0).GetComponent(RuntimeTypes.Presentation);
+            Component presentation = projectile.transform.GetChild(0).GetComponent(LiveTypes.Presentation);
             Track(presentation.gameObject);
 
             InvokePrivate(projectile, "OnTriggerEnter2D", target);
@@ -151,7 +151,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
         public void DisabledPresentation_ReportsHitWithoutDetachingTemporaryHook()
         {
             Collider2D target = CreateTarget("WP-002 Presentation Disabled Target");
-            CombatHit2DAdapter hitAdapter = new CombatHit2DAdapter(SourceId);
+            CombatHit2DBridge hitAdapter = new CombatHit2DBridge(SourceId);
             hitAdapter.RegisterTarget(target, StableId.Parse("enemy.wp002-presentation-disabled"));
 
             object adapter = CreateExecutionAdapter(hitAdapter, false, out Component ignoredTemplate);
@@ -163,7 +163,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
 
             Component projectile = GetProperty<Component>(adapter, "LastSpawnedProjectile");
             Track(projectile.gameObject);
-            Component presentation = projectile.transform.GetChild(0).GetComponent(RuntimeTypes.Presentation);
+            Component presentation = projectile.transform.GetChild(0).GetComponent(LiveTypes.Presentation);
             InvokePrivate(projectile, "OnTriggerEnter2D", target);
 
             Assert.That(hitAdapter.ProcessedEventCount, Is.EqualTo(1));
@@ -176,7 +176,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
         [UnityTest]
         public IEnumerator RapidRestart_FiftyCyclesLeaveNoProjectileOrCallbackState()
         {
-            CombatHit2DAdapter hitAdapter = new CombatHit2DAdapter(SourceId);
+            CombatHit2DBridge hitAdapter = new CombatHit2DBridge(SourceId);
             object adapter = CreateExecutionAdapter(hitAdapter, false, out Component template);
 
             for (int cycle = 0; cycle < 50; cycle++)
@@ -198,7 +198,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
                 yield return null;
             }
 
-            Component[] liveProjectiles = Resources.FindObjectsOfTypeAll(RuntimeTypes.Projectile)
+            Component[] liveProjectiles = Resources.FindObjectsOfTypeAll(LiveTypes.Projectile)
                 .OfType<Component>()
                 .Where(component => component != template && component.gameObject.scene.IsValid())
                 .ToArray();
@@ -211,9 +211,9 @@ namespace ShooterMover.Tests.PlayMode.Combat
         [Test]
         public void InvalidPlanOrProjectilePayload_FailsBeforeSpawn()
         {
-            CombatHit2DAdapter hitAdapter = new CombatHit2DAdapter(SourceId);
+            CombatHit2DBridge hitAdapter = new CombatHit2DBridge(SourceId);
             object adapter = CreateExecutionAdapter(hitAdapter, false, out Component ignoredTemplate);
-            WeaponMount2DAdapter mount = CreateMount(adapter);
+            WeaponMount2DBridge mount = CreateMount(adapter);
 
             WeaponMount2DExecutionResult nullPlan = mount.ExecutePlan(null);
             Assert.That(nullPlan.Status, Is.EqualTo(WeaponMount2DExecutionStatus.InvalidPlan));
@@ -285,7 +285,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
             Assert.That(runtimeSource, Does.Contain("Rigidbody2D"));
             Assert.That(runtimeSource, Does.Contain("Collider2D"));
             Assert.That(runtimeSource, Does.Contain("PhysicsScene2D"));
-            Assert.That(runtimeSource, Does.Contain("CombatHit2DAdapter"));
+            Assert.That(runtimeSource, Does.Contain("CombatHit2DBridge"));
             Assert.That(runtimeSource, Does.Contain("MaximumLifetimeSeconds"));
 
             Assert.That(prefab, Does.Contain("Rigidbody2D:"));
@@ -304,13 +304,13 @@ namespace ShooterMover.Tests.PlayMode.Combat
         }
 
         private object CreateExecutionAdapter(
-            CombatHit2DAdapter hitAdapter,
+            CombatHit2DBridge hitAdapter,
             bool enablePresentation,
             out Component template)
         {
             template = CreateProjectileTemplate();
             Collider2D ownerCollider = CreateTarget("WP-002 Explicit Owner");
-            ConstructorInfo constructor = RuntimeTypes.PlanAdapter.GetConstructors()
+            ConstructorInfo constructor = LiveTypes.PlanAdapter.GetConstructors()
                 .Single(candidate => candidate.GetParameters().Length == 7);
             object adapter = constructor.Invoke(
                 new object[]
@@ -338,8 +338,8 @@ namespace ShooterMover.Tests.PlayMode.Combat
 
             GameObject presentationObject = new GameObject("TemporaryHitPresentation");
             presentationObject.transform.SetParent(root.transform, false);
-            Component presentation = presentationObject.AddComponent(RuntimeTypes.Presentation);
-            Component projectile = root.AddComponent(RuntimeTypes.Projectile);
+            Component presentation = presentationObject.AddComponent(LiveTypes.Presentation);
+            Component projectile = root.AddComponent(LiveTypes.Projectile);
             SetField(projectile, "body", body);
             SetField(projectile, "projectileCollider", collider);
             SetField(projectile, "temporaryHitPresentation", presentation);
@@ -355,10 +355,10 @@ namespace ShooterMover.Tests.PlayMode.Combat
             return CreateMount(adapter).ExecutePlan(BuildPlan(operation, eventSuffix));
         }
 
-        private WeaponMount2DAdapter CreateMount(object adapter)
+        private WeaponMount2DBridge CreateMount(object adapter)
         {
             GameObject mountObject = CreateObject("WP-002 Weapon Mount 2D Adapter");
-            WeaponMount2DAdapter mount = mountObject.AddComponent<WeaponMount2DAdapter>();
+            WeaponMount2DBridge mount = mountObject.AddComponent<WeaponMount2DBridge>();
             mount.Configure(
                 SourceId,
                 WeaponId,
@@ -374,7 +374,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
             double radius)
         {
             return (IWeaponFireExecutionOperation)Activator.CreateInstance(
-                RuntimeTypes.Operation,
+                LiveTypes.Operation,
                 OperationKindId,
                 StableId.Parse(operationId),
                 speed,
@@ -387,7 +387,7 @@ namespace ShooterMover.Tests.PlayMode.Combat
             IWeaponFireExecutionOperation operation,
             string eventSuffix)
         {
-            WeaponRuntimeProfile profile = BuildProfile(ModuleId);
+            WeaponLiveProfile profile = BuildProfile(ModuleId);
             SyntheticModule module = new SyntheticModule(ModuleId, operation);
             WeaponBehaviorPipeline pipeline = new WeaponBehaviorPipeline(
                 new IWeaponBehaviorModule[] { module });
@@ -406,11 +406,11 @@ namespace ShooterMover.Tests.PlayMode.Combat
             return pipeline.BuildExecutionPlan(input);
         }
 
-        private static WeaponRuntimeProfile BuildProfile(params StableId[] moduleIds)
+        private static WeaponLiveProfile BuildProfile(params StableId[] moduleIds)
         {
             StableId[] copied = (StableId[])moduleIds.Clone();
-            return WeaponRuntimeProfile.Create(
-                WeaponRuntimeProfile.CurrentProfileVersion,
+            return WeaponLiveProfile.Create(
+                WeaponLiveProfile.CurrentProfileVersion,
                 StableId.Parse("weapon-profile.wp002-fixture"),
                 0.1d,
                 1,
@@ -518,14 +518,14 @@ namespace ShooterMover.Tests.PlayMode.Combat
             }
         }
 
-        private static class RuntimeTypes
+        private static class LiveTypes
         {
             public static readonly Type Projectile = Find(
                 "ShooterMover.ContentPackages.Weapons.Shared.Runtime.BoundedProjectile2D");
             public static readonly Type Operation = Find(
                 "ShooterMover.ContentPackages.Weapons.Shared.Runtime.BoundedProjectileExecutionOperation");
             public static readonly Type PlanAdapter = Find(
-                "ShooterMover.ContentPackages.Weapons.Shared.Runtime.ProjectileExecutionPlanAdapter");
+                "ShooterMover.ContentPackages.Weapons.Shared.Runtime.ProjectileExecutionPlanBridge");
             public static readonly Type Presentation = Find(
                 "ShooterMover.ContentPackages.Weapons.Shared.Presentation.TemporaryHitPresentation");
 

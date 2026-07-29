@@ -123,9 +123,9 @@ is retained and opened in exactly that order.
 When an authoritative batch is prepared:
 
 1. The existing BOX/GEN composition deterministically commits the exact source weapon definition for each queue entry.
-2. The complete frozen batch is bound to one `StrongboxOpeningServiceV1` instance.
+2. The complete frozen batch is bound to one `StrongboxOpeningActions` instance.
 3. Every queue entry receives a distinct strongbox-instance ID, opening ID, context fingerprint, and immutable command.
-4. Each box is added through `PlayerHoldingsService` and registered with BOX before it can be opened.
+4. Each box is added through `PlayerHoldingsActions` and registered with BOX before it can be opened.
 5. Clicking **OPEN THROUGH REAL BOX AUTHORITIES** submits that exact immutable opening command.
 6. BOX generates the exact empty equipment instance, quality, item level, and mandatory scrap; RAP applies the payload to MON/SCR/INV; BOX then consumes only the exact opened box.
 7. Pending operations reuse the same opening identity. Repeated successful input returns an exact duplicate and cannot grant or consume twice.
@@ -136,7 +136,7 @@ The editor-only binding tier is unique per queued box so the strict RAP contract
 
 The decision-preview opener freezes one generated item and presents:
 
-- **Keep / Accept** — submits the exact equipment instance to `PlayerHoldingsService`;
+- **Keep / Accept** — submits the exact equipment instance to `PlayerHoldingsActions`;
 - **Sell** — does not add that preview equipment and increments simulator cash by exactly `1000`.
 
 Keep and Sell are keyed by concrete equipment-instance identity. Repeated decisions cannot add the same item or cash twice.

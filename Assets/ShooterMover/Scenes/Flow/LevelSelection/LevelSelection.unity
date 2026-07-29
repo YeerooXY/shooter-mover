@@ -94,7 +94,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: acd006f457e8471b87ab0c7f043d5f56, type: 3}
   m_Name:
-  m_EditorClassIdentifier: ShooterMover.UI.LevelSelection::ShooterMover.UI.LevelSelection.LevelSelectionControllerV1
+  m_EditorClassIdentifier: ShooterMover.UI.LevelSelection::ShooterMover.UI.LevelSelection.LevelSelectionController
   levelCatalog: {fileID: 0}
   backplate: {fileID: 2800000, guid: 3eb2ac06f02a4d78bdf9882e232c6976, type: 3}
 --- !u!1660057539 &9223372036854775807

@@ -13,7 +13,7 @@
 EditMode:
 
 ```text
-Unity -batchmode -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Missions.Rooms.RoomLiveRuntimeAuthorityTests -testResults Temp/room-live-001-editmode.xml
+Unity -batchmode -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Missions.Rooms.RoomFlowStateTests -testResults Temp/room-live-001-editmode.xml
 ```
 
 PlayMode:
@@ -64,7 +64,7 @@ Unity -batchmode -projectPath . -runTests -testPlatform PlayMode -testFilter Sho
   deterministic SHA-256 tokens and canonical `StableId.Create(...)` components;
 - generic room runtime files contain no Stage 1, moving-droid, Blaster Turret, room-number,
   or enemy-type branch;
-- `RoomRuntimeComposition2D` is reduced from 609 lines to a thin composition boundary;
+- `RoomLiveSetup2D` is reduced from 609 lines to a thin composition boundary;
 - condition evaluation, door gating, retained facts, traversal, replay, projection
   construction, and presentation lifecycle are separate sealed collaborators;
 - `Stage1VisibleSliceController.cs` remains byte-identical to `main`;

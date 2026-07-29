@@ -19,7 +19,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void Start_IsDeterministicIdempotentAndRejectsConflictingRepeat()
         {
-            EncounterRuntimeIdentity identity = Identity();
+            EncounterLiveIdentity identity = Identity();
             EncounterStartMessage start = Start(
                 identity,
                 "encounter-message.start-0001",
@@ -49,7 +49,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void Reinforcements_AreEntryOrderedWaveOrderedAndRetrySafe()
         {
-            EncounterRuntimeIdentity identity = Identity();
+            EncounterLiveIdentity identity = Identity();
             EncounterLifecycle active = EncounterLifecycle.Create(identity)
                 .Start(
                     Start(
@@ -134,7 +134,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void RetreatAndWithdrawal_RespectLockdownAndRemainIdempotent()
         {
-            EncounterRuntimeIdentity identity = Identity();
+            EncounterLiveIdentity identity = Identity();
             EncounterLifecycle active = EncounterLifecycle.Create(identity)
                 .Start(
                     Start(
@@ -196,7 +196,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void Withdrawal_CanResolveAnActorAddedByReinforcement()
         {
-            EncounterRuntimeIdentity identity = Identity();
+            EncounterLiveIdentity identity = Identity();
             EncounterLifecycle active = EncounterLifecycle.Create(identity)
                 .Start(
                     Start(
@@ -239,7 +239,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void CombatResolution_ConsumesCombatV1AndCompletionIsDurableOnce()
         {
-            EncounterRuntimeIdentity identity = Identity();
+            EncounterLiveIdentity identity = Identity();
             EncounterLifecycle active = EncounterLifecycle.Create(identity)
                 .Start(
                     Start(
@@ -298,7 +298,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void Completion_RequiresEveryKnownParticipantToResolve()
         {
-            EncounterRuntimeIdentity identity = Identity();
+            EncounterLiveIdentity identity = Identity();
             EncounterLifecycle active = EncounterLifecycle.Create(identity)
                 .Start(
                     Start(
@@ -338,7 +338,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void CompletionMessage_RejectsMismatchedMissionRunRoomOrEncounter()
         {
-            EncounterRuntimeIdentity identity = Identity();
+            EncounterLiveIdentity identity = Identity();
             MissionPayloadVersion version = CreateVersion();
 
             Assert.Throws<ArgumentException>(
@@ -382,7 +382,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void BudgetMessages_ValidateAndReportViolationsInCanonicalOrder()
         {
-            EncounterRuntimeIdentity identity = Identity();
+            EncounterLiveIdentity identity = Identity();
             EncounterPerformanceBudget budget =
                 new EncounterPerformanceBudget(4, 2, 12, 16.667d);
             EncounterBudgetSample sample = new EncounterBudgetSample(
@@ -428,7 +428,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void Lifecycle_RejectsReinforcementThatWouldExceedBudget()
         {
-            EncounterRuntimeIdentity identity = Identity();
+            EncounterLiveIdentity identity = Identity();
             EncounterPerformanceBudget tightBudget =
                 new EncounterPerformanceBudget(2, 1, 12, 16.667d);
             EncounterStartMessage start = new EncounterStartMessage(
@@ -471,7 +471,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void GenericEntries_MapAllStageOneEnemyRolesWithoutSpecialEnvelopes()
         {
-            EncounterRuntimeIdentity identity = Identity();
+            EncounterLiveIdentity identity = Identity();
             EncounterStartMessage start = Start(
                 identity,
                 "encounter-message.start-role-map",
@@ -522,7 +522,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         {
             Type[] immutableTypes =
             {
-                typeof(EncounterRuntimeIdentity),
+                typeof(EncounterLiveIdentity),
                 typeof(EncounterParticipantEntry),
                 typeof(EncounterPerformanceBudget),
                 typeof(EncounterBudgetSample),
@@ -553,24 +553,24 @@ namespace ShooterMover.Tests.EditMode.Contracts
             }
 
             Assert.That(
-                typeof(EncounterRuntimeIdentity).Assembly.GetReferencedAssemblies()
+                typeof(EncounterLiveIdentity).Assembly.GetReferencedAssemblies()
                     .Any(name => name.Name.StartsWith("UnityEngine", StringComparison.Ordinal)),
                 Is.False);
         }
 
-        private static EncounterRuntimeIdentity Identity()
+        private static EncounterLiveIdentity Identity()
         {
-            return new EncounterRuntimeIdentity(
+            return new EncounterLiveIdentity(
                 Id("encounter.stage1-benchmark"),
                 Id("encounter-runtime.stage1-benchmark-a"),
                 Id("run.stage1-run-0001"),
-                new RoomProjectionIdentity(
+                new RoomViewIdentity(
                     Id("room.stage1-benchmark"),
                     Id("projection.stage1-benchmark-a")));
         }
 
         private static EncounterStartMessage Start(
-            EncounterRuntimeIdentity identity,
+            EncounterLiveIdentity identity,
             string messageId,
             params EncounterParticipantEntry[] entries)
         {
@@ -595,7 +595,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
         }
 
         private static EncounterCompletionMessage Completion(
-            EncounterRuntimeIdentity identity,
+            EncounterLiveIdentity identity,
             string eventId,
             string commandId,
             long sequence)

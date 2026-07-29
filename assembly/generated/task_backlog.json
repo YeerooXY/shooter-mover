@@ -459,7 +459,7 @@
     "priority": "P0",
     "milestone": "S1.0 Foundation and evidence harness",
     "allowed_areas": [
-      "Assets/ShooterMover/Runtime/Bootstrap/BootstrapCompositionRoot.cs",
+      "Assets/ShooterMover/Runtime/Bootstrap/BootstrapSetupRoot.cs",
       "Assets/ShooterMover/Runtime/Bootstrap/BOOTSTRAP_LIFECYCLE.md"
     ],
     "depends_on": [
@@ -491,7 +491,7 @@
       "No gameplay, persistence, content, diagnostics, or UI service implementation is included."
     ],
     "verification": [
-      "Automated: Unity compilation succeeds and a static scan rejects forbidden scene-search APIs in BootstrapCompositionRoot.cs. UF-009 owns lifecycle construction/disposal tests.",
+      "Automated: Unity compilation succeeds and a static scan rejects forbidden scene-search APIs in BootstrapSetupRoot.cs. UF-009 owns lifecycle construction/disposal tests.",
       "Manual/playable: Reviewer reads the lifecycle and can identify registration, start, stop, and disposal phases. Unity enters and exits play mode twice without duplicate bootstrap instances after UF-007 is complete."
     ],
     "proof_required": [
@@ -1272,7 +1272,7 @@
     "milestone": "S1.0 Foundation and evidence harness",
     "allowed_areas": [
       "Assets/ShooterMover/Tests/EditMode/Foundation/AssemblyDependencyTests.cs",
-      "Assets/ShooterMover/Tests/EditMode/Foundation/BootstrapCompositionRootTests.cs",
+      "Assets/ShooterMover/Tests/EditMode/Foundation/BootstrapSetupRootTests.cs",
       "Assets/ShooterMover/Tests/PlayMode/Foundation/BootstrapLifecycleTests.cs",
       "Assets/ShooterMover/Tests/PlayMode/Foundation/FoundationSmokeSceneTests.cs"
     ],
@@ -1685,9 +1685,9 @@
     "priority": "P0",
     "milestone": "S1.2 Four-weapon combat",
     "allowed_areas": [
-      "Assets/ShooterMover/Runtime/Domain/Combat/WeaponRuntimeProfile.cs",
-      "Assets/ShooterMover/Runtime/Domain/Combat/WeaponRuntimeProfileValidator.cs",
-      "Assets/ShooterMover/Tests/EditMode/Combat/WeaponRuntimeProfileTests.cs"
+      "Assets/ShooterMover/Runtime/Domain/Combat/WeaponLiveProfile.cs",
+      "Assets/ShooterMover/Runtime/Domain/Combat/WeaponLiveProfileValidator.cs",
+      "Assets/ShooterMover/Tests/EditMode/Combat/WeaponLiveProfileTests.cs"
     ],
     "depends_on": [
       "CS-001",
@@ -1707,7 +1707,7 @@
       "Accepted S1.2 combat boundaries from ARCHITECTURE.md and REQUIREMENTS.md."
     ],
     "outputs": [
-      "Immutable WeaponRuntimeProfile model",
+      "Immutable WeaponLiveProfile model",
       "Profile validation and deterministic identity rules",
       "Edit-mode profile tests"
     ],
@@ -1727,7 +1727,7 @@
       "Manual/playable: contract review confirms all five amended Stage 1 weapon packages can be represented without adding package-specific branches."
     ],
     "proof_required": [
-      "WeaponRuntimeProfileTests log",
+      "WeaponLiveProfileTests log",
       "representative valid and rejected profile fixtures"
     ],
     "edge_cases": [
@@ -2016,7 +2016,7 @@
     ],
     "inputs": [
       "Consumed contract: Four-Mount Weapons v1 from CS-005.",
-      "Validated WeaponRuntimeProfile from CB-001."
+      "Validated WeaponLiveProfile from CB-001."
     ],
     "outputs": [
       "Immutable per-mount runtime state",
@@ -2435,8 +2435,8 @@
     "milestone": "S1.1 Movement and thruster",
     "allowed_areas": [
       "Assets/ShooterMover/Runtime/UnityAdapters/Input/ShooterMoverMovement.inputactions",
-      "Assets/ShooterMover/Runtime/UnityAdapters/Input/PlayerMovementIntentAdapter.cs",
-      "Assets/ShooterMover/Tests/PlayMode/Movement/PlayerMovementIntentAdapterTests.cs"
+      "Assets/ShooterMover/Runtime/UnityAdapters/Input/PlayerMovementIntentBridge.cs",
+      "Assets/ShooterMover/Tests/PlayMode/Movement/PlayerMovementIntentBridgeTests.cs"
     ],
     "depends_on": [
       "UF-002",
@@ -2667,9 +2667,9 @@
     "priority": "P0",
     "milestone": "S1.1 Movement and thruster",
     "allowed_areas": [
-      "Assets/ShooterMover/Runtime/UnityAdapters/Physics/MovementBody2DAdapter.cs",
+      "Assets/ShooterMover/Runtime/UnityAdapters/Physics/MovementBody2DBridge.cs",
       "Assets/ShooterMover/Runtime/UnityAdapters/Physics/MovementFixedStepDriver.cs",
-      "Assets/ShooterMover/Tests/PlayMode/Movement/MovementBody2DAdapterTests.cs"
+      "Assets/ShooterMover/Tests/PlayMode/Movement/MovementBody2DBridgeTests.cs"
     ],
     "depends_on": [
       "UF-003",
@@ -2872,8 +2872,8 @@
     "milestone": "S1.2 Four-weapon combat",
     "allowed_areas": [
       "Assets/ShooterMover/Runtime/UnityAdapters/Input/ShooterMoverCombat.inputactions",
-      "Assets/ShooterMover/Runtime/UnityAdapters/Combat/PlayerCombatIntentAdapter.cs",
-      "Assets/ShooterMover/Tests/PlayMode/Combat/PlayerCombatIntentAdapterTests.cs"
+      "Assets/ShooterMover/Runtime/UnityAdapters/Combat/PlayerCombatIntentBridge.cs",
+      "Assets/ShooterMover/Tests/PlayMode/Combat/PlayerCombatIntentBridgeTests.cs"
     ],
     "depends_on": [
       "UF-002",
@@ -2910,7 +2910,7 @@
       "Manual/playable: human review verifies keyboard/mouse and gamepad aim/fire parity using synthetic intent displays."
     ],
     "proof_required": [
-      "PlayerCombatIntentAdapterTests log",
+      "PlayerCombatIntentBridgeTests log",
       "keyboard/mouse and gamepad intent traces"
     ],
     "edge_cases": [
@@ -3026,8 +3026,8 @@
     "milestone": "S1.1 Movement and thruster",
     "allowed_areas": [
       "Assets/ShooterMover/Runtime/UnityAdapters/Physics/MovementContactClassifier.cs",
-      "Assets/ShooterMover/Runtime/UnityAdapters/Physics/MovementContact2DAdapter.cs",
-      "Assets/ShooterMover/Tests/PlayMode/Movement/MovementContact2DAdapterTests.cs"
+      "Assets/ShooterMover/Runtime/UnityAdapters/Physics/MovementContact2DBridge.cs",
+      "Assets/ShooterMover/Tests/PlayMode/Movement/MovementContact2DBridgeTests.cs"
     ],
     "depends_on": [
       "UF-003",
@@ -3077,9 +3077,9 @@
     "priority": "P0",
     "milestone": "S1.2 Four-weapon combat",
     "allowed_areas": [
-      "Assets/ShooterMover/Runtime/UnityAdapters/Combat/WeaponMount2DAdapter.cs",
-      "Assets/ShooterMover/Runtime/UnityAdapters/Combat/CombatHit2DAdapter.cs",
-      "Assets/ShooterMover/Tests/PlayMode/Combat/WeaponMount2DAdapterTests.cs"
+      "Assets/ShooterMover/Runtime/UnityAdapters/Combat/WeaponMount2DBridge.cs",
+      "Assets/ShooterMover/Runtime/UnityAdapters/Combat/CombatHit2DBridge.cs",
+      "Assets/ShooterMover/Tests/PlayMode/Combat/WeaponMount2DBridgeTests.cs"
     ],
     "depends_on": [
       "UF-003",
@@ -3116,7 +3116,7 @@
       "Manual/playable: inspect synthetic mount rays/hits in an isolated fixture and confirm domain results remain authoritative."
     ],
     "proof_required": [
-      "WeaponMount2DAdapterTests log",
+      "WeaponMount2DBridgeTests log",
       "synthetic 2D plan/hit trace",
       "3D API scan output"
     ],
@@ -3656,10 +3656,10 @@
     "summary": "Connect deterministic enemy decisions to targeting, Rigidbody2D movement, hits and contacts.",
     "objective": "Provide bounded Unity 2D adapters shared by enemy packages while preserving plain-C# authority.",
     "allowed_areas": [
-      "Assets/ShooterMover/Runtime/UnityAdapters/Enemies/EnemyActor2DAdapter.cs",
-      "Assets/ShooterMover/Runtime/UnityAdapters/Enemies/EnemyTarget2DAdapter.cs",
-      "Assets/ShooterMover/Runtime/UnityAdapters/Enemies/EnemyContact2DAdapter.cs",
-      "Assets/ShooterMover/Tests/PlayMode/Enemies/EnemyActor2DAdapterTests.cs"
+      "Assets/ShooterMover/Runtime/UnityAdapters/Enemies/EnemyActor2DBridge.cs",
+      "Assets/ShooterMover/Runtime/UnityAdapters/Enemies/EnemyTarget2DBridge.cs",
+      "Assets/ShooterMover/Runtime/UnityAdapters/Enemies/EnemyContact2DBridge.cs",
+      "Assets/ShooterMover/Tests/PlayMode/Enemies/EnemyActor2DBridgeTests.cs"
     ],
     "depends_on": [
       "UF-003",
@@ -3699,7 +3699,7 @@
       "Manual: dependency review confirms package folders can consume adapters without editing them."
     ],
     "proof_required": [
-      "EnemyActor2DAdapterTests log",
+      "EnemyActor2DBridgeTests log",
       "2D boundary snapshot",
       "dependency review note"
     ],
@@ -4389,7 +4389,7 @@
       "WP-007"
     ],
     "inputs": [
-      "Consumed contracts: StableId v1, ContentVersion v1, Typed Content References v1, Generated Registry v1, WeaponRuntimeProfile, independent power-bank policy, and modular weapon-behavior pipeline.",
+      "Consumed contracts: StableId v1, ContentVersion v1, Typed Content References v1, Generated Registry v1, WeaponLiveProfile, independent power-bank policy, and modular weapon-behavior pipeline.",
       "Accepted roster and empowered-fire boundaries from AMENDMENT_STAGE1_WEAPONS.md."
     ],
     "outputs": [
@@ -4451,7 +4451,7 @@
     "objective": "Implement only the concrete 2D projectile lifetime, collision handoff and temporary hit-presentation primitives needed by Stage 1 packages behind the accepted execution-plan adapter.",
     "allowed_areas": [
       "Assets/ShooterMover/ContentPackages/Weapons/Shared/Runtime/BoundedProjectile2D.cs",
-      "Assets/ShooterMover/ContentPackages/Weapons/Shared/Runtime/ProjectileExecutionPlanAdapter.cs",
+      "Assets/ShooterMover/ContentPackages/Weapons/Shared/Runtime/ProjectileExecutionPlanBridge.cs",
       "Assets/ShooterMover/ContentPackages/Weapons/Shared/Presentation/TemporaryHitPresentation.cs",
       "Assets/ShooterMover/ContentPackages/Weapons/Shared/Prefabs/BoundedProjectile2D.prefab",
       "Assets/ShooterMover/Tests/PlayMode/Combat/BoundedProjectile2DTests.cs"
@@ -4471,7 +4471,7 @@
       "WP-007"
     ],
     "inputs": [
-      "Consumed contracts: Combat Messages v1, WeaponFireExecutionPlan, WeaponMount2DAdapter boundary, and Stage 1 weapon-package baseline."
+      "Consumed contracts: Combat Messages v1, WeaponFireExecutionPlan, WeaponMount2DBridge boundary, and Stage 1 weapon-package baseline."
     ],
     "outputs": [
       "Bounded 2D projectile primitive",

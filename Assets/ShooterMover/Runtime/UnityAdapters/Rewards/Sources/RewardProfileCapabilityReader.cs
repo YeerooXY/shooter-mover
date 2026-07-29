@@ -14,7 +14,7 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
         private const string CapabilityIdText = "capability.reward-source-profile-v1";
         private const string FieldNamespace = "reward-profile";
 
-        public static RewardProfileV1 BuildProfile(ScriptableObject sourceObject)
+        public static RewardProfile BuildProfile(ScriptableObject sourceObject)
         {
             IObjectCapabilityDefinitionSource source =
                 sourceObject as IObjectCapabilityDefinitionSource;
@@ -31,18 +31,18 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
                     $"Reward profile source returned capability '{definition.CapabilityId}', not '{CapabilityIdText}'.");
             }
 
-            RewardProfileDispositionV1 disposition =
-                (RewardProfileDispositionV1)ReadInteger(definition, "disposition");
+            RewardProfileDisposition disposition =
+                (RewardProfileDisposition)ReadInteger(definition, "disposition");
             StableId profileId = ReadStableId(definition, "profile-id");
-            RewardProfileV1 profile;
-            if (disposition == RewardProfileDispositionV1.ExplicitNoDrop)
+            RewardProfile profile;
+            if (disposition == RewardProfileDisposition.ExplicitNoDrop)
             {
-                profile = RewardProfileV1.CreateExplicitNoDrop(profileId);
+                profile = RewardProfile.CreateExplicitNoDrop(profileId);
             }
-            else if (disposition == RewardProfileDispositionV1.Configured)
+            else if (disposition == RewardProfileDisposition.Configured)
             {
-                List<RewardGrantSpecificationV1> guaranteed =
-                    new List<RewardGrantSpecificationV1>();
+                List<RewardGrantSpecification> guaranteed =
+                    new List<RewardGrantSpecification>();
                 int guaranteedCount = ReadCount(definition, "guaranteed-count");
                 for (int index = 0; index < guaranteedCount; index++)
                 {
@@ -51,14 +51,14 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
                         "guaranteed-" + Index(index)));
                 }
 
-                List<IndependentRewardRollV1> independent =
-                    new List<IndependentRewardRollV1>();
+                List<IndependentRewardRoll> independent =
+                    new List<IndependentRewardRoll>();
                 int independentCount = ReadCount(definition, "independent-count");
                 for (int index = 0; index < independentCount; index++)
                 {
                     string prefix = "independent-" + Index(index);
                     independent.Add(
-                        IndependentRewardRollV1.Create(
+                        IndependentRewardRoll.Create(
                             ReadStableId(definition, prefix + "-roll-id"),
                             checked((int)ReadInteger(
                                 definition,
@@ -66,8 +66,8 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
                             ReadGrant(definition, prefix + "-grant")));
                 }
 
-                List<ExclusiveRewardGroupV1> exclusive =
-                    new List<ExclusiveRewardGroupV1>();
+                List<ExclusiveRewardGroup> exclusive =
+                    new List<ExclusiveRewardGroup>();
                 int exclusiveCount = ReadCount(definition, "exclusive-count");
                 for (int groupIndex = 0; groupIndex < exclusiveCount; groupIndex++)
                 {
@@ -75,8 +75,8 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
                     int outcomeCount = ReadCount(
                         definition,
                         groupPrefix + "-outcome-count");
-                    List<WeightedRewardOutcomeV1> outcomes =
-                        new List<WeightedRewardOutcomeV1>();
+                    List<WeightedRewardOutcome> outcomes =
+                        new List<WeightedRewardOutcome>();
                     for (int outcomeIndex = 0;
                         outcomeIndex < outcomeCount;
                         outcomeIndex++)
@@ -90,22 +90,22 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
                         long weight = ReadInteger(
                             definition,
                             outcomePrefix + "-weight");
-                        WeightedRewardOutcomeKindV1 kind =
-                            (WeightedRewardOutcomeKindV1)ReadInteger(
+                        WeightedRewardOutcomeKind kind =
+                            (WeightedRewardOutcomeKind)ReadInteger(
                                 definition,
                                 outcomePrefix + "-kind");
-                        if (kind == WeightedRewardOutcomeKindV1.Grant)
+                        if (kind == WeightedRewardOutcomeKind.Grant)
                         {
                             outcomes.Add(
-                                WeightedRewardOutcomeV1.CreateGrant(
+                                WeightedRewardOutcome.CreateGrant(
                                     outcomeId,
                                     weight,
                                     ReadGrant(definition, outcomePrefix + "-grant")));
                         }
-                        else if (kind == WeightedRewardOutcomeKindV1.ExplicitNoDrop)
+                        else if (kind == WeightedRewardOutcomeKind.ExplicitNoDrop)
                         {
                             outcomes.Add(
-                                WeightedRewardOutcomeV1.CreateExplicitNoDrop(
+                                WeightedRewardOutcome.CreateExplicitNoDrop(
                                     outcomeId,
                                     weight));
                         }
@@ -117,12 +117,12 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
                     }
 
                     exclusive.Add(
-                        ExclusiveRewardGroupV1.Create(
+                        ExclusiveRewardGroup.Create(
                             ReadStableId(definition, groupPrefix + "-group-id"),
                             outcomes));
                 }
 
-                profile = RewardProfileV1.Create(
+                profile = RewardProfile.Create(
                     profileId,
                     guaranteed,
                     independent,
@@ -149,31 +149,31 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
             return profile;
         }
 
-        private static RewardGrantSpecificationV1 ReadGrant(
+        private static RewardGrantSpecification ReadGrant(
             CapabilityDefinition definition,
             string prefix)
         {
             int scalingCount = ReadCount(
                 definition,
                 prefix + "-scaling-count");
-            List<RewardScalingInputDescriptorV1> scaling =
-                new List<RewardScalingInputDescriptorV1>();
+            List<RewardScalingInputDescriptor> scaling =
+                new List<RewardScalingInputDescriptor>();
             for (int index = 0; index < scalingCount; index++)
             {
                 string inputPrefix = prefix + "-scaling-" + Index(index);
                 scaling.Add(
-                    RewardScalingInputDescriptorV1.Create(
+                    RewardScalingInputDescriptor.Create(
                         ReadStableId(definition, inputPrefix + "-input-id"),
-                        (RewardScalingInputKindV1)ReadInteger(
+                        (RewardScalingInputKind)ReadInteger(
                             definition,
                             inputPrefix + "-kind")));
             }
 
-            return RewardGrantSpecificationV1.Create(
+            return RewardGrantSpecification.Create(
                 ReadStableId(definition, prefix + "-grant-id"),
-                (RewardGrantKindV1)ReadInteger(definition, prefix + "-kind"),
+                (RewardGrantKind)ReadInteger(definition, prefix + "-kind"),
                 ReadStableId(definition, prefix + "-content-id"),
-                RewardQuantityRangeV1.Create(
+                RewardQuantityRange.Create(
                     ReadInteger(definition, prefix + "-quantity-min"),
                     ReadInteger(definition, prefix + "-quantity-max")),
                 scaling);

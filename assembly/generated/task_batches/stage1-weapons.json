@@ -40,7 +40,7 @@
         "WP-007"
       ],
       "inputs": [
-        "Consumed contracts: StableId v1, ContentVersion v1, Typed Content References v1, Generated Registry v1, WeaponRuntimeProfile, independent power-bank policy, and modular weapon-behavior pipeline.",
+        "Consumed contracts: StableId v1, ContentVersion v1, Typed Content References v1, Generated Registry v1, WeaponLiveProfile, independent power-bank policy, and modular weapon-behavior pipeline.",
         "Accepted roster and empowered-fire boundaries from AMENDMENT_STAGE1_WEAPONS.md."
       ],
       "outputs": [
@@ -102,7 +102,7 @@
       "objective": "Implement only the concrete 2D projectile lifetime, collision handoff and temporary hit-presentation primitives needed by Stage 1 packages behind the accepted execution-plan adapter.",
       "allowed_areas": [
         "Assets/ShooterMover/ContentPackages/Weapons/Shared/Runtime/BoundedProjectile2D.cs",
-        "Assets/ShooterMover/ContentPackages/Weapons/Shared/Runtime/ProjectileExecutionPlanAdapter.cs",
+        "Assets/ShooterMover/ContentPackages/Weapons/Shared/Runtime/ProjectileExecutionPlanBridge.cs",
         "Assets/ShooterMover/ContentPackages/Weapons/Shared/Presentation/TemporaryHitPresentation.cs",
         "Assets/ShooterMover/ContentPackages/Weapons/Shared/Prefabs/BoundedProjectile2D.prefab",
         "Assets/ShooterMover/Tests/PlayMode/Combat/BoundedProjectile2DTests.cs"
@@ -122,7 +122,7 @@
         "WP-007"
       ],
       "inputs": [
-        "Consumed contracts: Combat Messages v1, WeaponFireExecutionPlan, WeaponMount2DAdapter boundary, and Stage 1 weapon-package baseline."
+        "Consumed contracts: Combat Messages v1, WeaponFireExecutionPlan, WeaponMount2DBridge boundary, and Stage 1 weapon-package baseline."
       ],
       "outputs": [
         "Bounded 2D projectile primitive",

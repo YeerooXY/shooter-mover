@@ -6,9 +6,9 @@ This foundation extends the existing skill progression contracts without replaci
 
 ## Stable contracts
 
-`RankedSkillCatalogV2` is schema- and content-versioned. Skill, category, class, synergy, stat, condition, currency, profile, and operation identities are stable strings and are never inferred from display names.
+`RankedSkillCatalog` is schema- and content-versioned. Skill, category, class, synergy, stat, condition, currency, profile, and operation identities are stable strings and are never inferred from display names.
 
-A shared generic skill is defined once. `SkillClassOverrideV2` changes its effective rank cap and optional rank-value curve for a class. The sample catalog proves:
+A shared generic skill is defined once. `SkillClassOverride` changes its effective rank cap and optional rank-value curve for a class. The sample catalog proves:
 
 - `generic.armor`: Striker/Combat Medic 6, Juggernaut 18;
 - `generic.movement_speed`: Striker 18, Combat Medic 6, Juggernaut 9;
@@ -27,7 +27,7 @@ Persisted allocation state contains profile identity, class identity, allocation
 
 ## Effect projection and stacking
 
-`SkillEffectProjectorV2` rebuilds contributions from current ranks on every accepted allocation, migration, or respec. It does not mutate character, equipment, augment, movement, ability, or weapon definitions.
+`SkillEffectProjector` rebuilds contributions from current ranks on every accepted allocation, migration, or respec. It does not mutate character, equipment, augment, movement, ability, or weapon definitions.
 
 Unconditional stacking order is deterministic:
 
@@ -48,10 +48,10 @@ There is no permanent unlock flag. Removing either prerequisite removes the cont
 
 ## Respec boundary
 
-`SkillRespecOrchestratorV2` owns orchestration, not currency. It receives:
+`SkillRespecOrchestrator` owns orchestration, not currency. It receives:
 
-- `ISkillRespecCostPolicyV2` for an exact cost;
-- `ISkillRespecPaymentAuthorityV2` as an adapter over the existing credit/money authority.
+- `ISkillRespecCostPolicy` for an exact cost;
+- `ISkillRespecPaymentState` as an adapter over the existing credit/money authority.
 
 A quote binds profile identity, allocation version, allocated-point count, exact cost, currency identity, and payment-state fingerprint. Execution rejects stale allocation, cost, or payment state before charging.
 
@@ -71,7 +71,7 @@ The captured-activation policy avoids retroactively changing active durations, d
 
 ## Migration
 
-`SkillAllocationMigratorV2` deterministically handles removed/unknown skills, reduced caps, and class eligibility changes. Invalid or excess ranks are returned as `RefundedPoints` with explicit diagnostics; they are never silently destroyed. Migration increments allocation version and updates schema/content versions. A caller may reject migration instead of accepting refunds when product policy requires stricter handling.
+`SkillAllocationMigrator` deterministically handles removed/unknown skills, reduced caps, and class eligibility changes. Invalid or excess ranks are returned as `RefundedPoints` with explicit diagnostics; they are never silently destroyed. Migration increments allocation version and updates schema/content versions. A caller may reject migration instead of accepting refunds when product policy requires stricter handling.
 
 ## Validation
 
@@ -83,6 +83,6 @@ Responsibilities remain separate:
 
 - domain definitions and validation: `RankedSkillFoundationV2.cs`;
 - allocation authority, respec orchestration, payment contracts, migration, reconciliation: `RankedSkillAuthorityV2.cs`;
-- engine-independent NUnit coverage: `RankedSkillFoundationV2Tests.cs`.
+- engine-independent NUnit coverage: `RankedSkillFoundationTests.cs`.
 
 No UI or final production catalog is included.

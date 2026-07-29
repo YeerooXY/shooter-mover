@@ -15,7 +15,7 @@ namespace ShooterMover.UnityAdapters.Rewards.GameplayDrops
     /// type, generate rewards, create authority state, or mutate player value.
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed class GameplayDropSource2D : MonoBehaviour, IGameplayDropSourceV1
+    public sealed class GameplayDropSource2D : MonoBehaviour, IGameplayDropSource
     {
         [SerializeField] private PlacedObjectAuthoring2D placedObject;
         [SerializeField] private GameplayDropProfileDefinitionAsset dropProfile;
@@ -23,7 +23,7 @@ namespace ShooterMover.UnityAdapters.Rewards.GameplayDrops
             new GameplayDropOverrideAuthoring();
         [SerializeField] private MonoBehaviour operationSink;
 
-        private GameplayDropOperationV1 resolvedOperation;
+        private GameplayDropOperation resolvedOperation;
         private GameplayDropResolutionResult lastResolution;
 
         public GameplayDropResolutionResult LastResolution
@@ -61,7 +61,7 @@ namespace ShooterMover.UnityAdapters.Rewards.GameplayDrops
                     "Gameplay drop source requires a gameplay drop profile.");
             }
 
-            ShooterMover.Domain.Rewards.Model.RewardProfileV1 inheritedProfile;
+            ShooterMover.Domain.Rewards.Model.RewardProfile inheritedProfile;
             try
             {
                 inheritedProfile = dropProfile.BuildProfile();
@@ -73,7 +73,7 @@ namespace ShooterMover.UnityAdapters.Rewards.GameplayDrops
                     exception.Message);
             }
 
-            GameplayDropOverrideV1 resolvedOverride;
+            GameplayDropOverride resolvedOverride;
             try
             {
                 resolvedOverride = (manualOverride
@@ -87,10 +87,10 @@ namespace ShooterMover.UnityAdapters.Rewards.GameplayDrops
                     exception.Message);
             }
 
-            GameplayDropOperationV1 operation;
+            GameplayDropOperation operation;
             try
             {
-                operation = GameplayDropOperationFactoryV1.Create(
+                operation = GameplayDropOperationFactory.Create(
                     resolvedPlaced.BoundScope.RunId,
                     resolvedPlaced.ResolvedIdentity.Value,
                     inheritedProfile,
@@ -105,18 +105,18 @@ namespace ShooterMover.UnityAdapters.Rewards.GameplayDrops
 
             if (resolvedOperation != null)
             {
-                RewardOperationIdentityComparisonV1 comparison =
-                    RewardOperationIdentityV1.Classify(
+                RewardOperationIdentityComparison comparison =
+                    RewardOperationIdentity.Classify(
                         resolvedOperation.OperationRequest,
                         operation.OperationRequest);
-                if (comparison == RewardOperationIdentityComparisonV1.ConflictingDuplicate)
+                if (comparison == RewardOperationIdentityComparison.ConflictingDuplicate)
                 {
                     return SetFailure(
                         GameplayDropResolutionStatus.ConflictingResolvedOperation,
                         "The gameplay drop operation was already resolved with a different payload.");
                 }
 
-                if (comparison == RewardOperationIdentityComparisonV1.ExactDuplicateNoChange)
+                if (comparison == RewardOperationIdentityComparison.ExactDuplicateNoChange)
                 {
                     lastResolution = GameplayDropResolutionResult.Resolved(
                         resolvedOperation,
@@ -174,7 +174,7 @@ namespace ShooterMover.UnityAdapters.Rewards.GameplayDrops
         }
 
         private static RewardSourceResolvedPreview BuildSourcePreview(
-            GameplayDropOperationV1 operation)
+            GameplayDropOperation operation)
         {
             return new RewardSourceResolvedPreview(
                 MapMode(operation.AppliedOverride.Mode),
@@ -186,17 +186,17 @@ namespace ShooterMover.UnityAdapters.Rewards.GameplayDrops
         }
 
         private static RewardSourceOverrideAuthoringMode MapMode(
-            GameplayDropOverrideModeV1 mode)
+            GameplayDropOverrideMode mode)
         {
             switch (mode)
             {
-                case GameplayDropOverrideModeV1.Default:
+                case GameplayDropOverrideMode.Default:
                     return RewardSourceOverrideAuthoringMode.Inherit;
-                case GameplayDropOverrideModeV1.ForcedNone:
+                case GameplayDropOverrideMode.ForcedNone:
                     return RewardSourceOverrideAuthoringMode.None;
-                case GameplayDropOverrideModeV1.ForcedSpecificReward:
+                case GameplayDropOverrideMode.ForcedSpecificReward:
                     return RewardSourceOverrideAuthoringMode.Replace;
-                case GameplayDropOverrideModeV1.AppendGuaranteedReward:
+                case GameplayDropOverrideMode.AppendGuaranteedReward:
                     return RewardSourceOverrideAuthoringMode.AppendGuaranteed;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(mode));

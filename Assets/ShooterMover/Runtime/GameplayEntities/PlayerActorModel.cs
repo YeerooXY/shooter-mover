@@ -63,7 +63,7 @@ namespace ShooterMover.GameplayEntities
         internal PlayerActorCreationResult(
             PlayerActorCreationStatus status,
             PlayerActorCreationRejectionCode rejectionCode,
-            PlayerActorAuthority authority)
+            PlayerActorState authority)
         {
             Status = status;
             RejectionCode = rejectionCode;
@@ -74,7 +74,7 @@ namespace ShooterMover.GameplayEntities
 
         public PlayerActorCreationRejectionCode RejectionCode { get; }
 
-        public PlayerActorAuthority Authority { get; }
+        public PlayerActorState Authority { get; }
 
         public bool IsCreated
         {

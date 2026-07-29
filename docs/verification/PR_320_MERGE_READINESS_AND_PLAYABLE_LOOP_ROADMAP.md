@@ -76,12 +76,12 @@ Use the repository's pinned Unity editor version.
 1. Open the project and wait for a complete script reload.
 2. Confirm zero compiler errors and zero missing-script errors.
 3. Run focused EditMode tests:
-   - `ProductionWeaponOnboardingAndMigrationTests`
+   - `WeaponOnboardingAndMigrationTests`
    - `RetiredWeaponSaveMigrationReplayTests`
    - `ProductionPlayerLoadoutRuntimeV1Tests`
-   - `ProductionWeaponMountPolicyV1Tests`
-   - `ProductionExactWeaponInstanceLoadoutTests`
-   - `CharacterCompositionCoordinatorV1Tests`
+   - `WeaponMountPolicyTests`
+   - `ExactWeaponInstanceLoadoutTests`
+   - `CharacterSetupFlowTests`
    - `CharacterActivationAndStrongboxRegressionTests`
    - `CharacterCreationTransactionRegressionTests`
 4. Run focused PlayMode tests:

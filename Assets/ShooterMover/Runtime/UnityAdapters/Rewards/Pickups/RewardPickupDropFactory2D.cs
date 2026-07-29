@@ -32,22 +32,22 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
 
         private readonly Dictionary<StableId, RewardPickup2D> spawnedPickups =
             new Dictionary<StableId, RewardPickup2D>();
-        private RewardGenerationServiceV1 generator;
+        private RewardGenerationActions generator;
         private ProgressionContext progressionContext;
-        private IRewardPickupEquipmentPayloadResolverV1 equipmentResolver;
-        private RewardPickupSpawnResultV1 lastSpawnResult;
+        private IRewardPickupEquipmentPayloadResolver equipmentResolver;
+        private RewardPickupSpawnResult lastSpawnResult;
 
         public int SpawnedPickupCount { get { return spawnedPickups.Count; } }
-        public RewardPickupSpawnResultV1 LastSpawnResult { get { return lastSpawnResult; } }
+        public RewardPickupSpawnResult LastSpawnResult { get { return lastSpawnResult; } }
 
         public void ConfigureRuntime(
-            RewardGenerationServiceV1 generator,
+            RewardGenerationActions generator,
             ProgressionContext progressionContext,
             ulong rootSeed,
             int algorithmVersion,
             MonoBehaviour lifecycleAuthority,
             GameplaySceneScope2D restartScope,
-            IRewardPickupEquipmentPayloadResolverV1 equipmentResolver = null)
+            IRewardPickupEquipmentPayloadResolver equipmentResolver = null)
         {
             this.generator = generator ?? throw new ArgumentNullException(nameof(generator));
             this.progressionContext = progressionContext
@@ -57,10 +57,10 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
                 throw new ArgumentOutOfRangeException(nameof(algorithmVersion));
             }
 
-            if (!(lifecycleAuthority is IRewardPickupLifecycleAuthorityV1))
+            if (!(lifecycleAuthority is IRewardPickupLifecycleState))
             {
                 throw new ArgumentException(
-                    "Lifecycle authority must implement IRewardPickupLifecycleAuthorityV1.",
+                    "Lifecycle authority must implement IRewardPickupLifecycleState.",
                     nameof(lifecycleAuthority));
             }
 
@@ -72,14 +72,14 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
         }
 
         public void ConfigureForTests(
-            RewardGenerationServiceV1 generator,
+            RewardGenerationActions generator,
             ProgressionContext progressionContext,
             ulong rootSeed,
             int algorithmVersion,
             MonoBehaviour lifecycleAuthority,
             GameplaySceneScope2D restartScope,
             RewardPickup2D pickupPrefab = null,
-            IRewardPickupEquipmentPayloadResolverV1 equipmentResolver = null)
+            IRewardPickupEquipmentPayloadResolver equipmentResolver = null)
         {
             this.pickupPrefab = pickupPrefab;
             ConfigureRuntime(
@@ -99,19 +99,19 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
                 return RejectedSubmission("Reward source preview is null.");
             }
 
-            IRewardPickupLifecycleAuthorityV1 authority =
-                lifecycleAuthority as IRewardPickupLifecycleAuthorityV1;
+            IRewardPickupLifecycleState authority =
+                lifecycleAuthority as IRewardPickupLifecycleState;
             if (generator == null || progressionContext == null || authority == null)
             {
                 return RejectedSubmission(
                     "Pickup drop factory is missing generator, progression context, or RAP authority.");
             }
 
-            RewardGenerationResultEnvelopeV1 generation;
+            RewardGenerationResultEnvelope generation;
             try
             {
                 generation = generator.GenerateReward(
-                    RewardGenerationRequestV1.Create(
+                    RewardGenerationRequest.Create(
                         preview.OperationRequest,
                         preview.ResolvedProfile,
                         progressionContext,
@@ -131,9 +131,9 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
                         : "Reward generation failed: " + generation.FailureReason);
             }
 
-            IReadOnlyList<RewardGrantApplicationPayloadV1> payloads;
+            IReadOnlyList<RewardGrantApplicationPayload> payloads;
             string rejectionCode;
-            if (!RewardPickupPayloadBuilderV1.TryBuild(
+            if (!RewardPickupPayloadBuilder.TryBuild(
                 preview,
                 generation.Result,
                 equipmentResolver,
@@ -143,10 +143,10 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
                 return RejectedSubmission(rejectionCode);
             }
 
-            RewardCommitCommandV1 command;
+            RewardCommitCommand command;
             try
             {
-                command = RewardCommitCommandV1.Create(
+                command = RewardCommitCommand.Create(
                     preview.OperationRequest,
                     generation.Result,
                     generation.ResultFingerprint,
@@ -160,19 +160,19 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
             lastSpawnResult = CommitAndProject(command, null);
             switch (lastSpawnResult.Status)
             {
-                case RewardPickupSpawnStatusV1.Spawned:
+                case RewardPickupSpawnStatus.Spawned:
                     return new RewardSourceSubmissionResult(
                         RewardSourceSubmissionStatus.Accepted,
                         lastSpawnResult.Diagnostic);
-                case RewardPickupSpawnStatusV1.ExactDuplicateNoChange:
+                case RewardPickupSpawnStatus.ExactDuplicateNoChange:
                     return new RewardSourceSubmissionResult(
                         RewardSourceSubmissionStatus.ExactDuplicateNoChange,
                         lastSpawnResult.Diagnostic);
-                case RewardPickupSpawnStatusV1.ExplicitNoDrop:
+                case RewardPickupSpawnStatus.ExplicitNoDrop:
                     return new RewardSourceSubmissionResult(
                         lastSpawnResult.AuthorityResult != null
                             && lastSpawnResult.AuthorityResult.Status
-                                == RewardApplicationResultStatusV1.ExactDuplicateNoChange
+                                == RewardApplicationResultStatus.ExactDuplicateNoChange
                             ? RewardSourceSubmissionStatus.ExactDuplicateNoChange
                             : RewardSourceSubmissionStatus.Accepted,
                         lastSpawnResult.Diagnostic);
@@ -181,9 +181,9 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
             }
         }
 
-        public RewardPickupSpawnResultV1 SpawnForced(
-            RewardCommitCommandV1 command,
-            RewardPickupCategoryV1? category = null)
+        public RewardPickupSpawnResult SpawnForced(
+            RewardCommitCommand command,
+            RewardPickupCategory? category = null)
         {
             lastSpawnResult = CommitAndProject(command, category);
             return lastSpawnResult;
@@ -196,60 +196,60 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
                 && spawnedPickups.TryGetValue(pickupStableId, out pickup);
         }
 
-        private RewardPickupSpawnResultV1 CommitAndProject(
-            RewardCommitCommandV1 command,
-            RewardPickupCategoryV1? category)
+        private RewardPickupSpawnResult CommitAndProject(
+            RewardCommitCommand command,
+            RewardPickupCategory? category)
         {
-            IRewardPickupLifecycleAuthorityV1 authority =
-                lifecycleAuthority as IRewardPickupLifecycleAuthorityV1;
+            IRewardPickupLifecycleState authority =
+                lifecycleAuthority as IRewardPickupLifecycleState;
             if (command == null || authority == null)
             {
-                return new RewardPickupSpawnResultV1(
-                    RewardPickupSpawnStatusV1.Rejected,
+                return new RewardPickupSpawnResult(
+                    RewardPickupSpawnStatus.Rejected,
                     null,
                     null,
                     "Forced drop requires a prepared commit and RAP lifecycle authority.");
             }
 
-            RewardApplicationResultV1 commitResult = authority.Commit(command);
+            RewardApplicationResult commitResult = authority.Commit(command);
             if (commitResult == null)
             {
-                return new RewardPickupSpawnResultV1(
-                    RewardPickupSpawnStatusV1.Rejected,
+                return new RewardPickupSpawnResult(
+                    RewardPickupSpawnStatus.Rejected,
                     null,
                     null,
                     "RAP commit returned no result.");
             }
 
-            bool accepted = commitResult.Status == RewardApplicationResultStatusV1.Generated
-                || commitResult.Status == RewardApplicationResultStatusV1.ExactDuplicateNoChange;
+            bool accepted = commitResult.Status == RewardApplicationResultStatus.Generated
+                || commitResult.Status == RewardApplicationResultStatus.ExactDuplicateNoChange;
             if (!accepted)
             {
-                return new RewardPickupSpawnResultV1(
-                    RewardPickupSpawnStatusV1.Rejected,
+                return new RewardPickupSpawnResult(
+                    RewardPickupSpawnStatus.Rejected,
                     null,
                     commitResult,
                     "RAP rejected pickup commitment: "
                         + (commitResult.RejectionCode ?? commitResult.Status.ToString()));
             }
 
-            if (command.GeneratedReward.Disposition == RewardResultDispositionV1.ExplicitNoDrop)
+            if (command.GeneratedReward.Disposition == RewardResultDisposition.ExplicitNoDrop)
             {
-                return new RewardPickupSpawnResultV1(
-                    RewardPickupSpawnStatusV1.ExplicitNoDrop,
+                return new RewardPickupSpawnResult(
+                    RewardPickupSpawnStatus.ExplicitNoDrop,
                     null,
                     commitResult,
                     "Profile resolved to explicit no-drop; no physical pickup was projected.");
             }
 
-            RewardPickupPayloadV1 pickupPayload = RewardPickupPayloadV1.Create(command, category);
+            RewardPickupPayload pickupPayload = RewardPickupPayload.Create(command, category);
             RewardPickup2D existing;
             if (spawnedPickups.TryGetValue(pickupPayload.PickupStableId, out existing))
             {
                 if (existing != null)
                 {
-                    return new RewardPickupSpawnResultV1(
-                        RewardPickupSpawnStatusV1.ExactDuplicateNoChange,
+                    return new RewardPickupSpawnResult(
+                        RewardPickupSpawnStatus.ExactDuplicateNoChange,
                         existing,
                         commitResult,
                         "Exact source callback reused the existing physical pickup projection.");
@@ -266,18 +266,18 @@ namespace ShooterMover.UnityAdapters.Rewards.Pickups
             }
             catch (Exception exception)
             {
-                return new RewardPickupSpawnResultV1(
-                    RewardPickupSpawnStatusV1.Rejected,
+                return new RewardPickupSpawnResult(
+                    RewardPickupSpawnStatus.Rejected,
                     null,
                     commitResult,
                     "Physical pickup projection failed: " + exception.Message);
             }
 
             spawnedPickups.Add(pickupPayload.PickupStableId, pickup);
-            return new RewardPickupSpawnResultV1(
-                commitResult.Status == RewardApplicationResultStatusV1.ExactDuplicateNoChange
-                    ? RewardPickupSpawnStatusV1.ExactDuplicateNoChange
-                    : RewardPickupSpawnStatusV1.Spawned,
+            return new RewardPickupSpawnResult(
+                commitResult.Status == RewardApplicationResultStatus.ExactDuplicateNoChange
+                    ? RewardPickupSpawnStatus.ExactDuplicateNoChange
+                    : RewardPickupSpawnStatus.Spawned,
                 pickup,
                 commitResult,
                 "Physical pickup projected from deterministic SRC/RAP identities.");

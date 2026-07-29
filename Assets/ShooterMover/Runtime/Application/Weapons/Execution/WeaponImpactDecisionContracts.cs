@@ -44,7 +44,7 @@ namespace ShooterMover.Application.Weapons.Execution
             double speed,
             WeaponVector2 wallNormal,
             WeaponWallContactId wallContactId,
-            WeaponRicochetRuntimeState ricochetState)
+            WeaponRicochetLiveState ricochetState)
         {
             if (impactOrdinal < 0)
             {
@@ -126,7 +126,7 @@ namespace ShooterMover.Application.Weapons.Execution
         public double Speed { get; }
         public WeaponVector2 WallNormal { get; }
         public WeaponWallContactId WallContactId { get; }
-        public WeaponRicochetRuntimeState RicochetState { get; }
+        public WeaponRicochetLiveState RicochetState { get; }
     }
 
     public sealed class WeaponImpactDecision
@@ -143,7 +143,7 @@ namespace ShooterMover.Application.Weapons.Execution
             WeaponVector2 directionAfterImpact,
             double speedAfterImpact,
             double homingPauseSeconds,
-            WeaponRicochetRuntimeState ricochetState,
+            WeaponRicochetLiveState ricochetState,
             DeterministicRandom random)
         {
             ProjectileIdentity = projectileIdentity
@@ -191,7 +191,7 @@ namespace ShooterMover.Application.Weapons.Execution
         public WeaponVector2 DirectionAfterImpact { get; }
         public double SpeedAfterImpact { get; }
         public double HomingPauseSeconds { get; }
-        public WeaponRicochetRuntimeState RicochetState { get; }
+        public WeaponRicochetLiveState RicochetState { get; }
         public DeterministicRandom Random { get; }
 
         public bool ShouldTerminate

@@ -43,28 +43,28 @@ namespace ShooterMover.UI.ProductionFlow
     {
         private const int ProfileSlotCount = 6;
         private static GameFlow instance;
-        private static ProductionResultsContextV1 pendingResultsContext;
+        private static ResultsContext pendingResultsContext;
 
-        private PlayerPrefsProductionFlowProfileStoreV1 profileStore;
-        private readonly ProductionFlowProfileRecordV1[] profiles =
-            new ProductionFlowProfileRecordV1[ProfileSlotCount];
-        private ProductionFlowProfileRecordV1 profile;
+        private PlayerPrefsFlowProfileStore profileStore;
+        private readonly FlowProfileRecord[] profiles =
+            new FlowProfileRecord[ProfileSlotCount];
+        private FlowProfileRecord profile;
         private int activeProfileSlot;
-        private PlayerRouteProfilePayloadV1 draftPayload;
-        private ProductionSceneTransitionCoordinatorV1 transitions;
-        private UnitySceneLoadPortV1 sceneLoader;
+        private PlayerRouteProfilePayload draftPayload;
+        private SceneTransitionFlow transitions;
+        private UnitySceneLoadPort sceneLoader;
         private Camera flowCamera;
         private StableId selectedModeStableId;
-        private ProductionResultsContextV1 resultsContext;
-        private ProductionStrongboxOpeningBindingV1 strongboxBinding;
+        private ResultsContext resultsContext;
+        private StrongboxOpeningBinding strongboxBinding;
         private ICharacterProfiles profileLifecycle;
 
-        public ProductionSceneTransitionCoordinatorV1 Transitions
+        public SceneTransitionFlow Transitions
         {
             get { return transitions; }
         }
 
-        public ProductionFlowProfileRecordV1 Profile
+        public FlowProfileRecord Profile
         {
             get { return profile; }
         }
@@ -84,7 +84,7 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
-            IReadOnlyList<ProductionFlowProfileRecordV1> projection;
+            IReadOnlyList<FlowProfileRecord> projection;
             string rejectionCode;
             if (!lifecycle.TryExportProfiles(
                     out projection,
@@ -124,7 +124,7 @@ namespace ShooterMover.UI.ProductionFlow
             draftPayload = CreateDraftPayload();
             if (transitions != null
                 && !transitions.IsTransitionPending
-                && transitions.Navigation.CurrentRoute == HubRouteV1.MainMenu)
+                && transitions.Navigation.CurrentRoute == HubRoute.MainMenu)
             {
                 transitions.ReplaceAtMainMenu(
                     profile == null ? draftPayload : profile.Payload);
@@ -141,7 +141,7 @@ namespace ShooterMover.UI.ProductionFlow
         }
 
         public static bool PresentResults(
-            ProductionResultsContextV1 context)
+            ResultsContext context)
         {
             if (context == null)
             {
@@ -152,7 +152,7 @@ namespace ShooterMover.UI.ProductionFlow
             if (instance == null) return false;
             instance.resultsContext = context;
             return instance.transitions.TryLoadSubflow(
-                ProductionFlowScenePathsV1.Results);
+                FlowScenePaths.Results);
         }
 
         private void Awake()
@@ -165,7 +165,7 @@ namespace ShooterMover.UI.ProductionFlow
 
             instance = this;
             DontDestroyOnLoad(gameObject);
-            profileStore = new PlayerPrefsProductionFlowProfileStoreV1();
+            profileStore = new PlayerPrefsFlowProfileStore();
             for (int slotIndex = 0; slotIndex < ProfileSlotCount; slotIndex++)
             {
                 profileStore.TryLoad(slotIndex, out profiles[slotIndex]);
@@ -173,11 +173,11 @@ namespace ShooterMover.UI.ProductionFlow
             activeProfileSlot = FindFirstOccupiedSlot();
             profile = profiles[activeProfileSlot];
             draftPayload = CreateDraftPayload();
-            HubNavigationServiceV1 navigation =
-                new HubNavigationServiceV1(
+            HubNavigationActions navigation =
+                new HubNavigationActions(
                     profile == null ? draftPayload : profile.Payload);
-            sceneLoader = new UnitySceneLoadPortV1();
-            transitions = new ProductionSceneTransitionCoordinatorV1(
+            sceneLoader = new UnitySceneLoadPort();
+            transitions = new SceneTransitionFlow(
                 navigation,
                 sceneLoader);
             resultsContext = pendingResultsContext;
@@ -207,12 +207,12 @@ namespace ShooterMover.UI.ProductionFlow
 
             if (string.Equals(
                     scene.path,
-                    ProductionFlowScenePathsV1.Bootstrap,
+                    FlowScenePaths.Bootstrap,
                     StringComparison.Ordinal)
                 && !transitions.IsTransitionPending)
             {
                 transitions.TryLoadSubflow(
-                    ProductionFlowScenePathsV1.MainMenu);
+                    FlowScenePaths.MainMenu);
             }
         }
 
@@ -221,11 +221,11 @@ namespace ShooterMover.UI.ProductionFlow
             string path = scene.path;
             if (string.Equals(
                     path,
-                    ProductionFlowScenePathsV1.MainMenu,
+                    FlowScenePaths.MainMenu,
                     StringComparison.Ordinal))
             {
-                ProductionMainMenuControllerV1 controller =
-                    Find<ProductionMainMenuControllerV1>(scene);
+                MainMenuController controller =
+                    Find<MainMenuController>(scene);
                 if (controller != null)
                 {
                     controller.Configure(OpenCharacterSelection);
@@ -235,11 +235,11 @@ namespace ShooterMover.UI.ProductionFlow
 
             if (string.Equals(
                     path,
-                    ProductionFlowScenePathsV1.CharacterSelection,
+                    FlowScenePaths.CharacterSelection,
                     StringComparison.Ordinal))
             {
-                ProductionCharacterSelectionControllerV1 controller =
-                    Find<ProductionCharacterSelectionControllerV1>(scene);
+                CharacterSelectionController controller =
+                    Find<CharacterSelectionController>(scene);
                 if (controller != null)
                 {
                     controller.Configure(
@@ -255,11 +255,11 @@ namespace ShooterMover.UI.ProductionFlow
 
             if (string.Equals(
                     path,
-                    ProductionFlowScenePathsV1.Hub,
+                    FlowScenePaths.Hub,
                     StringComparison.Ordinal))
             {
-                HubFlowControllerV1 controller =
-                    Find<HubFlowControllerV1>(scene);
+                HubFlowController controller =
+                    Find<HubFlowController>(scene);
                 if (controller != null)
                 {
                     controller.ConfigureProduction(transitions);
@@ -269,16 +269,16 @@ namespace ShooterMover.UI.ProductionFlow
 
             if (string.Equals(
                     path,
-                    ProductionFlowScenePathsV1.Inventory,
+                    FlowScenePaths.Inventory,
                     StringComparison.Ordinal))
             {
-                InventoryLoadoutScreenControllerV1 controller =
-                    Find<InventoryLoadoutScreenControllerV1>(scene);
+                InventoryLoadoutScreenController controller =
+                    Find<InventoryLoadoutScreenController>(scene);
                 if (controller != null)
                 {
                     controller.ConfigureDisconnected(ReturnToHub);
-                    ProductionCharacterRuntimeGraphV1 graph;
-                    ProductionFlowProfileRecordV1 authoritativeProfile;
+                    CharacterLiveGraph graph;
+                    FlowProfileRecord authoritativeProfile;
                     if (CharacterAccount.TryResolveCurrent(
                             out graph,
                             out authoritativeProfile)
@@ -286,14 +286,14 @@ namespace ShooterMover.UI.ProductionFlow
                         && !graph.IsDisposed
                         && graph.LoadoutRuntime != null)
                     {
-                        ProductionPlayerLoadoutRuntimeV1 runtime =
+                        PlayerLoadoutLive runtime =
                             graph.LoadoutRuntime;
-                        ProductionWeaponMountLoadoutRegistryV2.Register(
+                        WeaponMountLoadoutRegistry.Register(
                             runtime.WeaponHoldings,
                             runtime.MountLoadoutAuthority);
                         controller.ConnectCanonicalAuthorities(
                             runtime.Holdings,
-                            runtime.CatalogAdapter,
+                            runtime.CatalogBridge,
                             runtime.WeaponHoldings,
                             runtime.LoadoutAuthority,
                             runtime.MountLayout,
@@ -302,13 +302,13 @@ namespace ShooterMover.UI.ProductionFlow
                             runtime.EquipmentCatalog,
                             runtime.WeaponCatalog);
                         controller.Present(
-                            HubRouteV1.Inventory,
+                            HubRoute.Inventory,
                             runtime.CurrentRoutePayload);
                     }
                     else
                     {
                         controller.Present(
-                            HubRouteV1.Inventory,
+                            HubRoute.Inventory,
                             transitions.Navigation.Payload);
                         Debug.LogError(
                             "inventory-character-context-unavailable:"
@@ -322,7 +322,7 @@ namespace ShooterMover.UI.ProductionFlow
 
             if (string.Equals(
                     path,
-                    ProductionFlowScenePathsV1.Skills,
+                    FlowScenePaths.Skills,
                     StringComparison.Ordinal))
             {
                 SkillsSceneController controller =
@@ -336,16 +336,16 @@ namespace ShooterMover.UI.ProductionFlow
 
             if (string.Equals(
                     path,
-                    ProductionFlowScenePathsV1.Shop,
+                    FlowScenePaths.Shop,
                     StringComparison.Ordinal))
             {
-                ShopScreenControllerV1 controller =
-                    Find<ShopScreenControllerV1>(scene);
+                ShopScreenController controller =
+                    Find<ShopScreenController>(scene);
                 if (controller != null)
                 {
                     controller.ConfigureDisconnected(
                         transitions.Navigation.Payload,
-                        new ShopNavigationAdapter(this));
+                        new ShopNavigationBridge(this));
                     ConfigureShopWeaponPresentation(controller);
                 }
                 return;
@@ -353,16 +353,16 @@ namespace ShooterMover.UI.ProductionFlow
 
             if (string.Equals(
                     path,
-                    ProductionFlowScenePathsV1.Crafting,
+                    FlowScenePaths.Crafting,
                     StringComparison.Ordinal))
             {
-                CraftingScreenControllerV1 controller =
-                    Find<CraftingScreenControllerV1>(scene);
+                CraftingScreenController controller =
+                    Find<CraftingScreenController>(scene);
                 if (controller != null)
                 {
                     controller.ConfigureDisconnected(ReturnToHub);
                     controller.Present(
-                        HubRouteV1.Crafting,
+                        HubRoute.Crafting,
                         transitions.Navigation.Payload);
                 }
                 return;
@@ -370,47 +370,47 @@ namespace ShooterMover.UI.ProductionFlow
 
             if (string.Equals(
                     path,
-                    ProductionFlowScenePathsV1.PlaySelection,
+                    FlowScenePaths.PlaySelection,
                     StringComparison.Ordinal))
             {
-                PlaySelectionControllerV1 controller =
-                    Find<PlaySelectionControllerV1>(scene);
+                PlaySelectionController controller =
+                    Find<PlaySelectionController>(scene);
                 if (controller != null)
                 {
                     controller.Configure(
                         transitions.Navigation.Payload,
-                        PlayModeCatalogDefinitionV1.CreateDefaultCatalog(),
-                        new PlayNavigationAdapter(this, controller));
+                        PlayModeCatalogDefinition.CreateDefaultCatalog(),
+                        new PlayNavigationBridge(this, controller));
                 }
                 return;
             }
 
             if (string.Equals(
                     path,
-                    ProductionFlowScenePathsV1.LevelSelection,
+                    FlowScenePaths.LevelSelection,
                     StringComparison.Ordinal))
             {
-                LevelSelectionControllerV1 controller =
-                    Find<LevelSelectionControllerV1>(scene);
+                LevelSelectionController controller =
+                    Find<LevelSelectionController>(scene);
                 if (controller != null)
                 {
                     controller.Configure(
                         transitions.Navigation.Payload,
                         selectedModeStableId,
-                        LevelSelectionCatalogDefinitionV1
+                        LevelSelectionCatalogDefinition
                             .CreateDefaultCatalog(),
-                        new LevelNavigationAdapter(this));
+                        new LevelNavigationBridge(this));
                 }
                 return;
             }
 
             if (string.Equals(
                     path,
-                    ProductionFlowScenePathsV1.Results,
+                    FlowScenePaths.Results,
                     StringComparison.Ordinal))
             {
-                ProductionResultsControllerV1 controller =
-                    Find<ProductionResultsControllerV1>(scene);
+                ResultsController controller =
+                    Find<ResultsController>(scene);
                 if (controller != null && resultsContext != null)
                 {
                     controller.Configure(
@@ -423,7 +423,7 @@ namespace ShooterMover.UI.ProductionFlow
 
             if (string.Equals(
                     path,
-                    ProductionFlowScenePathsV1.StrongboxOpening,
+                    FlowScenePaths.StrongboxOpening,
                     StringComparison.Ordinal))
             {
                 StrongboxOpeningController controller =
@@ -460,7 +460,7 @@ namespace ShooterMover.UI.ProductionFlow
 
         private bool OpenCharacterSelection()
         {
-            return transitions.TryNavigateTo(HubRouteV1.CharacterSelect);
+            return transitions.TryNavigateTo(HubRoute.CharacterSelect);
         }
 
         private static WeaponCatalog ResolveWeaponCatalog(
@@ -471,8 +471,8 @@ namespace ShooterMover.UI.ProductionFlow
                 return supplied;
             }
 
-            ProductionPlayerLoadoutRuntimeV1 runtime;
-            ProductionFlowProfileRecordV1 profile;
+            PlayerLoadoutLive runtime;
+            FlowProfileRecord profile;
             return InventoryLoadoutFlow.TryGetCurrent(
                 out runtime,
                 out profile)
@@ -482,8 +482,8 @@ namespace ShooterMover.UI.ProductionFlow
 
         private void ConfigureRankedSkills(SkillsSceneController controller)
         {
-            PlayerRouteProfilePayloadV1 payload = transitions.Navigation.Payload;
-            var navigation = new SkillsNavigationAdapter(this);
+            PlayerRouteProfilePayload payload = transitions.Navigation.Payload;
+            var navigation = new SkillsNavigationBridge(this);
             if (payload == null)
             {
                 controller.ShowUnavailable(
@@ -501,9 +501,9 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
 
-            ProductionCharacterRuntimeGraphV1 graph;
-            ProductionFlowProfileRecordV1 authoritativeProfile;
-            CharacterCompositionCoordinatorV1 composition;
+            CharacterLiveGraph graph;
+            FlowProfileRecord authoritativeProfile;
+            CharacterSetupFlow composition;
             if (!CharacterAccount.TryResolveCurrent(
                     out graph,
                     out authoritativeProfile,
@@ -544,14 +544,14 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
 
-            RankedSkillsScreenSessionV2 session;
+            RankedSkillsScreenSession session;
             string rejectionCode;
-            if (!RankedSkillsScreenSessionV2.TryCreate(
+            if (!RankedSkillsScreenSession.TryCreate(
                     payload,
                     graph.ExperienceAuthority,
                     graph.SkillAuthority,
                     graph.SkillProfileId,
-                    new RankedSkillsPersistenceAdapterV2(
+                    new RankedSkillsPersistenceBridge(
                         this,
                         composition,
                         graph,
@@ -572,10 +572,10 @@ namespace ShooterMover.UI.ProductionFlow
         }
 
         private static void ConfigureShopWeaponPresentation(
-            ShopScreenControllerV1 controller)
+            ShopScreenController controller)
         {
-            ProductionPlayerLoadoutRuntimeV1 runtime;
-            ProductionFlowProfileRecordV1 profile;
+            PlayerLoadoutLive runtime;
+            FlowProfileRecord profile;
             if (controller != null
                 && InventoryLoadoutFlow.TryGetCurrent(
                     out runtime,
@@ -589,7 +589,7 @@ namespace ShooterMover.UI.ProductionFlow
 
         private bool SelectExistingProfile(
             int slotIndex,
-            PlayerRouteProfilePayloadV1 payload)
+            PlayerRouteProfilePayload payload)
         {
             if (!IsValidSlot(slotIndex)
                 || profiles[slotIndex] == null
@@ -598,11 +598,11 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
-            ProductionFlowProfileRecordV1 selected = profiles[slotIndex];
+            FlowProfileRecord selected = profiles[slotIndex];
             if (profileLifecycle != null)
             {
                 string rejectionCode;
-                ProductionFlowProfileRecordV1 authoritative;
+                FlowProfileRecord authoritative;
                 if (!profileLifecycle.TryActivate(
                         slotIndex,
                         selected,
@@ -627,7 +627,7 @@ namespace ShooterMover.UI.ProductionFlow
         private bool CreateProfile(
             int slotIndex,
             string displayName,
-            CharacterSelectionRouteResultV1 result)
+            CharacterSelectionRouteResult result)
         {
             if (!IsValidSlot(slotIndex) || profiles[slotIndex] != null)
             {
@@ -635,19 +635,19 @@ namespace ShooterMover.UI.ProductionFlow
             }
             if (result == null
                 || result.Status
-                    != CharacterSelectionRouteStatusV1.Confirmed)
+                    != CharacterSelectionRouteStatus.Confirmed)
             {
                 return false;
             }
 
-            ProductionFlowProfileRecordV1 candidate =
-                new ProductionFlowProfileRecordV1(
+            FlowProfileRecord candidate =
+                new FlowProfileRecord(
                     displayName,
                     result.Payload);
             if (profileLifecycle != null)
             {
                 string rejectionCode;
-                ProductionFlowProfileRecordV1 authoritative;
+                FlowProfileRecord authoritative;
                 if (!profileLifecycle.TryActivate(
                         slotIndex,
                         candidate,
@@ -683,7 +683,7 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
-            ProductionFlowProfileRecordV1 deleting = profiles[slotIndex];
+            FlowProfileRecord deleting = profiles[slotIndex];
             if (profileLifecycle != null)
             {
                 string rejectionCode;
@@ -700,7 +700,7 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             if (!transitions.TryLoadSubflow(
-                    ProductionFlowScenePathsV1.CharacterSelection))
+                    FlowScenePaths.CharacterSelection))
             {
                 return false;
             }
@@ -716,13 +716,13 @@ namespace ShooterMover.UI.ProductionFlow
             return true;
         }
 
-        private void ReturnToHub(PlayerRouteProfilePayloadV1 payload)
+        private void ReturnToHub(PlayerRouteProfilePayload payload)
         {
             if (payload == null) return;
             if (profile != null && !payload.Equals(profile.Payload))
             {
-                ProductionFlowProfileRecordV1 updated =
-                    new ProductionFlowProfileRecordV1(
+                FlowProfileRecord updated =
+                    new FlowProfileRecord(
                         profile.DisplayName,
                         payload);
                 profileStore.Save(activeProfileSlot, updated);
@@ -755,7 +755,7 @@ namespace ShooterMover.UI.ProductionFlow
         }
 
         private bool OpenStrongbox(
-            MissionRunStrongboxResultV1 exactStrongbox)
+            MissionRunStrongboxResult exactStrongbox)
         {
             if (resultsContext == null
                 || transitions.IsTransitionPending)
@@ -763,10 +763,10 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
-            ProductionStrongboxOpeningBindingV1 binding =
+            StrongboxOpeningBinding binding =
                 resultsContext.BindExact(exactStrongbox);
             if (!transitions.TryLoadSubflow(
-                    ProductionFlowScenePathsV1.StrongboxOpening))
+                    FlowScenePaths.StrongboxOpening))
             {
                 return false;
             }
@@ -794,19 +794,19 @@ namespace ShooterMover.UI.ProductionFlow
             pendingResultsContext = resultsContext;
             strongboxBinding = null;
             transitions.TryLoadSubflow(
-                ProductionFlowScenePathsV1.Results);
+                FlowScenePaths.Results);
         }
 
         private bool PresentPlayRoute(
-            PlaySelectionRouteV1 route,
-            PlaySelectionControllerV1 controller)
+            PlaySelectionRoute route,
+            PlaySelectionController controller)
         {
-            if (route == PlaySelectionRouteV1.Hub)
+            if (route == PlaySelectionRoute.Hub)
             {
                 return transitions.TryNavigateBack();
             }
 
-            if (route != PlaySelectionRouteV1.LevelSelection
+            if (route != PlaySelectionRoute.LevelSelection
                 || controller.LastResult == null
                 || controller.LastResult.SelectedModeStableId == null)
             {
@@ -816,16 +816,16 @@ namespace ShooterMover.UI.ProductionFlow
             selectedModeStableId =
                 controller.LastResult.SelectedModeStableId;
             return transitions.TryLoadSubflow(
-                ProductionFlowScenePathsV1.LevelSelection);
+                FlowScenePaths.LevelSelection);
         }
 
-        private bool PresentLevelRoute(LevelSelectionResultV1 result)
+        private bool PresentLevelRoute(LevelSelectionResult result)
         {
             if (result == null || !result.RouteEmitted) return false;
-            if (result.Route == LevelSelectionRouteV1.PlaySelection)
+            if (result.Route == LevelSelectionRoute.PlaySelection)
             {
                 return transitions.TryLoadSubflow(
-                    ProductionFlowScenePathsV1.PlaySelection);
+                    FlowScenePaths.PlaySelection);
             }
 
             return transitions.TryLoadSubflow(
@@ -863,27 +863,27 @@ namespace ShooterMover.UI.ProductionFlow
 
         private static bool IsCanonicalScreen(string scenePath)
         {
-            return string.Equals(scenePath, ProductionFlowScenePathsV1.Bootstrap, StringComparison.Ordinal)
-                || string.Equals(scenePath, ProductionFlowScenePathsV1.MainMenu, StringComparison.Ordinal)
-                || string.Equals(scenePath, ProductionFlowScenePathsV1.CharacterSelection, StringComparison.Ordinal)
-                || string.Equals(scenePath, ProductionFlowScenePathsV1.Hub, StringComparison.Ordinal)
-                || string.Equals(scenePath, ProductionFlowScenePathsV1.PlaySelection, StringComparison.Ordinal)
-                || string.Equals(scenePath, ProductionFlowScenePathsV1.LevelSelection, StringComparison.Ordinal)
-                || string.Equals(scenePath, ProductionFlowScenePathsV1.Inventory, StringComparison.Ordinal)
-                || string.Equals(scenePath, ProductionFlowScenePathsV1.Skills, StringComparison.Ordinal)
-                || string.Equals(scenePath, ProductionFlowScenePathsV1.Shop, StringComparison.Ordinal)
-                || string.Equals(scenePath, ProductionFlowScenePathsV1.Crafting, StringComparison.Ordinal)
-                || string.Equals(scenePath, ProductionFlowScenePathsV1.Results, StringComparison.Ordinal)
-                || string.Equals(scenePath, ProductionFlowScenePathsV1.StrongboxOpening, StringComparison.Ordinal);
+            return string.Equals(scenePath, FlowScenePaths.Bootstrap, StringComparison.Ordinal)
+                || string.Equals(scenePath, FlowScenePaths.MainMenu, StringComparison.Ordinal)
+                || string.Equals(scenePath, FlowScenePaths.CharacterSelection, StringComparison.Ordinal)
+                || string.Equals(scenePath, FlowScenePaths.Hub, StringComparison.Ordinal)
+                || string.Equals(scenePath, FlowScenePaths.PlaySelection, StringComparison.Ordinal)
+                || string.Equals(scenePath, FlowScenePaths.LevelSelection, StringComparison.Ordinal)
+                || string.Equals(scenePath, FlowScenePaths.Inventory, StringComparison.Ordinal)
+                || string.Equals(scenePath, FlowScenePaths.Skills, StringComparison.Ordinal)
+                || string.Equals(scenePath, FlowScenePaths.Shop, StringComparison.Ordinal)
+                || string.Equals(scenePath, FlowScenePaths.Crafting, StringComparison.Ordinal)
+                || string.Equals(scenePath, FlowScenePaths.Results, StringComparison.Ordinal)
+                || string.Equals(scenePath, FlowScenePaths.StrongboxOpening, StringComparison.Ordinal);
         }
 
-        private static PlayerRouteProfilePayloadV1 CreateDraftPayload()
+        private static PlayerRouteProfilePayload CreateDraftPayload()
         {
-            var catalog = BuiltInCharacterSelectionCatalogV1.Create();
-            return PlayerRouteProfilePayloadV1.Create(
+            var catalog = BuiltInCharacterSelectionCatalog.Create();
+            return PlayerRouteProfilePayload.Create(
                 catalog.DefaultCharacter.CharacterStableId,
                 catalog.DefaultCharacter.DefaultLoadoutProfileStableId,
-                new StableId[PlayerRouteProfilePayloadV1.WeaponSlotCount]);
+                new StableId[PlayerRouteProfilePayload.WeaponSlotCount]);
         }
 
         private static T Find<T>(Scene scene)
@@ -898,8 +898,8 @@ namespace ShooterMover.UI.ProductionFlow
             return null;
         }
 
-        private sealed class UnitySceneLoadPortV1 :
-            IProductionSceneLoadPortV1
+        private sealed class UnitySceneLoadPort :
+            ISceneLoadPort
         {
             public bool BeginLoad(string scenePath)
             {
@@ -911,21 +911,21 @@ namespace ShooterMover.UI.ProductionFlow
             }
         }
 
-        private sealed class RankedSkillsPersistenceAdapterV2 :
-            IRankedSkillsPersistencePortV2
+        private sealed class RankedSkillsPersistenceBridge :
+            IRankedSkillsPersistencePort
         {
             private readonly GameFlow owner;
-            private readonly CharacterCompositionCoordinatorV1 expectedComposition;
-            private readonly ProductionCharacterRuntimeGraphV1 expectedGraph;
-            private readonly PlayerRouteProfilePayloadV1 expectedRoute;
-            private readonly RankedSkillAllocationAuthorityV2 expectedAuthority;
+            private readonly CharacterSetupFlow expectedComposition;
+            private readonly CharacterLiveGraph expectedGraph;
+            private readonly PlayerRouteProfilePayload expectedRoute;
+            private readonly RankedSkillAllocationState expectedAuthority;
             private readonly string expectedSkillProfileId;
-            public RankedSkillsPersistenceAdapterV2(
+            public RankedSkillsPersistenceBridge(
                 GameFlow owner,
-                CharacterCompositionCoordinatorV1 expectedComposition,
-                ProductionCharacterRuntimeGraphV1 expectedGraph,
-                PlayerRouteProfilePayloadV1 expectedRoute,
-                RankedSkillAllocationAuthorityV2 expectedAuthority,
+                CharacterSetupFlow expectedComposition,
+                CharacterLiveGraph expectedGraph,
+                PlayerRouteProfilePayload expectedRoute,
+                RankedSkillAllocationState expectedAuthority,
                 string expectedSkillProfileId)
             {
                 this.owner = owner ?? throw new ArgumentNullException(nameof(owner));
@@ -937,20 +937,20 @@ namespace ShooterMover.UI.ProductionFlow
                     ? throw new ArgumentException("A stable ranked-skill profile identity is required.", nameof(expectedSkillProfileId))
                     : expectedSkillProfileId.Trim();
             }
-            public RankedSkillsPersistenceResultV2 Persist(
+            public RankedSkillsPersistenceResult Persist(
                 string mutationScope, string immutableMutationFingerprint)
             {
                 if (string.IsNullOrWhiteSpace(mutationScope)
                     || string.IsNullOrWhiteSpace(immutableMutationFingerprint))
                     return Reject("skills-v2-persistence-request-invalid", true);
                 string fingerprint = immutableMutationFingerprint.Trim();
-                RankedSkillAllocationSnapshotV2 accepted;
+                RankedSkillAllocationSnapshot accepted;
                 string rejectionCode;
                 if (!TryReadExactActiveSnapshot(out accepted, out rejectionCode))
                     return Reject(rejectionCode, true);
                 if (!string.Equals(accepted.Fingerprint, fingerprint, StringComparison.Ordinal))
                     return Reject("skills-v2-persistence-snapshot-mismatch", true);
-                CharacterCompositionResultV1 result =
+                CharacterSetupResult result =
                     CharacterAccount.PersistCurrent(mutationScope, fingerprint);
                 if (result == null || !result.Succeeded)
                     return Reject(result == null
@@ -960,17 +960,17 @@ namespace ShooterMover.UI.ProductionFlow
                     return Reject(rejectionCode, false);
                 if (!TryVerifyPersistedSnapshot(result.Character, fingerprint, out rejectionCode))
                     return Reject(rejectionCode, false);
-                return new RankedSkillsPersistenceResultV2(true, string.Empty, false);
+                return new RankedSkillsPersistenceResult(true, string.Empty, false);
             }
             private bool TryReadExactActiveSnapshot(
-                out RankedSkillAllocationSnapshotV2 allocation, out string rejectionCode)
+                out RankedSkillAllocationSnapshot allocation, out string rejectionCode)
             {
                 allocation = null;
-                ProductionCharacterRuntimeGraphV1 currentGraph =
-                    expectedComposition.ActiveRuntime as ProductionCharacterRuntimeGraphV1;
-                PlayerRouteProfilePayloadV1 navigationRoute = owner.transitions == null
+                CharacterLiveGraph currentGraph =
+                    expectedComposition.ActiveRuntime as CharacterLiveGraph;
+                PlayerRouteProfilePayload navigationRoute = owner.transitions == null
                     || owner.transitions.Navigation == null ? null : owner.transitions.Navigation.Payload;
-                ProductionFlowProfileRecordV1 currentProfile = owner.profile;
+                FlowProfileRecord currentProfile = owner.profile;
                 if (currentGraph == null || currentGraph.IsDisposed
                     || !ReferenceEquals(currentGraph, expectedGraph)
                     || !ReferenceEquals(currentGraph.SkillAuthority, expectedAuthority))
@@ -992,19 +992,19 @@ namespace ShooterMover.UI.ProductionFlow
                 return true;
             }
             private bool TryVerifyPersistedSnapshot(
-                CharacterInstanceSnapshotV1 character, string fingerprint, out string rejectionCode)
+                CharacterInstanceSnapshot character, string fingerprint, out string rejectionCode)
             {
                 if (character == null
                     || character.CharacterInstanceStableId != expectedRoute.SelectedCharacterStableId
                     || character.ClassDefinitionStableId != expectedRoute.LoadoutProfileStableId)
                 { rejectionCode = "skills-v2-persistence-character-mismatch"; return false; }
-                SaveComponentSnapshotV1 component;
+                SaveComponentSnapshot component;
                 if (!character.TryGetComponent(
-                    KnownSaveComponentDefinitionsV1.RankedSkillAllocation().ComponentStableId,
+                    KnownSaveComponentDefinitions.RankedSkillAllocation().ComponentStableId,
                     out component))
                 { rejectionCode = "skills-v2-persistence-component-missing"; return false; }
-                RankedSkillAllocationSnapshotV2 persisted;
-                if (!KnownSaveComponentCodecsV1.RankedSkillAllocation.TryDecode(
+                RankedSkillAllocationSnapshot persisted;
+                if (!KnownSaveComponentCodecs.RankedSkillAllocation.TryDecode(
                     component.CanonicalPayload, out persisted, out rejectionCode))
                 { rejectionCode = "skills-v2-persistence-component-invalid:" + rejectionCode; return false; }
                 if (!string.Equals(persisted.ProfileId, expectedSkillProfileId, StringComparison.Ordinal)
@@ -1013,24 +1013,24 @@ namespace ShooterMover.UI.ProductionFlow
                 rejectionCode = string.Empty;
                 return true;
             }
-            private static RankedSkillsPersistenceResultV2 Reject(
+            private static RankedSkillsPersistenceResult Reject(
                 string rejectionCode, bool shouldRollback)
-            { return new RankedSkillsPersistenceResultV2(false, rejectionCode, shouldRollback); }
+            { return new RankedSkillsPersistenceResult(false, rejectionCode, shouldRollback); }
         }
 
-        private sealed class SkillsNavigationAdapter :
-            ISkillsScreenNavigationPortV1
+        private sealed class SkillsNavigationBridge :
+            ISkillsScreenNavigationPort
         {
             private readonly GameFlow owner;
 
-            public SkillsNavigationAdapter(
+            public SkillsNavigationBridge(
                 GameFlow owner)
             {
                 this.owner = owner;
             }
 
             public void ReturnToHub(
-                PlayerRouteProfilePayloadV1 routePayload)
+                PlayerRouteProfilePayload routePayload)
             {
                 if (routePayload == null)
                 {
@@ -1041,62 +1041,62 @@ namespace ShooterMover.UI.ProductionFlow
             }
         }
 
-        private sealed class ShopNavigationAdapter :
-            IShopScreenRouteAdapterV1
+        private sealed class ShopNavigationBridge :
+            IShopScreenRouteBridge
         {
             private readonly GameFlow owner;
 
-            public ShopNavigationAdapter(
+            public ShopNavigationBridge(
                 GameFlow owner)
             {
                 this.owner = owner;
             }
 
             public void Present(
-                ShopScreenRouteV1 route,
-                PlayerRouteProfilePayloadV1 payload)
+                ShopScreenRoute route,
+                PlayerRouteProfilePayload payload)
             {
-                if (route == ShopScreenRouteV1.Hub)
+                if (route == ShopScreenRoute.Hub)
                 {
                     owner.ReturnToHub(payload);
                 }
             }
         }
 
-        private sealed class PlayNavigationAdapter :
-            IPlaySelectionRouteAdapterV1
+        private sealed class PlayNavigationBridge :
+            IPlaySelectionRouteBridge
         {
             private readonly GameFlow owner;
-            private readonly PlaySelectionControllerV1 controller;
+            private readonly PlaySelectionController controller;
 
-            public PlayNavigationAdapter(
+            public PlayNavigationBridge(
                 GameFlow owner,
-                PlaySelectionControllerV1 controller)
+                PlaySelectionController controller)
             {
                 this.owner = owner;
                 this.controller = controller;
             }
 
             public void Present(
-                PlaySelectionRouteV1 route,
-                PlayerRouteProfilePayloadV1 payload)
+                PlaySelectionRoute route,
+                PlayerRouteProfilePayload payload)
             {
                 owner.PresentPlayRoute(route, controller);
             }
         }
 
-        private sealed class LevelNavigationAdapter :
-            ILevelSelectionRouteAdapterV1
+        private sealed class LevelNavigationBridge :
+            ILevelSelectionRouteBridge
         {
             private readonly GameFlow owner;
 
-            public LevelNavigationAdapter(
+            public LevelNavigationBridge(
                 GameFlow owner)
             {
                 this.owner = owner;
             }
 
-            public void Present(LevelSelectionResultV1 result)
+            public void Present(LevelSelectionResult result)
             {
                 owner.PresentLevelRoute(result);
             }

@@ -15,12 +15,12 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
     public sealed class PlayerHoldingsEquipmentInstanceLookup : IPlayerEquipmentInstanceLookup
     {
         private readonly object gate = new object();
-        private readonly IPlayerHoldingsAuthorityV1 holdings;
+        private readonly IPlayerHoldingsState holdings;
         private Dictionary<StableId, EquipmentInstance> equipmentByInstanceId =
             new Dictionary<StableId, EquipmentInstance>();
         private long cachedSequence = -1L;
 
-        public PlayerHoldingsEquipmentInstanceLookup(IPlayerHoldingsAuthorityV1 holdingsAuthority)
+        public PlayerHoldingsEquipmentInstanceLookup(IPlayerHoldingsState holdingsAuthority)
         {
             holdings = holdingsAuthority ?? throw new ArgumentNullException(nameof(holdingsAuthority));
         }
@@ -76,7 +76,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 return true;
             }
 
-            PlayerHoldingsSnapshotV1 snapshot;
+            PlayerHoldingsSnapshot snapshot;
             try
             {
                 snapshot = holdings.ExportSnapshot();
@@ -96,7 +96,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             {
                 var holding = snapshot.UniqueHoldings[index];
                 if (holding == null
-                    || holding.RewardKind != RewardGrantKindV1.EquipmentReference
+                    || holding.RewardKind != RewardGrantKind.EquipmentReference
                     || holding.InstanceStableId == null
                     || holding.EquipmentInstance == null
                     || holding.EquipmentInstance.InstanceId != holding.InstanceStableId)

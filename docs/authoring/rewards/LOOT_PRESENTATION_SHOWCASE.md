@@ -14,10 +14,10 @@ The showcase controller disables itself outside the Editor and development build
 
 The showcase now composes the same bindable projection views intended for later production callers:
 
-- `LootRunHudViewV1` binds one immutable `RunLootTotalsPresentationV1`.
-- `OwnedStrongboxGroupsViewV1` binds grouped exact instances, owns only local exact selection, and rejects Open 5 when fewer than five exact instances exist.
-- `StrongboxOpeningPresentationViewV1` binds one existing `StrongboxOpeningSceneSessionV1` and renders closed, opening, reveal and complete visual stages.
-- `StrongboxRewardCardsViewV1` binds one immutable committed result and renders only the currently visible immutable reward items.
+- `LootRunHudView` binds one immutable `RunLootTotalsPresentation`.
+- `OwnedStrongboxGroupsView` binds grouped exact instances, owns only local exact selection, and rejects Open 5 when fewer than five exact instances exist.
+- `StrongboxOpeningPresentationView` binds one existing `StrongboxOpeningSceneSession` and renders closed, opening, reveal and complete visual stages.
+- `StrongboxRewardCardsView` binds one immutable committed result and renders only the currently visible immutable reward items.
 - `LootPickupVisual2D` binds one exact pickup projection and owns only sprite, glow, bob and accepted-collection feedback.
 
 The development controller supplies fixture projections; it does not own the reusable rendering logic.
@@ -26,18 +26,18 @@ The development controller supplies fixture projections; it does not own the reu
 
 The reusable presentation consumes immutable inputs:
 
-- `LootPickupPresentationV1` keeps the exact pickup and reward-instance identities for credits, scrap, or one production strongbox tier.
-- `RunLootTotalsProjectorV1` derives HUD totals from exported `RunSessionCollectedRewardV1` facts. The HUD model and view expose no mutation methods.
-- `StrongboxGroupingProjectorV1.TryProjectUnopened(...)` consumes immutable `MissionRunStrongboxResultV1` objects and rejects opened, unknown, null, or duplicate instances.
-- `OwnedStrongboxGroupsViewV1` preserves every exact instance beneath grouped counts and resolves exact Open 1/Open 5 batches without mutating holdings.
-- `StrongboxOpeningSceneSessionV1` and `StrongboxPresentationPlaybackV1` animate an already-frozen `StrongboxOpeningPresentationResultV1`. Skip and replay reuse that result and never invoke reward generation.
-- `StrongboxRewardCardsViewV1` displays the immutable money, scrap or exact equipment result projection without applying it.
+- `LootPickupPresentation` keeps the exact pickup and reward-instance identities for credits, scrap, or one production strongbox tier.
+- `RunLootTotalsProjector` derives HUD totals from exported `RunSessionCollectedReward` facts. The HUD model and view expose no mutation methods.
+- `StrongboxGroupingProjector.TryProjectUnopened(...)` consumes immutable `MissionRunStrongboxResult` objects and rejects opened, unknown, null, or duplicate instances.
+- `OwnedStrongboxGroupsView` preserves every exact instance beneath grouped counts and resolves exact Open 1/Open 5 batches without mutating holdings.
+- `StrongboxOpeningSceneSession` and `StrongboxPresentationPlayback` animate an already-frozen `StrongboxOpeningPresentationResult`. Skip and replay reuse that result and never invoke reward generation.
+- `StrongboxRewardCardsView` displays the immutable money, scrap or exact equipment result projection without applying it.
 
-A future production composition should adapt an available `RunPickupSnapshotV1` into `LootPickupPresentationV1` using its exact pickup ID, generated reward child ID, reward kind, content ID, and quantity. Collection must continue through `RunLocalPickupAuthorityV1`; only accepted collection or accepted exact replay may start the visual attraction/retire feedback.
+A future production composition should adapt an available `RunPickupSnapshot` into `LootPickupPresentation` using its exact pickup ID, generated reward child ID, reward kind, content ID, and quantity. Collection must continue through `RunLocalPickupState`; only accepted collection or accepted exact replay may start the visual attraction/retire feedback.
 
 ## Showcase controls
 
-- **Pickup gallery:** credits, scrap, and every tier currently authored by `ProductionStrongboxCatalogV1`. No fixture-owned tier list exists.
+- **Pickup gallery:** credits, scrap, and every tier currently authored by `StrongboxCatalog`. No fixture-owned tier list exists.
 - **Owned groups:** Steel × 10 and two examples of every later production tier. Expand a group to select exact instance IDs.
 - **Open 1 / Open 5:** changes only the exact-ID batch layout. Open 5 fails closed when the selected group has fewer than five exact instances.
 - **Play:** starts closed → opening → reveal → continue against one immutable sample result.

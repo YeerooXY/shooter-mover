@@ -31,7 +31,7 @@ Conditional modifiers are applied only when their `conditionId` is active.
 
 ## Existing skill integration
 
-`SkillEffectModifierAdapterV1` translates the existing `SkillEffectSnapshotV2` projection into `RuntimeModifierSnapshotV1`.
+`SkillEffectModifierBridge` translates the existing `SkillEffectSnapshot` projection into `LiveModifierSnapshot`.
 
 A crit-chance skill therefore needs an ordinary skill effect such as:
 
@@ -45,7 +45,7 @@ No crit-specific skill controller is required. The combat resolver is responsibl
 
 ## Killing-spree and other fact-window conditions
 
-`FactWindowConditionAuthorityV1` observes immutable typed facts and activates reusable conditions.
+`FactWindowConditionState` observes immutable typed facts and activates reusable conditions.
 
 Example:
 
@@ -109,5 +109,5 @@ A genuinely new condition family may add one reusable condition authority and re
 Focused EditMode filter:
 
 ```text
-ShooterMover.Tests.EditMode.Modifiers.RuntimeModifierFoundationV1Tests
+ShooterMover.Tests.EditMode.Modifiers.LiveModifierFoundationTests
 ```

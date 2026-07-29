@@ -20,8 +20,8 @@ crafting, persistence, scene, or simulator state.
 
 Every reward request carries:
 
-- the complete `RewardOperationRequestV1` identity envelope;
-- the matching immutable `RewardProfileV1`;
+- the complete `RewardOperationRequest` identity envelope;
+- the matching immutable `RewardProfile`;
 - one immutable `ProgressionContext`;
 - an explicit unsigned root seed and RNG algorithm version; and
 - optional canonically ordered values for authored `SourceTier` or `Custom`
@@ -30,7 +30,7 @@ Every reward request carries:
 Every equipment request carries:
 
 - one operation StableId and one destination equipment-instance StableId;
-- one immutable `EquipmentGenerationPolicyV1`;
+- one immutable `EquipmentGenerationPolicy`;
 - one already validated `EquipmentCatalog`;
 - one immutable `ProgressionContext`; and
 - an explicit unsigned root seed and RNG algorithm version.
@@ -50,7 +50,7 @@ A configured reward profile is evaluated in canonical contract order:
 4. every admitted grant samples its quantity through a grant-specific quantity
    substream.
 
-An explicit-no-drop profile creates an explicit-no-drop `RewardResultV1`. A
+An explicit-no-drop profile creates an explicit-no-drop `RewardResult`. A
 configured profile whose optional decisions produce no grants also creates an
 explicit-no-drop result; an empty successful grant list is never constructed.
 
@@ -72,7 +72,7 @@ silently substitute zero or retry another outcome.
 
 ## Equipment policy and generation
 
-`EquipmentGenerationPolicyV1` contains only caller-authored policy inputs:
+`EquipmentGenerationPolicy` contains only caller-authored policy inputs:
 
 - equipment definition candidates with explicit character/region ranges,
   required progression tags, generated item-level range, nominal activation
@@ -138,7 +138,7 @@ and totals outside the signed trace domain fail closed.
 
 ## Explainable trace format
 
-`RewardGenerationTraceV1` canonical text starts with:
+`RewardGenerationTrace` canonical text starts with:
 
 ```text
 schema=reward-generator-trace-v1
@@ -171,7 +171,7 @@ augment selection/tier/level, explicit no-drop, validation, and grant production
 Trace construction and fingerprinting occur after gameplay sampling and consume no
 random values.
 
-Reward generation also emits the accepted `RewardTraceV1` projection so later
+Reward generation also emits the accepted `RewardTrace` projection so later
 reward commitment/application code can retain the shared REW-001 trace contract.
 The richer GEN-001 trace supplements that projection with RNG purpose, ordinal,
 and consumption evidence.
@@ -190,7 +190,7 @@ sha256:<64 lowercase hexadecimal characters>
 - Equipment content covers the complete policy canonical text and validated
   catalog canonical text.
 - Context is the exact `ProgressionContext.Fingerprint`.
-- A successful reward result uses `RewardResultV1.Fingerprint`.
+- A successful reward result uses `RewardResult.Fingerprint`.
 - A successful equipment result covers the complete canonical request and complete
   immutable equipment value.
 - Rejections fingerprint the complete request, explicit status, and reason.

@@ -39,10 +39,10 @@ namespace ShooterMover.TestSupport.Movement
         private Rigidbody2D playerBody;
 
         [SerializeField]
-        private PlayerMovementIntentAdapter inputAdapter;
+        private PlayerMovementIntentBridge inputAdapter;
 
         [SerializeField]
-        private MovementContact2DAdapter contactAdapter;
+        private MovementContact2DBridge contactAdapter;
 
         [SerializeField]
         private MovementActorLifecycle movementLifecycle;

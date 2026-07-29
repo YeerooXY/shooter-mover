@@ -32,7 +32,7 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
             public StableId EventId { get; }
         }
 
-        private sealed class PipelineAdapter : ITerminalDropFactAdapterV1
+        private sealed class PipelineBridge : ITerminalDropFactBridge
         {
             public StableId FactKindStableId
             {
@@ -41,18 +41,18 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
 
             public Type FactType { get { return typeof(PipelineFact); } }
 
-            public TerminalDropAdaptationResultV1 Adapt(object terminalFact)
+            public TerminalDropAdaptationResult Adapt(object terminalFact)
             {
                 PipelineFact fact = terminalFact as PipelineFact;
                 if (fact == null)
                 {
-                    return TerminalDropAdaptationResultV1.Rejected(
-                        TerminalDropRejectionCodeV1.InvalidTerminalFact,
+                    return TerminalDropAdaptationResult.Rejected(
+                        TerminalDropRejectionCode.InvalidTerminalFact,
                         "review-pipeline-type-mismatch");
                 }
 
-                return TerminalDropAdaptationResultV1.Accepted(
-                    new TerminalDropSourceFactV1(
+                return TerminalDropAdaptationResult.Accepted(
+                    new TerminalDropSourceFact(
                         FactKindStableId,
                         fact.EventId,
                         Id("trigger", fact.EventId.Value),
@@ -72,12 +72,12 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
             }
         }
 
-        private sealed class ThrowOnceAdapter : ITerminalDropFactAdapterV1
+        private sealed class ThrowOnceBridge : ITerminalDropFactBridge
         {
-            private readonly ITerminalDropFactAdapterV1 inner;
+            private readonly ITerminalDropFactBridge inner;
             private int calls;
 
-            public ThrowOnceAdapter(ITerminalDropFactAdapterV1 inner)
+            public ThrowOnceBridge(ITerminalDropFactBridge inner)
             {
                 this.inner = inner;
             }
@@ -85,7 +85,7 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
             public StableId FactKindStableId { get { return inner.FactKindStableId; } }
             public Type FactType { get { return inner.FactType; } }
 
-            public TerminalDropAdaptationResultV1 Adapt(object terminalFact)
+            public TerminalDropAdaptationResult Adapt(object terminalFact)
             {
                 calls++;
                 if (calls == 1) throw new InvalidOperationException("adapter-transient");
@@ -93,24 +93,24 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
             }
         }
 
-        private class FixedRunResolver : ITerminalDropRunContextResolverV1
+        private class FixedRunResolver : ITerminalDropRunContextResolver
         {
             public virtual bool TryResolve(
                 StableId runStableId,
                 long expectedLifecycleGeneration,
-                out TerminalDropRunGenerationContextV1 context,
-                out TerminalDropRejectionCodeV1 rejectionCode,
+                out TerminalDropRunGenerationContext context,
+                out TerminalDropRejectionCode rejectionCode,
                 out string diagnostic)
             {
                 if (runStableId != RunId || expectedLifecycleGeneration != 1L)
                 {
                     context = null;
-                    rejectionCode = TerminalDropRejectionCodeV1.WrongRunLifecycle;
+                    rejectionCode = TerminalDropRejectionCode.WrongRunLifecycle;
                     diagnostic = "review-run-context-mismatch";
                     return false;
                 }
 
-                context = new TerminalDropRunGenerationContextV1(
+                context = new TerminalDropRunGenerationContext(
                     RunId,
                     1L,
                     12345UL,
@@ -121,7 +121,7 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
                         Id("difficulty", "normal"),
                         1),
                     "review-event-context");
-                rejectionCode = TerminalDropRejectionCodeV1.None;
+                rejectionCode = TerminalDropRejectionCode.None;
                 diagnostic = string.Empty;
                 return true;
             }
@@ -134,8 +134,8 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
             public override bool TryResolve(
                 StableId runStableId,
                 long expectedLifecycleGeneration,
-                out TerminalDropRunGenerationContextV1 context,
-                out TerminalDropRejectionCodeV1 rejectionCode,
+                out TerminalDropRunGenerationContext context,
+                out TerminalDropRejectionCode rejectionCode,
                 out string diagnostic)
             {
                 calls++;
@@ -149,19 +149,19 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
             }
         }
 
-        private sealed class ThrowOnceProfileResolver : IRewardProfileResolverV1
+        private sealed class ThrowOnceProfileResolver : IRewardProfileResolver
         {
-            private readonly RewardProfileCatalogResolverV1 inner;
+            private readonly RewardProfileCatalogResolver inner;
             private int calls;
 
-            public ThrowOnceProfileResolver(RewardProfileV1 profile)
+            public ThrowOnceProfileResolver(RewardProfile profile)
             {
-                inner = new RewardProfileCatalogResolverV1(new[] { profile });
+                inner = new RewardProfileCatalogResolver(new[] { profile });
             }
 
             public string Fingerprint { get { return inner.Fingerprint; } }
 
-            public bool TryResolve(StableId profileStableId, out RewardProfileV1 profile)
+            public bool TryResolve(StableId profileStableId, out RewardProfile profile)
             {
                 calls++;
                 if (calls == 1) throw new InvalidOperationException("profile-transient");
@@ -169,27 +169,27 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
             }
         }
 
-        private sealed class CountingGenerator : IRewardGenerationExecutorV1
+        private sealed class CountingGenerator : IRewardGenerationExecutor
         {
-            private readonly IRewardGenerationExecutorV1 inner =
-                new ExistingRewardGenerationExecutorV1(new RewardGenerationServiceV1());
+            private readonly IRewardGenerationExecutor inner =
+                new ExistingRewardGenerationExecutor(new RewardGenerationActions());
 
             public int CallCount { get; private set; }
 
-            public RewardGenerationResultEnvelopeV1 Generate(RewardGenerationRequestV1 request)
+            public RewardGenerationResultEnvelope Generate(RewardGenerationRequest request)
             {
                 CallCount++;
                 return inner.Generate(request);
             }
         }
 
-        private sealed class ThrowOnceGenerator : IRewardGenerationExecutorV1
+        private sealed class ThrowOnceGenerator : IRewardGenerationExecutor
         {
-            private readonly IRewardGenerationExecutorV1 inner =
-                new ExistingRewardGenerationExecutorV1(new RewardGenerationServiceV1());
+            private readonly IRewardGenerationExecutor inner =
+                new ExistingRewardGenerationExecutor(new RewardGenerationActions());
             private int calls;
 
-            public RewardGenerationResultEnvelopeV1 Generate(RewardGenerationRequestV1 request)
+            public RewardGenerationResultEnvelope Generate(RewardGenerationRequest request)
             {
                 calls++;
                 if (calls == 1) throw new InvalidOperationException("generation-transient");
@@ -197,14 +197,14 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
             }
         }
 
-        private class EnemyContextResolver : IEnemyTerminalSourceContextResolverV1
+        private class EnemyContextResolver : IEnemyTerminalSourceContextResolver
         {
             public virtual bool TryResolve(
-                EnemyDeathFactV1 fact,
-                out EnemyTerminalSourceContextV1 context,
+                EnemyDeathFact fact,
+                out EnemyTerminalSourceContext context,
                 out string diagnostic)
             {
-                context = new EnemyTerminalSourceContextV1(
+                context = new EnemyTerminalSourceContext(
                     fact.Identity.RunStableId,
                     1L,
                     fact.Identity.EntityInstanceId,
@@ -221,8 +221,8 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
             private int calls;
 
             public override bool TryResolve(
-                EnemyDeathFactV1 fact,
-                out EnemyTerminalSourceContextV1 context,
+                EnemyDeathFact fact,
+                out EnemyTerminalSourceContext context,
                 out string diagnostic)
             {
                 calls++;
@@ -231,14 +231,14 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
             }
         }
 
-        private class PropContextResolver : IPropTerminalSourceContextResolverV1
+        private class PropContextResolver : IPropTerminalSourceContextResolver
         {
             public virtual bool TryResolve(
-                PropTerminalFactV1 fact,
-                out PropTerminalSourceContextV1 context,
+                PropTerminalFact fact,
+                out PropTerminalSourceContext context,
                 out string diagnostic)
             {
-                context = new PropTerminalSourceContextV1(
+                context = new PropTerminalSourceContext(
                     RunId,
                     1L,
                     fact.PropParticipantId,
@@ -255,8 +255,8 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
             private int calls;
 
             public override bool TryResolve(
-                PropTerminalFactV1 fact,
-                out PropTerminalSourceContextV1 context,
+                PropTerminalFact fact,
+                out PropTerminalSourceContext context,
                 out string diagnostic)
             {
                 calls++;
@@ -268,11 +268,11 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         private sealed class MismatchedPropContextResolver : PropContextResolver
         {
             public override bool TryResolve(
-                PropTerminalFactV1 fact,
-                out PropTerminalSourceContextV1 context,
+                PropTerminalFact fact,
+                out PropTerminalSourceContext context,
                 out string diagnostic)
             {
-                context = new PropTerminalSourceContextV1(
+                context = new PropTerminalSourceContext(
                     RunId,
                     1L,
                     Id("prop-participant", "different-prop"),
@@ -285,32 +285,32 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         }
 
         private sealed class FailOncePendingAdmission :
-            IGeneratedTerminalDropPendingAdmissionV1
+            IGeneratedTerminalDropPendingAdmission
         {
-            private readonly PendingTerminalDropAdmissionAuthorityV1 inner;
+            private readonly PendingTerminalDropAdmissionState inner;
             private int calls;
 
-            public FailOncePendingAdmission(PendingTerminalDropAdmissionAuthorityV1 inner)
+            public FailOncePendingAdmission(PendingTerminalDropAdmissionState inner)
             {
                 this.inner = inner;
             }
 
-            public PendingTerminalDropAdmissionResultV1 Admit(
-                GeneratedTerminalDropResultV1 result)
+            public PendingTerminalDropAdmissionResult Admit(
+                GeneratedTerminalDropResult result)
             {
                 calls++;
                 if (calls == 1)
                 {
-                    return PendingTerminalDropAdmissionResultV1.Rejected(
+                    return PendingTerminalDropAdmissionResult.Rejected(
                         "pending-publication-transient");
                 }
                 return inner.Admit(result);
             }
         }
 
-        private sealed class AlwaysAllowPropDamage : IPropDamageEligibilityPolicyV1
+        private sealed class AlwaysAllowPropDamage : IPropDamageEligibilityPolicy
         {
-            public bool CanDamage(PropDamageEligibilityContextV1 context)
+            public bool CanDamage(PropDamageEligibilityContext context)
             {
                 return true;
             }
@@ -319,23 +319,23 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         [Test]
         public void TwoConsumerDeliveries_CreateOnePendingBatch()
         {
-            EnemyDefinitionV1 definition = EnemyDefinition();
-            EnemyDeathFactV1 death = EnemyDeath(definition);
+            EnemyDefinition definition = EnemyDefinition();
+            EnemyDeathFact death = EnemyDeath(definition);
             CountingGenerator generator = new CountingGenerator();
-            TerminalDropGenerationAuthorityV1 authority = EnemyAuthority(
+            TerminalDropGenerationState authority = EnemyAuthority(
                 definition,
                 new EnemyContextResolver(),
                 generator);
-            var pending = new PendingTerminalDropAdmissionAuthorityV1();
-            var consumer = new EnemyTerminalDropFactConsumerV1(authority, pending);
+            var pending = new PendingTerminalDropAdmissionState();
+            var consumer = new EnemyTerminalDropFactConsumer(authority, pending);
 
             consumer.Consume(death);
             Assert.That(consumer.LastAdmission.Status,
-                Is.EqualTo(PendingTerminalDropAdmissionStatusV1.Accepted));
+                Is.EqualTo(PendingTerminalDropAdmissionStatus.Accepted));
             consumer.Consume(death);
 
             Assert.That(consumer.LastAdmission.Status,
-                Is.EqualTo(PendingTerminalDropAdmissionStatusV1.ExactReplay));
+                Is.EqualTo(PendingTerminalDropAdmissionStatus.ExactReplay));
             Assert.That(pending.PendingBatchCount, Is.EqualTo(1));
             Assert.That(generator.CallCount, Is.EqualTo(1));
         }
@@ -343,37 +343,37 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         [Test]
         public void FailedFirstPublication_ExactReplayCanRecoverPendingBatch()
         {
-            EnemyDefinitionV1 definition = EnemyDefinition();
-            EnemyDeathFactV1 death = EnemyDeath(definition);
-            TerminalDropGenerationAuthorityV1 authority = EnemyAuthority(
+            EnemyDefinition definition = EnemyDefinition();
+            EnemyDeathFact death = EnemyDeath(definition);
+            TerminalDropGenerationState authority = EnemyAuthority(
                 definition,
                 new EnemyContextResolver(),
                 new CountingGenerator());
-            var durablePending = new PendingTerminalDropAdmissionAuthorityV1();
+            var durablePending = new PendingTerminalDropAdmissionState();
             var failOnce = new FailOncePendingAdmission(durablePending);
-            var consumer = new EnemyTerminalDropFactConsumerV1(authority, failOnce);
+            var consumer = new EnemyTerminalDropFactConsumer(authority, failOnce);
 
             consumer.Consume(death);
             Assert.That(consumer.LastAdmission.Status,
-                Is.EqualTo(PendingTerminalDropAdmissionStatusV1.Rejected));
+                Is.EqualTo(PendingTerminalDropAdmissionStatus.Rejected));
             Assert.That(durablePending.PendingBatchCount, Is.EqualTo(0));
 
             consumer.Consume(death);
             Assert.That(consumer.LastAdmission.Status,
-                Is.EqualTo(PendingTerminalDropAdmissionStatusV1.Accepted));
+                Is.EqualTo(PendingTerminalDropAdmissionStatus.Accepted));
             Assert.That(durablePending.PendingBatchCount, Is.EqualTo(1));
         }
 
         [Test]
         public void RebuiltGenerationAuthority_RedeliveryStillCannotDuplicatePendingBatch()
         {
-            EnemyDefinitionV1 definition = EnemyDefinition();
-            EnemyDeathFactV1 death = EnemyDeath(definition);
-            var pending = new PendingTerminalDropAdmissionAuthorityV1();
-            var firstConsumer = new EnemyTerminalDropFactConsumerV1(
+            EnemyDefinition definition = EnemyDefinition();
+            EnemyDeathFact death = EnemyDeath(definition);
+            var pending = new PendingTerminalDropAdmissionState();
+            var firstConsumer = new EnemyTerminalDropFactConsumer(
                 EnemyAuthority(definition, new EnemyContextResolver(), new CountingGenerator()),
                 pending);
-            var rebuiltConsumer = new EnemyTerminalDropFactConsumerV1(
+            var rebuiltConsumer = new EnemyTerminalDropFactConsumer(
                 EnemyAuthority(definition, new EnemyContextResolver(), new CountingGenerator()),
                 pending);
 
@@ -381,22 +381,22 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
             rebuiltConsumer.Consume(death);
 
             Assert.That(firstConsumer.LastAdmission.Status,
-                Is.EqualTo(PendingTerminalDropAdmissionStatusV1.Accepted));
+                Is.EqualTo(PendingTerminalDropAdmissionStatus.Accepted));
             Assert.That(rebuiltConsumer.LastAdmission.Status,
-                Is.EqualTo(PendingTerminalDropAdmissionStatusV1.ExactReplay));
+                Is.EqualTo(PendingTerminalDropAdmissionStatus.ExactReplay));
             Assert.That(pending.PendingBatchCount, Is.EqualTo(1));
         }
 
         [Test]
         public void ConflictingPendingOperation_RejectsWithoutSecondEntry()
         {
-            GeneratedTerminalDropResultV1 accepted = PipelineAuthority().Generate(
+            GeneratedTerminalDropResult accepted = PipelineAuthority().Generate(
                 new PipelineFact("pending-conflict"));
-            var pending = new PendingTerminalDropAdmissionAuthorityV1();
-            PendingTerminalDropAdmissionResultV1 first = pending.Admit(accepted);
-            var conflicting = new GeneratedTerminalDropResultV1(
-                TerminalDropBindingStatusV1.Accepted,
-                TerminalDropRejectionCodeV1.None,
+            var pending = new PendingTerminalDropAdmissionState();
+            PendingTerminalDropAdmissionResult first = pending.Admit(accepted);
+            var conflicting = new GeneratedTerminalDropResult(
+                TerminalDropBindingStatus.Accepted,
+                TerminalDropRejectionCode.None,
                 accepted.SourceFact,
                 accepted.ResolvedDropProfileStableId,
                 accepted.OperationRequest,
@@ -406,20 +406,20 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
                 "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
                 string.Empty);
 
-            PendingTerminalDropAdmissionResultV1 conflict = pending.Admit(conflicting);
+            PendingTerminalDropAdmissionResult conflict = pending.Admit(conflicting);
 
             Assert.That(first.Status,
-                Is.EqualTo(PendingTerminalDropAdmissionStatusV1.Accepted));
+                Is.EqualTo(PendingTerminalDropAdmissionStatus.Accepted));
             Assert.That(conflict.Status,
-                Is.EqualTo(PendingTerminalDropAdmissionStatusV1.ConflictingDuplicate));
+                Is.EqualTo(PendingTerminalDropAdmissionStatus.ConflictingDuplicate));
             Assert.That(pending.PendingBatchCount, Is.EqualTo(1));
         }
 
         [Test]
         public void ThrowingTerminalAdapter_RejectsUncachedThenRetrySucceeds()
         {
-            var adapter = new ThrowOnceAdapter(new PipelineAdapter());
-            TerminalDropGenerationAuthorityV1 authority = PipelineAuthority(adapter: adapter);
+            var adapter = new ThrowOnceBridge(new PipelineBridge());
+            TerminalDropGenerationState authority = PipelineAuthority(adapter: adapter);
             var fact = new PipelineFact("adapter-retry");
 
             AssertRetryableStage(authority, fact, "adaptation");
@@ -428,32 +428,32 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         [Test]
         public void ThrowingEnemySourceResolver_RejectsUncachedThenRetrySucceeds()
         {
-            EnemyDefinitionV1 definition = EnemyDefinition();
-            TerminalDropGenerationAuthorityV1 authority = EnemyAuthority(
+            EnemyDefinition definition = EnemyDefinition();
+            TerminalDropGenerationState authority = EnemyAuthority(
                 definition,
                 new ThrowOnceEnemyContextResolver(),
                 new CountingGenerator());
 
-            GeneratedTerminalDropResultV1 first = authority.Generate(EnemyDeath(definition));
-            Assert.That(first.Status, Is.EqualTo(TerminalDropBindingStatusV1.Rejected));
+            GeneratedTerminalDropResult first = authority.Generate(EnemyDeath(definition));
+            Assert.That(first.Status, Is.EqualTo(TerminalDropBindingStatus.Rejected));
             Assert.That(first.Diagnostic, Does.Contain("enemy-source-context-exception"));
             Assert.That(authority.AcceptedBatchCount, Is.EqualTo(0));
 
-            GeneratedTerminalDropResultV1 retry = authority.Generate(EnemyDeath(definition));
-            Assert.That(retry.Status, Is.EqualTo(TerminalDropBindingStatusV1.Accepted));
+            GeneratedTerminalDropResult retry = authority.Generate(EnemyDeath(definition));
+            Assert.That(retry.Status, Is.EqualTo(TerminalDropBindingStatus.Accepted));
             Assert.That(authority.AcceptedBatchCount, Is.EqualTo(1));
         }
 
         [Test]
         public void ThrowingPropSourceResolver_RejectsUncachedThenRetrySucceeds()
         {
-            PropDefinitionV1 definition = PropDefinition();
-            PropCatalogV1 catalog = PropCatalog(definition);
-            PropFactBatchV1 fact = DestroyedPropFacts(catalog, definition);
-            TerminalDropGenerationAuthorityV1 authority = new TerminalDropGenerationAuthorityV1(
-                new TerminalDropFactAdapterRegistryV1(new ITerminalDropFactAdapterV1[]
+            PropDefinition definition = PropDefinition();
+            PropCatalog catalog = PropCatalog(definition);
+            PropFactBatch fact = DestroyedPropFacts(catalog, definition);
+            TerminalDropGenerationState authority = new TerminalDropGenerationState(
+                new TerminalDropFactBridgeRegistry(new ITerminalDropFactBridge[]
                 {
-                    new PropDestructionTerminalDropFactAdapterV1(
+                    new PropDestructionTerminalDropFactBridge(
                         catalog,
                         new ThrowOncePropContextResolver())
                 }),
@@ -461,20 +461,20 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
                 Profiles(),
                 new CountingGenerator());
 
-            GeneratedTerminalDropResultV1 first = authority.Generate(fact);
-            Assert.That(first.Status, Is.EqualTo(TerminalDropBindingStatusV1.Rejected));
+            GeneratedTerminalDropResult first = authority.Generate(fact);
+            Assert.That(first.Status, Is.EqualTo(TerminalDropBindingStatus.Rejected));
             Assert.That(first.Diagnostic, Does.Contain("prop-source-context-exception"));
             Assert.That(authority.AcceptedBatchCount, Is.EqualTo(0));
 
-            GeneratedTerminalDropResultV1 retry = authority.Generate(fact);
-            Assert.That(retry.Status, Is.EqualTo(TerminalDropBindingStatusV1.Accepted));
+            GeneratedTerminalDropResult retry = authority.Generate(fact);
+            Assert.That(retry.Status, Is.EqualTo(TerminalDropBindingStatus.Accepted));
             Assert.That(authority.AcceptedBatchCount, Is.EqualTo(1));
         }
 
         [Test]
         public void ThrowingRunResolver_RejectsUncachedThenRetrySucceeds()
         {
-            TerminalDropGenerationAuthorityV1 authority = PipelineAuthority(
+            TerminalDropGenerationState authority = PipelineAuthority(
                 runResolver: new ThrowOnceRunResolver());
             AssertRetryableStage(
                 authority,
@@ -485,7 +485,7 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         [Test]
         public void ThrowingProfileResolver_RejectsUncachedThenRetrySucceeds()
         {
-            TerminalDropGenerationAuthorityV1 authority = PipelineAuthority(
+            TerminalDropGenerationState authority = PipelineAuthority(
                 profiles: new ThrowOnceProfileResolver(Profile()));
             AssertRetryableStage(
                 authority,
@@ -496,7 +496,7 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         [Test]
         public void ThrowingGenExecutor_RejectsUncachedThenRetrySucceeds()
         {
-            TerminalDropGenerationAuthorityV1 authority = PipelineAuthority(
+            TerminalDropGenerationState authority = PipelineAuthority(
                 generator: new ThrowOnceGenerator());
             AssertRetryableStage(
                 authority,
@@ -507,14 +507,14 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
         [Test]
         public void PropSourceContextForDifferentProp_RejectsBeforeGen()
         {
-            PropDefinitionV1 definition = PropDefinition();
-            PropCatalogV1 catalog = PropCatalog(definition);
-            PropFactBatchV1 fact = DestroyedPropFacts(catalog, definition);
+            PropDefinition definition = PropDefinition();
+            PropCatalog catalog = PropCatalog(definition);
+            PropFactBatch fact = DestroyedPropFacts(catalog, definition);
             var generator = new CountingGenerator();
-            TerminalDropGenerationAuthorityV1 authority = new TerminalDropGenerationAuthorityV1(
-                new TerminalDropFactAdapterRegistryV1(new ITerminalDropFactAdapterV1[]
+            TerminalDropGenerationState authority = new TerminalDropGenerationState(
+                new TerminalDropFactBridgeRegistry(new ITerminalDropFactBridge[]
                 {
-                    new PropDestructionTerminalDropFactAdapterV1(
+                    new PropDestructionTerminalDropFactBridge(
                         catalog,
                         new MismatchedPropContextResolver())
                 }),
@@ -522,60 +522,60 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
                 Profiles(),
                 generator);
 
-            GeneratedTerminalDropResultV1 result = authority.Generate(fact);
+            GeneratedTerminalDropResult result = authority.Generate(fact);
 
-            Assert.That(result.Status, Is.EqualTo(TerminalDropBindingStatusV1.Rejected));
+            Assert.That(result.Status, Is.EqualTo(TerminalDropBindingStatus.Rejected));
             Assert.That(result.RejectionCode,
-                Is.EqualTo(TerminalDropRejectionCodeV1.MissingSourceContext));
+                Is.EqualTo(TerminalDropRejectionCode.MissingSourceContext));
             Assert.That(result.Diagnostic, Does.Contain("prop-source-context-entity-mismatch"));
             Assert.That(generator.CallCount, Is.EqualTo(0));
             Assert.That(authority.AcceptedBatchCount, Is.EqualTo(0));
         }
 
         private static void AssertRetryableStage(
-            TerminalDropGenerationAuthorityV1 authority,
+            TerminalDropGenerationState authority,
             object fact,
             string stage)
         {
-            GeneratedTerminalDropResultV1 first = authority.Generate(fact);
-            Assert.That(first.Status, Is.EqualTo(TerminalDropBindingStatusV1.Rejected));
+            GeneratedTerminalDropResult first = authority.Generate(fact);
+            Assert.That(first.Status, Is.EqualTo(TerminalDropBindingStatus.Rejected));
             Assert.That(first.Diagnostic, Does.Contain(stage));
             Assert.That(authority.AcceptedBatchCount, Is.EqualTo(0));
 
-            GeneratedTerminalDropResultV1 retry = authority.Generate(fact);
-            Assert.That(retry.Status, Is.EqualTo(TerminalDropBindingStatusV1.Accepted));
+            GeneratedTerminalDropResult retry = authority.Generate(fact);
+            Assert.That(retry.Status, Is.EqualTo(TerminalDropBindingStatus.Accepted));
             Assert.That(authority.AcceptedBatchCount, Is.EqualTo(1));
         }
 
-        private static TerminalDropGenerationAuthorityV1 PipelineAuthority(
-            ITerminalDropFactAdapterV1 adapter = null,
-            ITerminalDropRunContextResolverV1 runResolver = null,
-            IRewardProfileResolverV1 profiles = null,
-            IRewardGenerationExecutorV1 generator = null)
+        private static TerminalDropGenerationState PipelineAuthority(
+            ITerminalDropFactBridge adapter = null,
+            ITerminalDropRunContextResolver runResolver = null,
+            IRewardProfileResolver profiles = null,
+            IRewardGenerationExecutor generator = null)
         {
-            return new TerminalDropGenerationAuthorityV1(
-                new TerminalDropFactAdapterRegistryV1(new ITerminalDropFactAdapterV1[]
+            return new TerminalDropGenerationState(
+                new TerminalDropFactBridgeRegistry(new ITerminalDropFactBridge[]
                 {
-                    adapter ?? new PipelineAdapter()
+                    adapter ?? new PipelineBridge()
                 }),
                 runResolver ?? new FixedRunResolver(),
                 profiles ?? Profiles(),
                 generator ?? new CountingGenerator());
         }
 
-        private static TerminalDropGenerationAuthorityV1 EnemyAuthority(
-            EnemyDefinitionV1 definition,
-            IEnemyTerminalSourceContextResolverV1 contexts,
-            IRewardGenerationExecutorV1 generator)
+        private static TerminalDropGenerationState EnemyAuthority(
+            EnemyDefinition definition,
+            IEnemyTerminalSourceContextResolver contexts,
+            IRewardGenerationExecutor generator)
         {
-            EnemyCatalogV1 catalog = new EnemyCatalogV1(
-                EnemyCatalogV1.SupportedSchemaVersion,
+            EnemyCatalog catalog = new EnemyCatalog(
+                EnemyCatalog.SupportedSchemaVersion,
                 Id("enemy-content", "review-blockers"),
                 new[] { definition });
-            return new TerminalDropGenerationAuthorityV1(
-                new TerminalDropFactAdapterRegistryV1(new ITerminalDropFactAdapterV1[]
+            return new TerminalDropGenerationState(
+                new TerminalDropFactBridgeRegistry(new ITerminalDropFactBridge[]
                 {
-                    new ContextResolvedEnemyDeathTerminalDropFactAdapterV1(
+                    new ContextResolvedEnemyDeathTerminalDropFactBridge(
                         catalog,
                         contexts)
                 }),
@@ -584,56 +584,56 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
                 generator);
         }
 
-        private static RewardProfileCatalogResolverV1 Profiles()
+        private static RewardProfileCatalogResolver Profiles()
         {
-            return new RewardProfileCatalogResolverV1(new[] { Profile() });
+            return new RewardProfileCatalogResolver(new[] { Profile() });
         }
 
-        private static RewardProfileV1 Profile()
+        private static RewardProfile Profile()
         {
-            return RewardProfileV1.Create(
+            return RewardProfile.Create(
                 ProfileId,
                 new[]
                 {
-                    RewardGrantSpecificationV1.CreateFixed(
+                    RewardGrantSpecification.CreateFixed(
                         Id("grant", "review-money"),
-                        RewardGrantKindV1.Money,
+                        RewardGrantKind.Money,
                         Id("currency", "credits"),
                         5L)
                 },
-                Array.Empty<IndependentRewardRollV1>(),
-                Array.Empty<ExclusiveRewardGroupV1>());
+                Array.Empty<IndependentRewardRoll>(),
+                Array.Empty<ExclusiveRewardGroup>());
         }
 
-        private static EnemyDefinitionV1 EnemyDefinition()
+        private static EnemyDefinition EnemyDefinition()
         {
-            return new EnemyDefinitionV1(
+            return new EnemyDefinition(
                 Id("enemy", "review-blocker"),
                 Id("presentation", "review-blocker"),
                 10d,
-                new EnemyLevelScalingProfileV1(1, 100, 0d, 1d),
+                new EnemyLevelScalingProfile(1, 100, 0d, 1d),
                 Id("faction", "enemy"),
                 10d,
                 360d,
                 Id("movement", "fixture"),
                 Id("decision", "fixture"),
-                Array.Empty<EnemyAttackCapabilityDescriptorV1>(),
+                Array.Empty<EnemyAttackCapabilityDescriptor>(),
                 Id("experience-profile", "fixture"),
                 ProfileId,
-                EnemyCatalogRoomClearRoleV1.RequiredEnemy,
+                EnemyCatalogRoomClearRole.RequiredEnemy,
                 Array.Empty<StableId>());
         }
 
-        private static EnemyDeathFactV1 EnemyDeath(EnemyDefinitionV1 definition)
+        private static EnemyDeathFact EnemyDeath(EnemyDefinition definition)
         {
-            var identity = new EnemyRuntimeIdentityV1(
+            var identity = new EnemyLiveIdentity(
                 Id("enemy-entity", "review-blocker"),
                 Id("run-participant", "review-blocker"),
                 RunId,
                 Id("room-runtime", "review-blocker"),
                 Id("room", "review-blocker"),
                 Id("placement", "review-blocker"));
-            return new EnemyDeathFactV1(
+            return new EnemyDeathFact(
                 Id("death", "review-blocker"),
                 Id("trigger", "review-blocker"),
                 identity,
@@ -647,48 +647,48 @@ namespace ShooterMover.Tests.EditMode.TerminalDropBinding
                 EnemyActorDeathCause.IncomingDamage);
         }
 
-        private static PropDefinitionV1 PropDefinition()
+        private static PropDefinition PropDefinition()
         {
-            return new PropDefinitionV1(
+            return new PropDefinition(
                 Id("prop", "review-blocker"),
                 Id("presentation", "review-blocker-prop"),
                 new[]
                 {
-                    PropCapabilitiesV1.Collision(true),
-                    PropCapabilitiesV1.HealthBased(10d),
-                    PropCapabilitiesV1.DamageBehavior(
-                        PropDamageAlignmentV1.Hostile,
+                    PropCapabilities.Collision(true),
+                    PropCapabilities.HealthBased(10d),
+                    PropCapabilities.DamageBehavior(
+                        PropDamageAlignment.Hostile,
                         Id("damage-policy", "player-normal")),
-                    PropCapabilitiesV1.DropOnDestroy(ProfileId)
+                    PropCapabilities.DropOnDestroy(ProfileId)
                 });
         }
 
-        private static PropCatalogV1 PropCatalog(PropDefinitionV1 definition)
+        private static PropCatalog PropCatalog(PropDefinition definition)
         {
-            return new PropCatalogV1(
-                PropCapabilityRegistryV1.CreateBuiltIns(),
+            return new PropCatalog(
+                PropCapabilityRegistry.CreateBuiltIns(),
                 new[] { definition });
         }
 
-        private static PropFactBatchV1 DestroyedPropFacts(
-            PropCatalogV1 catalog,
-            PropDefinitionV1 definition)
+        private static PropFactBatch DestroyedPropFacts(
+            PropCatalog catalog,
+            PropDefinition definition)
         {
-            PropRuntimeCreationResultV1 created = new PropRuntimeFactoryV1().Create(
+            PropLiveCreationResult created = new PropLiveFactory().Create(
                 catalog,
-                new PropPlacementV1(
+                new PropPlacement(
                     PlacedObjectIdentity.CreateAuthored(Id("placement", "review-prop")),
                     definition.DefinitionId),
                 new AlwaysAllowPropDamage());
             Assert.That(created.IsCreated, Is.True);
-            PropDamageResultV1 destroyed = created.Runtime.ApplyDamage(
-                new PropDamageCommandV1(
+            PropDamageResult destroyed = created.Runtime.ApplyDamage(
+                new PropDamageCommand(
                     Id("operation", "destroy-review-prop"),
                     PlayerParticipantId,
                     Id("faction", "player"),
                     Id("damage", "kinetic"),
                     10d));
-            Assert.That(destroyed.Status, Is.EqualTo(PropDamageStatusV1.Destroyed));
+            Assert.That(destroyed.Status, Is.EqualTo(PropDamageStatus.Destroyed));
             return destroyed.Facts;
         }
 

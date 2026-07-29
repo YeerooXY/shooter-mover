@@ -16,13 +16,13 @@ No shop code writes another authority's private state.
 
 ## Definition contract
 
-`ShopDefinitionV1` is immutable and fingerprinted. It contains:
+`ShopDefinition` is immutable and fingerprinted. It contains:
 
 - a stable shop identity;
 - configurable inventory size;
 - eligible equipment categories;
 - required and excluded equipment tags;
-- an `EquipmentGenerationPolicyV1` consumed through GEN-001;
+- an `EquipmentGenerationPolicy` consumed through GEN-001;
 - a progression-context snapshot policy;
 - an integer pricing policy;
 - disabled or explicit run-bound refresh policy;
@@ -67,7 +67,7 @@ misleading stale-inventory result, after another accepted purchase.
 opens return the retained inventory unchanged, even when the caller represents a
 revisit, death, restart, or a later progression context.
 
-`ShopRuntimeSnapshotV1` persists immutable equipment, prices, sold/pending flags,
+`ShopLiveSnapshot` persists immutable equipment, prices, sold/pending flags,
 refresh ordinal, frozen contexts, seed, and fingerprints. Import validates both
 the snapshot fingerprint and every inventory fingerprint. The first post-import
 `Open` binds the snapshot to the matching definition and a catalog that validates
@@ -82,7 +82,7 @@ A revisit never resamples progression context.
 
 ## Pricing
 
-`ShopPricingPolicyV1` is deterministic integer arithmetic:
+`ShopPricingPolicy` is deterministic integer arithmetic:
 
 ```text
 price = max(minimum_price,

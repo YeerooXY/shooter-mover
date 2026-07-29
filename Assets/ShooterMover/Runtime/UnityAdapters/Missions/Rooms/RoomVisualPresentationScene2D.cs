@@ -33,7 +33,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         }
 
         public void BuildCurrentRoom(
-            RoomContentBundleV1 bundle,
+            RoomContentBundle bundle,
             StableId currentRoomStableId,
             RoomPresentationCatalog2D catalog,
             Transform presentationRoot)
@@ -52,10 +52,10 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             EnsureLayerRoots(presentationRoot);
             Clear();
 
-            var ordered = new List<RoomVisualPlacementContentV1>();
+            var ordered = new List<RoomVisualPlacementContent>();
             for (int index = 0; index < bundle.Visuals.Count; index++)
             {
-                RoomVisualPlacementContentV1 visual = bundle.Visuals[index];
+                RoomVisualPlacementContent visual = bundle.Visuals[index];
                 if (visual.RoomStableId == currentRoomStableId)
                 {
                     ordered.Add(visual);
@@ -140,7 +140,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
 
         private void SpawnVisual(
             RoomPresentationCatalog2D catalog,
-            RoomVisualPlacementContentV1 visual)
+            RoomVisualPlacementContent visual)
         {
             GameObject prefab;
             if (!catalog.TryResolve(visual.PresentationStableId, out prefab))
@@ -164,15 +164,15 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             instance.SetActive(true);
         }
 
-        private Transform GetLayerRoot(RoomContentVisualLayerV1 layer)
+        private Transform GetLayerRoot(RoomContentVisualLayer layer)
         {
             switch (layer)
             {
-                case RoomContentVisualLayerV1.Background:
+                case RoomContentVisualLayer.Background:
                     return backgroundRoot;
-                case RoomContentVisualLayerV1.Tile:
+                case RoomContentVisualLayer.Tile:
                     return tileRoot;
-                case RoomContentVisualLayerV1.Foreground:
+                case RoomContentVisualLayer.Foreground:
                     return foregroundRoot;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(layer));
@@ -196,8 +196,8 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         }
 
         private static int CompareVisuals(
-            RoomVisualPlacementContentV1 left,
-            RoomVisualPlacementContentV1 right)
+            RoomVisualPlacementContent left,
+            RoomVisualPlacementContent right)
         {
             int layerComparison = LayerBuildOrder(left.Layer).CompareTo(
                 LayerBuildOrder(right.Layer));
@@ -206,15 +206,15 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 : left.InstanceStableId.CompareTo(right.InstanceStableId);
         }
 
-        private static int LayerBuildOrder(RoomContentVisualLayerV1 layer)
+        private static int LayerBuildOrder(RoomContentVisualLayer layer)
         {
             switch (layer)
             {
-                case RoomContentVisualLayerV1.Background:
+                case RoomContentVisualLayer.Background:
                     return 0;
-                case RoomContentVisualLayerV1.Tile:
+                case RoomContentVisualLayer.Tile:
                     return 1;
-                case RoomContentVisualLayerV1.Foreground:
+                case RoomContentVisualLayer.Foreground:
                     return 2;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(layer));

@@ -23,7 +23,7 @@ namespace ShooterMover.Tests.PlayMode.Rewards.GameplayDrops
         [UnityTest]
         public IEnumerator DuplicateDeathAndCollectionApplyMoneyExactlyOnceThroughRap()
         {
-            TestAuthoritySet authorities = CreateAuthoritySet();
+            TestStateSet authorities = CreateAuthoritySet();
             GameplaySceneScope2D scope = CreateScope("run.gameplay-drop-pipeline");
             RewardPickupDropFactory2D factory = CreateFactory(authorities, scope);
             ObjectFamilyDefinitionAsset family = CreateFamily();
@@ -35,7 +35,7 @@ namespace ShooterMover.Tests.PlayMode.Rewards.GameplayDrops
                     {
                         new RewardGrantAuthoring(
                             "gameplay-drop-grant.pipeline-money",
-                            RewardGrantKindV1.Money,
+                            RewardGrantKind.Money,
                             "currency.money",
                             7L,
                             7L),
@@ -65,9 +65,9 @@ namespace ShooterMover.Tests.PlayMode.Rewards.GameplayDrops
             RewardSourceSubmissionResult firstDeath = source.SubmitGameplayDrop();
             RewardSourceSubmissionResult repeatedDeath = source.SubmitGameplayDrop();
             RewardPickup2D pickup = factory.LastSpawnResult.Pickup;
-            RewardPickupCollectResultV1 firstCollect =
+            RewardPickupCollectResult firstCollect =
                 pickup.TryCollect(StableId.Parse("claimant.gameplay-drop-player"));
-            RewardPickupCollectResultV1 repeatedCollect =
+            RewardPickupCollectResult repeatedCollect =
                 pickup.TryCollect(StableId.Parse("claimant.gameplay-drop-player"));
 
             Assert.That(firstDeath.Status, Is.EqualTo(RewardSourceSubmissionStatus.Accepted));
@@ -75,10 +75,10 @@ namespace ShooterMover.Tests.PlayMode.Rewards.GameplayDrops
                 repeatedDeath.Status,
                 Is.EqualTo(RewardSourceSubmissionStatus.ExactDuplicateNoChange));
             Assert.That(factory.SpawnedPickupCount, Is.EqualTo(1));
-            Assert.That(firstCollect.Status, Is.EqualTo(RewardPickupCollectStatusV1.Collected));
+            Assert.That(firstCollect.Status, Is.EqualTo(RewardPickupCollectStatus.Collected));
             Assert.That(
                 repeatedCollect.Status,
-                Is.EqualTo(RewardPickupCollectStatusV1.AlreadyCollectedNoChange));
+                Is.EqualTo(RewardPickupCollectStatus.AlreadyCollectedNoChange));
             Assert.That(authorities.Money.ApplyCount, Is.EqualTo(1));
             Assert.That(authorities.Scrap.ApplyCount, Is.EqualTo(0));
             Assert.That(authorities.Holdings.ApplyCount, Is.EqualTo(0));

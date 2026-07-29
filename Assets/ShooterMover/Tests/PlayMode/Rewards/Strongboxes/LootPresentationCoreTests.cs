@@ -14,17 +14,17 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
         [Test]
         public void GroupingPreservesExactIdentitiesAndRejectsDuplicates()
         {
-            ProductionStrongboxTierV1 steel = ProductionStrongboxCatalogV1.GetByNumber(1);
-            var instances = new List<OwnedStrongboxInstancePresentationV1>();
+            StrongboxTier steel = StrongboxCatalog.GetByNumber(1);
+            var instances = new List<OwnedStrongboxInstancePresentation>();
             for (int index = 1; index <= 10; index++)
             {
                 instances.Add(CreateInstance(steel, index));
             }
 
-            IReadOnlyList<OwnedStrongboxGroupPresentationV1> groups;
+            IReadOnlyList<OwnedStrongboxGroupPresentation> groups;
             string diagnostic;
             Assert.That(
-                StrongboxGroupingProjectorV1.TryProject(instances, out groups, out diagnostic),
+                StrongboxGroupingProjector.TryProject(instances, out groups, out diagnostic),
                 Is.True,
                 diagnostic);
             Assert.That(groups.Count, Is.EqualTo(1));
@@ -33,7 +33,7 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
 
             instances.Add(instances[0]);
             Assert.That(
-                StrongboxGroupingProjectorV1.TryProject(instances, out groups, out diagnostic),
+                StrongboxGroupingProjector.TryProject(instances, out groups, out diagnostic),
                 Is.False);
             Assert.That(diagnostic, Does.Contain("duplicate"));
         }
@@ -41,20 +41,20 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
         [Test]
         public void ExactSelectionResolvesOpenFiveWithoutMutatingQuantity()
         {
-            ProductionStrongboxTierV1 steel = ProductionStrongboxCatalogV1.GetByNumber(1);
-            var instances = new List<OwnedStrongboxInstancePresentationV1>();
+            StrongboxTier steel = StrongboxCatalog.GetByNumber(1);
+            var instances = new List<OwnedStrongboxInstancePresentation>();
             for (int index = 1; index <= 10; index++)
             {
                 instances.Add(CreateInstance(steel, index));
             }
 
-            IReadOnlyList<OwnedStrongboxGroupPresentationV1> groups;
+            IReadOnlyList<OwnedStrongboxGroupPresentation> groups;
             string diagnostic;
             Assert.That(
-                StrongboxGroupingProjectorV1.TryProject(instances, out groups, out diagnostic),
+                StrongboxGroupingProjector.TryProject(instances, out groups, out diagnostic),
                 Is.True,
                 diagnostic);
-            var selection = new ExactStrongboxSelectionV1(groups);
+            var selection = new ExactStrongboxSelection(groups);
             Assert.That(selection.TrySelectExact(instances[4].InstanceStableId, out diagnostic), Is.True, diagnostic);
 
             IReadOnlyList<StableId> batch = selection.ResolveBatch(5);
@@ -67,21 +67,21 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
         [Test]
         public void RunHudTotalsProjectCanonicalFactsAndRejectDuplicateOperations()
         {
-            RunSessionCollectedRewardV1 money = CollectedReward(
-                "money", RewardGrantKindV1.Money, StableId.Parse("currency.money"), 125L, 1L);
-            RunSessionCollectedRewardV1 scrap = CollectedReward(
-                "scrap", RewardGrantKindV1.Scrap, StableId.Parse("currency.scrap"), 18L, 2L);
-            RunSessionCollectedRewardV1 box = CollectedReward(
+            RunSessionCollectedReward money = CollectedReward(
+                "money", RewardGrantKind.Money, StableId.Parse("currency.money"), 125L, 1L);
+            RunSessionCollectedReward scrap = CollectedReward(
+                "scrap", RewardGrantKind.Scrap, StableId.Parse("currency.scrap"), 18L, 2L);
+            RunSessionCollectedReward box = CollectedReward(
                 "box",
-                RewardGrantKindV1.Strongbox,
-                ProductionStrongboxCatalogV1.GetByNumber(1).TierStableId,
+                RewardGrantKind.Strongbox,
+                StrongboxCatalog.GetByNumber(1).TierStableId,
                 1L,
                 3L);
 
-            RunLootTotalsPresentationV1 totals;
+            RunLootTotalsPresentation totals;
             string diagnostic;
             Assert.That(
-                RunLootTotalsProjectorV1.TryProject(
+                RunLootTotalsProjector.TryProject(
                     new[] { money, scrap, box }, out totals, out diagnostic),
                 Is.True,
                 diagnostic);
@@ -90,7 +90,7 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
             Assert.That(totals.Strongboxes, Is.EqualTo(1L));
 
             Assert.That(
-                RunLootTotalsProjectorV1.TryProject(
+                RunLootTotalsProjector.TryProject(
                     new[] { money, money }, out totals, out diagnostic),
                 Is.False);
             Assert.That(diagnostic, Does.Contain("duplicate-operation"));
@@ -99,14 +99,14 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
         [Test]
         public void MissionResultProjectionRejectsOpenedStrongboxes()
         {
-            ProductionStrongboxTierV1 steel = ProductionStrongboxCatalogV1.GetByNumber(1);
-            MissionRunStrongboxResultV1 first = RunStrongboxResult(steel, "01", false);
-            MissionRunStrongboxResultV1 second = RunStrongboxResult(steel, "02", false);
+            StrongboxTier steel = StrongboxCatalog.GetByNumber(1);
+            MissionRunStrongboxResult first = RunStrongboxResult(steel, "01", false);
+            MissionRunStrongboxResult second = RunStrongboxResult(steel, "02", false);
 
-            IReadOnlyList<OwnedStrongboxGroupPresentationV1> groups;
+            IReadOnlyList<OwnedStrongboxGroupPresentation> groups;
             string diagnostic;
             Assert.That(
-                StrongboxGroupingProjectorV1.TryProjectUnopened(
+                StrongboxGroupingProjector.TryProjectUnopened(
                     new[] { first, second }, out groups, out diagnostic),
                 Is.True,
                 diagnostic);
@@ -114,9 +114,9 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
             Assert.That(groups[0].Quantity, Is.EqualTo(2));
             Assert.That(groups[0].Instances[0].InstanceStableId, Is.EqualTo(first.InstanceStableId));
 
-            MissionRunStrongboxResultV1 opened = RunStrongboxResult(steel, "03", true);
+            MissionRunStrongboxResult opened = RunStrongboxResult(steel, "03", true);
             Assert.That(
-                StrongboxGroupingProjectorV1.TryProjectUnopened(
+                StrongboxGroupingProjector.TryProjectUnopened(
                     new[] { opened }, out groups, out diagnostic),
                 Is.False);
             Assert.That(diagnostic, Does.Contain("already-opened"));
@@ -125,10 +125,10 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
         [Test]
         public void UnknownTierFailsClosed()
         {
-            OwnedStrongboxInstancePresentationV1 instance;
+            OwnedStrongboxInstancePresentation instance;
             string diagnostic;
             Assert.That(
-                OwnedStrongboxInstancePresentationV1.TryCreate(
+                OwnedStrongboxInstancePresentation.TryCreate(
                     StableId.Parse("development-strongbox.unknown"),
                     StableId.Parse("strongbox-tier.not-authored"),
                     out instance,
@@ -142,11 +142,11 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
         public void SkipReusesCommittedPresentationResult()
         {
             int calls = 0;
-            StrongboxOpeningPresentationResultV1 frozen = StrongboxOpeningPresentationResultV1.Success(
+            StrongboxOpeningPresentationResult frozen = StrongboxOpeningPresentationResult.Success(
                 new[]
                 {
-                    new StrongboxRewardRevealItemV1(
-                        StrongboxRewardPresentationKindV1.Money,
+                    new StrongboxRewardRevealItem(
+                        StrongboxRewardPresentationKind.Money,
                         "CREDITS",
                         "currency.money",
                         null,
@@ -156,8 +156,8 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
                 false,
                 true,
                 "FROZEN");
-            var session = new StrongboxOpeningSceneSessionV1(
-                new StrongboxOpeningPreviewConfigurationV1(
+            var session = new StrongboxOpeningSceneSession(
+                new StrongboxOpeningPreviewConfiguration(
                     "strongbox-tier.steel",
                     "Steel",
                     9001001UL,
@@ -171,21 +171,21 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
                 });
 
             Assert.That(session.RequestOpen(), Is.True);
-            Assert.That(StrongboxPresentationPlaybackV1.SkipToComplete(session), Is.True);
-            Assert.That(session.Stage, Is.EqualTo(StrongboxRevealStageV1.ContinueOrBack));
+            Assert.That(StrongboxPresentationPlayback.SkipToComplete(session), Is.True);
+            Assert.That(session.Stage, Is.EqualTo(StrongboxRevealStage.ContinueOrBack));
             Assert.That(session.Result, Is.SameAs(frozen));
             Assert.That(calls, Is.EqualTo(1));
         }
 
 
-        private static RunSessionCollectedRewardV1 CollectedReward(
+        private static RunSessionCollectedReward CollectedReward(
             string suffix,
-            RewardGrantKindV1 kind,
+            RewardGrantKind kind,
             StableId contentStableId,
             long quantity,
             long order)
         {
-            return new RunSessionCollectedRewardV1(
+            return new RunSessionCollectedReward(
                 StableId.Create("pickup", suffix),
                 StableId.Create("generated-child", suffix),
                 StableId.Create("grant", suffix),
@@ -216,14 +216,14 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
                 order);
         }
 
-        private static MissionRunStrongboxResultV1 RunStrongboxResult(
-            ProductionStrongboxTierV1 tier,
+        private static MissionRunStrongboxResult RunStrongboxResult(
+            StrongboxTier tier,
             string suffix,
             bool opened)
         {
             const string fingerprint =
                 "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-            var collection = new MissionRunStrongboxCollectionV1(
+            var collection = new MissionRunStrongboxCollection(
                 tier.TierStableId,
                 StableId.Create("strongbox-instance", suffix),
                 StableId.Create("strongbox-grant", suffix),
@@ -231,21 +231,21 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
                 StableId.Create("collection-operation", suffix),
                 1L,
                 fingerprint);
-            return new MissionRunStrongboxResultV1(
+            return new MissionRunStrongboxResult(
                 collection,
-                opened ? MissionRunStrongboxStateV1.Opened : MissionRunStrongboxStateV1.Unopened,
+                opened ? MissionRunStrongboxState.Opened : MissionRunStrongboxState.Unopened,
                 opened ? StableId.Create("opening", suffix) : null,
                 opened ? fingerprint : null);
         }
 
-        private static OwnedStrongboxInstancePresentationV1 CreateInstance(
-            ProductionStrongboxTierV1 tier,
+        private static OwnedStrongboxInstancePresentation CreateInstance(
+            StrongboxTier tier,
             int index)
         {
-            OwnedStrongboxInstancePresentationV1 instance;
+            OwnedStrongboxInstancePresentation instance;
             string diagnostic;
             Assert.That(
-                OwnedStrongboxInstancePresentationV1.TryCreate(
+                OwnedStrongboxInstancePresentation.TryCreate(
                     StableId.Create("development-strongbox", tier.Slug + "-" + index.ToString("00")),
                     tier.TierStableId,
                     out instance,

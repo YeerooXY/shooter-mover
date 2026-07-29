@@ -13,8 +13,8 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
     [DisallowMultipleComponent]
     public sealed class JsonRoomVisualPresentation2D : MonoBehaviour
     {
-        [SerializeField] private JsonRoomRuntimeBootstrap2D jsonRoomRuntimeBootstrap;
-        [SerializeField] private RoomRuntimeComposition2D roomRuntimeComposition;
+        [SerializeField] private JsonRoomLiveBootstrap2D jsonRoomRuntimeBootstrap;
+        [SerializeField] private RoomLiveSetup2D roomRuntimeComposition;
         [SerializeField] private RoomPresentationCatalog2D presentationCatalog;
         [SerializeField] private Transform presentationRoot;
 
@@ -131,7 +131,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         private bool TrySynchronizeCurrentRevision(bool forceRetry)
         {
             if (!TryGetReadyState(
-                    out RoomContentBundleV1 bundle,
+                    out RoomContentBundle bundle,
                     out long revision))
             {
                 return false;
@@ -170,7 +170,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         }
 
         private bool TryGetReadyState(
-            out RoomContentBundleV1 bundle,
+            out RoomContentBundle bundle,
             out long revision)
         {
             bundle = null;

@@ -159,7 +159,7 @@ The next integration should:
 
 1. add an immutable generated augment-capacity/shared-level field to the equipment instance schema;
 2. version holdings encoding and restore compatibility;
-3. bind `ProductionStrongboxHybridLootCatalogV1` into `StrongboxEquipmentGenerationResolverV1`;
+3. bind `StrongboxHybridLootCatalog` into `StrongboxEquipmentGenerationResolver`;
 4. project the signature into the strongbox card and simulator reports;
 5. keep `EquipmentInstance.Augments` empty until concrete augments are installed by their owning authority.
 

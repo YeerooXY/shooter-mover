@@ -16,51 +16,51 @@ namespace ShooterMover.Editor.BalanceSimulator
     /// One immutable comparison input. The level is captured when the box is clicked,
     /// so changing the editor field later cannot mutate an earlier queue entry.
     /// </summary>
-    public sealed class StrongboxLevelQueueEntryV1
+    public sealed class StrongboxLevelQueueEntry
     {
         private readonly string canonicalText;
 
-        public StrongboxLevelQueueEntryV1(int tierNumber, int playerLevel)
+        public StrongboxLevelQueueEntry(int tierNumber, int playerLevel)
         {
             if (playerLevel < 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(playerLevel));
             }
 
-            Tier = ProductionStrongboxCatalogV1.GetByNumber(tierNumber);
+            Tier = StrongboxCatalog.GetByNumber(tierNumber);
             PlayerLevel = playerLevel;
 
             var builder = new StringBuilder();
-            StrongboxCanonicalV1.AppendToken(
+            Strongbox.AppendToken(
                 builder,
                 "schema",
                 "strongbox-level-queue-entry-v1");
-            StrongboxCanonicalV1.AppendToken(
+            Strongbox.AppendToken(
                 builder,
                 "tier",
                 Tier.TierStableId.ToString());
-            StrongboxCanonicalV1.AppendToken(
+            Strongbox.AppendToken(
                 builder,
                 "player_level",
                 PlayerLevel.ToString(CultureInfo.InvariantCulture));
             canonicalText = builder.ToString();
-            Fingerprint = StrongboxCanonicalV1.Fingerprint(canonicalText);
+            Fingerprint = Strongbox.Fingerprint(canonicalText);
         }
 
-        public ProductionStrongboxTierV1 Tier { get; }
+        public StrongboxTier Tier { get; }
         public int PlayerLevel { get; }
         public string Fingerprint { get; }
         public string ToCanonicalString() { return canonicalText; }
     }
 
-    public sealed class StrongboxLevelComparisonResultV1
+    public sealed class StrongboxLevelComparisonResult
     {
         private readonly ReadOnlyCollection<EquipmentInstance> equipment;
 
-        public StrongboxLevelComparisonResultV1(
-            StrongboxLevelQueueEntryV1 input,
-            AuthoritativeStrongboxPreparedOpenV1 prepared,
-            StrongboxOpeningResultRuntimeV1 openingResult,
+        public StrongboxLevelComparisonResult(
+            StrongboxLevelQueueEntry input,
+            AuthoritativeStrongboxPreparedOpen prepared,
+            StrongboxOpeningResultLive openingResult,
             IEnumerable<EquipmentInstance> equipment,
             long moneyBalance,
             long scrapBalance,
@@ -80,9 +80,9 @@ namespace ShooterMover.Editor.BalanceSimulator
             OpeningSequence = openingSequence;
         }
 
-        public StrongboxLevelQueueEntryV1 Input { get; }
-        public AuthoritativeStrongboxPreparedOpenV1 Prepared { get; }
-        public StrongboxOpeningResultRuntimeV1 OpeningResult { get; }
+        public StrongboxLevelQueueEntry Input { get; }
+        public AuthoritativeStrongboxPreparedOpen Prepared { get; }
+        public StrongboxOpeningResultLive OpeningResult { get; }
         public IReadOnlyList<EquipmentInstance> Equipment { get { return equipment; } }
         public long MoneyBalance { get; }
         public long ScrapBalance { get; }
@@ -97,10 +97,10 @@ namespace ShooterMover.Editor.BalanceSimulator
     /// </summary>
     public sealed class StrongboxLevelComparisonWindow : EditorWindow
     {
-        private readonly List<StrongboxLevelQueueEntryV1> queue =
-            new List<StrongboxLevelQueueEntryV1>();
-        private readonly List<StrongboxLevelComparisonResultV1> results =
-            new List<StrongboxLevelComparisonResultV1>();
+        private readonly List<StrongboxLevelQueueEntry> queue =
+            new List<StrongboxLevelQueueEntry>();
+        private readonly List<StrongboxLevelComparisonResult> results =
+            new List<StrongboxLevelComparisonResult>();
 
         private string loadedCatalogJson;
         private string loadedCatalogName;
@@ -179,11 +179,11 @@ namespace ShooterMover.Editor.BalanceSimulator
                 int start = row * 3;
                 int end = Math.Min(
                     start + 3,
-                    ProductionStrongboxCatalogV1.Tiers.Count);
+                    StrongboxCatalog.Tiers.Count);
                 for (int index = start; index < end; index++)
                 {
-                    ProductionStrongboxTierV1 tier =
-                        ProductionStrongboxCatalogV1.Tiers[index];
+                    StrongboxTier tier =
+                        StrongboxCatalog.Tiers[index];
                     if (GUILayout.Button(
                         "[BOX] " + tier.TierNumber
                         + " " + tier.DisplayName
@@ -212,7 +212,7 @@ namespace ShooterMover.Editor.BalanceSimulator
 
             for (int index = 0; index < queue.Count; index++)
             {
-                StrongboxLevelQueueEntryV1 entry = queue[index];
+                StrongboxLevelQueueEntry entry = queue[index];
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.LabelField(
                     (index + 1).ToString("D3", CultureInfo.InvariantCulture)
@@ -268,7 +268,7 @@ namespace ShooterMover.Editor.BalanceSimulator
 
             for (int index = 0; index < results.Count; index++)
             {
-                StrongboxLevelComparisonResultV1 result = results[index];
+                StrongboxLevelComparisonResult result = results[index];
                 EditorGUILayout.BeginVertical(GUI.skin.box);
                 EditorGUILayout.LabelField(
                     (index + 1).ToString("D3", CultureInfo.InvariantCulture)
@@ -343,8 +343,8 @@ namespace ShooterMover.Editor.BalanceSimulator
 
         private void AddEntry(int tierNumber)
         {
-            StrongboxLevelQueueEntryV1 entry =
-                new StrongboxLevelQueueEntryV1(tierNumber, playerLevel);
+            StrongboxLevelQueueEntry entry =
+                new StrongboxLevelQueueEntry(tierNumber, playerLevel);
             queue.Add(entry);
             results.Clear();
             diagnostic = entry.Tier.DisplayName
@@ -360,9 +360,9 @@ namespace ShooterMover.Editor.BalanceSimulator
             try
             {
                 string json = File.ReadAllText(path);
-                AuthoritativeStrongboxSimulatorRuntimeV1 runtime;
+                AuthoritativeStrongboxSimulatorLive runtime;
                 string error;
-                if (!AuthoritativeStrongboxSimulatorRuntimeV1.TryCreate(
+                if (!AuthoritativeStrongboxSimulatorLive.TryCreate(
                     json,
                     out runtime,
                     out error))
@@ -401,10 +401,10 @@ namespace ShooterMover.Editor.BalanceSimulator
             {
                 for (int index = 0; index < queue.Count; index++)
                 {
-                    StrongboxLevelQueueEntryV1 input = queue[index];
-                    AuthoritativeStrongboxSimulatorRuntimeV1 runtime;
+                    StrongboxLevelQueueEntry input = queue[index];
+                    AuthoritativeStrongboxSimulatorLive runtime;
                     string error;
-                    if (!AuthoritativeStrongboxSimulatorRuntimeV1.TryCreate(
+                    if (!AuthoritativeStrongboxSimulatorLive.TryCreate(
                         loadedCatalogJson,
                         out runtime,
                         out error))
@@ -412,14 +412,14 @@ namespace ShooterMover.Editor.BalanceSimulator
                         throw new InvalidOperationException(error);
                     }
 
-                    IReadOnlyList<AuthoritativeStrongboxPreparedOpenV1> prepared =
+                    IReadOnlyList<AuthoritativeStrongboxPreparedOpen> prepared =
                         runtime.PrepareBatch(
                             new[] { input.Tier.TierNumber },
                             input.PlayerLevel,
                             seed);
-                    StrongboxOpeningResultRuntimeV1 openingResult =
+                    StrongboxOpeningResultLive openingResult =
                         runtime.OpenOrRetry(prepared[0]);
-                    results.Add(new StrongboxLevelComparisonResultV1(
+                    results.Add(new StrongboxLevelComparisonResult(
                         input,
                         prepared[0],
                         openingResult,
@@ -446,52 +446,52 @@ namespace ShooterMover.Editor.BalanceSimulator
         private string BuildReport()
         {
             var builder = new StringBuilder();
-            StrongboxCanonicalV1.AppendToken(
+            Strongbox.AppendToken(
                 builder,
                 "schema",
                 "strongbox-level-comparison-report-v1");
-            StrongboxCanonicalV1.AppendToken(
+            Strongbox.AppendToken(
                 builder,
                 "catalog",
                 loadedCatalogName ?? "none");
-            StrongboxCanonicalV1.AppendToken(
+            Strongbox.AppendToken(
                 builder,
                 "comparison_seed",
                 seedText);
-            StrongboxCanonicalV1.AppendToken(
+            Strongbox.AppendToken(
                 builder,
                 "result_count",
                 results.Count.ToString(CultureInfo.InvariantCulture));
 
             for (int index = 0; index < results.Count; index++)
             {
-                StrongboxLevelComparisonResultV1 result = results[index];
+                StrongboxLevelComparisonResult result = results[index];
                 string prefix = "result_"
                     + index.ToString("D4", CultureInfo.InvariantCulture)
                     + "_";
-                StrongboxCanonicalV1.AppendToken(
+                Strongbox.AppendToken(
                     builder,
                     prefix + "input",
                     result.Input.ToCanonicalString());
-                StrongboxCanonicalV1.AppendToken(
+                Strongbox.AppendToken(
                     builder,
                     prefix + "prepared",
                     result.Prepared.ToCanonicalString());
-                StrongboxCanonicalV1.AppendToken(
+                Strongbox.AppendToken(
                     builder,
                     prefix + "status",
                     result.OpeningResult.Status.ToString());
-                StrongboxCanonicalV1.AppendToken(
+                Strongbox.AppendToken(
                     builder,
                     prefix + "generated_outcome",
                     result.OpeningResult.GeneratedOutcome == null
                         ? "none"
                         : result.OpeningResult.GeneratedOutcome.Fingerprint);
-                StrongboxCanonicalV1.AppendToken(
+                Strongbox.AppendToken(
                     builder,
                     prefix + "scrap_balance",
                     result.ScrapBalance.ToString(CultureInfo.InvariantCulture));
-                StrongboxCanonicalV1.AppendToken(
+                Strongbox.AppendToken(
                     builder,
                     prefix + "equipment_count",
                     result.Equipment.Count.ToString(CultureInfo.InvariantCulture));
@@ -499,7 +499,7 @@ namespace ShooterMover.Editor.BalanceSimulator
                      itemIndex < result.Equipment.Count;
                      itemIndex++)
                 {
-                    StrongboxCanonicalV1.AppendToken(
+                    Strongbox.AppendToken(
                         builder,
                         prefix + "equipment_"
                             + itemIndex.ToString("D4", CultureInfo.InvariantCulture),
@@ -510,7 +510,7 @@ namespace ShooterMover.Editor.BalanceSimulator
             string body = builder.ToString();
             return body
                 + "report_fingerprint="
-                + StrongboxCanonicalV1.Fingerprint(body)
+                + Strongbox.Fingerprint(body)
                 + "\n";
         }
 

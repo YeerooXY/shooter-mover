@@ -23,8 +23,8 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
     public sealed class RewardScalingInputOverrideAuthoring
     {
         [SerializeField] private string inputId = "reward-input.unassigned";
-        [SerializeField] private RewardScalingInputKindV1 kind =
-            RewardScalingInputKindV1.CharacterLevel;
+        [SerializeField] private RewardScalingInputKind kind =
+            RewardScalingInputKind.CharacterLevel;
 
         public RewardScalingInputOverrideAuthoring()
         {
@@ -32,15 +32,15 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
 
         public RewardScalingInputOverrideAuthoring(
             string inputId,
-            RewardScalingInputKindV1 kind)
+            RewardScalingInputKind kind)
         {
             this.inputId = inputId ?? throw new ArgumentNullException(nameof(inputId));
             this.kind = kind;
         }
 
-        public RewardScalingInputDescriptorV1 Build()
+        public RewardScalingInputDescriptor Build()
         {
-            return RewardScalingInputDescriptorV1.Create(
+            return RewardScalingInputDescriptor.Create(
                 StableId.Parse(inputId),
                 kind);
         }
@@ -50,7 +50,7 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
     public sealed class RewardGrantOverrideAuthoring
     {
         [SerializeField] private string grantId = "reward-grant.unassigned";
-        [SerializeField] private RewardGrantKindV1 kind = RewardGrantKindV1.Miscellaneous;
+        [SerializeField] private RewardGrantKind kind = RewardGrantKind.Miscellaneous;
         [SerializeField] private string contentId = "reward-content.unassigned";
         [SerializeField] private long minimumQuantity = 1L;
         [SerializeField] private long maximumQuantity = 1L;
@@ -63,7 +63,7 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
 
         public RewardGrantOverrideAuthoring(
             string grantId,
-            RewardGrantKindV1 kind,
+            RewardGrantKind kind,
             string contentId,
             long minimumQuantity,
             long maximumQuantity,
@@ -78,15 +78,15 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
                 ?? Array.Empty<RewardScalingInputOverrideAuthoring>();
         }
 
-        public RewardGrantKindV1 Kind
+        public RewardGrantKind Kind
         {
             get { return kind; }
         }
 
-        public RewardGrantSpecificationV1 Build()
+        public RewardGrantSpecification Build()
         {
-            List<RewardScalingInputDescriptorV1> builtInputs =
-                new List<RewardScalingInputDescriptorV1>(
+            List<RewardScalingInputDescriptor> builtInputs =
+                new List<RewardScalingInputDescriptor>(
                     scalingInputs == null ? 0 : scalingInputs.Length);
             if (scalingInputs != null)
             {
@@ -103,11 +103,11 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
                 }
             }
 
-            return RewardGrantSpecificationV1.Create(
+            return RewardGrantSpecification.Create(
                 StableId.Parse(grantId),
                 kind,
                 StableId.Parse(contentId),
-                RewardQuantityRangeV1.Create(minimumQuantity, maximumQuantity),
+                RewardQuantityRange.Create(minimumQuantity, maximumQuantity),
                 builtInputs);
         }
     }
@@ -142,7 +142,7 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
             get { return tierOrder; }
         }
 
-        public WeightedRewardOutcomeV1 Build(string grantId)
+        public WeightedRewardOutcome Build(string grantId)
         {
             StableId baseGrantId = StableId.Parse(grantId);
             StableId tierGrantId = StableId.Create(
@@ -150,12 +150,12 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
                 baseGrantId.Value
                     + "-tier-"
                     + tierOrder.ToString(CultureInfo.InvariantCulture));
-            return WeightedRewardOutcomeV1.CreateGrant(
+            return WeightedRewardOutcome.CreateGrant(
                 StableId.Parse(outcomeId),
                 weight,
-                RewardGrantSpecificationV1.CreateFixed(
+                RewardGrantSpecification.CreateFixed(
                     tierGrantId,
-                    RewardGrantKindV1.Strongbox,
+                    RewardGrantKind.Strongbox,
                     StableId.Parse(tierContentId),
                     1L));
         }
@@ -306,9 +306,9 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
             return value;
         }
 
-        public RewardProfileV1 Resolve(
+        public RewardProfile Resolve(
             StableId sourceInstanceId,
-            RewardProfileV1 inheritedProfile)
+            RewardProfile inheritedProfile)
         {
             if (sourceInstanceId == null)
             {
@@ -324,22 +324,22 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
             switch (mode)
             {
                 case RewardSourceOverrideAuthoringMode.Inherit:
-                    return RewardSourceOverrideV1.Inherit(
+                    return RewardSourceOverride.Inherit(
                         parsedOverrideId,
                         sourceInstanceId).Resolve(inheritedProfile);
                 case RewardSourceOverrideAuthoringMode.None:
-                    return RewardSourceOverrideV1.NoReward(
+                    return RewardSourceOverride.NoReward(
                         parsedOverrideId,
                         sourceInstanceId,
                         StableId.Parse(resultProfileId)).Resolve(inheritedProfile);
                 case RewardSourceOverrideAuthoringMode.Replace:
-                    return RewardSourceOverrideV1.ReplaceEntirely(
+                    return RewardSourceOverride.ReplaceEntirely(
                         parsedOverrideId,
                         sourceInstanceId,
                         RewardProfileCapabilityReader.BuildProfile(
                             replacementProfileSource)).Resolve(inheritedProfile);
                 case RewardSourceOverrideAuthoringMode.AppendGuaranteed:
-                    return RewardSourceOverrideV1.AppendGuaranteedEntries(
+                    return RewardSourceOverride.AppendGuaranteedEntries(
                         parsedOverrideId,
                         sourceInstanceId,
                         StableId.Parse(resultProfileId),
@@ -348,38 +348,38 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
                     return ReplaceWith(
                         parsedOverrideId,
                         sourceInstanceId,
-                        RewardProfileV1.Create(
+                        RewardProfile.Create(
                             StableId.Parse(resultProfileId),
                             new[]
                             {
-                                RewardGrantSpecificationV1.Create(
+                                RewardGrantSpecification.Create(
                                     StableId.Parse(moneyGrantId),
-                                    RewardGrantKindV1.Money,
+                                    RewardGrantKind.Money,
                                     StableId.Parse(moneyContentId),
-                                    RewardQuantityRangeV1.Create(
+                                    RewardQuantityRange.Create(
                                         moneyMinimum,
                                         moneyMaximum),
-                                    Array.Empty<RewardScalingInputDescriptorV1>())
+                                    Array.Empty<RewardScalingInputDescriptor>())
                             },
-                            Array.Empty<IndependentRewardRollV1>(),
-                            Array.Empty<ExclusiveRewardGroupV1>()),
+                            Array.Empty<IndependentRewardRoll>(),
+                            Array.Empty<ExclusiveRewardGroup>()),
                         inheritedProfile);
                 case RewardSourceOverrideAuthoringMode.StrongboxExactTier:
                     return ReplaceWith(
                         parsedOverrideId,
                         sourceInstanceId,
-                        RewardProfileV1.Create(
+                        RewardProfile.Create(
                             StableId.Parse(resultProfileId),
                             new[]
                             {
-                                RewardGrantSpecificationV1.CreateFixed(
+                                RewardGrantSpecification.CreateFixed(
                                     StableId.Parse(strongboxGrantId),
-                                    RewardGrantKindV1.Strongbox,
+                                    RewardGrantKind.Strongbox,
                                     StableId.Parse(exactStrongboxTierId),
                                     1L)
                             },
-                            Array.Empty<IndependentRewardRollV1>(),
-                            Array.Empty<ExclusiveRewardGroupV1>()),
+                            Array.Empty<IndependentRewardRoll>(),
+                            Array.Empty<ExclusiveRewardGroup>()),
                         inheritedProfile);
                 case RewardSourceOverrideAuthoringMode.StrongboxTierRange:
                     return ReplaceWith(
@@ -391,11 +391,11 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
                     return ReplaceWith(
                         parsedOverrideId,
                         sourceInstanceId,
-                        RewardProfileV1.Create(
+                        RewardProfile.Create(
                             StableId.Parse(resultProfileId),
                             BuildEntries(guaranteedEntries, true),
-                            Array.Empty<IndependentRewardRollV1>(),
-                            Array.Empty<ExclusiveRewardGroupV1>()),
+                            Array.Empty<IndependentRewardRoll>(),
+                            Array.Empty<ExclusiveRewardGroup>()),
                         inheritedProfile);
                 default:
                     throw new InvalidOperationException(
@@ -416,24 +416,24 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
             };
         }
 
-        private static RewardProfileV1 ReplaceWith(
+        private static RewardProfile ReplaceWith(
             StableId overrideId,
             StableId sourceInstanceId,
-            RewardProfileV1 replacement,
-            RewardProfileV1 inheritedProfile)
+            RewardProfile replacement,
+            RewardProfile inheritedProfile)
         {
-            return RewardSourceOverrideV1.ReplaceEntirely(
+            return RewardSourceOverride.ReplaceEntirely(
                 overrideId,
                 sourceInstanceId,
                 replacement).Resolve(inheritedProfile);
         }
 
-        private static List<RewardGrantSpecificationV1> BuildEntries(
+        private static List<RewardGrantSpecification> BuildEntries(
             RewardGrantOverrideAuthoring[] entries,
             bool miscellaneousOnly)
         {
-            List<RewardGrantSpecificationV1> result =
-                new List<RewardGrantSpecificationV1>(entries == null ? 0 : entries.Length);
+            List<RewardGrantSpecification> result =
+                new List<RewardGrantSpecification>(entries == null ? 0 : entries.Length);
             if (entries != null)
             {
                 for (int index = 0; index < entries.Length; index++)
@@ -446,8 +446,8 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
                     }
 
                     if (miscellaneousOnly
-                        && entry.Kind != RewardGrantKindV1.Miscellaneous
-                        && entry.Kind != RewardGrantKindV1.PremiumAmmo)
+                        && entry.Kind != RewardGrantKind.Miscellaneous
+                        && entry.Kind != RewardGrantKind.PremiumAmmo)
                     {
                         throw new InvalidOperationException(
                             "Miscellaneous override entries must use Miscellaneous or PremiumAmmo kinds.");
@@ -466,7 +466,7 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
             return result;
         }
 
-        private RewardProfileV1 BuildStrongboxRangeProfile()
+        private RewardProfile BuildStrongboxRangeProfile()
         {
             if (minimumStrongboxTierOrder > maximumStrongboxTierOrder)
             {
@@ -497,8 +497,8 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
                 }
             }
 
-            List<WeightedRewardOutcomeV1> outcomes =
-                new List<WeightedRewardOutcomeV1>();
+            List<WeightedRewardOutcome> outcomes =
+                new List<WeightedRewardOutcome>();
             for (int tier = minimumStrongboxTierOrder;
                 tier <= maximumStrongboxTierOrder;
                 tier++)
@@ -517,13 +517,13 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
                 }
             }
 
-            return RewardProfileV1.Create(
+            return RewardProfile.Create(
                 StableId.Parse(resultProfileId),
-                Array.Empty<RewardGrantSpecificationV1>(),
-                Array.Empty<IndependentRewardRollV1>(),
+                Array.Empty<RewardGrantSpecification>(),
+                Array.Empty<IndependentRewardRoll>(),
                 new[]
                 {
-                    ExclusiveRewardGroupV1.Create(
+                    ExclusiveRewardGroup.Create(
                         StableId.Parse(strongboxRangeGroupId),
                         outcomes)
                 });

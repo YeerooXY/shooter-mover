@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.CombatPresentation
 {
-    public enum CombatHealthBarRefreshStatusV1
+    public enum CombatHealthBarRefreshStatus
     {
         Applied = 1,
         Unchanged = 2,
@@ -30,10 +30,10 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         [SerializeField] private Color fillColor = new Color(0.2f, 0.95f, 0.3f, 1f);
         [SerializeField] private int sortingOrder = 80;
 
-        private ICombatHealthBarSnapshotSourceV1 source;
+        private ICombatHealthBarSnapshotSource source;
         private StableId boundEntityStableId;
         private long observedLifecycleGeneration = -1L;
-        private CombatHealthBarSnapshotV1 currentSnapshot;
+        private CombatHealthBarSnapshot currentSnapshot;
         private LineRenderer background;
         private LineRenderer fill;
         private Material sharedMaterial;
@@ -41,7 +41,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         private int presentationUpdateCount;
 
         public StableId BoundEntityStableId { get { return boundEntityStableId; } }
-        public CombatHealthBarSnapshotV1 CurrentSnapshot { get { return currentSnapshot; } }
+        public CombatHealthBarSnapshot CurrentSnapshot { get { return currentSnapshot; } }
         public bool IsVisible { get { return fill != null && fill.enabled; } }
         public int PresentationUpdateCount { get { return presentationUpdateCount; } }
         public bool HasPhysicsOwnership
@@ -51,7 +51,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
 
         public void Configure(
             StableId entityInstanceStableId,
-            ICombatHealthBarSnapshotSourceV1 snapshotSource,
+            ICombatHealthBarSnapshotSource snapshotSource,
             Vector3 configuredWorldOffset,
             float configuredWidth = 1.4f,
             float configuredHeight = 0.12f)
@@ -88,26 +88,26 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             Refresh();
         }
 
-        public CombatHealthBarRefreshStatusV1 Refresh()
+        public CombatHealthBarRefreshStatus Refresh()
         {
             if (!configured || source == null || boundEntityStableId == null)
             {
-                return CombatHealthBarRefreshStatusV1.NotConfigured;
+                return CombatHealthBarRefreshStatus.NotConfigured;
             }
 
-            CombatHealthBarSnapshotV1 snapshot;
+            CombatHealthBarSnapshot snapshot;
             if (!source.TryRead(out snapshot) || snapshot == null)
             {
                 Clear();
-                return CombatHealthBarRefreshStatusV1.SourceUnavailable;
+                return CombatHealthBarRefreshStatus.SourceUnavailable;
             }
             if (snapshot.EntityInstanceStableId != boundEntityStableId)
             {
-                return CombatHealthBarRefreshStatusV1.RejectedEntityMismatch;
+                return CombatHealthBarRefreshStatus.RejectedEntityMismatch;
             }
             if (snapshot.LifecycleGeneration < observedLifecycleGeneration)
             {
-                return CombatHealthBarRefreshStatusV1.RejectedStaleLifecycle;
+                return CombatHealthBarRefreshStatus.RejectedStaleLifecycle;
             }
             if (snapshot.LifecycleGeneration > observedLifecycleGeneration)
             {
@@ -116,7 +116,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             }
             if (snapshot.Equals(currentSnapshot))
             {
-                return CombatHealthBarRefreshStatusV1.Unchanged;
+                return CombatHealthBarRefreshStatus.Unchanged;
             }
 
             currentSnapshot = snapshot;
@@ -124,12 +124,12 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             if (snapshot.IsTerminal)
             {
                 ClearViewOnly();
-                return CombatHealthBarRefreshStatusV1.HiddenTerminal;
+                return CombatHealthBarRefreshStatus.HiddenTerminal;
             }
 
             EnsureView();
             ApplyView(snapshot.NormalizedFill);
-            return CombatHealthBarRefreshStatusV1.Applied;
+            return CombatHealthBarRefreshStatus.Applied;
         }
 
         public void Clear()

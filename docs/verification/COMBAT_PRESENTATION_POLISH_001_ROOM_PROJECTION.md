@@ -2,7 +2,7 @@
 
 The Stage 1 room runtime creates `Stage1RoomEnemyAuthorityProjection2D` objects before the retained enemy packages are registered for combat presentation.
 
-`RegisterEnemyCombatPresentation(...)` now replaces every `projectedRoomEnemies` entry that still references the original `IEnemyActor2DAuthority` with the transparent `CombatPresentationEnemyActorAuthority2D` decorator. The replacement is based on authority identity only; it contains no moving-droid, turret, placement-ID, definition-ID, or package-type branch.
+`RegisterEnemyCombatPresentation(...)` now replaces every `projectedRoomEnemies` entry that still references the original `IEnemyActor2DState` with the transparent `CombatPresentationEnemyActorState2D` decorator. The replacement is based on authority identity only; it contains no moving-droid, turret, placement-ID, definition-ID, or package-type branch.
 
 Therefore all three current Stage 1 routes resolve the same decorated authority:
 

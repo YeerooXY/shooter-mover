@@ -21,13 +21,13 @@ namespace ShooterMover.Tests.EditMode.Rewards.GameplayDrops
                     {
                         Grant(
                             "gameplay-drop-grant.money",
-                            RewardGrantKindV1.Money,
+                            RewardGrantKind.Money,
                             "currency.money",
                             5L,
                             10L),
                         Grant(
                             "gameplay-drop-grant.scrap",
-                            RewardGrantKindV1.Scrap,
+                            RewardGrantKind.Scrap,
                             "currency.scrap",
                             1L,
                             3L),
@@ -39,7 +39,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.GameplayDrops
                             250000,
                             Grant(
                                 "gameplay-drop-grant.premium-ammo",
-                                RewardGrantKindV1.PremiumAmmo,
+                                RewardGrantKind.PremiumAmmo,
                                 "ammo.premium",
                                 1L,
                                 2L)),
@@ -53,7 +53,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.GameplayDrops
                                 3L,
                                 Grant(
                                     "gameplay-drop-grant.strongbox",
-                                    RewardGrantKindV1.Strongbox,
+                                    RewardGrantKind.Strongbox,
                                     "strongbox-tier.standard",
                                     1L,
                                     1L)),
@@ -62,7 +62,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.GameplayDrops
                                 2L,
                                 Grant(
                                     "gameplay-drop-grant.misc",
-                                    RewardGrantKindV1.Miscellaneous,
+                                    RewardGrantKind.Miscellaneous,
                                     "misc.component",
                                     1L,
                                     4L)),
@@ -73,9 +73,9 @@ namespace ShooterMover.Tests.EditMode.Rewards.GameplayDrops
 
             try
             {
-                RewardProfileV1 profile = asset.BuildProfile();
+                RewardProfile profile = asset.BuildProfile();
 
-                Assert.That(profile.Disposition, Is.EqualTo(RewardProfileDispositionV1.Configured));
+                Assert.That(profile.Disposition, Is.EqualTo(RewardProfileDisposition.Configured));
                 Assert.That(profile.GuaranteedEntries.Count, Is.EqualTo(2));
                 Assert.That(profile.IndependentRolls.Count, Is.EqualTo(1));
                 Assert.That(profile.ExclusiveGroups.Count, Is.EqualTo(1));
@@ -85,7 +85,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.GameplayDrops
                     index++)
                 {
                     if (profile.ExclusiveGroups[0].Outcomes[index].Kind
-                        == WeightedRewardOutcomeKindV1.ExplicitNoDrop)
+                        == WeightedRewardOutcomeKind.ExplicitNoDrop)
                     {
                         hasExplicitNoDrop = true;
                     }
@@ -99,13 +99,13 @@ namespace ShooterMover.Tests.EditMode.Rewards.GameplayDrops
             }
         }
 
-        [TestCase(RewardGrantKindV1.Money, "currency.money")]
-        [TestCase(RewardGrantKindV1.Scrap, "currency.scrap")]
-        [TestCase(RewardGrantKindV1.Strongbox, "strongbox-tier.standard")]
-        [TestCase(RewardGrantKindV1.PremiumAmmo, "ammo.premium")]
-        [TestCase(RewardGrantKindV1.Miscellaneous, "misc.component")]
+        [TestCase(RewardGrantKind.Money, "currency.money")]
+        [TestCase(RewardGrantKind.Scrap, "currency.scrap")]
+        [TestCase(RewardGrantKind.Strongbox, "strongbox-tier.standard")]
+        [TestCase(RewardGrantKind.PremiumAmmo, "ammo.premium")]
+        [TestCase(RewardGrantKind.Miscellaneous, "misc.component")]
         public void SingleFamilyProfilesRemainAuthorable(
-            RewardGrantKindV1 kind,
+            RewardGrantKind kind,
             string contentId)
         {
             GameplayDropProfileDefinitionAsset asset =
@@ -126,7 +126,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.GameplayDrops
 
             try
             {
-                RewardProfileV1 profile = asset.BuildProfile();
+                RewardProfile profile = asset.BuildProfile();
                 Assert.That(profile.GuaranteedEntries.Count, Is.EqualTo(1));
                 Assert.That(profile.GuaranteedEntries[0].Kind, Is.EqualTo(kind));
             }
@@ -151,7 +151,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.GameplayDrops
             {
                 Assert.That(
                     asset.BuildProfile().Disposition,
-                    Is.EqualTo(RewardProfileDispositionV1.ExplicitNoDrop));
+                    Is.EqualTo(RewardProfileDisposition.ExplicitNoDrop));
             }
             finally
             {
@@ -161,7 +161,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.GameplayDrops
 
         private static RewardGrantAuthoring Grant(
             string grantId,
-            RewardGrantKindV1 kind,
+            RewardGrantKind kind,
             string contentId,
             long minimum,
             long maximum)

@@ -17,20 +17,20 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
         {
             string source = ReadShowcaseSources();
 
-            StringAssert.DoesNotContain("StrongboxOpeningServiceV1", source);
-            StringAssert.DoesNotContain("RewardApplicationServiceV1", source);
+            StringAssert.DoesNotContain("StrongboxOpeningActions", source);
+            StringAssert.DoesNotContain("RewardApplicationActions", source);
             StringAssert.DoesNotContain("PlayerHoldings", source);
             StringAssert.DoesNotContain("ProductionGameSave", source);
-            StringAssert.DoesNotContain("RunLocalPickupAuthorityV1", source);
-            StringAssert.Contains("DevelopmentPickupAuthorityFixtureV1", source);
+            StringAssert.DoesNotContain("RunLocalPickupState", source);
+            StringAssert.Contains("DevelopmentPickupStateFixture", source);
             StringAssert.Contains("immutableFixtureResult", source);
             StringAssert.Contains(
-                "private readonly RunLootTotalsPresentationV1 runTotals",
+                "private readonly RunLootTotalsPresentation runTotals",
                 source);
-            StringAssert.Contains("LootRunHudViewV1", source);
-            StringAssert.Contains("OwnedStrongboxGroupsViewV1", source);
-            StringAssert.Contains("StrongboxOpeningPresentationViewV1", source);
-            StringAssert.Contains("StrongboxRewardCardsViewV1", source);
+            StringAssert.Contains("LootRunHudView", source);
+            StringAssert.Contains("OwnedStrongboxGroupsView", source);
+            StringAssert.Contains("StrongboxOpeningPresentationView", source);
+            StringAssert.Contains("StrongboxRewardCardsView", source);
         }
 
         [Test]
@@ -46,30 +46,30 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
                 "guid: 7a2fbd85f7c84e7e8e277aee8197b3f4",
                 scene);
             StringAssert.DoesNotContain(
-                "ProductionCharacterStrongboxCompositionV1",
+                "CharacterStrongboxSetup",
                 scene);
             StringAssert.DoesNotContain(
-                "ProductionPlayableLevelControllerV1",
+                "PlayableLevelController",
                 scene);
         }
 
         [Test]
         public void DevelopmentPickupFixtureRetainsRejectedPickupAndAcceptsExactlyOnce()
         {
-            LootPickupPresentationV1 pickup = Pickup("fixture");
-            var fixture = new DevelopmentPickupAuthorityFixtureV1(pickup);
+            LootPickupPresentation pickup = Pickup("fixture");
+            var fixture = new DevelopmentPickupStateFixture(pickup);
             fixture.RejectNextCollection();
 
-            DevelopmentPickupCollectionResultV1 rejected = fixture.Collect();
+            DevelopmentPickupCollectionResult rejected = fixture.Collect();
             Assert.That(rejected.Accepted, Is.False);
             Assert.That(fixture.ExportAvailable(), Is.SameAs(pickup));
 
-            DevelopmentPickupCollectionResultV1 accepted = fixture.Collect();
+            DevelopmentPickupCollectionResult accepted = fixture.Collect();
             Assert.That(accepted.Accepted, Is.True);
             Assert.That(accepted.ExactReplay, Is.False);
             Assert.That(fixture.ExportAvailable(), Is.Null);
 
-            DevelopmentPickupCollectionResultV1 replay = fixture.Collect();
+            DevelopmentPickupCollectionResult replay = fixture.Collect();
             Assert.That(replay.Accepted, Is.True);
             Assert.That(replay.ExactReplay, Is.True);
             Assert.That(fixture.ExportAvailable(), Is.Null);
@@ -99,8 +99,8 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
             GameObject gameObject = new GameObject("OwnedStrongboxGroupsViewTest");
             try
             {
-                OwnedStrongboxGroupsViewV1 view =
-                    gameObject.AddComponent<OwnedStrongboxGroupsViewV1>();
+                OwnedStrongboxGroupsView view =
+                    gameObject.AddComponent<OwnedStrongboxGroupsView>();
                 view.Bind(GroupWithCount(2));
 
                 IReadOnlyList<StableId> batch;
@@ -125,12 +125,12 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
             try
             {
                 int calls = 0;
-                StrongboxOpeningPresentationResultV1 frozen =
-                    StrongboxOpeningPresentationResultV1.Success(
+                StrongboxOpeningPresentationResult frozen =
+                    StrongboxOpeningPresentationResult.Success(
                         new[]
                         {
-                            new StrongboxRewardRevealItemV1(
-                                StrongboxRewardPresentationKindV1.Money,
+                            new StrongboxRewardRevealItem(
+                                StrongboxRewardPresentationKind.Money,
                                 "CREDITS",
                                 "currency.money",
                                 null,
@@ -140,8 +140,8 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
                         false,
                         true,
                         "FROZEN");
-                var session = new StrongboxOpeningSceneSessionV1(
-                    new StrongboxOpeningPreviewConfigurationV1(
+                var session = new StrongboxOpeningSceneSession(
+                    new StrongboxOpeningPreviewConfiguration(
                         "strongbox-tier.steel",
                         "Steel",
                         100UL,
@@ -153,15 +153,15 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
                         calls++;
                         return frozen;
                     });
-                StrongboxRewardCardsViewV1 cards =
-                    gameObject.AddComponent<StrongboxRewardCardsViewV1>();
-                StrongboxOpeningPresentationViewV1 opening =
-                    gameObject.AddComponent<StrongboxOpeningPresentationViewV1>();
+                StrongboxRewardCardsView cards =
+                    gameObject.AddComponent<StrongboxRewardCardsView>();
+                StrongboxOpeningPresentationView opening =
+                    gameObject.AddComponent<StrongboxOpeningPresentationView>();
                 opening.Bind(session, cards);
 
                 Assert.That(session.RequestOpen(), Is.True);
                 Assert.That(
-                    StrongboxPresentationPlaybackV1.SkipToComplete(session),
+                    StrongboxPresentationPlayback.SkipToComplete(session),
                     Is.True);
                 opening.Synchronize();
 
@@ -182,9 +182,9 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
             GameObject gameObject = new GameObject("LootRunHudViewTest");
             try
             {
-                var totals = new RunLootTotalsPresentationV1(12L, 7L, 3L);
-                LootRunHudViewV1 view =
-                    gameObject.AddComponent<LootRunHudViewV1>();
+                var totals = new RunLootTotalsPresentation(12L, 7L, 3L);
+                LootRunHudView view =
+                    gameObject.AddComponent<LootRunHudView>();
                 view.Bind(totals);
 
                 Assert.That(view.Projection, Is.SameAs(totals));
@@ -210,10 +210,10 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
                 "LootPresentationShowcaseController.GUI.cs",
                 "LootPresentationDevelopmentPickupFixtureV1.cs",
                 "LootPickupVisual2D.cs",
-                "LootRunHudViewV1.cs",
-                "OwnedStrongboxGroupsViewV1.cs",
-                "StrongboxRewardCardsViewV1.cs",
-                "StrongboxOpeningPresentationViewV1.cs",
+                "LootRunHudView.cs",
+                "OwnedStrongboxGroupsView.cs",
+                "StrongboxRewardCardsView.cs",
+                "StrongboxOpeningPresentationView.cs",
             };
             var combined = new System.Text.StringBuilder();
             for (int index = 0; index < paths.Length; index++)
@@ -224,19 +224,19 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
             return combined.ToString();
         }
 
-        private static IReadOnlyList<OwnedStrongboxGroupPresentationV1>
+        private static IReadOnlyList<OwnedStrongboxGroupPresentation>
             GroupWithCount(int count)
         {
-            ProductionStrongboxTierV1 steel =
-                ProductionStrongboxCatalogV1.GetByNumber(1);
+            StrongboxTier steel =
+                StrongboxCatalog.GetByNumber(1);
             var instances =
-                new List<OwnedStrongboxInstancePresentationV1>();
+                new List<OwnedStrongboxInstancePresentation>();
             for (int index = 1; index <= count; index++)
             {
-                OwnedStrongboxInstancePresentationV1 instance;
+                OwnedStrongboxInstancePresentation instance;
                 string diagnostic;
                 Assert.That(
-                    OwnedStrongboxInstancePresentationV1.TryCreate(
+                    OwnedStrongboxInstancePresentation.TryCreate(
                         StableId.Create(
                             "development-strongbox",
                             "bound-view-" + index),
@@ -248,10 +248,10 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
                 instances.Add(instance);
             }
 
-            IReadOnlyList<OwnedStrongboxGroupPresentationV1> groups;
+            IReadOnlyList<OwnedStrongboxGroupPresentation> groups;
             string projectionDiagnostic;
             Assert.That(
-                StrongboxGroupingProjectorV1.TryProject(
+                StrongboxGroupingProjector.TryProject(
                     instances,
                     out groups,
                     out projectionDiagnostic),
@@ -260,16 +260,16 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
             return groups;
         }
 
-        private static LootPickupPresentationV1 Pickup(string suffix)
+        private static LootPickupPresentation Pickup(string suffix)
         {
-            LootPickupPresentationV1 pickup;
+            LootPickupPresentation pickup;
             string diagnostic;
             Assert.That(
-                LootPickupPresentationV1.TryCreate(
+                LootPickupPresentation.TryCreate(
                     StableId.Create("development-pickup", suffix),
                     StableId.Create("development-reward", suffix),
-                    RewardGrantKindV1.Strongbox,
-                    ProductionStrongboxCatalogV1
+                    RewardGrantKind.Strongbox,
+                    StrongboxCatalog
                         .GetByNumber(1)
                         .TierStableId,
                     1L,

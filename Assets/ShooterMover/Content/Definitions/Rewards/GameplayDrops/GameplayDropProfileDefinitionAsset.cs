@@ -25,7 +25,7 @@ namespace ShooterMover.Content.Definitions.Rewards.GameplayDrops
         [SerializeField] private ExclusiveRewardGroupAuthoring[] weightedAlternatives =
             Array.Empty<ExclusiveRewardGroupAuthoring>();
 
-        public RewardProfileV1 BuildProfile()
+        public RewardProfile BuildProfile()
         {
             StableId parsedProfileId = StableId.Parse(profileId);
             if (explicitNoDrop)
@@ -38,26 +38,26 @@ namespace ShooterMover.Content.Definitions.Rewards.GameplayDrops
                         "Explicit no-drop gameplay profiles must not contain entries.");
                 }
 
-                return RewardProfileV1.CreateExplicitNoDrop(parsedProfileId);
+                return RewardProfile.CreateExplicitNoDrop(parsedProfileId);
             }
 
-            List<RewardGrantSpecificationV1> guaranteed =
+            List<RewardGrantSpecification> guaranteed =
                 BuildAll(
                     guaranteedEntries,
                     "guaranteed entry",
                     delegate(RewardGrantAuthoring value) { return value.Build(); });
-            List<IndependentRewardRollV1> independent =
+            List<IndependentRewardRoll> independent =
                 BuildAll(
                     independentRolls,
                     "independent roll",
                     delegate(IndependentRewardRollAuthoring value) { return value.Build(); });
-            List<ExclusiveRewardGroupV1> weighted =
+            List<ExclusiveRewardGroup> weighted =
                 BuildAll(
                     weightedAlternatives,
                     "weighted alternative group",
                     delegate(ExclusiveRewardGroupAuthoring value) { return value.Build(); });
 
-            return RewardProfileV1.Create(
+            return RewardProfile.Create(
                 parsedProfileId,
                 guaranteed,
                 independent,

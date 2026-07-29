@@ -21,7 +21,7 @@ namespace ShooterMover.Tests.EditMode.EnvironmentPackages.Doors
         private static readonly Type SnapshotType = Find(
             "ShooterMover.ContentPackages.Environment.Doors.DoorConditionFactSnapshot");
         private static readonly Type CompositionType = Find(
-            "ShooterMover.ContentPackages.Environment.Doors.DoorConditionComposition");
+            "ShooterMover.ContentPackages.Environment.Doors.DoorConditionSetup");
         private static readonly Type TransitionDefinitionType = Find(
             "ShooterMover.ContentPackages.Environment.Doors.DoorTransitionDefinition");
 
@@ -162,13 +162,13 @@ namespace ShooterMover.Tests.EditMode.EnvironmentPackages.Doors
         {
             RequirePackageTypes();
             RoomSocket source = new RoomSocket(
-                new RoomProjectionIdentity(
+                new RoomViewIdentity(
                     StableId.Parse("room.alpha"),
                     StableId.Parse("projection.alpha")),
                 StableId.Parse("socket.exit"),
                 RoomSocketDirection.Outbound);
             RoomSocket destination = new RoomSocket(
-                new RoomProjectionIdentity(
+                new RoomViewIdentity(
                     StableId.Parse("room.beta"),
                     StableId.Parse("projection.beta")),
                 StableId.Parse("socket.entry"),
@@ -192,7 +192,7 @@ namespace ShooterMover.Tests.EditMode.EnvironmentPackages.Doors
                 Is.EqualTo("MissingSourceSocket"));
 
             RoomSocket incompatible = new RoomSocket(
-                new RoomProjectionIdentity(
+                new RoomViewIdentity(
                     StableId.Parse("room.gamma"),
                     StableId.Parse("projection.gamma")),
                 StableId.Parse("socket.bad"),

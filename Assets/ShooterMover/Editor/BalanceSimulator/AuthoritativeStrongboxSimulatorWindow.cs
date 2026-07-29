@@ -22,12 +22,12 @@ namespace ShooterMover.Editor.BalanceSimulator
 
         private readonly List<int> queue = new List<int>();
         private readonly List<int> frozenQueue = new List<int>();
-        private readonly List<AuthoritativeStrongboxPreparedOpenV1>
+        private readonly List<AuthoritativeStrongboxPreparedOpen>
             prepared =
-                new List<AuthoritativeStrongboxPreparedOpenV1>();
+                new List<AuthoritativeStrongboxPreparedOpen>();
 
-        private AuthoritativeStrongboxSimulatorRuntimeV1 runtime;
-        private StrongboxOpeningResultRuntimeV1 currentResult;
+        private AuthoritativeStrongboxSimulatorLive runtime;
+        private StrongboxOpeningResultLive currentResult;
         private Page page;
         private int currentIndex;
         private int playerLevel = 30;
@@ -136,11 +136,11 @@ namespace ShooterMover.Editor.BalanceSimulator
                 int start = row * 3;
                 int end = Math.Min(
                     start + 3,
-                    ProductionStrongboxCatalogV1.Tiers.Count);
+                    StrongboxCatalog.Tiers.Count);
                 for (int index = start; index < end; index++)
                 {
-                    ProductionStrongboxTierV1 tier =
-                        ProductionStrongboxCatalogV1.Tiers[index];
+                    StrongboxTier tier =
+                        StrongboxCatalog.Tiers[index];
                     if (GUILayout.Button(
                             "[BOX] "
                             + tier.TierNumber
@@ -169,8 +169,8 @@ namespace ShooterMover.Editor.BalanceSimulator
             }
             for (int index = 0; index < queue.Count; index++)
             {
-                ProductionStrongboxTierV1 tier =
-                    ProductionStrongboxCatalogV1.GetByNumber(
+                StrongboxTier tier =
+                    StrongboxCatalog.GetByNumber(
                         queue[index]);
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.LabelField(
@@ -218,7 +218,7 @@ namespace ShooterMover.Editor.BalanceSimulator
                 return;
             }
 
-            AuthoritativeStrongboxPreparedOpenV1 box =
+            AuthoritativeStrongboxPreparedOpen box =
                 prepared[currentIndex];
             EditorGUILayout.Space();
             EditorGUILayout.LabelField(
@@ -317,7 +317,7 @@ namespace ShooterMover.Editor.BalanceSimulator
         }
 
         private void DrawResult(
-            StrongboxOpeningResultRuntimeV1 result)
+            StrongboxOpeningResultLive result)
         {
             EditorGUILayout.Space();
             EditorGUILayout.LabelField(
@@ -376,7 +376,7 @@ namespace ShooterMover.Editor.BalanceSimulator
                         MessageType.Error);
                     continue;
                 }
-                WeaponLootCardEditorDrawerV1.Draw(
+                WeaponLootCardEditorDrawer.Draw(
                     item,
                     runtime.EquipmentCatalog,
                     runtime.WeaponCatalog,
@@ -402,7 +402,7 @@ namespace ShooterMover.Editor.BalanceSimulator
                     < result.GeneratedOutcome.Payloads.Count;
                 payloadIndex++)
             {
-                RewardGrantApplicationPayloadV1 payload =
+                RewardGrantApplicationPayload payload =
                     result.GeneratedOutcome.Payloads[payloadIndex];
                 EditorGUILayout.LabelField(
                     payload.Grant.Kind
@@ -469,9 +469,9 @@ namespace ShooterMover.Editor.BalanceSimulator
             try
             {
                 string json = File.ReadAllText(path);
-                AuthoritativeStrongboxSimulatorRuntimeV1 created;
+                AuthoritativeStrongboxSimulatorLive created;
                 string error;
-                if (!AuthoritativeStrongboxSimulatorRuntimeV1
+                if (!AuthoritativeStrongboxSimulatorLive
                     .TryCreate(
                         json,
                         out created,
@@ -523,9 +523,9 @@ namespace ShooterMover.Editor.BalanceSimulator
 
             try
             {
-                AuthoritativeStrongboxSimulatorRuntimeV1 fresh;
+                AuthoritativeStrongboxSimulatorLive fresh;
                 string error;
-                if (!AuthoritativeStrongboxSimulatorRuntimeV1
+                if (!AuthoritativeStrongboxSimulatorLive
                     .TryCreate(
                         loadedCatalogJson,
                         out fresh,
@@ -560,7 +560,7 @@ namespace ShooterMover.Editor.BalanceSimulator
         }
 
         private void OpenCurrent(
-            AuthoritativeStrongboxPreparedOpenV1 box)
+            AuthoritativeStrongboxPreparedOpen box)
         {
             try
             {
@@ -604,14 +604,14 @@ namespace ShooterMover.Editor.BalanceSimulator
         }
 
         private static bool IsPending(
-            StrongboxOpeningResultRuntimeV1 result)
+            StrongboxOpeningResultLive result)
         {
             return result != null
                 && (result.Status
-                        == StrongboxOpeningRuntimeStatusV1
+                        == StrongboxOpeningLiveStatus
                             .ClaimedPendingApplication
                     || result.Status
-                        == StrongboxOpeningRuntimeStatusV1
+                        == StrongboxOpeningLiveStatus
                             .ConsumePending);
         }
     }

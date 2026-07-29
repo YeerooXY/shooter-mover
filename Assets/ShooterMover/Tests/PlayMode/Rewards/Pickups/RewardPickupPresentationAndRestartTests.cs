@@ -17,35 +17,35 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
         [Test]
         public void CategoryMappingCoversEveryPickupGrantFamily()
         {
-            Assert.That(RewardPickupCategoryMapV1.FromGrantKind(RewardGrantKindV1.Money), Is.EqualTo(RewardPickupCategoryV1.Money));
-            Assert.That(RewardPickupCategoryMapV1.FromGrantKind(RewardGrantKindV1.Scrap), Is.EqualTo(RewardPickupCategoryV1.Scrap));
-            Assert.That(RewardPickupCategoryMapV1.FromGrantKind(RewardGrantKindV1.Strongbox), Is.EqualTo(RewardPickupCategoryV1.Strongbox));
-            Assert.That(RewardPickupCategoryMapV1.FromGrantKind(RewardGrantKindV1.EquipmentReference), Is.EqualTo(RewardPickupCategoryV1.Equipment));
-            Assert.That(RewardPickupCategoryMapV1.FromGrantKind(RewardGrantKindV1.PremiumAmmo), Is.EqualTo(RewardPickupCategoryV1.Miscellaneous));
-            Assert.That(RewardPickupCategoryMapV1.FromGrantKind(RewardGrantKindV1.Miscellaneous), Is.EqualTo(RewardPickupCategoryV1.Miscellaneous));
+            Assert.That(RewardPickupCategoryMap.FromGrantKind(RewardGrantKind.Money), Is.EqualTo(RewardPickupCategory.Money));
+            Assert.That(RewardPickupCategoryMap.FromGrantKind(RewardGrantKind.Scrap), Is.EqualTo(RewardPickupCategory.Scrap));
+            Assert.That(RewardPickupCategoryMap.FromGrantKind(RewardGrantKind.Strongbox), Is.EqualTo(RewardPickupCategory.Strongbox));
+            Assert.That(RewardPickupCategoryMap.FromGrantKind(RewardGrantKind.EquipmentReference), Is.EqualTo(RewardPickupCategory.Equipment));
+            Assert.That(RewardPickupCategoryMap.FromGrantKind(RewardGrantKind.PremiumAmmo), Is.EqualTo(RewardPickupCategory.Miscellaneous));
+            Assert.That(RewardPickupCategoryMap.FromGrantKind(RewardGrantKind.Miscellaneous), Is.EqualTo(RewardPickupCategory.Miscellaneous));
         }
 
         [UnityTest]
         public IEnumerator RepeatedCollisionCallbacksApplyOneAtomicHoldingsGrant()
         {
-            TestAuthoritySet authorities = CreateAuthoritySet();
+            TestStateSet authorities = CreateAuthoritySet();
             GameplaySceneScope2D scope = CreateScope("run.pickup-tests");
             var command = CreateValueCommit(
                 "misc-a",
-                RewardGrantKindV1.Miscellaneous,
+                RewardGrantKind.Miscellaneous,
                 "item.misc-a",
                 2L);
-            Assert.That(authorities.Adapter.Commit(command).Status, Is.EqualTo(RewardApplicationResultStatusV1.Generated));
+            Assert.That(authorities.Adapter.Commit(command).Status, Is.EqualTo(RewardApplicationResultStatus.Generated));
 
             GameObject pickupObject = Track(new GameObject("Pickup"));
             RewardPickup2D pickup = pickupObject.AddComponent<RewardPickup2D>();
-            RewardPickupPresentationStyleV1 style = new RewardPickupPresentationStyleV1(
-                RewardPickupCategoryV1.Miscellaneous,
+            RewardPickupPresentationStyle style = new RewardPickupPresentationStyle(
+                RewardPickupCategory.Miscellaneous,
                 null,
                 new Color(0.25f, 0.5f, 0.75f, 1f),
                 new Vector3(1.5f, 1.5f, 1f));
             pickup.ConfigureForTests(
-                RewardPickupPayloadV1.Create(command),
+                RewardPickupPayload.Create(command),
                 authorities.Adapter,
                 scope,
                 1.25f,
@@ -55,14 +55,14 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
             RewardPickupClaimant2D claimant = claimantObject.AddComponent<RewardPickupClaimant2D>();
             claimant.ConfigureForTests("claimant.player-one");
             pickup.HandleTriggerForTests(claimant);
-            RewardPickupCollectResultV1 first = pickup.LastCollectResult;
+            RewardPickupCollectResult first = pickup.LastCollectResult;
             pickup.HandleTriggerForTests(claimant);
-            RewardPickupCollectResultV1 duplicate = pickup.LastCollectResult;
+            RewardPickupCollectResult duplicate = pickup.LastCollectResult;
 
             CircleCollider2D trigger = pickup.GetComponent<CircleCollider2D>();
             SpriteRenderer renderer = pickup.GetComponent<SpriteRenderer>();
-            Assert.That(first.Status, Is.EqualTo(RewardPickupCollectStatusV1.Collected));
-            Assert.That(duplicate.Status, Is.EqualTo(RewardPickupCollectStatusV1.AlreadyCollectedNoChange));
+            Assert.That(first.Status, Is.EqualTo(RewardPickupCollectStatus.Collected));
+            Assert.That(duplicate.Status, Is.EqualTo(RewardPickupCollectStatus.AlreadyCollectedNoChange));
             Assert.That(authorities.Holdings.ApplyCount, Is.EqualTo(1));
             Assert.That(authorities.Money.ApplyCount, Is.EqualTo(0));
             Assert.That(authorities.Scrap.ApplyCount, Is.EqualTo(0));
@@ -77,16 +77,16 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
         [UnityTest]
         public IEnumerator QuickRestartKeepsAppliedPickupRetiredAndUnclaimedPickupAvailable()
         {
-            TestAuthoritySet authorities = CreateAuthoritySet();
+            TestStateSet authorities = CreateAuthoritySet();
             GameplaySceneScope2D scope = CreateScope("run.pickup-tests");
             RewardPickup2D collected = CreateConfiguredPickup(
                 authorities,
                 scope,
-                CreateValueCommit("restart-collected", RewardGrantKindV1.Miscellaneous, "item.restart-collected", 1L));
+                CreateValueCommit("restart-collected", RewardGrantKind.Miscellaneous, "item.restart-collected", 1L));
             RewardPickup2D available = CreateConfiguredPickup(
                 authorities,
                 scope,
-                CreateValueCommit("restart-available", RewardGrantKindV1.Miscellaneous, "item.restart-available", 1L));
+                CreateValueCommit("restart-available", RewardGrantKind.Miscellaneous, "item.restart-available", 1L));
 
             Assert.That(collected.TryCollect(StableId.Parse("claimant.restart-player")).IsCollected, Is.True);
             Assert.That(scope.RegisteredRestartParticipantCount, Is.EqualTo(2));
@@ -105,17 +105,17 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Pickups
         [UnityTest]
         public IEnumerator RecreatedProjectionCannotDoubleRewardAfterRapAlreadyApplied()
         {
-            TestAuthoritySet authorities = CreateAuthoritySet();
+            TestStateSet authorities = CreateAuthoritySet();
             GameplaySceneScope2D scope = CreateScope("run.pickup-tests");
-            var command = CreateValueCommit("recreated", RewardGrantKindV1.Miscellaneous, "item.recreated", 1L);
+            var command = CreateValueCommit("recreated", RewardGrantKind.Miscellaneous, "item.recreated", 1L);
             authorities.Adapter.Commit(command);
 
             RewardPickup2D first = CreatePickupProjection(authorities, scope, command);
-            Assert.That(first.TryCollect(StableId.Parse("claimant.recreated-player")).Status, Is.EqualTo(RewardPickupCollectStatusV1.Collected));
+            Assert.That(first.TryCollect(StableId.Parse("claimant.recreated-player")).Status, Is.EqualTo(RewardPickupCollectStatus.Collected));
             RewardPickup2D recreated = CreatePickupProjection(authorities, scope, command, false);
-            RewardPickupCollectResultV1 replay = recreated.TryCollect(StableId.Parse("claimant.recreated-player"));
+            RewardPickupCollectResult replay = recreated.TryCollect(StableId.Parse("claimant.recreated-player"));
 
-            Assert.That(replay.Status, Is.EqualTo(RewardPickupCollectStatusV1.AlreadyCollectedNoChange));
+            Assert.That(replay.Status, Is.EqualTo(RewardPickupCollectStatus.AlreadyCollectedNoChange));
             Assert.That(authorities.Holdings.ApplyCount, Is.EqualTo(1));
             yield return null;
         }

@@ -86,7 +86,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
                     .Single();
             Assert.That(encounterFact.Vital, Is.SameAs(vitalFact));
 
-            EncounterRuntimeIdentity encounter = BuildEncounterIdentity();
+            EncounterLiveIdentity encounter = BuildEncounterIdentity();
             EncounterCombatResolutionMessage resolution =
                 new EncounterCombatResolutionMessage(encounter, vital);
             Assert.That(resolution.ActorId, Is.EqualTo(initial.ActorId));
@@ -586,13 +586,13 @@ namespace ShooterMover.Tests.EditMode.Enemies
                 new VitalState(0d, fact.MaximumHealth, 0d, 0d));
         }
 
-        private static EncounterRuntimeIdentity BuildEncounterIdentity()
+        private static EncounterLiveIdentity BuildEncounterIdentity()
         {
-            return new EncounterRuntimeIdentity(
+            return new EncounterLiveIdentity(
                 Id("encounter.enemy-test"),
                 Id("encounter-runtime.enemy-test-a"),
                 Id("run.enemy-test"),
-                new RoomProjectionIdentity(
+                new RoomViewIdentity(
                     Id("room.enemy-test"),
                     Id("projection.enemy-test-a")));
         }

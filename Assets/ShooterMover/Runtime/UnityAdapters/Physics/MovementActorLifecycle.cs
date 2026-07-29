@@ -15,9 +15,9 @@ namespace ShooterMover.UnityAdapters.Physics
     public sealed class MovementActorLifecycle : MonoBehaviour
     {
         private Rigidbody2D body;
-        private PlayerMovementIntentAdapter inputAdapter;
+        private PlayerMovementIntentBridge inputAdapter;
         private InputActionAsset inputActions;
-        private MovementContact2DAdapter contactAdapter;
+        private MovementContact2DBridge contactAdapter;
         private MovementThrusterTuningProfile tuning;
         private MovementActor2D actor;
         private bool isDisposed;
@@ -48,9 +48,9 @@ namespace ShooterMover.UnityAdapters.Physics
         /// </summary>
         public bool Construct(
             Rigidbody2D body,
-            PlayerMovementIntentAdapter inputAdapter,
+            PlayerMovementIntentBridge inputAdapter,
             InputActionAsset inputActions,
-            MovementContact2DAdapter contactAdapter,
+            MovementContact2DBridge contactAdapter,
             MovementThrusterTuningProfile tuning)
         {
             ThrowIfDisposed();
@@ -172,9 +172,9 @@ namespace ShooterMover.UnityAdapters.Physics
 
         private void ValidateDependencies(
             Rigidbody2D body,
-            PlayerMovementIntentAdapter inputAdapter,
+            PlayerMovementIntentBridge inputAdapter,
             InputActionAsset inputActions,
-            MovementContact2DAdapter contactAdapter,
+            MovementContact2DBridge contactAdapter,
             MovementThrusterTuningProfile tuning)
         {
             if (body == null)

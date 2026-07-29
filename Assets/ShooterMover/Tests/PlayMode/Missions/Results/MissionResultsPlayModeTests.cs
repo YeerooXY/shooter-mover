@@ -14,16 +14,16 @@ namespace ShooterMover.Tests.PlayMode.Missions.Results
         public IEnumerator ResultsDisplay_WithZeroBoxes_IsPureReadOnlyHandoff()
         {
             TestPort port = new TestPort();
-            MissionRunResultAuthorityV1 authority = new MissionRunResultAuthorityV1(port);
-            PlayerRouteProfilePayloadV1 route = CreateRoute("play-zero");
-            MissionRunAuthorityResultV1 ended = authority.EndRun(CreateEnd(
+            MissionRunResultState authority = new MissionRunResultState(port);
+            PlayerRouteProfilePayload route = CreateRoute("play-zero");
+            MissionRunStateResult ended = authority.EndRun(CreateEnd(
                 "play-zero-end", "play-zero-run", route, 0L, port));
             int callsAtEnd = port.ProjectCalls;
 
-            MissionResultsSessionV1 session = new MissionResultsSessionV1(ended.ResultPayload);
+            MissionResultsSession session = new MissionResultsSession(ended.ResultPayload);
             yield return null;
-            MissionResultPayloadV1 first = session.Snapshot;
-            MissionResultPayloadV1 second = session.Snapshot;
+            MissionResultPayload first = session.Snapshot;
+            MissionResultPayload second = session.Snapshot;
 
             Assert.That(first, Is.SameAs(second));
             Assert.That(session.CollectedStrongboxCount, Is.Zero);
@@ -36,15 +36,15 @@ namespace ShooterMover.Tests.PlayMode.Missions.Results
         public IEnumerator ResultsDisplay_WithOneBox_PreservesExactUnopenedInstance()
         {
             TestPort port = new TestPort();
-            MissionRunResultAuthorityV1 authority = new MissionRunResultAuthorityV1(port);
-            PlayerRouteProfilePayloadV1 route = CreateRoute("play-one");
+            MissionRunResultState authority = new MissionRunResultState(port);
+            PlayerRouteProfilePayload route = CreateRoute("play-one");
             StableId instance = Id("box-instance", "play-one-box");
             authority.RecordCollectedStrongbox(CreateCollection(
                 "play-one-collect", "play-one-run", route, instance, 0L, port));
-            MissionRunAuthorityResultV1 ended = authority.EndRun(CreateEnd(
+            MissionRunStateResult ended = authority.EndRun(CreateEnd(
                 "play-one-end", "play-one-run", route, 1L, port));
 
-            MissionResultsSessionV1 session = new MissionResultsSessionV1(ended.ResultPayload);
+            MissionResultsSession session = new MissionResultsSession(ended.ResultPayload);
             yield return null;
 
             Assert.That(session.UnopenedStrongboxCount, Is.EqualTo(1));
@@ -57,19 +57,19 @@ namespace ShooterMover.Tests.PlayMode.Missions.Results
         public IEnumerator ResultsDisplay_WithMultipleBoxes_AndRepeatedEnd_DoesNotConsumeOrReroll()
         {
             TestPort port = new TestPort();
-            MissionRunResultAuthorityV1 authority = new MissionRunResultAuthorityV1(port);
-            PlayerRouteProfilePayloadV1 route = CreateRoute("play-many");
+            MissionRunResultState authority = new MissionRunResultState(port);
+            PlayerRouteProfilePayload route = CreateRoute("play-many");
             authority.RecordCollectedStrongbox(CreateCollection(
                 "play-many-a", "play-many-run", route, Id("box-instance", "play-a"), 0L, port));
             authority.RecordCollectedStrongbox(CreateCollection(
                 "play-many-b", "play-many-run", route, Id("box-instance", "play-b"), 1L, port));
-            MissionRunAuthorityResultV1 first = authority.EndRun(CreateEnd(
+            MissionRunStateResult first = authority.EndRun(CreateEnd(
                 "play-many-end-a", "play-many-run", route, 2L, port));
             int projectCalls = port.ProjectCalls;
-            MissionRunAuthorityResultV1 repeated = authority.EndRun(CreateEnd(
+            MissionRunStateResult repeated = authority.EndRun(CreateEnd(
                 "play-many-end-b", "play-many-run", route, 999L, port));
 
-            MissionResultsSessionV1 session = new MissionResultsSessionV1(repeated.ResultPayload);
+            MissionResultsSession session = new MissionResultsSession(repeated.ResultPayload);
             yield return null;
 
             Assert.That(repeated, Is.SameAs(first));
@@ -85,33 +85,33 @@ namespace ShooterMover.Tests.PlayMode.Missions.Results
         public IEnumerator ConflictingReplay_RemainsRejectedAcrossFramesWithoutMutation()
         {
             TestPort port = new TestPort();
-            MissionRunResultAuthorityV1 authority = new MissionRunResultAuthorityV1(port);
-            PlayerRouteProfilePayloadV1 route = CreateRoute("play-conflict");
-            MissionRunAuthorityResultV1 first = authority.EndRun(CreateEnd(
+            MissionRunResultState authority = new MissionRunResultState(port);
+            PlayerRouteProfilePayload route = CreateRoute("play-conflict");
+            MissionRunStateResult first = authority.EndRun(CreateEnd(
                 "play-conflict-a", "play-conflict-run", route, 0L, port));
             yield return null;
-            EndMissionRunCommandV1 conflict = EndMissionRunCommandV1.Create(
+            EndMissionRunCommand conflict = EndMissionRunCommand.Create(
                 Id("run-operation", "play-conflict-b"),
                 Id("run", "play-conflict-run"),
                 route,
-                MissionRunCompletionStateV1.Failed,
+                MissionRunCompletionState.Failed,
                 1L,
                 port.HoldingsSequence,
                 port.HoldingsFingerprint,
                 port.OpeningSequence,
                 port.OpeningFingerprint);
-            MissionRunAuthorityResultV1 rejected = authority.EndRun(conflict);
+            MissionRunStateResult rejected = authority.EndRun(conflict);
 
-            Assert.That(first.Status, Is.EqualTo(MissionRunAuthorityStatusV1.RunEnded));
-            Assert.That(rejected.Status, Is.EqualTo(MissionRunAuthorityStatusV1.ConflictingDuplicate));
+            Assert.That(first.Status, Is.EqualTo(MissionRunStateStatus.RunEnded));
+            Assert.That(rejected.Status, Is.EqualTo(MissionRunStateStatus.ConflictingDuplicate));
             Assert.That(authority.Sequence, Is.EqualTo(1L));
             Assert.That(port.OpenCalls, Is.Zero);
             Assert.That(port.GrantCalls, Is.Zero);
         }
 
-        private static PlayerRouteProfilePayloadV1 CreateRoute(string suffix)
+        private static PlayerRouteProfilePayload CreateRoute(string suffix)
         {
-            return PlayerRouteProfilePayloadV1.Create(
+            return PlayerRouteProfilePayload.Create(
                 Id("character", suffix),
                 Id("loadout", suffix),
                 new[]
@@ -123,15 +123,15 @@ namespace ShooterMover.Tests.PlayMode.Missions.Results
                 });
         }
 
-        private static MissionRunCollectStrongboxCommandV1 CreateCollection(
+        private static MissionRunCollectStrongboxCommand CreateCollection(
             string operation,
             string run,
-            PlayerRouteProfilePayloadV1 route,
+            PlayerRouteProfilePayload route,
             StableId instance,
             long expectedRunSequence,
             TestPort port)
         {
-            return MissionRunCollectStrongboxCommandV1.Create(
+            return MissionRunCollectStrongboxCommand.Create(
                 Id("run-operation", operation),
                 Id("run", run),
                 route,
@@ -144,18 +144,18 @@ namespace ShooterMover.Tests.PlayMode.Missions.Results
                 port.HoldingsFingerprint);
         }
 
-        private static EndMissionRunCommandV1 CreateEnd(
+        private static EndMissionRunCommand CreateEnd(
             string operation,
             string run,
-            PlayerRouteProfilePayloadV1 route,
+            PlayerRouteProfilePayload route,
             long expectedRunSequence,
             TestPort port)
         {
-            return EndMissionRunCommandV1.Create(
+            return EndMissionRunCommand.Create(
                 Id("run-operation", operation),
                 Id("run", run),
                 route,
-                MissionRunCompletionStateV1.Completed,
+                MissionRunCompletionState.Completed,
                 expectedRunSequence,
                 port.HoldingsSequence,
                 port.HoldingsFingerprint,
@@ -168,12 +168,12 @@ namespace ShooterMover.Tests.PlayMode.Missions.Results
             return StableId.Create(namespaceName, value);
         }
 
-        private sealed class TestPort : IMissionRunExistingAuthorityPortV1
+        private sealed class TestPort : IMissionRunExistingStatePort
         {
             public TestPort()
             {
-                HoldingsFingerprint = MissionRunCanonicalV1.Fingerprint("play-holdings");
-                OpeningFingerprint = MissionRunCanonicalV1.Fingerprint("play-openings");
+                HoldingsFingerprint = MissionRun.Fingerprint("play-holdings");
+                OpeningFingerprint = MissionRun.Fingerprint("play-openings");
             }
 
             public long HoldingsSequence = 4L;
@@ -185,11 +185,11 @@ namespace ShooterMover.Tests.PlayMode.Missions.Results
             public int ConsumeCalls;
             public int GrantCalls;
 
-            public MissionRunCollectionVerificationV1 VerifyCollectedStrongbox(
-                MissionRunCollectStrongboxCommandV1 command)
+            public MissionRunCollectionVerification VerifyCollectedStrongbox(
+                MissionRunCollectStrongboxCommand command)
             {
-                return MissionRunCollectionVerificationV1.Accept(
-                    new MissionRunStrongboxCollectionV1(
+                return MissionRunCollectionVerification.Accept(
+                    new MissionRunStrongboxCollection(
                         command.DefinitionStableId,
                         command.InstanceStableId,
                         command.GrantStableId,
@@ -199,22 +199,22 @@ namespace ShooterMover.Tests.PlayMode.Missions.Results
                         HoldingsFingerprint));
             }
 
-            public MissionRunStrongboxProjectionV1 ProjectStrongboxStates(
-                EndMissionRunCommandV1 command,
-                System.Collections.Generic.IReadOnlyList<MissionRunStrongboxCollectionV1> collectedStrongboxes)
+            public MissionRunStrongboxView ProjectStrongboxStates(
+                EndMissionRunCommand command,
+                System.Collections.Generic.IReadOnlyList<MissionRunStrongboxCollection> collectedStrongboxes)
             {
                 ProjectCalls++;
-                System.Collections.Generic.List<MissionRunStrongboxResultV1> results =
-                    new System.Collections.Generic.List<MissionRunStrongboxResultV1>();
+                System.Collections.Generic.List<MissionRunStrongboxResult> results =
+                    new System.Collections.Generic.List<MissionRunStrongboxResult>();
                 for (int index = 0; index < collectedStrongboxes.Count; index++)
                 {
-                    results.Add(new MissionRunStrongboxResultV1(
+                    results.Add(new MissionRunStrongboxResult(
                         collectedStrongboxes[index],
-                        MissionRunStrongboxStateV1.Unopened,
+                        MissionRunStrongboxState.Unopened,
                         null,
                         null));
                 }
-                return MissionRunStrongboxProjectionV1.Accept(
+                return MissionRunStrongboxView.Accept(
                     results,
                     HoldingsSequence,
                     HoldingsFingerprint,

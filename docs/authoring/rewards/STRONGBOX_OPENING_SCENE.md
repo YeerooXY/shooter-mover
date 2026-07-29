@@ -32,7 +32,7 @@ A composition root that owns the selected box should bind the already-created BO
 ```csharp
 controller.BindRuntime(
     strongboxOpeningService,
-    StrongboxOpenCommandV1.Create(
+    StrongboxOpenCommand.Create(
         openingStableId,
         runStableId,
         strongboxInstanceStableId,
@@ -43,7 +43,7 @@ controller.BindRuntime(
     equipmentCatalog);
 ```
 
-The controller delegates through `StrongboxOpeningRuntimePortV1`.
+The controller delegates through `StrongboxOpeningLivePort`.
 
 - The first user Open action submits one immutable opening command.
 - If BOX reports `ClaimedPendingApplication` or `ConsumePending`, the Retry action resubmits the **same** command and identities.
@@ -52,7 +52,7 @@ The controller delegates through `StrongboxOpeningRuntimePortV1`.
 
 ## Reward presentation
 
-`StrongboxRewardRevealProjectorV1` reads the frozen `GeneratedOutcome.Payloads` returned by BOX.
+`StrongboxRewardRevealProjector` reads the frozen `GeneratedOutcome.Payloads` returned by BOX.
 
 - money and scrap are displayed as value rewards;
 - miscellaneous and premium-ammunition grants use the miscellaneous card path;

@@ -391,12 +391,12 @@ namespace ShooterMover.Tests.EditMode.Authoring
         public void RuntimeSpawnIdentityRequiresExplicitStableInputs()
         {
             Assert.Throws<ArgumentNullException>(
-                () => new RuntimeSpawnIdentityInput(
+                () => new LiveSpawnIdentityInput(
                     StableId.Parse("placed.spawned-a"),
                     null));
 
-            RuntimeSpawnIdentityInput input =
-                new RuntimeSpawnIdentityInput(
+            LiveSpawnIdentityInput input =
+                new LiveSpawnIdentityInput(
                     StableId.Parse("placed.spawned-a"),
                     StableId.Parse("spawn.operation-a"));
             PlacedObjectIdentity identity = input.CreateIdentity();

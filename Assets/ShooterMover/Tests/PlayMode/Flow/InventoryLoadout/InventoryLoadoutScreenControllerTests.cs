@@ -23,19 +23,19 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
         {
             Fixture fixture = new Fixture();
             GameObject host = new GameObject("INV-002 Confirm Test");
-            InventoryLoadoutScreenControllerV1 controller = host.AddComponent<InventoryLoadoutScreenControllerV1>();
-            PlayerRouteProfilePayloadV1 returned = null;
-            controller.ConfigureForTests(fixture.Holdings, fixture.Catalog, fixture.Loadout, delegate(PlayerRouteProfilePayloadV1 payload) { returned = payload; });
-            controller.Present(HubRouteV1.Inventory, fixture.RoutePayload);
+            InventoryLoadoutScreenController controller = host.AddComponent<InventoryLoadoutScreenController>();
+            PlayerRouteProfilePayload returned = null;
+            controller.ConfigureForTests(fixture.Holdings, fixture.Catalog, fixture.Loadout, delegate(PlayerRouteProfilePayload payload) { returned = payload; });
+            controller.Present(HubRoute.Inventory, fixture.RoutePayload);
             yield return null;
 
-            controller.SelectSlot(InventoryLoadoutSlotIdsV1.WeaponTwo);
+            controller.SelectSlot(InventoryLoadoutSlotIds.WeaponTwo);
             Assert.That(controller.SelectInstance(fixture.AlternateWeapon.InstanceId).ChangedSelection, Is.True);
-            controller.SelectSlot(InventoryLoadoutSlotIdsV1.ArmorHead);
+            controller.SelectSlot(InventoryLoadoutSlotIds.ArmorHead);
             Assert.That(controller.SelectInstance(fixture.Armor.InstanceId).ChangedSelection, Is.True);
-            InventoryLoadoutScreenResultV1 result = controller.Confirm();
+            InventoryLoadoutScreenResult result = controller.Confirm();
 
-            Assert.That(result.Status, Is.EqualTo(InventoryLoadoutScreenStatusV1.Confirmed));
+            Assert.That(result.Status, Is.EqualTo(InventoryLoadoutScreenStatus.Confirmed));
             Assert.That(returned, Is.SameAs(result.RoutePayload));
             Assert.That(returned, Is.Not.SameAs(fixture.RoutePayload));
             Assert.That(returned.WeaponSlots[1].EquipmentInstanceStableId, Is.EqualTo(fixture.AlternateWeapon.InstanceId));
@@ -49,17 +49,17 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
         {
             Fixture fixture = new Fixture();
             GameObject host = new GameObject("INV-002 Back Test");
-            InventoryLoadoutScreenControllerV1 controller = host.AddComponent<InventoryLoadoutScreenControllerV1>();
-            PlayerRouteProfilePayloadV1 returned = null;
-            controller.ConfigureForTests(fixture.Holdings, fixture.Catalog, fixture.Loadout, delegate(PlayerRouteProfilePayloadV1 payload) { returned = payload; });
-            controller.Present(HubRouteV1.Inventory, fixture.RoutePayload);
+            InventoryLoadoutScreenController controller = host.AddComponent<InventoryLoadoutScreenController>();
+            PlayerRouteProfilePayload returned = null;
+            controller.ConfigureForTests(fixture.Holdings, fixture.Catalog, fixture.Loadout, delegate(PlayerRouteProfilePayload payload) { returned = payload; });
+            controller.Present(HubRoute.Inventory, fixture.RoutePayload);
             yield return null;
 
-            InventoryLoadoutScreenResultV1 first = controller.Back();
-            InventoryLoadoutScreenResultV1 second = controller.Back();
+            InventoryLoadoutScreenResult first = controller.Back();
+            InventoryLoadoutScreenResult second = controller.Back();
 
-            Assert.That(first.Status, Is.EqualTo(InventoryLoadoutScreenStatusV1.Cancelled));
-            Assert.That(second.Status, Is.EqualTo(InventoryLoadoutScreenStatusV1.AlreadyCompleted));
+            Assert.That(first.Status, Is.EqualTo(InventoryLoadoutScreenStatus.Cancelled));
+            Assert.That(second.Status, Is.EqualTo(InventoryLoadoutScreenStatus.AlreadyCompleted));
             Assert.That(returned, Is.SameAs(fixture.RoutePayload));
             Assert.That(controller.ReturnCount, Is.EqualTo(1));
             Assert.That(fixture.Loadout.ApplyCount, Is.Zero);
@@ -71,22 +71,22 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
         {
             Fixture fixture = new Fixture();
             GameObject host = new GameObject("INV-002 Revisit Test");
-            InventoryLoadoutScreenControllerV1 controller = host.AddComponent<InventoryLoadoutScreenControllerV1>();
+            InventoryLoadoutScreenController controller = host.AddComponent<InventoryLoadoutScreenController>();
             controller.ConfigureForTests(fixture.Holdings, fixture.Catalog, fixture.Loadout, null);
-            controller.Present(HubRouteV1.Inventory, fixture.RoutePayload);
-            controller.SelectSlot(InventoryLoadoutSlotIdsV1.WeaponTwo);
+            controller.Present(HubRoute.Inventory, fixture.RoutePayload);
+            controller.SelectSlot(InventoryLoadoutSlotIds.WeaponTwo);
             controller.SelectInstance(fixture.AlternateWeapon.InstanceId);
-            controller.SelectSlot(InventoryLoadoutSlotIdsV1.ArmorHead);
+            controller.SelectSlot(InventoryLoadoutSlotIds.ArmorHead);
             controller.SelectInstance(fixture.Armor.InstanceId);
-            PlayerRouteProfilePayloadV1 confirmed = controller.Confirm().RoutePayload;
+            PlayerRouteProfilePayload confirmed = controller.Confirm().RoutePayload;
             yield return null;
 
-            controller.Present(HubRouteV1.Inventory, confirmed);
+            controller.Present(HubRoute.Inventory, confirmed);
             yield return null;
 
-            Assert.That(controller.Snapshot.GetSelection(InventoryLoadoutSlotIdsV1.WeaponTwo).EquipmentInstanceStableId,
+            Assert.That(controller.Snapshot.GetSelection(InventoryLoadoutSlotIds.WeaponTwo).EquipmentInstanceStableId,
                 Is.EqualTo(fixture.AlternateWeapon.InstanceId));
-            Assert.That(controller.Snapshot.GetSelection(InventoryLoadoutSlotIdsV1.ArmorHead).EquipmentInstanceStableId,
+            Assert.That(controller.Snapshot.GetSelection(InventoryLoadoutSlotIds.ArmorHead).EquipmentInstanceStableId,
                 Is.EqualTo(fixture.Armor.InstanceId));
             Assert.That(controller.Snapshot.CanConfirm, Is.True);
             UnityEngine.Object.Destroy(host);
@@ -114,8 +114,8 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
                     new[] { shared, weaponB, weaponC, weaponD, armorDefinition },
                     new AugmentDefinition[0]);
                 Assert.That(build.IsValid, Is.True);
-                Catalog = new CatalogAdapter(build.Catalog);
-                Holdings = new PlayerHoldingsService(AuthorityId, 1000L, Catalog);
+                Catalog = new CatalogBridge(build.Catalog);
+                Holdings = new PlayerHoldingsActions(AuthorityId, 1000L, Catalog);
                 WeaponOne = Instance("equipment-instance.playmode-1", shared);
                 AlternateWeapon = Instance("equipment-instance.playmode-2", shared);
                 EquipmentInstance weaponThree = Instance("equipment-instance.playmode-3", weaponB);
@@ -123,17 +123,17 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
                 EquipmentInstance weaponFive = Instance("equipment-instance.playmode-5", weaponD);
                 Armor = Instance("equipment-instance.playmode-armor", armorDefinition);
                 Add(WeaponOne); Add(AlternateWeapon); Add(weaponThree); Add(weaponFour); Add(weaponFive); Add(Armor);
-                RoutePayload = PlayerRouteProfilePayloadV1.Create(
+                RoutePayload = PlayerRouteProfilePayload.Create(
                     Id("character.playmode"),
                     Id("loadout-profile.playmode"),
                     new[] { WeaponOne.InstanceId, weaponThree.InstanceId, weaponFour.InstanceId, weaponFive.InstanceId });
-                Loadout = new RecordingLoadoutAuthority(RoutePayload);
+                Loadout = new RecordingLoadoutState(RoutePayload);
             }
 
-            public CatalogAdapter Catalog { get; }
-            public PlayerHoldingsService Holdings { get; }
-            public RecordingLoadoutAuthority Loadout { get; }
-            public PlayerRouteProfilePayloadV1 RoutePayload { get; }
+            public CatalogBridge Catalog { get; }
+            public PlayerHoldingsActions Holdings { get; }
+            public RecordingLoadoutState Loadout { get; }
+            public PlayerRouteProfilePayload RoutePayload { get; }
             public EquipmentInstance WeaponOne { get; }
             public EquipmentInstance AlternateWeapon { get; }
             public EquipmentInstance Armor { get; }
@@ -141,14 +141,14 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
             private void Add(EquipmentInstance instance)
             {
                 ordinal++;
-                PlayerHoldingsMutationResultV1 result = Holdings.Apply(PlayerHoldingsCommandV1.AddEquipment(
+                PlayerHoldingsMutationResult result = Holdings.Apply(PlayerHoldingsCommand.AddEquipment(
                     Id("transaction.playmode-add-" + ordinal),
                     Id("operation.playmode-add-" + ordinal),
                     AuthorityId,
                     instance,
-                    HoldingProvenanceV1.Create(Id("grant.playmode-add-" + ordinal), Id("source.playmode-fixture")),
+                    HoldingProvenance.Create(Id("grant.playmode-add-" + ordinal), Id("source.playmode-fixture")),
                     Holdings.Sequence));
-                Assert.That(result.Status, Is.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
+                Assert.That(result.Status, Is.EqualTo(PlayerHoldingsMutationStatus.Applied));
             }
 
             private static EquipmentDefinition Definition(string id, StableId category, string name, EquipmentQualityTier quality)
@@ -171,9 +171,9 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
             }
         }
 
-        private sealed class CatalogAdapter : IEquipmentCatalogProvider, IEquipmentInstanceValidator
+        private sealed class CatalogBridge : IEquipmentCatalogProvider, IEquipmentInstanceValidator
         {
-            public CatalogAdapter(EquipmentCatalog catalog) { Catalog = catalog; }
+            public CatalogBridge(EquipmentCatalog catalog) { Catalog = catalog; }
             public EquipmentCatalog Catalog { get; }
             public EquipmentInstanceValidationResponse Validate(EquipmentInstanceValidationRequest request)
             {
@@ -182,31 +182,31 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
             }
         }
 
-        private sealed class RecordingLoadoutAuthority : IInventoryLoadoutAuthorityPortV1
+        private sealed class RecordingLoadoutState : IInventoryLoadoutStatePort
         {
-            public RecordingLoadoutAuthority(PlayerRouteProfilePayloadV1 payload)
+            public RecordingLoadoutState(PlayerRouteProfilePayload payload)
             {
-                var bindings = new List<InventoryLoadoutSlotBindingV1>();
-                for (int index = 0; index < InventoryLoadoutSlotsV1.All.Count; index++)
+                var bindings = new List<InventoryLoadoutSlotBinding>();
+                for (int index = 0; index < InventoryLoadoutSlots.All.Count; index++)
                 {
                     StableId instance = index < payload.WeaponSlots.Count ? payload.WeaponSlots[index].EquipmentInstanceStableId : null;
-                    bindings.Add(new InventoryLoadoutSlotBindingV1(InventoryLoadoutSlotsV1.All[index].SlotStableId, instance));
+                    bindings.Add(new InventoryLoadoutSlotBinding(InventoryLoadoutSlots.All[index].SlotStableId, instance));
                 }
-                Snapshot = InventoryLoadoutAuthoritySnapshotV1.CreateCanonical(0L, bindings);
+                Snapshot = InventoryLoadoutStateSnapshot.CreateCanonical(0L, bindings);
             }
 
             public int ApplyCount { get; private set; }
-            public InventoryLoadoutAuthoritySnapshotV1 Snapshot { get; private set; }
-            public InventoryLoadoutAuthoritySnapshotV1 ExportSnapshot() { return Snapshot; }
-            public InventoryLoadoutAuthorityResultV1 Apply(InventoryLoadoutAuthorityCommandV1 command)
+            public InventoryLoadoutStateSnapshot Snapshot { get; private set; }
+            public InventoryLoadoutStateSnapshot ExportSnapshot() { return Snapshot; }
+            public InventoryLoadoutStateResult Apply(InventoryLoadoutStateCommand command)
             {
                 ApplyCount++;
                 if (command.ExpectedSequence != Snapshot.Sequence)
                 {
-                    return new InventoryLoadoutAuthorityResultV1(InventoryLoadoutAuthorityMutationStatusV1.StaleSnapshot, "sequence-stale", Snapshot);
+                    return new InventoryLoadoutStateResult(InventoryLoadoutStateMutationStatus.StaleSnapshot, "sequence-stale", Snapshot);
                 }
-                Snapshot = InventoryLoadoutAuthoritySnapshotV1.CreateCanonical(Snapshot.Sequence + 1L, command.Bindings);
-                return new InventoryLoadoutAuthorityResultV1(InventoryLoadoutAuthorityMutationStatusV1.Applied, string.Empty, Snapshot);
+                Snapshot = InventoryLoadoutStateSnapshot.CreateCanonical(Snapshot.Sequence + 1L, command.Bindings);
+                return new InventoryLoadoutStateResult(InventoryLoadoutStateMutationStatus.Applied, string.Empty, Snapshot);
             }
         }
     }

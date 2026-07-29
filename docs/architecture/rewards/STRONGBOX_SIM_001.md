@@ -2,38 +2,38 @@
 
 ## Status
 
-This change establishes the engine-independent, equipment-generic batch-analysis boundary. It deliberately does not duplicate any production loot formula. Every generated observation comes from an `IStrongboxSimulationProductionGateway` backed by the real production opening resolver.
+This change establishes the engine-independent, equipment-generic batch-analysis boundary. It deliberately does not duplicate any production loot formula. Every generated observation comes from an `IStrongboxSimulationGateway` backed by the real production opening resolver.
 
-The current production hybrid resolver (`StrongboxHybridEquipmentGenerationResolverV1`) is the live authority used by real strongbox openings. It currently selects only live weapon equipment and passes the production weapon augment capacities into `StrongboxHybridLootPolicyV1`. Wearable equipment is therefore a production-catalog/resolver limitation, not something the simulator may invent around.
+The current production hybrid resolver (`StrongboxHybridEquipmentGenerationResolver`) is the live authority used by real strongbox openings. It currently selects only live weapon equipment and passes the production weapon augment capacities into `StrongboxHybridLootPolicy`. Wearable equipment is therefore a production-catalog/resolver limitation, not something the simulator may invent around.
 
 ## Production authorities reused
 
 The production gateway delegates to the same authorities used by a real opening:
 
-- `ProductionStrongboxCatalogV1` and `ProductionStrongboxHybridLootCatalogV1` for tier and hybrid policy identity;
-- `StrongboxHybridLootPolicyV1.RollTargetLevel` for target-level and level-offset behavior;
-- `StrongboxHybridLootPolicyV1.EvaluateDefinitionWeight` for anchored/peak affinity, rarity weighting and definition weighting;
-- `StrongboxHybridLootPolicyV1.RollInstanceLevel` for item level;
+- `StrongboxCatalog` and `StrongboxHybridLootCatalog` for tier and hybrid policy identity;
+- `StrongboxHybridLootPolicy.RollTargetLevel` for target-level and level-offset behavior;
+- `StrongboxHybridLootPolicy.EvaluateDefinitionWeight` for anchored/peak affinity, rarity weighting and definition weighting;
+- `StrongboxHybridLootPolicy.RollInstanceLevel` for item level;
 - the production equipment catalog and weapon catalog projection for eligibility and stable identity;
-- `StrongboxHybridEquipmentGenerationResolverV1` for final candidate selection, quality selection and equipment-instance construction;
-- `StrongboxHybridLootPolicyV1.RollAugmentSignature` for ordinary and exceptional slot/level outcomes;
+- `StrongboxHybridEquipmentGenerationResolver` for final candidate selection, quality selection and equipment-instance construction;
+- `StrongboxHybridLootPolicy.RollAugmentSignature` for ordinary and exceptional slot/level outcomes;
 - `DeterministicRandom.CreateSubstream` and the resolver's production purpose IDs for deterministic random derivation;
 - `EquipmentInstance.Create` for generated equipment identity;
-- `GeneratedEquipmentAugmentSignatureAuthorityV1` for generated augment metadata.
+- `GeneratedEquipmentAugmentSignatureState` for generated augment metadata.
 
 ## Canonical editor composition
 
-`AuthoritativeStrongboxSimulationGatewayFactoryV1` imports the exact production weapon catalog, reuses the resulting production equipment projection and builds simulator metadata from the definitions consumed by the hybrid resolver. Callers do not hand-author eligibility, family, rarity, first appearance, peak level, base weight, TopBoxOnly state or augment limits.
+`AuthoritativeStrongboxSimulationGatewayFactory` imports the exact production weapon catalog, reuses the resulting production equipment projection and builds simulator metadata from the definitions consumed by the hybrid resolver. Callers do not hand-author eligibility, family, rarity, first appearance, peak level, base weight, TopBoxOnly state or augment limits.
 
 The factory also freezes deterministic fingerprints for the catalog projection and all tier hybrid-policy fingerprints. Unsupported live rarity values, duplicate identities and empty projections fail explicitly.
 
-`AuthoritativeStrongboxSimulationRunnerV1` is the small end-to-end invocation surface for ordinary full-opening requests. It performs catalog loading, canonical projection, gateway construction, streaming simulation and structural report validation as one explicit operation.
+`AuthoritativeStrongboxSimulationRunner` is the small end-to-end invocation surface for ordinary full-opening requests. It performs catalog loading, canonical projection, gateway construction, streaming simulation and structural report validation as one explicit operation.
 
 ## Production gateway
 
-`AuthoritativeStrongboxSimulationProductionGatewayV1` executes:
+`AuthoritativeStrongboxSimulationGateway` executes:
 
-`StrongboxOpeningServiceV1` → production reward generation → transactional payload resolution → `StrongboxHybridEquipmentGenerationResolverV1` → RAP → isolated holdings.
+`StrongboxOpeningActions` → production reward generation → transactional payload resolution → `StrongboxHybridEquipmentGenerationResolver` → RAP → isolated holdings.
 
 The gateway prepares a bounded chunk of 256 real openings inside one disposable composition. Each observation is streamed from that composition, and the complete holdings, wallet, RAP and generated-signature state is discarded before the next chunk.
 

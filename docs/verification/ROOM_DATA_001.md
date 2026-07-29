@@ -16,7 +16,7 @@ This change adds a JSON authoring/import foundation. It does not cut the current
 
 - Branch comparison is ahead-only from the exact launch SHA.
 - All changed production paths are additions under room-content application, content-definition, Unity authoring-adapter, test, and documentation paths.
-- Existing `AuthorableRoomGraphDefinitionV1` remains the compiled ROOM-LIVE contract.
+- Existing `AuthorableRoomGraphDefinition` remains the compiled ROOM-LIVE contract.
 - Enemy object/type and level remain distinct sidecar facts.
 - Ordinary placements require no authored ID.
 - Optional IDs are used only for cross-references.
@@ -27,7 +27,7 @@ This change adds a JSON authoring/import foundation. It does not cut the current
 ## Focused Unity proof to run
 
 ```text
-Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Missions.Rooms.RoomContentJsonImporterV1Tests -testResults Temp/room-data-001-editmode.xml -logFile Temp/room-data-001-editmode.log
+Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Missions.Rooms.RoomContentJsonImporterTests -testResults Temp/room-data-001-editmode.xml -logFile Temp/room-data-001-editmode.log
 ```
 
 Do not add `-quit`; `-runTests` exits Unity after the test run.

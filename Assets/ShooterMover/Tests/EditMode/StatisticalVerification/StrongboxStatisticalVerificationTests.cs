@@ -113,11 +113,11 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
         public void SoftNominalLevelRequirementAllowsGenerationBelowAndAboveNominalLevel()
         {
             EquipmentCatalog catalog = BuildSoftRequirementCatalog();
-            EquipmentGenerationPolicyV1 policy = EquipmentGenerationPolicyV1.Create(
+            EquipmentGenerationPolicy policy = EquipmentGenerationPolicy.Create(
                 Id("stat.policy.soft-level"),
                 new[]
                 {
-                    EquipmentGenerationCandidateV1.Create(
+                    EquipmentGenerationCandidate.Create(
                         Id("stat.weapon.soft-level"),
                         0,
                         100,
@@ -129,19 +129,19 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                         1.0,
                         1.0)
                 },
-                new[] { EquipmentQualityCandidateV1.Create(CommonQualityId, 0L, 1UL) },
-                Array.Empty<AugmentGenerationCandidateV1>(),
+                new[] { EquipmentQualityCandidate.Create(CommonQualityId, 0L, 1UL) },
+                Array.Empty<AugmentGenerationCandidate>(),
                 0,
                 0,
                 true,
                 new SoftActivationCurveParameters(0.10, 10L, 10L),
                 new ObsolescenceCurveParameters(30L, 20.0, 0.25));
-            RewardGenerationServiceV1 generator = new RewardGenerationServiceV1();
+            RewardGenerationActions generator = new RewardGenerationActions();
 
             for (int index = 0; index < 100; index++)
             {
-                EquipmentGenerationResultV1 lower = generator.GenerateEquipment(
-                    EquipmentGenerationRequestV1.Create(
+                EquipmentGenerationResult lower = generator.GenerateEquipment(
+                    EquipmentGenerationRequest.Create(
                         Id("stat.soft.low.op." + index.ToString("D3", CultureInfo.InvariantCulture)),
                         Id("stat.soft.low.item." + index.ToString("D3", CultureInfo.InvariantCulture)),
                         policy,
@@ -149,8 +149,8 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                         Context(45),
                         StatisticalVerificationAssertions.Seed(0x5017UL, index),
                         DeterministicRandom.AlgorithmVersion1));
-                EquipmentGenerationResultV1 higher = generator.GenerateEquipment(
-                    EquipmentGenerationRequestV1.Create(
+                EquipmentGenerationResult higher = generator.GenerateEquipment(
+                    EquipmentGenerationRequest.Create(
                         Id("stat.soft.high.op." + index.ToString("D3", CultureInfo.InvariantCulture)),
                         Id("stat.soft.high.item." + index.ToString("D3", CultureInfo.InvariantCulture)),
                         policy,
@@ -159,8 +159,8 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                         StatisticalVerificationAssertions.Seed(0x5017UL, index),
                         DeterministicRandom.AlgorithmVersion1));
 
-                Assert.That(lower.Status, Is.EqualTo(RewardGenerationStatusV1.Generated));
-                Assert.That(higher.Status, Is.EqualTo(RewardGenerationStatusV1.Generated));
+                Assert.That(lower.Status, Is.EqualTo(RewardGenerationStatus.Generated));
+                Assert.That(higher.Status, Is.EqualTo(RewardGenerationStatus.Generated));
                 Assert.That(lower.Equipment.DefinitionId, Is.EqualTo(Id("stat.weapon.soft-level")));
                 Assert.That(higher.Equipment.DefinitionId, Is.EqualTo(Id("stat.weapon.soft-level")));
                 Assert.That(lower.Equipment.ItemLevel, Is.InRange(50, 60));
@@ -186,7 +186,7 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
             {
                 string suffix = openIndex.ToString("D4", CultureInfo.InvariantCulture);
                 ulong seed = StatisticalVerificationAssertions.Seed(rootSeed, openIndex);
-                StrongboxInstanceContextV1 context = StrongboxInstanceContextV1.Create(
+                StrongboxInstanceContext context = StrongboxInstanceContext.Create(
                     Id("stat.box.instance." + suffix),
                     TierId,
                     seed,
@@ -195,16 +195,16 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                     Id("stat.box.source." + suffix),
                     Id("stat.box.provenance." + suffix),
                     fixture.Definition.Fingerprint);
-                RewardOperationRequestV1 operation = RewardOperationRequestV1.Create(
+                RewardOperationRequest operation = RewardOperationRequest.Create(
                     Id("stat.run." + suffix),
                     context.InstanceStableId,
                     Id("stat.box.operation." + suffix),
                     Id("stat.box.commitment." + suffix),
                     fixture.Definition.BaseRewardProfile.ProfileStableId,
                     fixture.Definition.Fingerprint);
-                RewardGrantV1 grant = RewardGrantV1.Create(
+                RewardGrant grant = RewardGrant.Create(
                     Id("stat.box.equipment-grant"),
-                    RewardGrantKindV1.EquipmentReference,
+                    RewardGrantKind.EquipmentReference,
                     EquipmentPoolId,
                     2L);
 
@@ -281,7 +281,7 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
             int sampleCount,
             ulong rootSeed)
         {
-            StrongboxPowerBudgetPolicyV1 policy = StrongboxPowerBudgetPolicyV1.Create(
+            StrongboxPowerBudgetPolicy policy = StrongboxPowerBudgetPolicy.Create(
                 5,
                 4000,
                 0,
@@ -296,12 +296,12 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
             for (int index = 0; index < sampleCount; index++)
             {
                 ulong seed = StatisticalVerificationAssertions.Seed(rootSeed, index);
-                StrongboxItemLevelRollV1 level = policy.RollItemLevel(
+                StrongboxItemLevelRoll level = policy.RollItemLevel(
                     40,
                     seed,
                     DeterministicRandom.AlgorithmVersion1,
                     0UL);
-                StrongboxEquipmentRollPlanV1 plan = policy.RollAugmentSlots(
+                StrongboxEquipmentRollPlan plan = policy.RollAugmentSlots(
                     level,
                     Id("stat.weapon.alpha"),
                     4,
@@ -332,7 +332,7 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
         private static StrongboxEquipmentFixture BuildStrongboxEquipmentFixture()
         {
             EquipmentCatalog catalog = BuildStrongboxCatalog();
-            EquipmentGenerationPolicyV1 generationPolicy = EquipmentGenerationPolicyV1.Create(
+            EquipmentGenerationPolicy generationPolicy = EquipmentGenerationPolicy.Create(
                 Id("stat.policy.strongbox-equipment"),
                 new[]
                 {
@@ -341,8 +341,8 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                 },
                 new[]
                 {
-                    EquipmentQualityCandidateV1.Create(CommonQualityId, 0L, 3UL),
-                    EquipmentQualityCandidateV1.Create(RareQualityId, 0L, 1UL)
+                    EquipmentQualityCandidate.Create(CommonQualityId, 0L, 3UL),
+                    EquipmentQualityCandidate.Create(RareQualityId, 0L, 1UL)
                 },
                 new[]
                 {
@@ -356,40 +356,40 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                 false,
                 new SoftActivationCurveParameters(0.10, 8L, 8L),
                 new ObsolescenceCurveParameters(30L, 20.0, 0.25));
-            StrongboxPowerBudgetPolicyV1 powerBudget = StrongboxPowerBudgetPolicyV1.Create(
+            StrongboxPowerBudgetPolicy powerBudget = StrongboxPowerBudgetPolicy.Create(
                 5,
                 4000,
                 0,
                 4,
                 750);
 
-            RewardGrantSpecificationV1 equipmentGrant = RewardGrantSpecificationV1.CreateFixed(
+            RewardGrantSpecification equipmentGrant = RewardGrantSpecification.CreateFixed(
                 Id("stat.box.equipment-grant-spec"),
-                RewardGrantKindV1.EquipmentReference,
+                RewardGrantKind.EquipmentReference,
                 EquipmentPoolId,
                 2L);
-            RewardProfileV1 profile = RewardProfileV1.Create(
+            RewardProfile profile = RewardProfile.Create(
                 Id("stat.profile.strongbox-equipment"),
                 new[] { equipmentGrant },
-                Array.Empty<IndependentRewardRollV1>(),
-                Array.Empty<ExclusiveRewardGroupV1>());
-            StrongboxDefinitionV1 definition = StrongboxDefinitionV1.Create(
+                Array.Empty<IndependentRewardRoll>(),
+                Array.Empty<ExclusiveRewardGroup>());
+            StrongboxDefinition definition = StrongboxDefinition.Create(
                 TierId,
                 0,
                 1L,
                 1L,
                 0L,
-                StrongboxRewardCountPolicyV1.Create(2, 2),
-                StrongboxMandatoryScrapPolicyV1.Create(ScrapCurrencyId, 1L, 1L),
+                StrongboxRewardCountPolicy.Create(2, 2),
+                StrongboxMandatoryScrapPolicy.Create(ScrapCurrencyId, 1L, 1L),
                 generationPolicy.PolicyId,
                 profile,
                 Id("stat.scaling.source-tier"),
                 Id("stat.scaling.exceptional"));
-            StrongboxEquipmentGenerationDefinitionCatalogV1 provider =
-                new StrongboxEquipmentGenerationDefinitionCatalogV1(
+            StrongboxEquipmentGenerationDefinitionCatalog provider =
+                new StrongboxEquipmentGenerationDefinitionCatalog(
                     new[]
                     {
-                        new StrongboxEquipmentGenerationDefinitionV1(
+                        new StrongboxEquipmentGenerationDefinition(
                             TierId,
                             powerBudget,
                             generationPolicy,
@@ -398,8 +398,8 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
 
             return new StrongboxEquipmentFixture(
                 definition,
-                new StrongboxEquipmentGenerationResolverV1(
-                    new RewardGenerationServiceV1(),
+                new StrongboxEquipmentGenerationResolver(
+                    new RewardGenerationActions(),
                     provider),
                 45);
         }
@@ -466,9 +466,9 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
             return build.Catalog;
         }
 
-        private static EquipmentGenerationCandidateV1 EquipmentCandidate(string id)
+        private static EquipmentGenerationCandidate EquipmentCandidate(string id)
         {
-            return EquipmentGenerationCandidateV1.Create(
+            return EquipmentGenerationCandidate.Create(
                 Id(id),
                 0,
                 100,
@@ -481,9 +481,9 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                 1.0);
         }
 
-        private static AugmentGenerationCandidateV1 AugmentCandidate(string id)
+        private static AugmentGenerationCandidate AugmentCandidate(string id)
         {
-            return AugmentGenerationCandidateV1.Create(Id(id), 0, 100, 1UL);
+            return AugmentGenerationCandidate.Create(Id(id), 0, 100, 1UL);
         }
 
         private static AugmentDefinition Augment(string id, AugmentCompatibility compatibility)
@@ -525,8 +525,8 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
         private sealed class StrongboxEquipmentFixture
         {
             public StrongboxEquipmentFixture(
-                StrongboxDefinitionV1 definition,
-                StrongboxEquipmentGenerationResolverV1 resolver,
+                StrongboxDefinition definition,
+                StrongboxEquipmentGenerationResolver resolver,
                 int meanItemLevel)
             {
                 Definition = definition;
@@ -534,8 +534,8 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                 MeanItemLevel = meanItemLevel;
             }
 
-            public StrongboxDefinitionV1 Definition { get; }
-            public StrongboxEquipmentGenerationResolverV1 Resolver { get; }
+            public StrongboxDefinition Definition { get; }
+            public StrongboxEquipmentGenerationResolver Resolver { get; }
             public int MeanItemLevel { get; }
         }
 

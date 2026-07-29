@@ -163,7 +163,7 @@ namespace ShooterMover.Contracts.Encounters
         private readonly ReadOnlyCollection<EncounterActorResolution> resolutions;
 
         private EncounterLifecycle(
-            EncounterRuntimeIdentity identity,
+            EncounterLiveIdentity identity,
             EncounterLifecyclePhase phase,
             EncounterStartMessage start,
             IList<EncounterReinforcementMessage> reinforcements,
@@ -187,7 +187,7 @@ namespace ShooterMover.Contracts.Encounters
             ValidateState();
         }
 
-        public EncounterRuntimeIdentity Identity { get; }
+        public EncounterLiveIdentity Identity { get; }
 
         public EncounterLifecyclePhase Phase { get; }
 
@@ -245,7 +245,7 @@ namespace ShooterMover.Contracts.Encounters
             get { return ParticipantCount - resolutions.Count; }
         }
 
-        public static EncounterLifecycle Create(EncounterRuntimeIdentity identity)
+        public static EncounterLifecycle Create(EncounterLiveIdentity identity)
         {
             return new EncounterLifecycle(
                 EncounterContractFormat.RequireNotNull(identity, nameof(identity)),
@@ -716,7 +716,7 @@ namespace ShooterMover.Contracts.Encounters
 
         private EncounterLifecycleTransition RejectMismatch(
             EncounterLifecycleOperation operation,
-            EncounterRuntimeIdentity candidate)
+            EncounterLiveIdentity candidate)
         {
             if (!Identity.Equals(candidate))
             {

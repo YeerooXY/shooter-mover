@@ -30,7 +30,7 @@ Create a reusable character-selection screen and data model that selects one sta
 
 ## Dependencies
 
-- HUB-001 merged; consume `PlayerRouteProfilePayloadV1` read-only.
+- HUB-001 merged; consume `PlayerRouteProfilePayload` read-only.
 - StableId/current content-definition infrastructure.
 
 ## Exclusive owned files and paths

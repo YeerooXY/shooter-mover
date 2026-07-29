@@ -11,9 +11,9 @@ namespace ShooterMover.Tests.EditMode.Crafting.Presentation
         public void ProjectsLevelsBalanceAvailabilityAndStablePreview()
         {
             CraftingScreenFixture f = CraftingScreenFixture.Create(7, 73, true);
-            CraftingScreenServiceV1 s = f.Service();
-            CraftingRecipeProjectionV1 available = s.Snapshot.FindRecipe(StableId.Parse("recipe.available"));
-            CraftingRecipeProjectionV1 locked = s.Snapshot.FindRecipe(StableId.Parse("recipe.locked"));
+            CraftingScreenActions s = f.Service();
+            CraftingRecipeView available = s.Snapshot.FindRecipe(StableId.Parse("recipe.available"));
+            CraftingRecipeView locked = s.Snapshot.FindRecipe(StableId.Parse("recipe.locked"));
             string preview = available.PreviewEquipment.Fingerprint;
             string command = available.Command.Fingerprint;
 
@@ -23,9 +23,9 @@ namespace ShooterMover.Tests.EditMode.Crafting.Presentation
             Assert.That(available.CraftingUnlockLevel, Is.EqualTo(5));
             Assert.That(available.ScrapCost, Is.EqualTo(25));
             Assert.That(available.ScrapBalance, Is.EqualTo(73));
-            Assert.That(available.Availability, Is.EqualTo(CraftingRecipeAvailabilityV1.Available));
+            Assert.That(available.Availability, Is.EqualTo(CraftingRecipeAvailability.Available));
             Assert.That(locked.CraftingUnlockLevel, Is.EqualTo(11));
-            Assert.That(locked.Availability, Is.EqualTo(CraftingRecipeAvailabilityV1.Locked));
+            Assert.That(locked.Availability, Is.EqualTo(CraftingRecipeAvailability.Locked));
             Assert.That(locked.PreviewEquipment, Is.Null);
             Assert.That(s.Snapshot.FindRecipe(available.RecipeStableId).PreviewEquipment.Fingerprint, Is.EqualTo(preview));
             Assert.That(s.Snapshot.FindRecipe(available.RecipeStableId).Command.Fingerprint, Is.EqualTo(command));
@@ -36,15 +36,15 @@ namespace ShooterMover.Tests.EditMode.Crafting.Presentation
         public void SuccessSpendsAndGrantsExactlyOnce()
         {
             CraftingScreenFixture f = CraftingScreenFixture.Create(10, 100);
-            CraftingScreenServiceV1 s = f.Service();
+            CraftingScreenActions s = f.Service();
             string preview = s.Snapshot.SelectedRecipe.PreviewEquipment.Fingerprint;
 
-            CraftingScreenResultV1 first = s.CraftSelected();
-            CraftingScreenResultV1 duplicateClick = s.CraftSelected();
+            CraftingScreenResult first = s.CraftSelected();
+            CraftingScreenResult duplicateClick = s.CraftSelected();
 
-            Assert.That(first.Status, Is.EqualTo(CraftingScreenStatusV1.Crafted));
+            Assert.That(first.Status, Is.EqualTo(CraftingScreenStatus.Crafted));
             Assert.That(first.AuthorityResult.Equipment.Fingerprint, Is.EqualTo(preview));
-            Assert.That(duplicateClick.Status, Is.EqualTo(CraftingScreenStatusV1.AlreadyResolved));
+            Assert.That(duplicateClick.Status, Is.EqualTo(CraftingScreenStatus.AlreadyResolved));
             Assert.That(f.Authority.ScrapBalance, Is.EqualTo(75));
             Assert.That(f.Authority.CraftCalls, Is.EqualTo(1));
             Assert.That(f.Authority.Granted.Count, Is.EqualTo(1));
@@ -54,9 +54,9 @@ namespace ShooterMover.Tests.EditMode.Crafting.Presentation
         public void InsufficientScrapDoesNotCallAuthority()
         {
             CraftingScreenFixture f = CraftingScreenFixture.Create(10, 24);
-            CraftingScreenResultV1 result = f.Service().CraftSelected();
+            CraftingScreenResult result = f.Service().CraftSelected();
 
-            Assert.That(result.Status, Is.EqualTo(CraftingScreenStatusV1.InsufficientScrap));
+            Assert.That(result.Status, Is.EqualTo(CraftingScreenStatus.InsufficientScrap));
             Assert.That(f.Authority.CraftCalls, Is.Zero);
             Assert.That(f.Authority.ScrapBalance, Is.EqualTo(24));
             Assert.That(f.Authority.Granted, Is.Empty);
@@ -67,12 +67,12 @@ namespace ShooterMover.Tests.EditMode.Crafting.Presentation
         {
             CraftingScreenFixture f = CraftingScreenFixture.Create(10, 100);
             f.Authority.ReturnRetryOnce = true;
-            CraftingScreenServiceV1 s = f.Service();
+            CraftingScreenActions s = f.Service();
             string fingerprint = s.Snapshot.SelectedRecipe.Command.Fingerprint;
             StableId operation = s.Snapshot.SelectedRecipe.Command.CraftTransactionStableId;
 
-            Assert.That(s.CraftSelected().Status, Is.EqualTo(CraftingScreenStatusV1.RetryRequired));
-            Assert.That(s.RetrySelected().Status, Is.EqualTo(CraftingScreenStatusV1.Crafted));
+            Assert.That(s.CraftSelected().Status, Is.EqualTo(CraftingScreenStatus.RetryRequired));
+            Assert.That(s.RetrySelected().Status, Is.EqualTo(CraftingScreenStatus.Crafted));
             Assert.That(f.Authority.Commands.Count, Is.EqualTo(2));
             Assert.That(f.Authority.Commands[0].Fingerprint, Is.EqualTo(fingerprint));
             Assert.That(f.Authority.Commands[1].Fingerprint, Is.EqualTo(fingerprint));
@@ -86,10 +86,10 @@ namespace ShooterMover.Tests.EditMode.Crafting.Presentation
         public void ExplicitNextAttemptAllowsDuplicateDefinitionAsSeparateInstance()
         {
             CraftingScreenFixture f = CraftingScreenFixture.Create(10, 100);
-            CraftingScreenServiceV1 s = f.Service();
-            CraftingScreenResultV1 first = s.CraftSelected();
-            Assert.That(s.BeginNextAttempt().Status, Is.EqualTo(CraftingScreenStatusV1.PreviewReady));
-            CraftingScreenResultV1 second = s.CraftSelected();
+            CraftingScreenActions s = f.Service();
+            CraftingScreenResult first = s.CraftSelected();
+            Assert.That(s.BeginNextAttempt().Status, Is.EqualTo(CraftingScreenStatus.PreviewReady));
+            CraftingScreenResult second = s.CraftSelected();
 
             Assert.That(first.AuthorityResult.Equipment.DefinitionId, Is.EqualTo(second.AuthorityResult.Equipment.DefinitionId));
             Assert.That(first.AuthorityResult.Equipment.InstanceId, Is.Not.EqualTo(second.AuthorityResult.Equipment.InstanceId));
@@ -101,14 +101,14 @@ namespace ShooterMover.Tests.EditMode.Crafting.Presentation
         public void ReplayAndBackPreserveAuthorityAndRouteIdentity()
         {
             CraftingScreenFixture f = CraftingScreenFixture.Create(10, 100);
-            CraftingScreenServiceV1 first = f.Service();
-            CraftingScreenResultV1 applied = first.CraftSelected();
+            CraftingScreenActions first = f.Service();
+            CraftingScreenResult applied = first.CraftSelected();
             Assert.That(first.Back().RoutePayload, Is.SameAs(f.Route));
 
-            CraftingScreenServiceV1 revisit = f.Service();
-            CraftingScreenResultV1 replay = revisit.CraftSelected();
+            CraftingScreenActions revisit = f.Service();
+            CraftingScreenResult replay = revisit.CraftSelected();
 
-            Assert.That(replay.Status, Is.EqualTo(CraftingScreenStatusV1.ExactDuplicateNoChange));
+            Assert.That(replay.Status, Is.EqualTo(CraftingScreenStatus.ExactDuplicateNoChange));
             Assert.That(replay.AuthorityResult.Equipment.InstanceId, Is.EqualTo(applied.AuthorityResult.Equipment.InstanceId));
             Assert.That(revisit.Snapshot.ScrapBalance, Is.EqualTo(75));
             Assert.That(revisit.Snapshot.HoldingsSequence, Is.EqualTo(1));

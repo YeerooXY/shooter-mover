@@ -22,7 +22,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void BuildExecutionPlan_UsesProfileOrderAndMapsToExistingCombatContracts()
         {
-            WeaponRuntimeProfile profile = BuildProfile(
+            WeaponLiveProfile profile = BuildProfile(
                 SpreadModule,
                 ProjectileModule,
                 AutomaticModule);
@@ -98,7 +98,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void BuildExecutionPlan_RejectsUnknownModuleBeforeInvokingAnyModule()
         {
-            WeaponRuntimeProfile profile = BuildProfile(AutomaticModule, MissingModule);
+            WeaponLiveProfile profile = BuildProfile(AutomaticModule, MissingModule);
             SyntheticModule automatic = Module(
                 AutomaticModule,
                 Operation("operation.automatic"));
@@ -170,7 +170,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void BuildExecutionPlan_DeterministicReplayProducesIdenticalPlanAndLog()
         {
-            WeaponRuntimeProfile profile = BuildProfile(AutomaticModule, ProjectileModule);
+            WeaponLiveProfile profile = BuildProfile(AutomaticModule, ProjectileModule);
             WeaponBehaviorPipeline pipeline = new WeaponBehaviorPipeline(
                 new IWeaponBehaviorModule[]
                 {
@@ -205,7 +205,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void BuildExecutionPlan_IsolatesThrowingModuleAndContinuesInOrder()
         {
-            WeaponRuntimeProfile profile = BuildProfile(
+            WeaponLiveProfile profile = BuildProfile(
                 AutomaticModule,
                 FaultingModule,
                 ProjectileModule);
@@ -244,7 +244,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         public void BuildExecutionPlan_DuplicateOperationIdFaultsAtomicModuleContribution()
         {
             StableId laterModuleId = StableId.Parse("behavior.later");
-            WeaponRuntimeProfile profile = BuildProfile(
+            WeaponLiveProfile profile = BuildProfile(
                 AutomaticModule,
                 ProjectileModule,
                 laterModuleId);
@@ -281,7 +281,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         {
             StableId mismatchedModuleId = StableId.Parse("behavior.mismatched");
             StableId nullModuleId = StableId.Parse("behavior.null-plan");
-            WeaponRuntimeProfile profile = BuildProfile(
+            WeaponLiveProfile profile = BuildProfile(
                 mismatchedModuleId,
                 nullModuleId,
                 EmptyModule);
@@ -317,7 +317,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         public void AddingIsolatedSyntheticModule_RequiresOnlyExplicitRegistration()
         {
             StableId novelModuleId = StableId.Parse("behavior.novel-test-module");
-            WeaponRuntimeProfile profile = BuildProfile(novelModuleId);
+            WeaponLiveProfile profile = BuildProfile(novelModuleId);
             SyntheticModule novelModule = Module(
                 novelModuleId,
                 Operation("operation.novel-test-operation"));
@@ -335,7 +335,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void InputAndPlanTypes_AreValidatedImmutableAndEngineFree()
         {
-            WeaponRuntimeProfile profile = BuildProfile(AutomaticModule);
+            WeaponLiveProfile profile = BuildProfile(AutomaticModule);
             WeaponBehaviorInput valid = BuildInput(profile);
 
             Assert.Throws<ArgumentNullException>(
@@ -439,11 +439,11 @@ namespace ShooterMover.Tests.EditMode.Combat
                 Is.False);
         }
 
-        private static WeaponRuntimeProfile BuildProfile(params StableId[] moduleIds)
+        private static WeaponLiveProfile BuildProfile(params StableId[] moduleIds)
         {
             StableId[] copied = (StableId[])moduleIds.Clone();
-            return WeaponRuntimeProfile.Create(
-                WeaponRuntimeProfile.CurrentProfileVersion,
+            return WeaponLiveProfile.Create(
+                WeaponLiveProfile.CurrentProfileVersion,
                 StableId.Parse("weapon-profile.pipeline-fixture"),
                 0.1d,
                 1,
@@ -463,7 +463,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                 0);
         }
 
-        private static WeaponBehaviorInput BuildInput(WeaponRuntimeProfile profile)
+        private static WeaponBehaviorInput BuildInput(WeaponLiveProfile profile)
         {
             return new WeaponBehaviorInput(
                 StableId.Parse("combat-event.pipeline-fixture"),

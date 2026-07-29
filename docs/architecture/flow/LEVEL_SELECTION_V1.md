@@ -4,7 +4,7 @@
 
 `LEVELSEL-002` adds a metadata-driven Level Selection boundary between the
 selected play mode and a destination scene. It consumes the immutable HUB-001
-`PlayerRouteProfilePayloadV1` and a stable selected-mode identity. It does not
+`PlayerRouteProfilePayload` and a stable selected-mode identity. It does not
 create, mutate, or duplicate XP, inventory, equipment, reward, wallet, run, or
 gameplay authority.
 
@@ -16,13 +16,13 @@ gameplay authority.
 - HUB-001 is merged on the launch SHA.
 - PLAY-001 is developed in parallel. Its accepted Solo result exposes
   `SelectedModeStableId` and the exact HUB payload; composition passes those two
-  values to `LevelSelectionControllerV1.Configure(...)` or captures an accepted
-  `LevelSelectionResultV1` through the route context.
+  values to `LevelSelectionController.Configure(...)` or captures an accepted
+  `LevelSelectionResult` through the route context.
 - No PLAY-001 file or route contract is modified or duplicated here.
 
 ## Metadata contract
 
-`LevelSelectionDefinitionV1` carries:
+`LevelSelectionDefinition` carries:
 
 - stable level identity;
 - display name and description;
@@ -33,7 +33,7 @@ gameplay authority.
 - recommended player level, equipment level, party size, and difficulty label;
 - deterministic sort order.
 
-`LevelSelectionCatalogV1` rejects null/empty catalogs, duplicate stable IDs,
+`LevelSelectionCatalog` rejects null/empty catalogs, duplicate stable IDs,
 missing or malformed scene routes, and invalid live/prototype route
 combinations. It sorts definitions by sort order and stable ID, then computes a
 SHA-256 fingerprint over all route-relevant metadata.
@@ -47,8 +47,8 @@ The authored default catalog resolves exactly:
 
 ## Route behavior
 
-`LevelSelectionServiceV1` retains the exact incoming
-`PlayerRouteProfilePayloadV1` reference and selected `StableId` mode identity.
+`LevelSelectionActions` retains the exact incoming
+`PlayerRouteProfilePayload` reference and selected `StableId` mode identity.
 
 - Selecting an unlocked live level emits one `GameplayScene` result.
 - Selecting an unlocked prototype emits one `PrototypeScene` result.
@@ -60,9 +60,9 @@ The authored default catalog resolves exactly:
 - Missing payloads, invalid fingerprints, or missing mode identities fail
   closed. No fallback profile or loadout is created.
 
-`LevelSelectionRouteContextV1.CaptureEntry(...)` lets the PLAY composition seed
+`LevelSelectionRouteContext.CaptureEntry(...)` lets the PLAY composition seed
 Level Selection with the exact immutable HUB payload and selected mode before the
-scene loads. `UnityLevelSelectionRouteAdapterV1` then captures the accepted
+scene loads. `UnityLevelSelectionRouteBridge` then captures the accepted
 outgoing projection (payload, mode identity, and optional level identity) before
 asking the injected scene loader to load the metadata-owned path. The context is not inventory truth
 and exposes no mutation operation.
@@ -73,7 +73,7 @@ and exposes no mutation operation.
 `level_selection.png` backplate. The artwork is passive. Real IMGUI controls,
 labels, availability feedback, prototype state, recommendations, stable IDs,
 and scene routes are rendered as overlays by
-`LevelSelectionControllerV1`.
+`LevelSelectionController`.
 
 `Level2Prototype.unity` is an intentionally bounded placeholder. It is visibly
 labeled **PROTOTYPE**, starts no combat or reward flow, and has a one-shot Back

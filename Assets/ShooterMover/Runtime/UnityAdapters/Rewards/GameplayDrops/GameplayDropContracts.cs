@@ -19,7 +19,7 @@ namespace ShooterMover.UnityAdapters.Rewards.GameplayDrops
     {
         private GameplayDropResolutionResult(
             GameplayDropResolutionStatus status,
-            GameplayDropOperationV1 operation,
+            GameplayDropOperation operation,
             RewardSourceResolvedPreview sourcePreview,
             string diagnostic)
         {
@@ -31,7 +31,7 @@ namespace ShooterMover.UnityAdapters.Rewards.GameplayDrops
 
         public GameplayDropResolutionStatus Status { get; }
 
-        public GameplayDropOperationV1 Operation { get; }
+        public GameplayDropOperation Operation { get; }
 
         public RewardSourceResolvedPreview SourcePreview { get; }
 
@@ -43,7 +43,7 @@ namespace ShooterMover.UnityAdapters.Rewards.GameplayDrops
         }
 
         public static GameplayDropResolutionResult Resolved(
-            GameplayDropOperationV1 operation,
+            GameplayDropOperation operation,
             RewardSourceResolvedPreview sourcePreview)
         {
             return new GameplayDropResolutionResult(
@@ -72,7 +72,7 @@ namespace ShooterMover.UnityAdapters.Rewards.GameplayDrops
     /// Common host-agnostic gameplay-drop boundary. Destructible props, turrets,
     /// droids, bosses, and future sources use this same contract.
     /// </summary>
-    public interface IGameplayDropSourceV1
+    public interface IGameplayDropSource
     {
         GameplayDropResolutionResult ResolveGameplayDrop();
 

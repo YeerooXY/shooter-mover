@@ -12,7 +12,7 @@ The scene contains exactly:
 
 - one explicit test player at the origin;
 - one dynamic `Rigidbody2D` with gravity disabled, continuous collision detection, interpolation, and frozen rotation;
-- the existing `PlayerMovementIntentAdapter`, `MovementContact2DAdapter`, and `MovementActorLifecycle` on that same player object;
+- the existing `PlayerMovementIntentBridge`, `MovementContact2DBridge`, and `MovementActorLifecycle` on that same player object;
 - the accepted MT-007 `ShooterMoverMovement.inputactions` asset referenced directly by the test harness;
 - four non-trigger `BoxCollider2D` walls, each exposing the explicit MT-009 wall-contact contract;
 - one orthographic camera that follows the player without clamping;

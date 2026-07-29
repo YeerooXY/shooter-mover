@@ -27,19 +27,19 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void MigrationPreservesAcceptedReplayHistoryAndStrongboxIdentity()
         {
-            ProductionCharacterRuntimeGraphFactoryV1 factory =
-                ProductionCharacterRuntimeGraphFactoryV1
+            CharacterLiveGraphFactory factory =
+                CharacterLiveGraphFactory
                     .CreateVerticalSliceDefaults();
-            CharacterInstanceSnapshotV1 original = StarterCharacter(
+            CharacterInstanceSnapshot original = StarterCharacter(
                 factory,
                 "replay-history");
-            PlayerHoldingsSnapshotV1 baseHoldings = DecodeHoldings(original);
-            InventoryLoadoutAuthoritySnapshotV1 baseLoadout =
+            PlayerHoldingsSnapshot baseHoldings = DecodeHoldings(original);
+            InventoryLoadoutStateSnapshot baseLoadout =
                 DecodeLoadout(original);
 
-            var adapter = new ProductionEquipmentCatalogAdapterV1(
-                ProductionWeaponCatalogProvider.EquipmentCatalog);
-            var authority = new PlayerHoldingsService(
+            var adapter = new EquipmentCatalogBridge(
+                WeaponCatalogProvider.EquipmentCatalog);
+            var authority = new PlayerHoldingsActions(
                 baseHoldings.AuthorityStableId,
                 baseHoldings.MaximumStackQuantity,
                 adapter);
@@ -52,62 +52,62 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 Id("transaction.test-preserved-current");
             StableId preservedOperation =
                 Id("operation.test-preserved-current");
-            PlayerHoldingsCommandV1 preservedCommand =
-                PlayerHoldingsCommandV1.AddEquipment(
+            PlayerHoldingsCommand preservedCommand =
+                PlayerHoldingsCommand.AddEquipment(
                     preservedTransaction,
                     preservedOperation,
                     authority.AuthorityStableId,
                     preservedEquipment,
-                    HoldingProvenanceV1.Create(
+                    HoldingProvenance.Create(
                         Id("grant.test-preserved-current"),
                         Id("source.test-preserved-current")),
                     authority.Sequence);
-            PlayerHoldingsMutationResultV1 preservedResult =
+            PlayerHoldingsMutationResult preservedResult =
                 authority.Apply(preservedCommand);
             Assert.That(
                 preservedResult.Status,
-                Is.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
+                Is.EqualTo(PlayerHoldingsMutationStatus.Applied));
 
             StableId strongboxInstance =
                 Id("strongbox-instance.test-preserved");
-            PlayerHoldingsMutationResultV1 strongboxResult = authority.Apply(
-                PlayerHoldingsCommandV1.AddStrongbox(
+            PlayerHoldingsMutationResult strongboxResult = authority.Apply(
+                PlayerHoldingsCommand.AddStrongbox(
                     Id("transaction.test-preserved-strongbox"),
                     Id("operation.test-preserved-strongbox"),
                     authority.AuthorityStableId,
                     Id("strongbox.tier-1"),
                     strongboxInstance,
-                    HoldingProvenanceV1.Create(
+                    HoldingProvenance.Create(
                         Id("grant.test-preserved-strongbox"),
                         Id("source.test-preserved-strongbox")),
                     authority.Sequence));
             Assert.That(
                 strongboxResult.Status,
-                Is.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
+                Is.EqualTo(PlayerHoldingsMutationStatus.Applied));
 
-            PlayerHoldingsSnapshotV1 beforeLegacyInjection =
+            PlayerHoldingsSnapshot beforeLegacyInjection =
                 authority.ExportSnapshot();
             long sequenceBeforeMigration = authority.Sequence;
             string preservedStrongboxFingerprint = beforeLegacyInjection
                 .UniqueHoldings.Single(item =>
                     item.InstanceStableId == strongboxInstance).Fingerprint;
 
-            PlayerHoldingsSnapshotV1 legacyHoldings =
+            PlayerHoldingsSnapshot legacyHoldings =
                 AddRetiredHolding(beforeLegacyInjection);
-            CharacterInstanceSnapshotV1 legacy = WithInventory(
+            CharacterInstanceSnapshot legacy = WithInventory(
                 original,
                 legacyHoldings,
                 BindFirstWeapon(baseLoadout, RetiredInstance));
-            PlayerAccountSnapshotV1 account = Account(legacy);
+            PlayerAccountSnapshot account = Account(legacy);
 
-            RetiredWeaponSaveMigrationResultV1 migration =
-                RetiredWeaponSaveMigrationV1.Migrate(
+            RetiredWeaponSaveMigrationResult migration =
+                RetiredWeaponSaveMigration.Migrate(
                     account,
                     () => Id("equipment-instance.test-migration-replacement"));
 
             Assert.That(migration.Succeeded, Is.True, migration.Diagnostic);
             Assert.That(migration.Changed, Is.True);
-            PlayerHoldingsSnapshotV1 migrated = DecodeHoldings(
+            PlayerHoldingsSnapshot migrated = DecodeHoldings(
                 migration.Account.CharacterAt(0));
             Assert.That(
                 migrated.UniqueHoldings.Any(item =>
@@ -118,7 +118,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     item.InstanceStableId == strongboxInstance).Fingerprint,
                 Is.EqualTo(preservedStrongboxFingerprint));
 
-            var restored = new PlayerHoldingsService(
+            var restored = new PlayerHoldingsActions(
                 migrated.AuthorityStableId,
                 migrated.MaximumStackQuantity,
                 adapter);
@@ -131,60 +131,60 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 restored.Sequence,
                 Is.GreaterThanOrEqualTo(sequenceBeforeMigration));
 
-            PlayerHoldingsMutationResultV1 replay =
+            PlayerHoldingsMutationResult replay =
                 restored.Apply(preservedCommand);
             Assert.That(
                 replay.Status,
                 Is.EqualTo(
-                    PlayerHoldingsMutationStatusV1.ExactDuplicateNoChange));
+                    PlayerHoldingsMutationStatus.ExactDuplicateNoChange));
 
             EquipmentInstance conflictEquipment = CurrentWeapon(
                 "equipment-instance.test-conflicting-replay");
-            PlayerHoldingsCommandV1 conflict =
-                PlayerHoldingsCommandV1.AddEquipment(
+            PlayerHoldingsCommand conflict =
+                PlayerHoldingsCommand.AddEquipment(
                     Id("transaction.test-conflicting-replay"),
                     preservedOperation,
                     restored.AuthorityStableId,
                     conflictEquipment,
-                    HoldingProvenanceV1.Create(
+                    HoldingProvenance.Create(
                         Id("grant.test-conflicting-replay"),
                         Id("source.test-conflicting-replay")),
                     restored.Sequence);
-            PlayerHoldingsMutationResultV1 conflictResult =
+            PlayerHoldingsMutationResult conflictResult =
                 restored.Apply(conflict);
             Assert.That(
                 conflictResult.Status,
-                Is.Not.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
+                Is.Not.EqualTo(PlayerHoldingsMutationStatus.Applied));
             Assert.That(
                 conflictResult.Status,
                 Is.Not.EqualTo(
-                    PlayerHoldingsMutationStatusV1.ExactDuplicateNoChange));
+                    PlayerHoldingsMutationStatus.ExactDuplicateNoChange));
         }
 
         [Test]
         public void MigrationFailureReturnsTheOriginalAccountUnchanged()
         {
-            ProductionCharacterRuntimeGraphFactoryV1 factory =
-                ProductionCharacterRuntimeGraphFactoryV1
+            CharacterLiveGraphFactory factory =
+                CharacterLiveGraphFactory
                     .CreateVerticalSliceDefaults();
-            CharacterInstanceSnapshotV1 original = StarterCharacter(
+            CharacterInstanceSnapshot original = StarterCharacter(
                 factory,
                 "atomic-failure");
-            PlayerHoldingsSnapshotV1 holdings = DecodeHoldings(original);
-            InventoryLoadoutAuthoritySnapshotV1 loadout =
+            PlayerHoldingsSnapshot holdings = DecodeHoldings(original);
+            InventoryLoadoutStateSnapshot loadout =
                 DecodeLoadout(original);
             StableId existingInstance = holdings.UniqueHoldings
                 .First(item => item.RewardKind
-                    == RewardGrantKindV1.EquipmentReference)
+                    == RewardGrantKind.EquipmentReference)
                 .InstanceStableId;
-            CharacterInstanceSnapshotV1 legacy = WithInventory(
+            CharacterInstanceSnapshot legacy = WithInventory(
                 original,
                 AddRetiredHolding(holdings),
                 BindFirstWeapon(loadout, RetiredInstance));
-            PlayerAccountSnapshotV1 account = Account(legacy);
+            PlayerAccountSnapshot account = Account(legacy);
 
-            RetiredWeaponSaveMigrationResultV1 result =
-                RetiredWeaponSaveMigrationV1.Migrate(
+            RetiredWeaponSaveMigrationResult result =
+                RetiredWeaponSaveMigration.Migrate(
                     account,
                     () => existingInstance);
 
@@ -196,30 +196,30 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 Is.EqualTo(account.Fingerprint));
         }
 
-        private static CharacterInstanceSnapshotV1 StarterCharacter(
-            ProductionCharacterRuntimeGraphFactoryV1 factory,
+        private static CharacterInstanceSnapshot StarterCharacter(
+            CharacterLiveGraphFactory factory,
             string suffix)
         {
             StableId characterId = Id("character-instance." + suffix);
             StableId classId = Id(
-                ProductionWeaponMountPolicyV1.AggressiveLoadoutProfileId);
-            PlayerRouteProfilePayloadV1 route =
-                PlayerRouteProfilePayloadV1.Create(
+                WeaponMountPolicy.AggressiveLoadoutProfileId);
+            PlayerRouteProfilePayload route =
+                PlayerRouteProfilePayload.Create(
                     characterId,
                     classId,
                     new StableId[
-                        PlayerRouteProfilePayloadV1.WeaponSlotCount]);
-            ICharacterRuntimeGraphV1 graph = factory.CreateStarter(
+                        PlayerRouteProfilePayload.WeaponSlotCount]);
+            ICharacterLiveGraph graph = factory.CreateStarter(
                 0,
                 characterId,
                 classId,
                 suffix,
                 route);
-            IReadOnlyList<SaveComponentSnapshotV1> components =
-                PlayerAccountRestoreCoordinatorV1.ExportComponents(
+            IReadOnlyList<SaveComponentSnapshot> components =
+                PlayerAccountRestoreFlow.ExportComponents(
                     graph.SaveAdapters);
             graph.Dispose();
-            return new CharacterInstanceSnapshotV1(
+            return new CharacterInstanceSnapshot(
                 characterId,
                 classId,
                 0,
@@ -231,7 +231,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         private static EquipmentInstance CurrentWeapon(string instanceId)
         {
             EquipmentDefinition definition =
-                ProductionWeaponCatalogProvider.EquipmentCatalog
+                WeaponCatalogProvider.EquipmentCatalog
                     .FindEquipmentDefinition(
                         Id("equipment.weapon-rattler-mk1"));
             Assert.That(definition, Is.Not.Null);
@@ -243,10 +243,10 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 Array.Empty<AugmentInstance>());
         }
 
-        private static PlayerHoldingsSnapshotV1 AddRetiredHolding(
-            PlayerHoldingsSnapshotV1 source)
+        private static PlayerHoldingsSnapshot AddRetiredHolding(
+            PlayerHoldingsSnapshot source)
         {
-            var unique = new List<UniqueHoldingSnapshotV1>(
+            var unique = new List<UniqueHoldingSnapshot>(
                 source.UniqueHoldings);
             EquipmentInstance equipment = EquipmentInstance.Create(
                 RetiredInstance,
@@ -254,15 +254,15 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 1,
                 Id("equipment-quality.common"),
                 Array.Empty<AugmentInstance>());
-            unique.Add(UniqueHoldingSnapshotV1.Create(
-                RewardGrantKindV1.EquipmentReference,
+            unique.Add(UniqueHoldingSnapshot.Create(
+                RewardGrantKind.EquipmentReference,
                 RetiredDefinition,
                 RetiredInstance,
                 equipment,
-                HoldingProvenanceV1.Create(
+                HoldingProvenance.Create(
                     Id("grant.test-retired-replay"),
                     Id("source.test-retired-replay"))));
-            return PlayerHoldingsSnapshotV1.CreateCanonical(
+            return PlayerHoldingsSnapshot.CreateCanonical(
                 source.SchemaVersion,
                 source.AuthorityStableId,
                 source.MaximumStackQuantity,
@@ -272,40 +272,40 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 source.Transactions);
         }
 
-        private static InventoryLoadoutAuthoritySnapshotV1 BindFirstWeapon(
-            InventoryLoadoutAuthoritySnapshotV1 source,
+        private static InventoryLoadoutStateSnapshot BindFirstWeapon(
+            InventoryLoadoutStateSnapshot source,
             StableId instanceStableId)
         {
             var bindings = source.Bindings.Select(item =>
-                new InventoryLoadoutSlotBindingV1(
+                new InventoryLoadoutSlotBinding(
                     item.SlotStableId,
-                    item.SlotStableId == InventoryLoadoutSlotIdsV1.WeaponOne
+                    item.SlotStableId == InventoryLoadoutSlotIds.WeaponOne
                         ? instanceStableId
                         : item.EquipmentInstanceStableId)).ToArray();
-            return InventoryLoadoutAuthoritySnapshotV1.CreateCanonical(
+            return InventoryLoadoutStateSnapshot.CreateCanonical(
                 source.Sequence + 1L,
                 bindings);
         }
 
-        private static CharacterInstanceSnapshotV1 WithInventory(
-            CharacterInstanceSnapshotV1 character,
-            PlayerHoldingsSnapshotV1 holdings,
-            InventoryLoadoutAuthoritySnapshotV1 loadout)
+        private static CharacterInstanceSnapshot WithInventory(
+            CharacterInstanceSnapshot character,
+            PlayerHoldingsSnapshot holdings,
+            InventoryLoadoutStateSnapshot loadout)
         {
             var components = character.Components.Values.ToDictionary(
                 item => item.ComponentStableId,
                 item => item);
-            SaveComponentDefinitionV1 holdingsDefinition =
-                KnownSaveComponentDefinitionsV1.PlayerHoldings();
-            SaveComponentDefinitionV1 loadoutDefinition =
-                KnownSaveComponentDefinitionsV1.ExactInstanceLoadout();
+            SaveComponentDefinition holdingsDefinition =
+                KnownSaveComponentDefinitions.PlayerHoldings();
+            SaveComponentDefinition loadoutDefinition =
+                KnownSaveComponentDefinitions.ExactInstanceLoadout();
             components[holdingsDefinition.ComponentStableId] = Component(
                 holdingsDefinition,
-                KnownSaveComponentCodecsV1.PlayerHoldings.Encode(holdings));
+                KnownSaveComponentCodecs.PlayerHoldings.Encode(holdings));
             components[loadoutDefinition.ComponentStableId] = Component(
                 loadoutDefinition,
-                KnownSaveComponentCodecsV1.ExactInstanceLoadout.Encode(loadout));
-            return new CharacterInstanceSnapshotV1(
+                KnownSaveComponentCodecs.ExactInstanceLoadout.Encode(loadout));
+            return new CharacterInstanceSnapshot(
                 character.CharacterInstanceStableId,
                 character.ClassDefinitionStableId,
                 character.SlotIndex,
@@ -314,16 +314,16 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 components.Values);
         }
 
-        private static PlayerHoldingsSnapshotV1 DecodeHoldings(
-            CharacterInstanceSnapshotV1 character)
+        private static PlayerHoldingsSnapshot DecodeHoldings(
+            CharacterInstanceSnapshot character)
         {
-            SaveComponentSnapshotV1 component = character.Components[
-                KnownSaveComponentDefinitionsV1.PlayerHoldings()
+            SaveComponentSnapshot component = character.Components[
+                KnownSaveComponentDefinitions.PlayerHoldings()
                     .ComponentStableId];
-            PlayerHoldingsSnapshotV1 snapshot;
+            PlayerHoldingsSnapshot snapshot;
             string rejection;
             Assert.That(
-                KnownSaveComponentCodecsV1.PlayerHoldings.TryDecode(
+                KnownSaveComponentCodecs.PlayerHoldings.TryDecode(
                     component.CanonicalPayload,
                     out snapshot,
                     out rejection),
@@ -332,16 +332,16 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             return snapshot;
         }
 
-        private static InventoryLoadoutAuthoritySnapshotV1 DecodeLoadout(
-            CharacterInstanceSnapshotV1 character)
+        private static InventoryLoadoutStateSnapshot DecodeLoadout(
+            CharacterInstanceSnapshot character)
         {
-            SaveComponentSnapshotV1 component = character.Components[
-                KnownSaveComponentDefinitionsV1.ExactInstanceLoadout()
+            SaveComponentSnapshot component = character.Components[
+                KnownSaveComponentDefinitions.ExactInstanceLoadout()
                     .ComponentStableId];
-            InventoryLoadoutAuthoritySnapshotV1 snapshot;
+            InventoryLoadoutStateSnapshot snapshot;
             string rejection;
             Assert.That(
-                KnownSaveComponentCodecsV1.ExactInstanceLoadout.TryDecode(
+                KnownSaveComponentCodecs.ExactInstanceLoadout.TryDecode(
                     component.CanonicalPayload,
                     out snapshot,
                     out rejection),
@@ -350,24 +350,24 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             return snapshot;
         }
 
-        private static SaveComponentSnapshotV1 Component(
-            SaveComponentDefinitionV1 definition,
+        private static SaveComponentSnapshot Component(
+            SaveComponentDefinition definition,
             string payload)
         {
-            return new SaveComponentSnapshotV1(
+            return new SaveComponentSnapshot(
                 definition.ComponentStableId,
                 definition.SchemaVersion,
                 definition.ContentVersion,
                 payload);
         }
 
-        private static PlayerAccountSnapshotV1 Account(
-            CharacterInstanceSnapshotV1 character)
+        private static PlayerAccountSnapshot Account(
+            CharacterInstanceSnapshot character)
         {
-            var slots = new CharacterInstanceSnapshotV1[
-                PlayerAccountSnapshotV1.CharacterSlotCount];
+            var slots = new CharacterInstanceSnapshot[
+                PlayerAccountSnapshot.CharacterSlotCount];
             slots[0] = character;
-            return new PlayerAccountSnapshotV1(
+            return new PlayerAccountSnapshot(
                 Id("account.retired-weapon-replay-test"),
                 0L,
                 slots,

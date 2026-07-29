@@ -15,37 +15,37 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
         [Test]
         public void RewardProfile_MoneyOnly_IsRepresentable()
         {
-            RewardProfileV1 profile = RewardProfileV1.Create(
+            RewardProfile profile = RewardProfile.Create(
                 Id("reward-profile.money-only"),
                 new[]
                 {
-                    FixedGrant("grant.money", RewardGrantKindV1.Money, "currency.money", 125L),
+                    FixedGrant("grant.money", RewardGrantKind.Money, "currency.money", 125L),
                 },
-                Array.Empty<IndependentRewardRollV1>(),
-                Array.Empty<ExclusiveRewardGroupV1>());
+                Array.Empty<IndependentRewardRoll>(),
+                Array.Empty<ExclusiveRewardGroup>());
 
-            Assert.That(profile.Disposition, Is.EqualTo(RewardProfileDispositionV1.Configured));
+            Assert.That(profile.Disposition, Is.EqualTo(RewardProfileDisposition.Configured));
             Assert.That(profile.GuaranteedEntries.Count, Is.EqualTo(1));
-            Assert.That(profile.GuaranteedEntries[0].Kind, Is.EqualTo(RewardGrantKindV1.Money));
+            Assert.That(profile.GuaranteedEntries[0].Kind, Is.EqualTo(RewardGrantKind.Money));
         }
 
         [Test]
         public void RewardProfile_StrongboxOnly_IsRepresentable()
         {
-            RewardProfileV1 profile = RewardProfileV1.Create(
+            RewardProfile profile = RewardProfile.Create(
                 Id("reward-profile.strongbox-only"),
                 new[]
                 {
                     FixedGrant(
                         "grant.strongbox",
-                        RewardGrantKindV1.Strongbox,
+                        RewardGrantKind.Strongbox,
                         "strongbox-definition.tier-three",
                         1L),
                 },
-                Array.Empty<IndependentRewardRollV1>(),
-                Array.Empty<ExclusiveRewardGroupV1>());
+                Array.Empty<IndependentRewardRoll>(),
+                Array.Empty<ExclusiveRewardGroup>());
 
-            Assert.That(profile.GuaranteedEntries[0].Kind, Is.EqualTo(RewardGrantKindV1.Strongbox));
+            Assert.That(profile.GuaranteedEntries[0].Kind, Is.EqualTo(RewardGrantKind.Strongbox));
             Assert.That(
                 profile.GuaranteedEntries[0].ContentStableId,
                 Is.EqualTo(Id("strongbox-definition.tier-three")));
@@ -54,46 +54,46 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
         [Test]
         public void RewardProfile_MiscAndPremiumAmmoOnly_IsRepresentable()
         {
-            RewardProfileV1 profile = RewardProfileV1.Create(
+            RewardProfile profile = RewardProfile.Create(
                 Id("reward-profile.misc-ammo-only"),
                 new[]
                 {
                     FixedGrant(
                         "grant.misc",
-                        RewardGrantKindV1.Miscellaneous,
+                        RewardGrantKind.Miscellaneous,
                         "item.repair-token",
                         2L),
                     FixedGrant(
                         "grant.premium-ammo",
-                        RewardGrantKindV1.PremiumAmmo,
+                        RewardGrantKind.PremiumAmmo,
                         "item.premium-ammo",
                         8L),
                 },
-                Array.Empty<IndependentRewardRollV1>(),
-                Array.Empty<ExclusiveRewardGroupV1>());
+                Array.Empty<IndependentRewardRoll>(),
+                Array.Empty<ExclusiveRewardGroup>());
 
             Assert.That(profile.GuaranteedEntries.Count, Is.EqualTo(2));
             Assert.That(
                 profile.GuaranteedEntries[0].Kind,
-                Is.EqualTo(RewardGrantKindV1.Miscellaneous));
+                Is.EqualTo(RewardGrantKind.Miscellaneous));
             Assert.That(
                 profile.GuaranteedEntries[1].Kind,
-                Is.EqualTo(RewardGrantKindV1.PremiumAmmo));
+                Is.EqualTo(RewardGrantKind.PremiumAmmo));
         }
 
         [Test]
         public void RewardProfile_MixedKinds_AreRepresentableWithoutProductSpecificType()
         {
-            RewardGrantKindV1[] kinds =
+            RewardGrantKind[] kinds =
             {
-                RewardGrantKindV1.Money,
-                RewardGrantKindV1.Scrap,
-                RewardGrantKindV1.Strongbox,
-                RewardGrantKindV1.EquipmentReference,
-                RewardGrantKindV1.PremiumAmmo,
-                RewardGrantKindV1.Miscellaneous,
+                RewardGrantKind.Money,
+                RewardGrantKind.Scrap,
+                RewardGrantKind.Strongbox,
+                RewardGrantKind.EquipmentReference,
+                RewardGrantKind.PremiumAmmo,
+                RewardGrantKind.Miscellaneous,
             };
-            RewardGrantSpecificationV1[] grants = new RewardGrantSpecificationV1[kinds.Length];
+            RewardGrantSpecification[] grants = new RewardGrantSpecification[kinds.Length];
             for (int index = 0; index < kinds.Length; index++)
             {
                 grants[index] = FixedGrant(
@@ -103,11 +103,11 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
                     1L);
             }
 
-            RewardProfileV1 profile = RewardProfileV1.Create(
+            RewardProfile profile = RewardProfile.Create(
                 Id("reward-profile.mixed"),
                 grants,
-                Array.Empty<IndependentRewardRollV1>(),
-                Array.Empty<ExclusiveRewardGroupV1>());
+                Array.Empty<IndependentRewardRoll>(),
+                Array.Empty<ExclusiveRewardGroup>());
 
             Assert.That(profile.GuaranteedEntries.Count, Is.EqualTo(kinds.Length));
         }
@@ -115,33 +115,33 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
         [Test]
         public void RewardProfile_GuaranteedIndependentAndExclusive_Coexist()
         {
-            RewardGrantSpecificationV1 guaranteed = FixedGrant(
+            RewardGrantSpecification guaranteed = FixedGrant(
                 "grant.guaranteed-money",
-                RewardGrantKindV1.Money,
+                RewardGrantKind.Money,
                 "currency.money",
                 10L);
-            IndependentRewardRollV1 independent = IndependentRewardRollV1.Create(
+            IndependentRewardRoll independent = IndependentRewardRoll.Create(
                 Id("reward-roll.scrap"),
                 250000,
-                FixedGrant("grant.scrap", RewardGrantKindV1.Scrap, "currency.scrap", 3L));
-            ExclusiveRewardGroupV1 exclusive = ExclusiveRewardGroupV1.Create(
+                FixedGrant("grant.scrap", RewardGrantKind.Scrap, "currency.scrap", 3L));
+            ExclusiveRewardGroup exclusive = ExclusiveRewardGroup.Create(
                 Id("reward-group.side-reward"),
                 new[]
                 {
-                    WeightedRewardOutcomeV1.CreateGrant(
+                    WeightedRewardOutcome.CreateGrant(
                         Id("reward-outcome.equipment"),
                         2L,
                         FixedGrant(
                             "grant.equipment",
-                            RewardGrantKindV1.EquipmentReference,
+                            RewardGrantKind.EquipmentReference,
                             "equipment-definition.blaster",
                             1L)),
-                    WeightedRewardOutcomeV1.CreateExplicitNoDrop(
+                    WeightedRewardOutcome.CreateExplicitNoDrop(
                         Id("reward-outcome.no-drop"),
                         3L),
                 });
 
-            RewardProfileV1 profile = RewardProfileV1.Create(
+            RewardProfile profile = RewardProfile.Create(
                 Id("reward-profile.combined"),
                 new[] { guaranteed },
                 new[] { independent },
@@ -152,49 +152,49 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
             Assert.That(profile.ExclusiveGroups.Count, Is.EqualTo(1));
             Assert.That(
                 profile.ExclusiveGroups[0].Outcomes[1].Kind,
-                Is.EqualTo(WeightedRewardOutcomeKindV1.ExplicitNoDrop));
+                Is.EqualTo(WeightedRewardOutcomeKind.ExplicitNoDrop));
         }
 
         [Test]
         public void RewardProfile_ExplicitNoDrop_IsDistinctFromAccidentalEmptyConfiguration()
         {
-            RewardProfileV1 noDrop = RewardProfileV1.CreateExplicitNoDrop(
+            RewardProfile noDrop = RewardProfile.CreateExplicitNoDrop(
                 Id("reward-profile.no-drop"));
 
-            Assert.That(noDrop.Disposition, Is.EqualTo(RewardProfileDispositionV1.ExplicitNoDrop));
+            Assert.That(noDrop.Disposition, Is.EqualTo(RewardProfileDisposition.ExplicitNoDrop));
             Assert.That(noDrop.GuaranteedEntries, Is.Empty);
             Assert.Throws<ArgumentException>(
-                () => RewardProfileV1.Create(
+                () => RewardProfile.Create(
                     Id("reward-profile.accidental-empty"),
-                    Array.Empty<RewardGrantSpecificationV1>(),
-                    Array.Empty<IndependentRewardRollV1>(),
-                    Array.Empty<ExclusiveRewardGroupV1>()));
+                    Array.Empty<RewardGrantSpecification>(),
+                    Array.Empty<IndependentRewardRoll>(),
+                    Array.Empty<ExclusiveRewardGroup>()));
         }
 
         [Test]
         public void RewardProfile_CanonicalFingerprint_IsStableAcrossInputOrder()
         {
-            RewardGrantSpecificationV1 money = FixedGrant(
+            RewardGrantSpecification money = FixedGrant(
                 "grant.money",
-                RewardGrantKindV1.Money,
+                RewardGrantKind.Money,
                 "currency.money",
                 10L);
-            RewardGrantSpecificationV1 scrap = FixedGrant(
+            RewardGrantSpecification scrap = FixedGrant(
                 "grant.scrap",
-                RewardGrantKindV1.Scrap,
+                RewardGrantKind.Scrap,
                 "currency.scrap",
                 4L);
 
-            RewardProfileV1 first = RewardProfileV1.Create(
+            RewardProfile first = RewardProfile.Create(
                 Id("reward-profile.order-stable"),
                 new[] { money, scrap },
-                Array.Empty<IndependentRewardRollV1>(),
-                Array.Empty<ExclusiveRewardGroupV1>());
-            RewardProfileV1 second = RewardProfileV1.Create(
+                Array.Empty<IndependentRewardRoll>(),
+                Array.Empty<ExclusiveRewardGroup>());
+            RewardProfile second = RewardProfile.Create(
                 Id("reward-profile.order-stable"),
                 new[] { scrap, money },
-                Array.Empty<IndependentRewardRollV1>(),
-                Array.Empty<ExclusiveRewardGroupV1>());
+                Array.Empty<IndependentRewardRoll>(),
+                Array.Empty<ExclusiveRewardGroup>());
 
             Assert.That(first, Is.EqualTo(second));
             Assert.That(first.Fingerprint, Is.EqualTo(second.Fingerprint));
@@ -204,45 +204,45 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
         [Test]
         public void RewardGrantFingerprint_ChangesWithIdentityContentQuantityOrScalingInput()
         {
-            RewardGrantSpecificationV1 baseline = RewardGrantSpecificationV1.Create(
+            RewardGrantSpecification baseline = RewardGrantSpecification.Create(
                 Id("grant.scaled"),
-                RewardGrantKindV1.Money,
+                RewardGrantKind.Money,
                 Id("currency.money"),
-                RewardQuantityRangeV1.Create(5L, 10L),
+                RewardQuantityRange.Create(5L, 10L),
                 new[]
                 {
-                    RewardScalingInputDescriptorV1.Create(
+                    RewardScalingInputDescriptor.Create(
                         Id("scaling-input.character-level"),
-                        RewardScalingInputKindV1.CharacterLevel),
+                        RewardScalingInputKind.CharacterLevel),
                 });
-            RewardGrantSpecificationV1 changedIdentity = RewardGrantSpecificationV1.Create(
+            RewardGrantSpecification changedIdentity = RewardGrantSpecification.Create(
                 Id("grant.changed"),
                 baseline.Kind,
                 baseline.ContentStableId,
                 baseline.Quantity,
                 baseline.ScalingInputs);
-            RewardGrantSpecificationV1 changedContent = RewardGrantSpecificationV1.Create(
+            RewardGrantSpecification changedContent = RewardGrantSpecification.Create(
                 baseline.GrantStableId,
                 baseline.Kind,
                 Id("currency.scrap"),
                 baseline.Quantity,
                 baseline.ScalingInputs);
-            RewardGrantSpecificationV1 changedQuantity = RewardGrantSpecificationV1.Create(
+            RewardGrantSpecification changedQuantity = RewardGrantSpecification.Create(
                 baseline.GrantStableId,
                 baseline.Kind,
                 baseline.ContentStableId,
-                RewardQuantityRangeV1.Create(5L, 11L),
+                RewardQuantityRange.Create(5L, 11L),
                 baseline.ScalingInputs);
-            RewardGrantSpecificationV1 changedScaling = RewardGrantSpecificationV1.Create(
+            RewardGrantSpecification changedScaling = RewardGrantSpecification.Create(
                 baseline.GrantStableId,
                 baseline.Kind,
                 baseline.ContentStableId,
                 baseline.Quantity,
                 new[]
                 {
-                    RewardScalingInputDescriptorV1.Create(
+                    RewardScalingInputDescriptor.Create(
                         Id("scaling-input.region-level"),
-                        RewardScalingInputKindV1.RegionLevel),
+                        RewardScalingInputKind.RegionLevel),
                 });
 
             Assert.That(changedIdentity.Fingerprint, Is.Not.EqualTo(baseline.Fingerprint));
@@ -255,21 +255,21 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
         public void RewardProfile_MalformedQuantitiesProbabilitiesAndWeights_AreRejected()
         {
             Assert.Throws<ArgumentOutOfRangeException>(
-                () => RewardQuantityRangeV1.Create(0L, 1L));
+                () => RewardQuantityRange.Create(0L, 1L));
             Assert.Throws<ArgumentOutOfRangeException>(
-                () => RewardQuantityRangeV1.Create(2L, 1L));
+                () => RewardQuantityRange.Create(2L, 1L));
             Assert.Throws<ArgumentOutOfRangeException>(
-                () => IndependentRewardRollV1.Create(
+                () => IndependentRewardRoll.Create(
                     Id("reward-roll.invalid"),
                     0,
-                    FixedGrant("grant.roll", RewardGrantKindV1.Money, "currency.money", 1L)));
+                    FixedGrant("grant.roll", RewardGrantKind.Money, "currency.money", 1L)));
             Assert.Throws<ArgumentOutOfRangeException>(
-                () => IndependentRewardRollV1.Create(
+                () => IndependentRewardRoll.Create(
                     Id("reward-roll.invalid-high"),
-                    IndependentRewardRollV1.ProbabilityScale + 1,
-                    FixedGrant("grant.roll-high", RewardGrantKindV1.Money, "currency.money", 1L)));
+                    IndependentRewardRoll.ProbabilityScale + 1,
+                    FixedGrant("grant.roll-high", RewardGrantKind.Money, "currency.money", 1L)));
             Assert.Throws<ArgumentOutOfRangeException>(
-                () => WeightedRewardOutcomeV1.CreateExplicitNoDrop(
+                () => WeightedRewardOutcome.CreateExplicitNoDrop(
                     Id("reward-outcome.invalid"),
                     0L));
         }
@@ -277,69 +277,69 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
         [Test]
         public void RewardProfile_DuplicateGrantIdentitiesAcrossSections_AreRejected()
         {
-            RewardGrantSpecificationV1 guaranteed = FixedGrant(
+            RewardGrantSpecification guaranteed = FixedGrant(
                 "grant.duplicate",
-                RewardGrantKindV1.Money,
+                RewardGrantKind.Money,
                 "currency.money",
                 1L);
-            IndependentRewardRollV1 independent = IndependentRewardRollV1.Create(
+            IndependentRewardRoll independent = IndependentRewardRoll.Create(
                 Id("reward-roll.duplicate"),
                 500000,
                 FixedGrant(
                     "grant.duplicate",
-                    RewardGrantKindV1.Scrap,
+                    RewardGrantKind.Scrap,
                     "currency.scrap",
                     1L));
 
             Assert.Throws<ArgumentException>(
-                () => RewardProfileV1.Create(
+                () => RewardProfile.Create(
                     Id("reward-profile.duplicate"),
                     new[] { guaranteed },
                     new[] { independent },
-                    Array.Empty<ExclusiveRewardGroupV1>()));
+                    Array.Empty<ExclusiveRewardGroup>()));
         }
 
         [Test]
         public void RewardSourceOverride_AllModesResolveDeterministically()
         {
-            RewardProfileV1 inherited = RewardProfileV1.Create(
+            RewardProfile inherited = RewardProfile.Create(
                 Id("reward-profile.default"),
                 new[]
                 {
-                    FixedGrant("grant.default", RewardGrantKindV1.Money, "currency.money", 5L),
+                    FixedGrant("grant.default", RewardGrantKind.Money, "currency.money", 5L),
                 },
-                Array.Empty<IndependentRewardRollV1>(),
-                Array.Empty<ExclusiveRewardGroupV1>());
-            RewardProfileV1 replacement = RewardProfileV1.Create(
+                Array.Empty<IndependentRewardRoll>(),
+                Array.Empty<ExclusiveRewardGroup>());
+            RewardProfile replacement = RewardProfile.Create(
                 Id("reward-profile.replacement"),
                 new[]
                 {
                     FixedGrant(
                         "grant.replacement",
-                        RewardGrantKindV1.Strongbox,
+                        RewardGrantKind.Strongbox,
                         "strongbox-definition.tier-one",
                         1L),
                 },
-                Array.Empty<IndependentRewardRollV1>(),
-                Array.Empty<ExclusiveRewardGroupV1>());
-            RewardGrantSpecificationV1 appended = FixedGrant(
+                Array.Empty<IndependentRewardRoll>(),
+                Array.Empty<ExclusiveRewardGroup>());
+            RewardGrantSpecification appended = FixedGrant(
                 "grant.appended",
-                RewardGrantKindV1.Scrap,
+                RewardGrantKind.Scrap,
                 "currency.scrap",
                 2L);
 
-            RewardSourceOverrideV1 inherit = RewardSourceOverrideV1.Inherit(
+            RewardSourceOverride inherit = RewardSourceOverride.Inherit(
                 Id("reward-override.inherit"),
                 Id("source.crate-a"));
-            RewardSourceOverrideV1 noReward = RewardSourceOverrideV1.NoReward(
+            RewardSourceOverride noReward = RewardSourceOverride.NoReward(
                 Id("reward-override.none"),
                 Id("source.crate-a"),
                 Id("reward-profile.resolved-none"));
-            RewardSourceOverrideV1 replace = RewardSourceOverrideV1.ReplaceEntirely(
+            RewardSourceOverride replace = RewardSourceOverride.ReplaceEntirely(
                 Id("reward-override.replace"),
                 Id("source.crate-a"),
                 replacement);
-            RewardSourceOverrideV1 append = RewardSourceOverrideV1.AppendGuaranteedEntries(
+            RewardSourceOverride append = RewardSourceOverride.AppendGuaranteedEntries(
                 Id("reward-override.append"),
                 Id("source.crate-a"),
                 Id("reward-profile.resolved-append"),
@@ -348,10 +348,10 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
             Assert.That(inherit.Resolve(inherited), Is.SameAs(inherited));
             Assert.That(
                 noReward.Resolve(inherited).Disposition,
-                Is.EqualTo(RewardProfileDispositionV1.ExplicitNoDrop));
+                Is.EqualTo(RewardProfileDisposition.ExplicitNoDrop));
             Assert.That(replace.Resolve(inherited), Is.SameAs(replacement));
-            RewardProfileV1 appendedFirst = append.Resolve(inherited);
-            RewardProfileV1 appendedSecond = append.Resolve(inherited);
+            RewardProfile appendedFirst = append.Resolve(inherited);
+            RewardProfile appendedSecond = append.Resolve(inherited);
             Assert.That(appendedFirst.GuaranteedEntries.Count, Is.EqualTo(2));
             Assert.That(appendedFirst.Fingerprint, Is.EqualTo(appendedSecond.Fingerprint));
         }
@@ -359,17 +359,17 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
         [Test]
         public void RewardSourceOverride_AppendDuplicateGrantIdentity_IsRejectedDuringResolution()
         {
-            RewardGrantSpecificationV1 grant = FixedGrant(
+            RewardGrantSpecification grant = FixedGrant(
                 "grant.same",
-                RewardGrantKindV1.Money,
+                RewardGrantKind.Money,
                 "currency.money",
                 1L);
-            RewardProfileV1 inherited = RewardProfileV1.Create(
+            RewardProfile inherited = RewardProfile.Create(
                 Id("reward-profile.default-duplicate"),
                 new[] { grant },
-                Array.Empty<IndependentRewardRollV1>(),
-                Array.Empty<ExclusiveRewardGroupV1>());
-            RewardSourceOverrideV1 append = RewardSourceOverrideV1.AppendGuaranteedEntries(
+                Array.Empty<IndependentRewardRoll>(),
+                Array.Empty<ExclusiveRewardGroup>());
+            RewardSourceOverride append = RewardSourceOverride.AppendGuaranteedEntries(
                 Id("reward-override.append-duplicate"),
                 Id("source.crate-b"),
                 Id("reward-profile.append-duplicate"),
@@ -381,64 +381,64 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
         [Test]
         public void RewardOperationIdentity_SamePayloadIsExactDuplicate_ChangedPayloadIsConflict()
         {
-            RewardOperationRequestV1 baseline = OperationRequest(
+            RewardOperationRequest baseline = OperationRequest(
                 "source-operation.drop-a",
                 "reward-profile.default");
-            RewardOperationRequestV1 exact = OperationRequest(
+            RewardOperationRequest exact = OperationRequest(
                 "source-operation.drop-a",
                 "reward-profile.default");
-            RewardOperationRequestV1 conflict = OperationRequest(
+            RewardOperationRequest conflict = OperationRequest(
                 "source-operation.drop-a",
                 "reward-profile.changed");
-            RewardOperationRequestV1 distinct = OperationRequest(
+            RewardOperationRequest distinct = OperationRequest(
                 "source-operation.drop-b",
                 "reward-profile.default");
 
             Assert.That(
-                RewardOperationIdentityV1.Classify(baseline, exact),
-                Is.EqualTo(RewardOperationIdentityComparisonV1.ExactDuplicateNoChange));
+                RewardOperationIdentity.Classify(baseline, exact),
+                Is.EqualTo(RewardOperationIdentityComparison.ExactDuplicateNoChange));
             Assert.That(
-                RewardOperationIdentityV1.Classify(baseline, conflict),
-                Is.EqualTo(RewardOperationIdentityComparisonV1.ConflictingDuplicate));
+                RewardOperationIdentity.Classify(baseline, conflict),
+                Is.EqualTo(RewardOperationIdentityComparison.ConflictingDuplicate));
             Assert.That(
-                RewardOperationIdentityV1.Classify(baseline, distinct),
-                Is.EqualTo(RewardOperationIdentityComparisonV1.DistinctOperation));
+                RewardOperationIdentity.Classify(baseline, distinct),
+                Is.EqualTo(RewardOperationIdentityComparison.DistinctOperation));
         }
 
         [Test]
         public void RewardResult_CanonicalOrderingAndExplicitNoDrop_AreStable()
         {
-            RewardGrantV1 money = RewardGrantV1.Create(
+            RewardGrant money = RewardGrant.Create(
                 Id("grant.money-result"),
-                RewardGrantKindV1.Money,
+                RewardGrantKind.Money,
                 Id("currency.money"),
                 4L);
-            RewardGrantV1 scrap = RewardGrantV1.Create(
+            RewardGrant scrap = RewardGrant.Create(
                 Id("grant.scrap-result"),
-                RewardGrantKindV1.Scrap,
+                RewardGrantKind.Scrap,
                 Id("currency.scrap"),
                 2L);
-            RewardResultV1 first = RewardResultV1.CreateGrants(
+            RewardResult first = RewardResult.CreateGrants(
                 Id("commitment.result"),
                 Id("source-operation.result"),
                 new[] { scrap, money });
-            RewardResultV1 second = RewardResultV1.CreateGrants(
+            RewardResult second = RewardResult.CreateGrants(
                 Id("commitment.result"),
                 Id("source-operation.result"),
                 new[] { money, scrap });
-            RewardResultV1 noDrop = RewardResultV1.CreateExplicitNoDrop(
+            RewardResult noDrop = RewardResult.CreateExplicitNoDrop(
                 Id("commitment.no-drop"),
                 Id("source-operation.no-drop"));
 
             Assert.That(first.Fingerprint, Is.EqualTo(second.Fingerprint));
-            Assert.That(noDrop.Disposition, Is.EqualTo(RewardResultDispositionV1.ExplicitNoDrop));
+            Assert.That(noDrop.Disposition, Is.EqualTo(RewardResultDisposition.ExplicitNoDrop));
             Assert.Throws<ArgumentException>(
-                () => RewardResultV1.CreateGrants(
+                () => RewardResult.CreateGrants(
                     Id("commitment.empty"),
                     Id("source-operation.empty"),
-                    Array.Empty<RewardGrantV1>()));
+                    Array.Empty<RewardGrant>()));
             Assert.Throws<ArgumentException>(
-                () => RewardResultV1.CreateGrants(
+                () => RewardResult.CreateGrants(
                     Id("commitment.duplicate"),
                     Id("source-operation.duplicate-result"),
                     new[] { money, money }));
@@ -447,40 +447,40 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
         [Test]
         public void RewardTrace_CanonicalOrderingIsStable_AndDuplicateOrdinalsAreRejected()
         {
-            RewardTraceEntryV1 firstEntry = RewardTraceEntryV1.Create(
+            RewardTraceEntry firstEntry = RewardTraceEntry.Create(
                 Id("trace-entry.first"),
                 0,
                 Id("trace-step.guaranteed"),
                 Id("grant.money"),
-                RewardTraceDecisionKindV1.Guaranteed,
+                RewardTraceDecisionKind.Guaranteed,
                 1L,
                 1L);
-            RewardTraceEntryV1 secondEntry = RewardTraceEntryV1.Create(
+            RewardTraceEntry secondEntry = RewardTraceEntry.Create(
                 Id("trace-entry.second"),
                 1,
                 Id("trace-step.quantity"),
                 Id("grant.money"),
-                RewardTraceDecisionKindV1.Quantity,
+                RewardTraceDecisionKind.Quantity,
                 1L,
                 10L);
-            RewardTraceV1 first = RewardTraceV1.Create(
+            RewardTrace first = RewardTrace.Create(
                 Id("source-operation.trace"),
                 new[] { secondEntry, firstEntry });
-            RewardTraceV1 second = RewardTraceV1.Create(
+            RewardTrace second = RewardTrace.Create(
                 Id("source-operation.trace"),
                 new[] { firstEntry, secondEntry });
-            RewardTraceEntryV1 duplicateOrdinal = RewardTraceEntryV1.Create(
+            RewardTraceEntry duplicateOrdinal = RewardTraceEntry.Create(
                 Id("trace-entry.duplicate-ordinal"),
                 1,
                 Id("trace-step.other"),
                 Id("grant.scrap"),
-                RewardTraceDecisionKindV1.GrantProduced,
+                RewardTraceDecisionKind.GrantProduced,
                 0L,
                 1L);
 
             Assert.That(first.Fingerprint, Is.EqualTo(second.Fingerprint));
             Assert.Throws<ArgumentException>(
-                () => RewardTraceV1.Create(
+                () => RewardTrace.Create(
                     Id("source-operation.trace-invalid"),
                     new[] { secondEntry, duplicateOrdinal }));
         }
@@ -488,35 +488,35 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
         [Test]
         public void EconomyTransactionIdentity_ExactAndConflictingDuplicatesAreUnambiguous()
         {
-            EconomyTransactionCommandV1 baseline = CurrencyCommand(
+            EconomyTransactionCommand baseline = CurrencyCommand(
                 "transaction.money-a",
                 "operation.reward-a",
                 10L);
-            EconomyTransactionCommandV1 exact = CurrencyCommand(
+            EconomyTransactionCommand exact = CurrencyCommand(
                 "transaction.money-a",
                 "operation.reward-a",
                 10L);
-            EconomyTransactionCommandV1 conflict = CurrencyCommand(
+            EconomyTransactionCommand conflict = CurrencyCommand(
                 "transaction.money-a",
                 "operation.reward-a",
                 11L);
-            EconomyTransactionCommandV1 distinct = CurrencyCommand(
+            EconomyTransactionCommand distinct = CurrencyCommand(
                 "transaction.money-b",
                 "operation.reward-a",
                 10L);
 
             Assert.That(
-                EconomyTransactionIdentityV1.Classify(baseline, exact),
-                Is.EqualTo(EconomyTransactionIdentityComparisonV1.ExactDuplicateNoChange));
+                EconomyTransactionIdentity.Classify(baseline, exact),
+                Is.EqualTo(EconomyTransactionIdentityComparison.ExactDuplicateNoChange));
             Assert.That(
-                EconomyTransactionIdentityV1.Classify(baseline, conflict),
-                Is.EqualTo(EconomyTransactionIdentityComparisonV1.ConflictingDuplicate));
+                EconomyTransactionIdentity.Classify(baseline, conflict),
+                Is.EqualTo(EconomyTransactionIdentityComparison.ConflictingDuplicate));
             Assert.That(
-                EconomyTransactionIdentityV1.Classify(baseline, distinct),
-                Is.EqualTo(EconomyTransactionIdentityComparisonV1.DistinctTransaction));
+                EconomyTransactionIdentity.Classify(baseline, distinct),
+                Is.EqualTo(EconomyTransactionIdentityComparison.DistinctTransaction));
             Assert.That(
-                EconomyTransactionStatusV1.ExactDuplicateNoChange,
-                Is.Not.EqualTo(EconomyTransactionStatusV1.ConflictingDuplicate));
+                EconomyTransactionStatus.ExactDuplicateNoChange,
+                Is.Not.EqualTo(EconomyTransactionStatus.ConflictingDuplicate));
         }
 
         [Test]
@@ -525,23 +525,23 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
             Assert.Throws<ArgumentOutOfRangeException>(
                 () => CurrencyCommand("transaction.zero", "operation.zero", 0L));
             Assert.Throws<ArgumentNullException>(
-                () => EconomyTransactionCommandV1.Create(
+                () => EconomyTransactionCommand.Create(
                     Id("transaction.unique-missing-instance"),
                     Id("operation.unique-missing-instance"),
                     Id("authority.holdings"),
-                    EconomyTransactionOperationV1.AddUnique,
-                    EconomyResourceKindV1.Strongbox,
+                    EconomyTransactionOperation.AddUnique,
+                    EconomyResourceKind.Strongbox,
                     Id("strongbox-definition.tier-one"),
                     null,
                     1L,
                     null));
             Assert.Throws<ArgumentException>(
-                () => EconomyTransactionCommandV1.Create(
+                () => EconomyTransactionCommand.Create(
                     Id("transaction.wrong-resource-shape"),
                     Id("operation.wrong-resource-shape"),
                     Id("authority.money"),
-                    EconomyTransactionOperationV1.Credit,
-                    EconomyResourceKindV1.Item,
+                    EconomyTransactionOperation.Credit,
+                    EconomyResourceKind.Item,
                     Id("item.token"),
                     null,
                     1L,
@@ -551,23 +551,23 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
         [Test]
         public void EconomyTransactionResult_EncodesAppliedDuplicateConflictAndAdmissionFailures()
         {
-            EconomyTransactionCommandV1 command = CurrencyCommand(
+            EconomyTransactionCommand command = CurrencyCommand(
                 "transaction.status",
                 "operation.status",
                 5L);
-            EconomyTransactionStatusV1[] unchangedStatuses =
+            EconomyTransactionStatus[] unchangedStatuses =
             {
-                EconomyTransactionStatusV1.ExactDuplicateNoChange,
-                EconomyTransactionStatusV1.ConflictingDuplicate,
-                EconomyTransactionStatusV1.InvalidRequest,
-                EconomyTransactionStatusV1.InsufficientValue,
-                EconomyTransactionStatusV1.InsufficientCapacity,
-                EconomyTransactionStatusV1.ExpectedSequenceConflict,
+                EconomyTransactionStatus.ExactDuplicateNoChange,
+                EconomyTransactionStatus.ConflictingDuplicate,
+                EconomyTransactionStatus.InvalidRequest,
+                EconomyTransactionStatus.InsufficientValue,
+                EconomyTransactionStatus.InsufficientCapacity,
+                EconomyTransactionStatus.ExpectedSequenceConflict,
             };
 
-            EconomyTransactionResultV1 applied = EconomyTransactionResultV1.Create(
+            EconomyTransactionResult applied = EconomyTransactionResult.Create(
                 command.TransactionStableId,
-                EconomyTransactionStatusV1.Applied,
+                EconomyTransactionStatus.Applied,
                 command.PayloadFingerprint,
                 4L,
                 5L,
@@ -576,7 +576,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
 
             for (int index = 0; index < unchangedStatuses.Length; index++)
             {
-                EconomyTransactionResultV1 result = EconomyTransactionResultV1.Create(
+                EconomyTransactionResult result = EconomyTransactionResult.Create(
                     command.TransactionStableId,
                     unchangedStatuses[index],
                     command.PayloadFingerprint,
@@ -590,7 +590,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
         [Test]
         public void StrongboxOpeningEnvelope_CarriesStableIdentityWithoutOpeningBehavior()
         {
-            StrongboxOpeningRequestV1 request = StrongboxOpeningRequestV1.Create(
+            StrongboxOpeningRequest request = StrongboxOpeningRequest.Create(
                 Id("run.alpha"),
                 Id("opening-operation.box-a"),
                 Id("transaction.box-a"),
@@ -600,41 +600,41 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
                 Id("reward-profile.box-tier-two"),
                 ContentFingerprint,
                 7L);
-            RewardResultV1 reward = RewardResultV1.CreateGrants(
+            RewardResult reward = RewardResult.CreateGrants(
                 Id("commitment.box-a"),
                 Id("opening-operation.box-a"),
                 new[]
                 {
-                    RewardGrantV1.Create(
+                    RewardGrant.Create(
                         Id("grant.box-scrap"),
-                        RewardGrantKindV1.Scrap,
+                        RewardGrantKind.Scrap,
                         Id("currency.scrap"),
                         4L),
                 });
-            RewardTraceV1 trace = RewardTraceV1.Create(
+            RewardTrace trace = RewardTrace.Create(
                 Id("opening-operation.box-a"),
                 new[]
                 {
-                    RewardTraceEntryV1.Create(
+                    RewardTraceEntry.Create(
                         Id("trace-entry.box-a"),
                         0,
                         Id("trace-step.box-side-reward"),
                         Id("strongbox-instance.box-a"),
-                        RewardTraceDecisionKindV1.GrantProduced,
+                        RewardTraceDecisionKind.GrantProduced,
                         0L,
                         1L),
                 });
-            StrongboxOpeningResultV1 opened = StrongboxOpeningResultV1.Create(
+            StrongboxOpeningResult opened = StrongboxOpeningResult.Create(
                 request.OpeningOperationStableId,
-                StrongboxOpeningStatusV1.Opened,
+                StrongboxOpeningStatus.Opened,
                 request.Fingerprint,
                 reward,
                 trace,
                 7L,
                 8L);
-            StrongboxOpeningResultV1 rejected = StrongboxOpeningResultV1.Create(
+            StrongboxOpeningResult rejected = StrongboxOpeningResult.Create(
                 request.OpeningOperationStableId,
-                StrongboxOpeningStatusV1.StrongboxNotOwned,
+                StrongboxOpeningStatus.StrongboxNotOwned,
                 request.Fingerprint,
                 null,
                 null,
@@ -650,17 +650,17 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
         [Test]
         public void StrongboxOpeningEnvelope_RejectsMismatchedOperationIdentity()
         {
-            RewardResultV1 reward = RewardResultV1.CreateExplicitNoDrop(
+            RewardResult reward = RewardResult.CreateExplicitNoDrop(
                 Id("commitment.mismatch"),
                 Id("opening-operation.other"));
-            RewardTraceV1 trace = RewardTraceV1.Create(
+            RewardTrace trace = RewardTrace.Create(
                 Id("opening-operation.other"),
-                Array.Empty<RewardTraceEntryV1>());
+                Array.Empty<RewardTraceEntry>());
 
             Assert.Throws<ArgumentException>(
-                () => StrongboxOpeningResultV1.Create(
+                () => StrongboxOpeningResult.Create(
                     Id("opening-operation.expected"),
-                    StrongboxOpeningStatusV1.Opened,
+                    StrongboxOpeningStatus.Opened,
                     ContentFingerprint,
                     reward,
                     trace,
@@ -673,24 +673,24 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
             return StableId.Parse(canonical);
         }
 
-        private static RewardGrantSpecificationV1 FixedGrant(
+        private static RewardGrantSpecification FixedGrant(
             string grantId,
-            RewardGrantKindV1 kind,
+            RewardGrantKind kind,
             string contentId,
             long quantity)
         {
-            return RewardGrantSpecificationV1.CreateFixed(
+            return RewardGrantSpecification.CreateFixed(
                 Id(grantId),
                 kind,
                 Id(contentId),
                 quantity);
         }
 
-        private static RewardOperationRequestV1 OperationRequest(
+        private static RewardOperationRequest OperationRequest(
             string operationId,
             string profileId)
         {
-            return RewardOperationRequestV1.Create(
+            return RewardOperationRequest.Create(
                 Id("run.alpha"),
                 Id("source.crate-a"),
                 Id(operationId),
@@ -699,17 +699,17 @@ namespace ShooterMover.Tests.EditMode.Rewards.Contracts
                 ContentFingerprint);
         }
 
-        private static EconomyTransactionCommandV1 CurrencyCommand(
+        private static EconomyTransactionCommand CurrencyCommand(
             string transactionId,
             string operationId,
             long quantity)
         {
-            return EconomyTransactionCommandV1.Create(
+            return EconomyTransactionCommand.Create(
                 Id(transactionId),
                 Id(operationId),
                 Id("authority.money"),
-                EconomyTransactionOperationV1.Credit,
-                EconomyResourceKindV1.Currency,
+                EconomyTransactionOperation.Credit,
+                EconomyResourceKind.Currency,
                 Id("currency.money"),
                 null,
                 quantity,

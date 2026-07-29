@@ -45,21 +45,21 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         [SerializeField] private RoomContentJsonDocumentAsset2D[] documents =
             Array.Empty<RoomContentJsonDocumentAsset2D>();
 
-        public RoomContentImportResultV1 Import()
+        public RoomContentImportResult Import()
         {
-            return Import(BuiltInRoomContentObjectCatalogV1.Create());
+            return Import(BuiltInRoomContentObjectCatalog.Create());
         }
 
-        public RoomContentImportResultV1 Import(
-            IRoomContentObjectCatalogV1 objectCatalog)
+        public RoomContentImportResult Import(
+            IRoomContentObjectCatalog objectCatalog)
         {
             if (manifest == null)
             {
-                return new RoomContentImportResultV1(
+                return new RoomContentImportResult(
                     null,
                     new[]
                     {
-                        new RoomContentImportIssueV1(
+                        new RoomContentImportIssue(
                             "room-content-manifest-asset-missing",
                             "$.manifest",
                             "A manifest TextAsset is required."),
@@ -76,11 +76,11 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                     || string.IsNullOrWhiteSpace(entry.Key)
                     || entry.Document == null)
                 {
-                    return new RoomContentImportResultV1(
+                    return new RoomContentImportResult(
                         null,
                         new[]
                         {
-                            new RoomContentImportIssueV1(
+                            new RoomContentImportIssue(
                                 "room-content-document-asset-invalid",
                                 "$.documents[" + index + "]",
                                 "Every JSON document asset requires a unique key and TextAsset."),
@@ -88,11 +88,11 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 }
                 if (source.ContainsKey(entry.Key))
                 {
-                    return new RoomContentImportResultV1(
+                    return new RoomContentImportResult(
                         null,
                         new[]
                         {
-                            new RoomContentImportIssueV1(
+                            new RoomContentImportIssue(
                                 "room-content-document-asset-duplicate",
                                 "$.documents[" + index + "]",
                                 "Duplicate JSON document key: " + entry.Key),
@@ -101,8 +101,8 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 source.Add(entry.Key, entry.Document.text);
             }
 
-            return RoomContentJsonImporterV1.Import(
-                new RoomContentJsonPackageV1(manifest.text, source),
+            return RoomContentJsonImporter.Import(
+                new RoomContentJsonPackage(manifest.text, source),
                 objectCatalog);
         }
 

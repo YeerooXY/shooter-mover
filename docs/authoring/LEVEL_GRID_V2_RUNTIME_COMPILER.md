@@ -12,15 +12,15 @@ level.json
 + floor/enemies/props/decor/encounter sidecars
 ```
 
-The player build does not enumerate or read that folder. The editor compiler converts it into deterministic V1 JSON documents, validates those documents through `RoomContentJsonImporterV1`, and stores them in a build-included `JsonRoomContentDefinition2D` asset.
+The player build does not enumerate or read that folder. The editor compiler converts it into deterministic V1 JSON documents, validates those documents through `RoomContentJsonImporter`, and stores them in a build-included `JsonRoomContentDefinition2D` asset.
 
 ```text
 Level Grid V2 folder
-→ LevelGridV2Compiler
-→ RoomContentJsonPackageV1
-→ RoomContentJsonImporterV1 validation
+→ LevelGridCompiler
+→ RoomContentJsonPackage
+→ RoomContentJsonImporter validation
 → TextAssets + JsonRoomContentDefinition2D
-→ existing JsonRoomRuntimeBootstrap2D
+→ existing JsonRoomLiveBootstrap2D
 → existing room, encounter, enemy, traversal and completion runtime
 ```
 
@@ -150,7 +150,7 @@ A playable compile rejects:
 
 ## Unity workflow
 
-1. Add `LevelGridPlayableMetadataV2` to the selected `LevelDesignSceneAuthoringRoot2D`.
+1. Add `LevelGridPlayableMetadata` to the selected `LevelDesignSceneAuthoringRoot2D`.
 2. Assign the exact start room, player start, final-exit room and final-exit door.
 3. Orient each bidirectional link from progression endpoint to return endpoint.
 4. Use **Tools → Shooter Mover → Level Design → Export Compiler-Ready Grid V2 Package...**.

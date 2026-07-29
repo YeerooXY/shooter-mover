@@ -119,7 +119,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void NormalMode_ComesFromCoordinatorDecision()
         {
-            CoordinatorFixture fixture = CreateCoordinatorFixture(
+            FlowFixture fixture = CreateCoordinatorFixture(
                 new[] { 10d, 10d, 10d, 10d });
             FourMountCombatStepResult result = fixture.Step(
                 fireRequested: true,
@@ -145,7 +145,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void FallbackMode_RemainsIndependentPerStableSlot()
         {
-            CoordinatorFixture fixture = CreateCoordinatorFixture(
+            FlowFixture fixture = CreateCoordinatorFixture(
                 new[] { 10d, 0d, 5d, 0d });
             FourMountCombatStepResult result = fixture.Step(
                 fireRequested: true,
@@ -175,7 +175,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void FaultState_ExposesKindDetailAndPowerWithoutHidingHealthySlots()
         {
-            CoordinatorFixture fixture = CreateCoordinatorFixture(
+            FlowFixture fixture = CreateCoordinatorFixture(
                 new[] { 10d, 10d, 10d, 10d });
             FourMountCombatStepResult result = fixture.Step(
                 fireRequested: true,
@@ -231,7 +231,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         public void MissingSlot_FailsVisiblyInsteadOfFabricatingState()
         {
             Fixture fixture = CreateMixedFixture();
-            WeaponRuntimeProfile[] onlyThreeProfiles =
+            WeaponLiveProfile[] onlyThreeProfiles =
             {
                 fixture.Profiles[0],
                 fixture.Profiles[1],
@@ -311,7 +311,7 @@ namespace ShooterMover.Tests.EditMode.Combat
 
         private static Fixture CreateMixedFixture()
         {
-            WeaponRuntimeProfile[] profiles =
+            WeaponLiveProfile[] profiles =
             {
                 BuildProfile(
                     "mixed-slot-1",
@@ -375,9 +375,9 @@ namespace ShooterMover.Tests.EditMode.Combat
                 new FourMountCombatState(mounts, banks));
         }
 
-        private static CoordinatorFixture CreateCoordinatorFixture(double[] initialPower)
+        private static FlowFixture CreateCoordinatorFixture(double[] initialPower)
         {
-            WeaponRuntimeProfile[] profiles = new WeaponRuntimeProfile[FourMountCombatState.MountCount];
+            WeaponLiveProfile[] profiles = new WeaponLiveProfile[FourMountCombatState.MountCount];
             StableId[] weaponIds = new StableId[FourMountCombatState.MountCount];
             StableId[] mountIds = new StableId[FourMountCombatState.MountCount];
             WeaponMountOrigin[] origins = new WeaponMountOrigin[FourMountCombatState.MountCount];
@@ -399,7 +399,7 @@ namespace ShooterMover.Tests.EditMode.Combat
 
             WeaponBehaviorPipeline pipeline = new WeaponBehaviorPipeline(
                 new IWeaponBehaviorModule[] { new EmptyModule() });
-            return new CoordinatorFixture(
+            return new FlowFixture(
                 profiles,
                 weaponIds,
                 mountIds,
@@ -408,7 +408,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                 new FourMountCombatStepper(new FourMountAimResolver(), pipeline));
         }
 
-        private static WeaponRuntimeProfile BuildProfile(
+        private static WeaponLiveProfile BuildProfile(
             string suffix,
             double cadenceSeconds = 0.2d,
             double recoverySeconds = 0d,
@@ -420,8 +420,8 @@ namespace ShooterMover.Tests.EditMode.Combat
             bool hasPowerBank = false,
             int presentationPriority = 0)
         {
-            return WeaponRuntimeProfile.Create(
-                WeaponRuntimeProfile.CurrentProfileVersion,
+            return WeaponLiveProfile.Create(
+                WeaponLiveProfile.CurrentProfileVersion,
                 StableId.Parse("weapon-profile.cb010-" + suffix),
                 cadenceSeconds,
                 1,
@@ -444,7 +444,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         private sealed class Fixture
         {
             public Fixture(
-                WeaponRuntimeProfile[] profiles,
+                WeaponLiveProfile[] profiles,
                 StableId[] weaponIds,
                 FourMountCombatState state)
             {
@@ -453,19 +453,19 @@ namespace ShooterMover.Tests.EditMode.Combat
                 State = state;
             }
 
-            public WeaponRuntimeProfile[] Profiles { get; }
+            public WeaponLiveProfile[] Profiles { get; }
 
             public StableId[] WeaponIds { get; }
 
             public FourMountCombatState State { get; }
         }
 
-        private sealed class CoordinatorFixture
+        private sealed class FlowFixture
         {
             private long simulationStep;
 
-            public CoordinatorFixture(
-                WeaponRuntimeProfile[] profiles,
+            public FlowFixture(
+                WeaponLiveProfile[] profiles,
                 StableId[] weaponIds,
                 StableId[] mountIds,
                 WeaponMountOrigin[] origins,
@@ -480,7 +480,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                 Stepper = stepper;
             }
 
-            public WeaponRuntimeProfile[] Profiles { get; }
+            public WeaponLiveProfile[] Profiles { get; }
 
             public StableId[] WeaponIds { get; }
 

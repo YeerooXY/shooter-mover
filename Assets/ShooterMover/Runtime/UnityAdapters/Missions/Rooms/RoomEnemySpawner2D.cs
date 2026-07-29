@@ -21,8 +21,8 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
     [DisallowMultipleComponent]
     public sealed class RoomEnemySpawner2D : MonoBehaviour
     {
-        [SerializeField] private JsonRoomRuntimeBootstrap2D roomLoader;
-        [SerializeField] private RoomRuntimeComposition2D room;
+        [SerializeField] private JsonRoomLiveBootstrap2D roomLoader;
+        [SerializeField] private RoomLiveSetup2D room;
         [SerializeField] private EnemyCatalogAsset2D enemyCatalog;
         [SerializeField] private string difficultyStableId;
         [SerializeField] private double difficultyScalar = 1d;
@@ -32,9 +32,9 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         private Dictionary<StableId, EnemyBinding> enemiesByActor =
             new Dictionary<StableId, EnemyBinding>();
         private StableId configuredRunStableId;
-        private IEnemyExperienceFactConsumerV1 configuredExperienceConsumer;
-        private IEnemyDropFactConsumerV1 configuredDropConsumer;
-        private IEnemyKillStatFactConsumerV1 configuredKillStatisticsConsumer;
+        private IEnemyExperienceFactConsumer configuredExperienceConsumer;
+        private IEnemyDropFactConsumer configuredDropConsumer;
+        private IEnemyKillStatFactConsumer configuredKillStatisticsConsumer;
         private bool runDownstreamConfigured;
         private bool isSubscribed;
         private long appliedRevision;
@@ -80,9 +80,9 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         /// </summary>
         public void ConfigureRunDownstream(
             StableId runStableId,
-            IEnemyExperienceFactConsumerV1 experienceConsumer,
-            IEnemyDropFactConsumerV1 dropConsumer,
-            IEnemyKillStatFactConsumerV1 killStatisticsConsumer)
+            IEnemyExperienceFactConsumer experienceConsumer,
+            IEnemyDropFactConsumer dropConsumer,
+            IEnemyKillStatFactConsumer killStatisticsConsumer)
         {
             if (runStableId == null) throw new ArgumentNullException(nameof(runStableId));
             if (experienceConsumer == null)
@@ -226,8 +226,8 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
 
         private bool TrySynchronizeCurrentRevision(bool forceRetry)
         {
-            RoomContentBundleV1 bundle;
-            RoomLiveRuntimeProjectionV1 projection;
+            RoomContentBundle bundle;
+            RoomLiveView projection;
             long revision;
             if (!TryGetReadyState(out bundle, out projection, out revision))
             {
@@ -262,7 +262,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 }
 
                 ValidateCompositionInputs(bundle);
-                EnemyCatalogImportResultV1 importResult = enemyCatalog.Import();
+                EnemyCatalogImportResult importResult = enemyCatalog.Import();
                 if (importResult == null || !importResult.IsValid)
                 {
                     throw new InvalidOperationException(BuildCatalogFailure(importResult));
@@ -271,12 +271,12 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 StableId runId = configuredRunStableId;
                 StableId difficultyId = StableId.Parse(difficultyStableId);
                 StableId currentRoomId = projection.CurrentRoomStableId;
-                AuthorableRoomDefinitionV1 authoredRoom =
+                AuthorableRoomDefinition authoredRoom =
                     bundle.RuntimeDefinition.GetRoom(currentRoomId);
-                RoomLiveRoomProjectionV1 currentRoomProjection =
+                RoomLiveRoomView currentRoomProjection =
                     room.Query.GetRoomProjection(currentRoomId);
-                RoomContentObjectCatalogV1 roomObjects =
-                    BuiltInRoomContentObjectCatalogV1.Create();
+                RoomContentObjectCatalog roomObjects =
+                    BuiltInRoomContentObjectCatalog.Create();
                 List<EnemyCandidate> candidates = GatherCandidates(
                     bundle,
                     authoredRoom,
@@ -289,22 +289,22 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 if (candidates.Count > 0)
                 {
                     var attackPresentation =
-                        new RoomEnemyAttackPresentationPortV1();
-                    EnemyRuntimeDownstreamPortsV1 downstream =
+                        new RoomEnemyAttackPresentationPort();
+                    EnemyLiveDownstreamPorts downstream =
                         BuildDownstreamPorts(attackPresentation);
-                    EnemyPlacementRuntimeFactoryV1 factory =
-                        BuiltInEnemyRuntimePolicyRegistryV1.CreateFactory(
+                    EnemyPlacementLiveFactory factory =
+                        BuiltInEnemyLivePolicyRegistry.CreateFactory(
                             roomObjects,
                             importResult.Catalog,
                             downstream);
-                    var requests = new List<EnemyPlacementRuntimeRequestV1>(
+                    var requests = new List<EnemyPlacementLiveRequest>(
                         candidates.Count);
-                    var difficulty = new EnemyDifficultyContextV1(
+                    var difficulty = new EnemyDifficultyContext(
                         difficultyId,
                         difficultyScalar);
                     for (int index = 0; index < candidates.Count; index++)
                     {
-                        requests.Add(new EnemyPlacementRuntimeRequestV1(
+                        requests.Add(new EnemyPlacementLiveRequest(
                             candidates[index].Content,
                             runId,
                             room.Query.RuntimeInstanceStableId,
@@ -314,7 +314,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                             difficulty));
                     }
 
-                    EnemyRoomPlacementCompositionResultV1 composition =
+                    EnemyRoomPlacementSetupResult composition =
                         factory.CreateRoom(requests);
                     if (composition == null || !composition.IsCreated)
                     {
@@ -331,10 +331,10 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                     }
 
                     var runtimesByPlacement =
-                        new Dictionary<StableId, EnemyPlacementRuntimeInstanceV1>();
+                        new Dictionary<StableId, EnemyPlacementLiveInstance>();
                     for (int index = 0; index < composition.Runtimes.Count; index++)
                     {
-                        EnemyPlacementRuntimeInstanceV1 runtime =
+                        EnemyPlacementLiveInstance runtime =
                             composition.Runtimes[index];
                         if (runtime == null
                             || runtime.RoomStableId != currentRoomId
@@ -354,7 +354,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                     for (int index = 0; index < candidates.Count; index++)
                     {
                         EnemyCandidate candidate = candidates[index];
-                        EnemyPlacementRuntimeInstanceV1 runtime;
+                        EnemyPlacementLiveInstance runtime;
                         if (!runtimesByPlacement.TryGetValue(
                                 candidate.Content.InstanceStableId,
                                 out runtime))
@@ -422,16 +422,16 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         }
 
         private List<EnemyCandidate> GatherCandidates(
-            RoomContentBundleV1 bundle,
-            AuthorableRoomDefinitionV1 authoredRoom,
-            RoomLiveRoomProjectionV1 roomProjection,
-            IRoomContentObjectCatalogV1 roomObjects,
+            RoomContentBundle bundle,
+            AuthorableRoomDefinition authoredRoom,
+            RoomLiveRoomView roomProjection,
+            IRoomContentObjectCatalog roomObjects,
             StableId currentRoomId)
         {
-            var rows = new List<RoomEnemyPlacementContentV1>();
+            var rows = new List<RoomEnemyPlacementContent>();
             for (int index = 0; index < bundle.Enemies.Count; index++)
             {
-                RoomEnemyPlacementContentV1 row = bundle.Enemies[index];
+                RoomEnemyPlacementContent row = bundle.Enemies[index];
                 if (row != null
                     && row.RoomStableId == currentRoomId
                     && !IsDefeated(roomProjection, row.InstanceStableId))
@@ -445,7 +445,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             var candidates = new List<EnemyCandidate>(rows.Count);
             for (int index = 0; index < rows.Count; index++)
             {
-                RoomEnemyPlacementContentV1 row = rows[index];
+                RoomEnemyPlacementContent row = rows[index];
                 RoomPlacedInstance2D placed;
                 if (!room.TryGetSpawnedPlacement(row.InstanceStableId, out placed)
                     || placed == null)
@@ -458,7 +458,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 if (!placed.IsConfigured
                     || placed.RoomStableId != currentRoomId
                     || placed.InstanceStableId != row.InstanceStableId
-                    || placed.PlacementKind != RoomLivePlacementKindV1.Enemy)
+                    || placed.PlacementKind != RoomLivePlacementKind.Enemy)
                 {
                     throw new InvalidOperationException(
                         "Spawned room placement does not match enemy row "
@@ -466,10 +466,10 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                         + ".");
                 }
 
-                RoomPlacedEntityDefinitionV1 placement;
+                RoomPlacedEntityDefinition placement;
                 if (!authoredRoom.TryGetPlacement(row.InstanceStableId, out placement)
                     || placement == null
-                    || placement.PlacementKind != RoomLivePlacementKindV1.Enemy)
+                    || placement.PlacementKind != RoomLivePlacementKind.Enemy)
                 {
                     throw new InvalidOperationException(
                         "Compiled room enemy placement is missing for "
@@ -477,10 +477,10 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                         + ".");
                 }
 
-                RoomContentObjectDefinitionV1 roomObject;
+                RoomContentObjectDefinition roomObject;
                 if (!roomObjects.TryResolve(
                         row.ObjectStableId,
-                        RoomContentObjectKindV1.Enemy,
+                        RoomContentObjectKind.Enemy,
                         out roomObject)
                     || roomObject == null
                     || roomObject.RuntimeDefinitionStableId
@@ -511,12 +511,12 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             return candidates;
         }
 
-        private EnemyRuntimeDownstreamPortsV1 BuildDownstreamPorts(
-            RoomEnemyAttackPresentationPortV1 attackPresentation)
+        private EnemyLiveDownstreamPorts BuildDownstreamPorts(
+            RoomEnemyAttackPresentationPort attackPresentation)
         {
             if (attackPresentation == null)
                 throw new ArgumentNullException(nameof(attackPresentation));
-            return new EnemyRuntimeDownstreamPortsV1(
+            return new EnemyLiveDownstreamPorts(
                 attackPresentation,
                 new UnconnectedPlayerDamagePort(),
                 new EnemyRoomPort(this),
@@ -527,20 +527,20 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         }
 
         private void ReportTerminal(
-            ReportRoomOccupantTerminalCommandV1 command,
-            EnemyDeathFactV1 deathFact)
+            ReportRoomOccupantTerminalCommand command,
+            EnemyDeathFact deathFact)
         {
             if (command == null) throw new ArgumentNullException(nameof(command));
             if (deathFact == null) throw new ArgumentNullException(nameof(deathFact));
             EnemyBinding binding = RequireBindingByActor(
                 deathFact.Identity.EntityInstanceId);
-            EnemyPlacementRuntimeInstanceV1 runtime = binding.Runtime;
+            EnemyPlacementLiveInstance runtime = binding.Runtime;
             EnemyBinding placementBinding;
             bool placementMapped = enemiesByPlacement.TryGetValue(
                 deathFact.Identity.PlacementStableId,
                 out placementBinding)
                 && object.ReferenceEquals(binding, placementBinding);
-            RoomLiveRuntimeProjectionV1 projection = room == null
+            RoomLiveView projection = room == null
                 ? null
                 : room.CurrentProjection;
             if (projection == null
@@ -572,11 +572,11 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                     "Enemy death does not match the current room binding and lifecycle.");
             }
 
-            RoomLiveOperationResultV1 result = room.ReportOccupantTerminal(
+            RoomLiveOperationResult result = room.ReportOccupantTerminal(
                 command.OperationStableId,
                 deathFact.Identity.RoomStableId,
                 deathFact.Identity.PlacementStableId);
-            if (result == null || result.Status == RoomLiveOperationStatusV1.Rejected)
+            if (result == null || result.Status == RoomLiveOperationStatus.Rejected)
             {
                 string rejection = result == null
                     ? "room-terminal-result-missing"
@@ -586,7 +586,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             }
         }
 
-        private void SetTerminalCollision(EnemyTerminalCollisionFactV1 fact)
+        private void SetTerminalCollision(EnemyTerminalCollisionFact fact)
         {
             if (fact == null) throw new ArgumentNullException(nameof(fact));
             EnemyBinding binding = RequireBindingByActor(fact.EntityInstanceStableId);
@@ -618,8 +618,8 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         }
 
         private bool TryGetReadyState(
-            out RoomContentBundleV1 bundle,
-            out RoomLiveRuntimeProjectionV1 projection,
+            out RoomContentBundle bundle,
+            out RoomLiveView projection,
             out long revision)
         {
             bundle = null;
@@ -644,7 +644,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 && revision > 0L;
         }
 
-        private void ValidateCompositionInputs(RoomContentBundleV1 bundle)
+        private void ValidateCompositionInputs(RoomContentBundle bundle)
         {
             if (bundle == null)
             {
@@ -775,7 +775,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         }
 
         private static string BuildCatalogFailure(
-            EnemyCatalogImportResultV1 result)
+            EnemyCatalogImportResult result)
         {
             if (result == null)
             {
@@ -796,7 +796,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         }
 
         private static bool IsDefeated(
-            RoomLiveRoomProjectionV1 projection,
+            RoomLiveRoomView projection,
             StableId placementStableId)
         {
             for (int index = 0; index < projection.DefeatedOccupants.Count; index++)
@@ -810,7 +810,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             return false;
         }
 
-        private static bool SameVector(RoomVector2V1 left, RoomVector2V1 right)
+        private static bool SameVector(RoomVector2 left, RoomVector2 right)
         {
             return left != null
                 && right != null
@@ -828,14 +828,14 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         private sealed class EnemyCandidate
         {
             public EnemyCandidate(
-                RoomEnemyPlacementContentV1 content,
+                RoomEnemyPlacementContent content,
                 RoomPlacedInstance2D placed)
             {
                 Content = content;
                 Placed = placed;
             }
 
-            public RoomEnemyPlacementContentV1 Content { get; }
+            public RoomEnemyPlacementContent Content { get; }
             public RoomPlacedInstance2D Placed { get; }
         }
 
@@ -843,17 +843,17 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         {
             public EnemyBinding(
                 RoomEnemyActor2D actor,
-                EnemyPlacementRuntimeInstanceV1 runtime)
+                EnemyPlacementLiveInstance runtime)
             {
                 Actor = actor ?? throw new ArgumentNullException(nameof(actor));
                 Runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
             }
 
             public RoomEnemyActor2D Actor { get; }
-            public EnemyPlacementRuntimeInstanceV1 Runtime { get; }
+            public EnemyPlacementLiveInstance Runtime { get; }
         }
 
-        private sealed class EnemyRoomPort : IEnemyRoomTerminalPortV1
+        private sealed class EnemyRoomPort : IEnemyRoomTerminalPort
         {
             private readonly RoomEnemySpawner2D owner;
 
@@ -863,14 +863,14 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             }
 
             public void Report(
-                ReportRoomOccupantTerminalCommandV1 command,
-                EnemyDeathFactV1 deathFact)
+                ReportRoomOccupantTerminalCommand command,
+                EnemyDeathFact deathFact)
             {
                 owner.ReportTerminal(command, deathFact);
             }
         }
 
-        private sealed class EnemyCollisionPort : IEnemyTerminalCollisionAdapterV1
+        private sealed class EnemyCollisionPort : IEnemyTerminalCollisionBridge
         {
             private readonly RoomEnemySpawner2D owner;
 
@@ -879,21 +879,21 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 this.owner = owner ?? throw new ArgumentNullException(nameof(owner));
             }
 
-            public void SetTerminal(EnemyTerminalCollisionFactV1 fact)
+            public void SetTerminal(EnemyTerminalCollisionFact fact)
             {
                 owner.SetTerminalCollision(fact);
             }
         }
 
-        private sealed class UnconnectedPlayerDamagePort : IEnemyPlayerDamagePortV1
+        private sealed class UnconnectedPlayerDamagePort : IEnemyPlayerDamagePort
         {
-            public EnemyPlayerDamagePortResultV1 Route(
-                EnemyPlayerDamageRequestV1 request)
+            public EnemyPlayerDamagePortResult Route(
+                EnemyPlayerDamageRequest request)
             {
                 if (request == null) throw new ArgumentNullException(nameof(request));
-                return new EnemyPlayerDamagePortResultV1(
-                    EnemyRuntimeOperationStatusV1.Rejected,
-                    EnemyRuntimeRejectionCodeV1.InvalidCommand);
+                return new EnemyPlayerDamagePortResult(
+                    EnemyLiveOperationStatus.Rejected,
+                    EnemyLiveRejectionCode.InvalidCommand);
             }
         }
     }

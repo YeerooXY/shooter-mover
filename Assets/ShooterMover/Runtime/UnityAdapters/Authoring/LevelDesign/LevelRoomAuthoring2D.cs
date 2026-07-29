@@ -152,9 +152,9 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 BuildDiagnosticLocation());
         }
 
-        public LevelGridRoomRecordV2 BuildGridRecord()
+        public LevelGridRoomRecord BuildGridRecord()
         {
-            return new LevelGridRoomRecordV2(
+            return new LevelGridRoomRecord(
                 roomId,
                 gridCoordinate,
                 footprintCells,

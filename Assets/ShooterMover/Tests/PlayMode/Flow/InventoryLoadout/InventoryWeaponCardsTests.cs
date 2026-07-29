@@ -15,13 +15,13 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
         [Test]
         public void RattlerCardProjectsConfirmedCanonicalStatsAndTemporaryArt()
         {
-            WeaponInventoryCardPresentationV1 presentation;
+            WeaponInventoryCardPresentation presentation;
             string rejectionCode;
 
             Assert.That(
-                WeaponInventoryCardPresentationV1.TryCreate(
-                    ProductionWeaponCatalogProvider.WeaponCatalog,
-                    ProductionWeaponOnboardingV1.StarterWeaponDefinitionId,
+                WeaponInventoryCardPresentation.TryCreate(
+                    WeaponCatalogProvider.WeaponCatalog,
+                    LegacyWeaponSetup.StarterWeaponDefinitionId,
                     out presentation,
                     out rejectionCode),
                 Is.True,
@@ -42,12 +42,12 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
         [Test]
         public void UnknownDefinitionFailsClosedWithoutFabricatedStats()
         {
-            WeaponInventoryCardPresentationV1 presentation;
+            WeaponInventoryCardPresentation presentation;
             string rejectionCode;
 
             Assert.That(
-                WeaponInventoryCardPresentationV1.TryCreate(
-                    ProductionWeaponCatalogProvider.WeaponCatalog,
+                WeaponInventoryCardPresentation.TryCreate(
+                    WeaponCatalogProvider.WeaponCatalog,
                     "weapon.unknown",
                     out presentation,
                     out rejectionCode),
@@ -62,23 +62,23 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
         [UnityTest]
         public IEnumerator PresenterBindsAggressiveCanonicalInventoryWithoutFallback()
         {
-            PlayerRouteProfilePayloadV1 draft =
-                PlayerRouteProfilePayloadV1.Create(
+            PlayerRouteProfilePayload draft =
+                PlayerRouteProfilePayload.Create(
                     StableId.Parse("character.inventory-card-test"),
                     StableId.Parse(
-                        ProductionWeaponMountPolicyV1
+                        WeaponMountPolicy
                             .AggressiveLoadoutProfileId),
                     new StableId[
-                        PlayerRouteProfilePayloadV1.WeaponSlotCount]);
-            var runtime = new ProductionPlayerLoadoutRuntimeV1(draft);
+                        PlayerRouteProfilePayload.WeaponSlotCount]);
+            var runtime = new PlayerLoadoutLive(draft);
             GameObject host = new GameObject(
                 "Production inventory weapon-card presenter test");
-            InventoryLoadoutScreenControllerV1 controller =
-                host.AddComponent<InventoryLoadoutScreenControllerV1>();
+            InventoryLoadoutScreenController controller =
+                host.AddComponent<InventoryLoadoutScreenController>();
             controller.ConfigureDisconnected(
-                delegate(PlayerRouteProfilePayloadV1 payload) { });
+                delegate(PlayerRouteProfilePayload payload) { });
             controller.Present(
-                HubRouteV1.Inventory,
+                HubRoute.Inventory,
                 runtime.CurrentRoutePayload);
             InventoryWeaponCards presenter =
                 host.AddComponent<InventoryWeaponCards>();

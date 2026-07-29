@@ -33,27 +33,27 @@ Reserved tracking, per-strike locking, and terminal-on-impact end policies rejec
 For canonical schema-v2 descriptors, the engine-neutral live flow is:
 
 ```text
-accepted EnemyAttackExecutionRequestV1
+accepted EnemyAttackExecutionRequest
         ↓
-EnemyAttackPatternAuthorityV1.Start
+EnemyAttackPatternState.Start
         ↓
-immutable EnemyAttackSequenceV1 + emission facts
+immutable EnemyAttackSequence + emission facts
         ↓
-EnemyAttackSequenceDispatchV1
+EnemyAttackSequenceDispatch
         ↓
-IEnemyAttackPatternEffectPortV1.Dispatch
+IEnemyAttackPatternEffectPort.Dispatch
 ```
 
-Descriptors contained by a schema-v1 catalog are tagged as compatibility content when the catalog is constructed. They bypass pattern authority and retain the historical single `IEnemyAttackEffectPortV1.Emit(execution)` call. This prevents schema-v1 pounce, turret, and contact timing projections from creating scheduled identities that the old adapter cannot own or cancel.
+Descriptors contained by a schema-v1 catalog are tagged as compatibility content when the catalog is constructed. They bypass pattern authority and retain the historical single `IEnemyAttackEffectPort.Emit(execution)` call. This prevents schema-v1 pounce, turret, and contact timing projections from creating scheduled identities that the old adapter cannot own or cancel.
 
 The downstream port receives the complete sequence in one immutable batch:
 
 ```csharp
-EnemyAttackPatternDispatchResultV1 Dispatch(
-    EnemyAttackSequenceDispatchV1 sequence);
+EnemyAttackPatternDispatchResult Dispatch(
+    EnemyAttackSequenceDispatch sequence);
 
-EnemyAttackPatternDispatchResultV1 Cancel(
-    EnemyAttackSequenceCancellationFactV1 cancellation);
+EnemyAttackPatternDispatchResult Cancel(
+    EnemyAttackSequenceCancellationFact cancellation);
 ```
 
 A scheduled consumer must prevalidate the complete batch before committing any queued projectile or melee window. It keys accepted delivery by the sequence or cancellation stable ID and canonical fingerprint:
@@ -70,7 +70,7 @@ The runtime catches downstream exceptions and converts them into a rejected disp
 The enemy runtime deliberately commits in this order:
 
 1. validate decision, aim, attack definition, and execution;
-2. obtain the deterministic pattern sequence from `EnemyAttackPatternAuthorityV1`;
+2. obtain the deterministic pattern sequence from `EnemyAttackPatternState`;
 3. dispatch the complete immutable sequence batch;
 4. only after downstream `Applied` or `ExactReplay`, record the accepted execution;
 5. apply cooldown;
@@ -104,7 +104,7 @@ Tests prove that a three-shot burst started at `10.0` and terminalized at `10.1`
 
 ## Legacy compatibility
 
-A descriptor from a schema-v1 catalog retains the historical one-call `IEnemyAttackEffectPortV1.Emit(execution)` boundary and never enters pattern authority. This is an explicit deferred-cutover path, not an attempt to reinterpret schema-v1 wind-up or commitment fields as scheduled facts.
+A descriptor from a schema-v1 catalog retains the historical one-call `IEnemyAttackEffectPort.Emit(execution)` boundary and never enters pattern authority. This is an explicit deferred-cutover path, not an attempt to reinterpret schema-v1 wind-up or commitment fields as scheduled facts.
 
 For untagged canonical descriptors, the old port is accepted only for a genuinely equivalent single immediate emission. Timed, multi-shot, multi-projectile, spread, or active-window attacks fail closed unless the port implements the atomic pattern interface.
 
@@ -112,7 +112,7 @@ The legacy callback cannot provide the same replay guarantees if an implementati
 
 ## Production cutover status
 
-The repository does not yet contain a concrete Unity adapter that atomically queues `EnemyAttackSequenceDispatchV1`, advances by `ScheduledAtSeconds`, realizes melee active windows, and consumes cancellation facts.
+The repository does not yet contain a concrete Unity adapter that atomically queues `EnemyAttackSequenceDispatch`, advances by `ScheduledAtSeconds`, realizes melee active windows, and consumes cancellation facts.
 
 Accordingly:
 

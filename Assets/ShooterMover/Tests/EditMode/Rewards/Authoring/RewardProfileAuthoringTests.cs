@@ -33,13 +33,13 @@ namespace ShooterMover.Tests.EditMode.Rewards.Authoring
         {
             RewardGrantAuthoring money = Grant(
                 "reward-grant.money",
-                RewardGrantKindV1.Money,
+                RewardGrantKind.Money,
                 "currency.money",
                 2L,
                 5L);
             RewardGrantAuthoring scrap = Grant(
                 "reward-grant.scrap",
-                RewardGrantKindV1.Scrap,
+                RewardGrantKind.Scrap,
                 "currency.scrap",
                 1L,
                 3L);
@@ -49,7 +49,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Authoring
                     250000,
                     Grant(
                         "reward-grant.ammo",
-                        RewardGrantKindV1.PremiumAmmo,
+                        RewardGrantKind.PremiumAmmo,
                         "ammo.premium",
                         1L,
                         2L));
@@ -61,7 +61,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Authoring
                         3L,
                         Grant(
                             "reward-grant.box",
-                            RewardGrantKindV1.Strongbox,
+                            RewardGrantKind.Strongbox,
                             "strongbox-tier.tier-2",
                             1L,
                             1L)),
@@ -84,8 +84,8 @@ namespace ShooterMover.Tests.EditMode.Rewards.Authoring
                     new[] { independent },
                     new[] { exclusive }));
 
-            RewardProfileV1 firstProfile = first.BuildProfile();
-            RewardProfileV1 secondProfile = second.BuildProfile();
+            RewardProfile firstProfile = first.BuildProfile();
+            RewardProfile secondProfile = second.BuildProfile();
 
             Assert.That(firstProfile.GuaranteedEntries.Count, Is.EqualTo(2));
             Assert.That(firstProfile.IndependentRolls.Count, Is.EqualTo(1));
@@ -111,47 +111,47 @@ namespace ShooterMover.Tests.EditMode.Rewards.Authoring
                     {
                         Grant(
                             "reward-grant.replacement-scrap",
-                            RewardGrantKindV1.Scrap,
+                            RewardGrantKind.Scrap,
                             "currency.scrap",
                             4L,
                             4L)
                     },
                     Array.Empty<IndependentRewardRollAuthoring>(),
                     Array.Empty<ExclusiveRewardGroupAuthoring>()));
-            RewardProfileV1 inherited = inheritedAsset.BuildProfile();
+            RewardProfile inherited = inheritedAsset.BuildProfile();
             StableId sourceId = StableId.Parse("placed.reward-source-a");
 
-            RewardProfileV1 inherit = RewardSourceOverrideAuthoring.Inherit(
+            RewardProfile inherit = RewardSourceOverrideAuthoring.Inherit(
                 "reward-override.inherit").Resolve(sourceId, inherited);
-            RewardProfileV1 none = RewardSourceOverrideAuthoring.None(
+            RewardProfile none = RewardSourceOverrideAuthoring.None(
                 "reward-override.none",
                 "reward-profile.none").Resolve(sourceId, inherited);
-            RewardProfileV1 replace = RewardSourceOverrideAuthoring.Replace(
+            RewardProfile replace = RewardSourceOverrideAuthoring.Replace(
                 "reward-override.replace",
                 replacementAsset).Resolve(sourceId, inherited);
-            RewardProfileV1 append = RewardSourceOverrideAuthoring.AppendGuaranteed(
+            RewardProfile append = RewardSourceOverrideAuthoring.AppendGuaranteed(
                 "reward-override.append",
                 "reward-profile.appended",
                 new RewardGrantOverrideAuthoring(
                     "reward-grant.appended-misc",
-                    RewardGrantKindV1.Miscellaneous,
+                    RewardGrantKind.Miscellaneous,
                     "misc.token",
                     1L,
                     1L)).Resolve(sourceId, inherited);
-            RewardProfileV1 money = RewardSourceOverrideAuthoring.MoneyOnly(
+            RewardProfile money = RewardSourceOverrideAuthoring.MoneyOnly(
                 "reward-override.money",
                 "reward-profile.money-only",
                 "reward-grant.money-only",
                 "currency.money",
                 10L,
                 20L).Resolve(sourceId, inherited);
-            RewardProfileV1 exactBox =
+            RewardProfile exactBox =
                 RewardSourceOverrideAuthoring.StrongboxExactTier(
                     "reward-override.exact-box",
                     "reward-profile.exact-box",
                     "reward-grant.exact-box",
                     "strongbox-tier.tier-4").Resolve(sourceId, inherited);
-            RewardProfileV1 boxRange =
+            RewardProfile boxRange =
                 RewardSourceOverrideAuthoring.StrongboxTierRange(
                     "reward-override.box-range",
                     "reward-profile.box-range",
@@ -162,27 +162,27 @@ namespace ShooterMover.Tests.EditMode.Rewards.Authoring
                     Tier(4),
                     Tier(2),
                     Tier(3)).Resolve(sourceId, inherited);
-            RewardProfileV1 misc = RewardSourceOverrideAuthoring.Miscellaneous(
+            RewardProfile misc = RewardSourceOverrideAuthoring.Miscellaneous(
                 "reward-override.misc",
                 "reward-profile.misc",
                 new RewardGrantOverrideAuthoring(
                     "reward-grant.misc",
-                    RewardGrantKindV1.Miscellaneous,
+                    RewardGrantKind.Miscellaneous,
                     "misc.key-fragment",
                     1L,
                     3L),
                 new RewardGrantOverrideAuthoring(
                     "reward-grant.premium-ammo",
-                    RewardGrantKindV1.PremiumAmmo,
+                    RewardGrantKind.PremiumAmmo,
                     "ammo.premium",
                     2L,
                     2L)).Resolve(sourceId, inherited);
 
             Assert.That(inherit, Is.SameAs(inherited));
-            Assert.That(none.Disposition, Is.EqualTo(RewardProfileDispositionV1.ExplicitNoDrop));
+            Assert.That(none.Disposition, Is.EqualTo(RewardProfileDisposition.ExplicitNoDrop));
             Assert.That(replace.ProfileStableId, Is.EqualTo(StableId.Parse("reward-profile.replacement")));
             Assert.That(append.GuaranteedEntries.Count, Is.EqualTo(2));
-            Assert.That(money.GuaranteedEntries[0].Kind, Is.EqualTo(RewardGrantKindV1.Money));
+            Assert.That(money.GuaranteedEntries[0].Kind, Is.EqualTo(RewardGrantKind.Money));
             Assert.That(exactBox.GuaranteedEntries[0].ContentStableId, Is.EqualTo(StableId.Parse("strongbox-tier.tier-4")));
             Assert.That(boxRange.ExclusiveGroups.Count, Is.EqualTo(1));
             Assert.That(boxRange.ExclusiveGroups[0].Outcomes.Count, Is.EqualTo(3));
@@ -192,7 +192,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Authoring
         [Test]
         public void InvalidStrongboxTierRangesFailClosed()
         {
-            RewardProfileV1 inherited = CreateMoneyProfile(
+            RewardProfile inherited = CreateMoneyProfile(
                 "reward-profile.inherited",
                 "reward-grant.money").BuildProfile();
             StableId sourceId = StableId.Parse("placed.reward-source-a");
@@ -228,18 +228,18 @@ namespace ShooterMover.Tests.EditMode.Rewards.Authoring
         [Test]
         public void ClearingOverrideBackToInheritRestoresInheritedProfile()
         {
-            RewardProfileV1 inherited = CreateMoneyProfile(
+            RewardProfile inherited = CreateMoneyProfile(
                 "reward-profile.inherited",
                 "reward-grant.inherited").BuildProfile();
             StableId sourceId = StableId.Parse("placed.reward-source-a");
-            RewardProfileV1 overridden = RewardSourceOverrideAuthoring.MoneyOnly(
+            RewardProfile overridden = RewardSourceOverrideAuthoring.MoneyOnly(
                 "reward-override.money",
                 "reward-profile.money-only",
                 "reward-grant.money-only",
                 "currency.money",
                 99L,
                 99L).Resolve(sourceId, inherited);
-            RewardProfileV1 cleared = RewardSourceOverrideAuthoring.Inherit(
+            RewardProfile cleared = RewardSourceOverrideAuthoring.Inherit(
                 "reward-override.cleared").Resolve(sourceId, inherited);
 
             Assert.That(overridden, Is.Not.EqualTo(inherited));
@@ -258,7 +258,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Authoring
                     {
                         Grant(
                             grantId,
-                            RewardGrantKindV1.Money,
+                            RewardGrantKind.Money,
                             "currency.money",
                             1L,
                             2L)
@@ -269,7 +269,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Authoring
 
         private static RewardGrantAuthoring Grant(
             string grantId,
-            RewardGrantKindV1 kind,
+            RewardGrantKind kind,
             string contentId,
             long minimum,
             long maximum)

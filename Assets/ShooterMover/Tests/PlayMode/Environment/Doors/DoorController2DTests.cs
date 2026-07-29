@@ -28,7 +28,7 @@ namespace ShooterMover.Tests.PlayMode.EnvironmentPackages.Doors
         private static readonly Type InitialStateType = Find(
             "ShooterMover.ContentPackages.Environment.Doors.DoorInitialState");
         private static readonly Type CompositionType = Find(
-            "ShooterMover.ContentPackages.Environment.Doors.DoorConditionComposition");
+            "ShooterMover.ContentPackages.Environment.Doors.DoorConditionSetup");
         private static readonly Type OneWayPolicyType = Find(
             "ShooterMover.ContentPackages.Environment.Doors.DoorOneWayPolicy");
         private static readonly Type TravelDirectionType = Find(
@@ -191,13 +191,13 @@ namespace ShooterMover.Tests.PlayMode.EnvironmentPackages.Doors
                 "placed.transition-door");
 
             RoomSocket source = new RoomSocket(
-                new RoomProjectionIdentity(
+                new RoomViewIdentity(
                     StableId.Parse("room.alpha"),
                     StableId.Parse("projection.alpha")),
                 StableId.Parse("socket.exit"),
                 RoomSocketDirection.Outbound);
             RoomSocket destination = new RoomSocket(
-                new RoomProjectionIdentity(
+                new RoomViewIdentity(
                     StableId.Parse("room.beta"),
                     StableId.Parse("projection.beta")),
                 StableId.Parse("socket.entry"),

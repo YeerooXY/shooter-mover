@@ -14,9 +14,9 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         [SerializeField] private LevelRoomAuthoring2D owningRoom;
 
         [Header("Placement")]
-        [SerializeField] private LevelDoorSideV2 side = LevelDoorSideV2.North;
-        [SerializeField] private LevelDoorPlacementModeV2 placementMode =
-            LevelDoorPlacementModeV2.EdgeManaged;
+        [SerializeField] private LevelDoorSide side = LevelDoorSide.North;
+        [SerializeField] private LevelDoorPlacementMode placementMode =
+            LevelDoorPlacementMode.EdgeManaged;
         [SerializeField] [Range(0f, 1f)] private float edgeOffset = 0.5f;
         [Tooltip(
             "Stored relative to the owning room. Legacy parent-relative values are "
@@ -40,12 +40,12 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             get { return owningRoom; }
         }
 
-        public LevelDoorSideV2 Side
+        public LevelDoorSide Side
         {
             get { return side; }
         }
 
-        public LevelDoorPlacementModeV2 PlacementMode
+        public LevelDoorPlacementMode PlacementMode
         {
             get { return placementMode; }
         }
@@ -84,13 +84,13 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             get { return visibleOnMap; }
         }
 
-        public LevelGridDoorRecordV2 BuildRecord()
+        public LevelGridDoorRecord BuildRecord()
         {
-            Vector2 recordFixedPosition = placementMode == LevelDoorPlacementModeV2.Fixed
+            Vector2 recordFixedPosition = placementMode == LevelDoorPlacementMode.Fixed
                     && !UsesOwningRoomFixedPositionSpace
                 ? ResolveCurrentRoomRelativePosition()
                 : fixedLocalPosition;
-            return new LevelGridDoorRecordV2(
+            return new LevelGridDoorRecord(
                 doorId,
                 owningRoom == null ? null : owningRoom.RoomIdText,
                 side,
@@ -105,7 +105,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 
         public Vector3 ResolveTargetLocalPosition()
         {
-            if (placementMode == LevelDoorPlacementModeV2.Fixed)
+            if (placementMode == LevelDoorPlacementMode.Fixed)
             {
                 if (!UsesOwningRoomFixedPositionSpace)
                 {
@@ -138,19 +138,19 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             Vector3 edgeWorldPosition;
             switch (side)
             {
-                case LevelDoorSideV2.North:
+                case LevelDoorSide.North:
                     edgeWorldPosition = new Vector3(
                         Mathf.Lerp(worldBounds.min.x, worldBounds.max.x, edgeOffset),
                         worldBounds.max.y,
                         transform.position.z);
                     break;
-                case LevelDoorSideV2.East:
+                case LevelDoorSide.East:
                     edgeWorldPosition = new Vector3(
                         worldBounds.max.x,
                         Mathf.Lerp(worldBounds.min.y, worldBounds.max.y, edgeOffset),
                         transform.position.z);
                     break;
-                case LevelDoorSideV2.South:
+                case LevelDoorSide.South:
                     edgeWorldPosition = new Vector3(
                         Mathf.Lerp(worldBounds.min.x, worldBounds.max.x, edgeOffset),
                         worldBounds.min.y,
@@ -182,14 +182,14 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 
         public void CaptureCurrentPositionAsFixedPlacement()
         {
-            placementMode = LevelDoorPlacementModeV2.Fixed;
+            placementMode = LevelDoorPlacementMode.Fixed;
             fixedLocalPosition = ResolveCurrentRoomRelativePosition();
             fixedPositionSpaceVersion = OwningRoomFixedPositionSpaceVersion;
         }
 
         public void CaptureCurrentFixedPosition()
         {
-            if (placementMode == LevelDoorPlacementModeV2.Fixed)
+            if (placementMode == LevelDoorPlacementMode.Fixed)
             {
                 fixedLocalPosition = ResolveCurrentRoomRelativePosition();
                 fixedPositionSpaceVersion = OwningRoomFixedPositionSpaceVersion;
@@ -198,7 +198,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 
         public bool MigrateFixedPositionSpaceForAuthoring()
         {
-            if (placementMode != LevelDoorPlacementModeV2.Fixed
+            if (placementMode != LevelDoorPlacementMode.Fixed
                 || UsesOwningRoomFixedPositionSpace
                 || owningRoom == null)
             {
@@ -213,8 +213,8 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         public void ConfigureAuthoring(
             string configuredDoorId,
             LevelRoomAuthoring2D configuredOwningRoom,
-            LevelDoorSideV2 configuredSide,
-            LevelDoorPlacementModeV2 configuredPlacementMode,
+            LevelDoorSide configuredSide,
+            LevelDoorPlacementMode configuredPlacementMode,
             float configuredEdgeOffset,
             Vector2 configuredFixedLocalPosition,
             bool configuredTraversable,
@@ -231,9 +231,9 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             autoFaceConnection = configuredAutoFaceConnection;
         }
 
-        public void SetEdgeSideForAuthoring(LevelDoorSideV2 configuredSide)
+        public void SetEdgeSideForAuthoring(LevelDoorSide configuredSide)
         {
-            if (placementMode != LevelDoorPlacementModeV2.EdgeManaged)
+            if (placementMode != LevelDoorPlacementMode.EdgeManaged)
             {
                 return;
             }
@@ -250,8 +250,8 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         public void ConfigureForTests(
             string configuredDoorId,
             LevelRoomAuthoring2D configuredOwningRoom,
-            LevelDoorSideV2 configuredSide,
-            LevelDoorPlacementModeV2 configuredPlacementMode,
+            LevelDoorSide configuredSide,
+            LevelDoorPlacementMode configuredPlacementMode,
             float configuredEdgeOffset,
             Vector2 configuredFixedLocalPosition,
             bool configuredTraversable)
@@ -269,7 +269,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         public void ConfigureLegacyFixedPositionForTests(
             Vector2 legacyParentRelativePosition)
         {
-            placementMode = LevelDoorPlacementModeV2.Fixed;
+            placementMode = LevelDoorPlacementMode.Fixed;
             fixedLocalPosition = legacyParentRelativePosition;
             fixedPositionSpaceVersion = 0;
             transform.localPosition = new Vector3(
