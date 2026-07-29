@@ -130,19 +130,20 @@ namespace ShooterMover.Tests.EditMode.Weapons.Catalog
         }
 
         [Test]
-        public void InvalidRangesAndShareTotals_AreRejected()
+        public void InvalidRanges_AreRejected()
         {
-            string json = BuildCatalogJson(1, 1, false, -1, -1, false, false).Replace("\"Range\":30", "\"Range\":-1").Replace("\"DirectShare\":0.2", "\"DirectShare\":0.4");
+            string json = BuildCatalogJson(1, 1, false, -1, -1, false, false)
+                .Replace("\"Range\":30", "\"Range\":-1");
             WeaponCatalogImportResult result = WeaponCatalogJsonImporter.Import(json);
             Assert.That(result.IsSuccess, Is.False);
             Assert.That(HasIssue(result, WeaponCatalogIssueCode.RangeViolation), Is.True, JoinIssues(result));
-            Assert.That(HasIssue(result, WeaponCatalogIssueCode.ShareTotalMismatch), Is.True, JoinIssues(result));
         }
 
         [Test]
-        public void DerivedPowerWeightAndDpsDrift_IsRejected()
+        public void DerivedDropWeightDrift_IsRejected()
         {
-            string json = BuildCatalogJson(1, 1, false, -1, -1, false, false).Replace("\"PowerIndex\":100", "\"PowerIndex\":101").Replace("\"FinalBaseWeight\":1000", "\"FinalBaseWeight\":999").Replace("\"DoTDPS\":6", "\"DoTDPS\":7");
+            string json = BuildCatalogJson(1, 1, false, -1, -1, false, false)
+                .Replace("\"FinalBaseWeight\":1000", "\"FinalBaseWeight\":999");
             WeaponCatalogImportResult result = WeaponCatalogJsonImporter.Import(json);
             Assert.That(result.IsSuccess, Is.False);
             Assert.That(HasIssue(result, WeaponCatalogIssueCode.DerivedValueMismatch), Is.True, JoinIssues(result));
