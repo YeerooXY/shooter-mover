@@ -110,7 +110,7 @@ namespace ShooterMover.Application.Weapons.Catalog
             return new WeaponCatalogRules(
                 dto.FixedStatsPerDefinition,
                 dto.OrdinaryMarkGap,
-                Require(dto.ApexPowerAnchors, "$.rules.apex_power_anchors"),
+                dto.ApexPowerAnchors,
                 Require(dto.DamageTypes, "$.rules.damage_types"),
                 dto.MaxAugments,
                 dto.NoRecoil,
@@ -132,16 +132,16 @@ namespace ShooterMover.Application.Weapons.Catalog
                     new WeaponRarityInput(
                         pair.Key,
                         pair.Value.Weight,
-                        pair.Value.PowerBonus,
+                        0,
                         pair.Value.EarlyTail,
                         pair.Value.LateTail));
             }
 
             return new WeaponCatalogInputs(
-                dto.BaseDps,
-                dto.Growth1To30,
-                dto.Growth31To70,
-                dto.Growth71Plus,
+                0d,
+                0d,
+                0d,
+                0d,
                 rarities);
         }
 
@@ -159,16 +159,16 @@ namespace ShooterMover.Application.Weapons.Catalog
                     new WeaponArchetypeDefinition(
                         pair.Key,
                         dto.Description,
-                        dto.DpsFactor,
+                        0d,
                         dto.FireRate,
                         dto.Projectiles,
                         dto.Burst,
                         dto.Spread,
                         dto.Speed,
                         dto.Range,
-                        dto.DirectShare,
-                        dto.AreaShare,
-                        dto.DotShare,
+                        0d,
+                        0d,
+                        0d,
                         dto.Radius,
                         dto.DotDuration,
                         dto.PoolRadius,
@@ -222,6 +222,10 @@ namespace ShooterMover.Application.Weapons.Catalog
             {
                 string path = "$.definitions[" + index + "]";
                 DefinitionDto dto = Require(source[index], path);
+                double actualDirectDps = dto.DamagePerProjectile
+                    * dto.FireRate
+                    * dto.ProjectilesPerTrigger
+                    * dto.BurstCount;
                 result.Add(
                     new WeaponDefinitionData(
                         dto.DefinitionId,
@@ -233,7 +237,7 @@ namespace ShooterMover.Application.Weapons.Catalog
                         dto.BuildAffinity,
                         dto.FirstAppearance,
                         dto.PeakDropLevel,
-                        dto.PowerAnchor,
+                        0,
                         dto.Rarity,
                         dto.RarityWeight,
                         dto.DefinitionWeightModifier,
@@ -243,12 +247,12 @@ namespace ShooterMover.Application.Weapons.Catalog
                         dto.AcquisitionClass,
                         ParseYesNo(dto.TopBoxOnly, path + ".TopBoxOnly"),
                         dto.CraftingRoute,
-                        dto.ArchetypeDpsFactor,
-                        dto.PowerIndex,
-                        dto.TargetDps,
-                        dto.DirectShare,
-                        dto.AreaShare,
-                        dto.DotShare,
+                        0d,
+                        0d,
+                        actualDirectDps,
+                        0d,
+                        0d,
+                        0d,
                         dto.FireRate,
                         dto.ProjectilesPerTrigger,
                         dto.BurstCount,
@@ -341,6 +345,5 @@ namespace ShooterMover.Application.Weapons.Catalog
             }
             return value;
         }
-
     }
 }
