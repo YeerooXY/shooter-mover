@@ -2,7 +2,7 @@
 
 ## Authority and transaction boundary
 
-The exported Level Grid V2 folder remains the authoring authority. The pure compiler still produces one deterministic `RoomContentJsonPackageV1`, and the retained V1 importer remains the compatibility gate.
+The exported Level Grid V2 folder remains the authoring authority. The pure compiler still produces one deterministic `RoomContentJsonPackage`, and the retained V1 importer remains the compatibility gate.
 
 Generated Unity assets are now published through a separate transaction:
 

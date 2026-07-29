@@ -103,7 +103,7 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
                     "Reward source requires an inherited reward profile definition.");
             }
 
-            RewardProfileV1 inherited;
+            RewardProfile inherited;
             try
             {
                 inherited = RewardProfileCapabilityReader.BuildProfile(
@@ -116,7 +116,7 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
                     exception.Message);
             }
 
-            RewardProfileV1 resolved;
+            RewardProfile resolved;
             RewardSourceOverrideAuthoringMode mode = sourceOverride == null
                 ? RewardSourceOverrideAuthoringMode.Inherit
                 : sourceOverride.Mode;
@@ -145,7 +145,7 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
             StableId restartId = DeriveStableId(
                 "reward-restart",
                 runId + "|" + sourceId);
-            RewardOperationRequestV1 request = RewardOperationRequestV1.Create(
+            RewardOperationRequest request = RewardOperationRequest.Create(
                 runId,
                 sourceId,
                 operationId,
@@ -167,18 +167,18 @@ namespace ShooterMover.UnityAdapters.Rewards.Sources
 
             if (_resolvedPreview != null)
             {
-                RewardOperationIdentityComparisonV1 comparison =
-                    RewardOperationIdentityV1.Classify(
+                RewardOperationIdentityComparison comparison =
+                    RewardOperationIdentity.Classify(
                         _resolvedPreview.OperationRequest,
                         request);
-                if (comparison == RewardOperationIdentityComparisonV1.ConflictingDuplicate)
+                if (comparison == RewardOperationIdentityComparison.ConflictingDuplicate)
                 {
                     return SetFailure(
                         RewardSourceResolutionStatus.ConflictingResolvedOperation,
                         "The logical source operation was already resolved with a different immutable payload.");
                 }
 
-                if (comparison == RewardOperationIdentityComparisonV1.ExactDuplicateNoChange)
+                if (comparison == RewardOperationIdentityComparison.ExactDuplicateNoChange)
                 {
                     _lastResolution = RewardSourceResolutionResult.Resolved(
                         _resolvedPreview);

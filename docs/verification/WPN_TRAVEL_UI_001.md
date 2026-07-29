@@ -49,7 +49,7 @@ The retained Stage 1 controller also left its fixture-backed `Stage1WeaponStatus
 Run with Unity `6000.3.19f1`:
 
 ```text
-Unity -batchmode -nographics -projectPath . -runTests -testPlatform PlayMode -testFilter ShooterMover.Tests.PlayMode.Weapons.Live.InventoryWeaponRuntimePlayModeTests -testResults Temp/wpn-travel-ui-001-playmode.xml -logFile Temp/wpn-travel-ui-001-playmode.log
+Unity -batchmode -nographics -projectPath . -runTests -testPlatform PlayMode -testFilter ShooterMover.Tests.PlayMode.Weapons.Live.InventoryWeaponLivePlayModeTests -testResults Temp/wpn-travel-ui-001-playmode.xml -logFile Temp/wpn-travel-ui-001-playmode.log
 ```
 
 The command should be run without `-quit`, because `-runTests` exits Unity after the test run.

@@ -16,15 +16,15 @@ A collection fact is admitted only after the existing holdings authority exposes
 
 ## Contracts
 
-`MissionRunCollectStrongboxCommandV1` carries:
+`MissionRunCollectStrongboxCommand` carries:
 
 - stable operation and run identities;
-- the immutable `PlayerRouteProfilePayloadV1`;
+- the immutable `PlayerRouteProfilePayload`;
 - exact strongbox definition and instance identities;
 - PICK/RAP grant and source provenance;
 - expected RUN and INV sequence/fingerprint values.
 
-`EndMissionRunCommandV1` carries:
+`EndMissionRunCommand` carries:
 
 - stable operation and run identities;
 - the immutable route/profile payload;
@@ -32,9 +32,9 @@ A collection fact is admitted only after the existing holdings authority exposes
 - expected RUN, INV, and BOX sequence/fingerprint values;
 - a semantic intent fingerprint independent of retry operation identity and mutable authority sequences.
 
-`MissionRunPayloadV1` is schema-versioned and immutable. It retains the stable contract and run identities, the exact route/profile payload, every verified collection fact ordered by concrete strongbox instance identity, the RUN sequence, and a deterministic SHA-256 fingerprint. Every accepted collection returns the new immutable run snapshot; End Run carries the last accepted run snapshot into the terminal fact.
+`MissionRunPayload` is schema-versioned and immutable. It retains the stable contract and run identities, the exact route/profile payload, every verified collection fact ordered by concrete strongbox instance identity, the RUN sequence, and a deterministic SHA-256 fingerprint. Every accepted collection returns the new immutable run snapshot; End Run carries the last accepted run snapshot into the terminal fact.
 
-`MissionResultPayloadV1` is independently schema-versioned and immutable. It retains:
+`MissionResultPayload` is independently schema-versioned and immutable. It retains:
 
 - stable contract and run identities;
 - the exact route/profile payload;
@@ -49,7 +49,7 @@ Collections and results are canonically ordered by concrete strongbox instance i
 
 ## Idempotency and conflicts
 
-The first accepted End Run advances RUN sequence once and freezes one `MissionResultPayloadV1` alongside the exact immutable `MissionRunPayloadV1` that preceded termination.
+The first accepted End Run advances RUN sequence once and freezes one `MissionResultPayload` alongside the exact immutable `MissionRunPayload` that preceded termination.
 
 - Repeating the same semantic End Run for the same run returns the exact cached result object, even when the retry uses a new operation identity or stale expected sequence values.
 - Reusing an operation identity with a different command fingerprint is a conflicting duplicate.
@@ -61,7 +61,7 @@ Rejected calls do not alter RUN sequence, collection state, or the frozen result
 
 ## Results presentation boundary
 
-`MissionResultsSessionV1` is a read-only handoff around the immutable result. Reading its snapshot or counts performs no authority callback. Therefore displaying Results cannot:
+`MissionResultsSession` is a read-only handoff around the immutable result. Reading its snapshot or counts performs no authority callback. Therefore displaying Results cannot:
 
 - open or consume a strongbox;
 - call GEN or reroll contents;
@@ -71,10 +71,10 @@ Rejected calls do not alter RUN sequence, collection state, or the frozen result
 
 ## Existing-authority adapter
 
-`MissionRunExistingAuthorityPortV1` composes existing read-only APIs:
+`MissionRunExistingStatePort` composes existing read-only APIs:
 
-- `IPlayerHoldingsAuthorityV1.ExportSnapshot()` and sequence for ownership/provenance;
-- `StrongboxOpeningSnapshotV1` for terminal BOX opening facts.
+- `IPlayerHoldingsState.ExportSnapshot()` and sequence for ownership/provenance;
+- `StrongboxOpeningSnapshot` for terminal BOX opening facts.
 
 It has no mutation method and no dependency on reward generators. PICK and RAP remain authoritative indirectly through the immutable holdings provenance they produced.
 

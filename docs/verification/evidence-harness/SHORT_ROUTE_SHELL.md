@@ -66,13 +66,13 @@ additive room.
 | `connection.restart-start` | `route.restart` | `socket.restart-out` | `route.start` | `socket.start-in` |
 
 At runtime the fixture resolves each endpoint to a
-`RoomProjectionIdentity`, creates compatible `RoomSocket` values, and validates
+`RoomViewIdentity`, creates compatible `RoomSocket` values, and validates
 an immutable `RoomConnection`. An unknown endpoint fails closed and is reported
 as validation data; it never fabricates an alternate route.
 
 ## Deterministic lifecycle order
 
-Each marker owns an independent CS-007 `RoomProjectionLifecycle` value.
+Each marker owns an independent CS-007 `RoomViewLifecycle` value.
 Lifecycle state is disposable presentation state only.
 
 - Enter/load order: start → arena entry → connector → review end → restart.
@@ -94,7 +94,7 @@ reward, route unlock, completion, save, or persistence fact.
 
 `Stage1ShortRouteProjection` is sealed and exposes getter-only scalar data:
 marker ID, marker kind, load order, and local presentation coordinates. The
-fixture reads it only through `IRoomProjectionStateReader`.
+fixture reads it only through `IRoomViewStateReader`.
 
 Known keys return `Found`. Unknown keys return `UnknownKey` with no fallback
 value. The shell has no `IRoomMissionCommandSubmitter`, submits zero mission

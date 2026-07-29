@@ -32,15 +32,15 @@ namespace ShooterMover.Tests.PlayMode.Flow.Crafting
         public void ControllerCraftsExactPreviewAndReturnsSamePayloadOnce()
         {
             ControllerFixture fixture = ControllerFixture.Create(100);
-            CraftingScreenControllerV1 controller = CreateController(fixture, out List<PlayerRouteProfilePayloadV1> returns);
+            CraftingScreenController controller = CreateController(fixture, out List<PlayerRouteProfilePayload> returns);
 
-            controller.Present(HubRouteV1.Crafting, fixture.RoutePayload);
+            controller.Present(HubRoute.Crafting, fixture.RoutePayload);
             EquipmentInstance preview = controller.Snapshot.SelectedRecipe.PreviewEquipment;
-            CraftingScreenResultV1 crafted = controller.Craft();
-            CraftingScreenResultV1 back = controller.Back();
+            CraftingScreenResult crafted = controller.Craft();
+            CraftingScreenResult back = controller.Back();
             controller.Back();
 
-            Assert.That(crafted.Status, Is.EqualTo(CraftingScreenStatusV1.Crafted));
+            Assert.That(crafted.Status, Is.EqualTo(CraftingScreenStatus.Crafted));
             Assert.That(crafted.AuthorityResult.Equipment.Fingerprint, Is.EqualTo(preview.Fingerprint));
             Assert.That(fixture.Authority.ScrapBalance, Is.EqualTo(75));
             Assert.That(fixture.Authority.GrantCount, Is.EqualTo(1));
@@ -56,15 +56,15 @@ namespace ShooterMover.Tests.PlayMode.Flow.Crafting
         {
             ControllerFixture fixture = ControllerFixture.Create(100);
             fixture.Authority.ReturnRetryOnce = true;
-            CraftingScreenControllerV1 controller = CreateController(fixture, out _);
-            controller.Present(HubRouteV1.Crafting, fixture.RoutePayload);
+            CraftingScreenController controller = CreateController(fixture, out _);
+            controller.Present(HubRoute.Crafting, fixture.RoutePayload);
             string fingerprint = controller.Snapshot.SelectedRecipe.Command.Fingerprint;
 
-            CraftingScreenResultV1 pending = controller.Craft();
-            CraftingScreenResultV1 applied = controller.Retry();
+            CraftingScreenResult pending = controller.Craft();
+            CraftingScreenResult applied = controller.Retry();
 
-            Assert.That(pending.Status, Is.EqualTo(CraftingScreenStatusV1.RetryRequired));
-            Assert.That(applied.Status, Is.EqualTo(CraftingScreenStatusV1.Crafted));
+            Assert.That(pending.Status, Is.EqualTo(CraftingScreenStatus.RetryRequired));
+            Assert.That(applied.Status, Is.EqualTo(CraftingScreenStatus.Crafted));
             Assert.That(fixture.Authority.CommandFingerprints,
                 Is.EqualTo(new[] { fingerprint, fingerprint }));
             Assert.That(fixture.Authority.ScrapBalance, Is.EqualTo(75));
@@ -75,12 +75,12 @@ namespace ShooterMover.Tests.PlayMode.Flow.Crafting
         public void ControllerRevisitReadsAuthorityStateAndPreservesRoutePayload()
         {
             ControllerFixture fixture = ControllerFixture.Create(100);
-            CraftingScreenControllerV1 controller = CreateController(fixture, out _);
+            CraftingScreenController controller = CreateController(fixture, out _);
 
-            controller.Present(HubRouteV1.Crafting, fixture.RoutePayload);
+            controller.Present(HubRoute.Crafting, fixture.RoutePayload);
             controller.Craft();
             controller.Back();
-            controller.Present(HubRouteV1.Crafting, fixture.RoutePayload);
+            controller.Present(HubRoute.Crafting, fixture.RoutePayload);
 
             Assert.That(controller.Snapshot.ScrapBalance, Is.EqualTo(75));
             Assert.That(controller.Snapshot.HoldingsSequence, Is.EqualTo(1));
@@ -92,21 +92,21 @@ namespace ShooterMover.Tests.PlayMode.Flow.Crafting
         public void ControllerRejectsNonCraftingHubRoute()
         {
             ControllerFixture fixture = ControllerFixture.Create(100);
-            CraftingScreenControllerV1 controller = CreateController(fixture, out _);
+            CraftingScreenController controller = CreateController(fixture, out _);
 
             Assert.Throws<ArgumentOutOfRangeException>(
-                delegate { controller.Present(HubRouteV1.Shop, fixture.RoutePayload); });
+                delegate { controller.Present(HubRoute.Shop, fixture.RoutePayload); });
         }
 
-        private CraftingScreenControllerV1 CreateController(
+        private CraftingScreenController CreateController(
             ControllerFixture fixture,
-            out List<PlayerRouteProfilePayloadV1> returns)
+            out List<PlayerRouteProfilePayload> returns)
         {
             root = new GameObject("CraftingScreenControllerTests");
-            CraftingScreenControllerV1 controller =
-                root.AddComponent<CraftingScreenControllerV1>();
-            returns = new List<PlayerRouteProfilePayloadV1>();
-            List<PlayerRouteProfilePayloadV1> captured = returns;
+            CraftingScreenController controller =
+                root.AddComponent<CraftingScreenController>();
+            returns = new List<PlayerRouteProfilePayload>();
+            List<PlayerRouteProfilePayload> captured = returns;
             controller.ConfigureForTests(
                 fixture.Authority,
                 fixture.Progression,
@@ -114,25 +114,25 @@ namespace ShooterMover.Tests.PlayMode.Flow.Crafting
                 StableId.Parse("crafting-screen.playmode"),
                 StableId.Parse("run.playmode"),
                 StableId.Parse("claimant.playmode"),
-                delegate(PlayerRouteProfilePayloadV1 payload) { captured.Add(payload); });
+                delegate(PlayerRouteProfilePayload payload) { captured.Add(payload); });
             return controller;
         }
 
         private sealed class ControllerFixture
         {
             private ControllerFixture(
-                PlayerRouteProfilePayloadV1 routePayload,
+                PlayerRouteProfilePayload routePayload,
                 ProgressionContext progression,
-                ControllerFakeAuthority authority)
+                ControllerFakeState authority)
             {
                 RoutePayload = routePayload;
                 Progression = progression;
                 Authority = authority;
             }
 
-            public PlayerRouteProfilePayloadV1 RoutePayload { get; }
+            public PlayerRouteProfilePayload RoutePayload { get; }
             public ProgressionContext Progression { get; }
-            public ControllerFakeAuthority Authority { get; }
+            public ControllerFakeState Authority { get; }
 
             public static ControllerFixture Create(long balance)
             {
@@ -155,7 +155,7 @@ namespace ShooterMover.Tests.PlayMode.Flow.Crafting
                     Array.Empty<AugmentDefinition>());
                 Assert.That(built.IsValid, Is.True);
 
-                CraftingRecipeV1 recipe = new CraftingRecipeV1(
+                CraftingRecipe recipe = new CraftingRecipe(
                     1,
                     StableId.Parse("recipe.playmode"),
                     weapon.DefinitionId,
@@ -163,12 +163,12 @@ namespace ShooterMover.Tests.PlayMode.Flow.Crafting
                     2,
                     2,
                     3,
-                    new CraftingDelayVarianceV1(0, 0),
+                    new CraftingDelayVariance(0, 0),
                     25,
-                    CraftingQualityPolicyKindV1.Fixed,
+                    CraftingQualityPolicyKind.Fixed,
                     new[]
                     {
-                        new CraftingWeightedDefinitionV1(quality.QualityId, 1UL),
+                        new CraftingWeightedDefinition(quality.QualityId, 1UL),
                     },
                     1,
                     20,
@@ -176,15 +176,15 @@ namespace ShooterMover.Tests.PlayMode.Flow.Crafting
                     0,
                     1,
                     1,
-                    Array.Empty<CraftingWeightedDefinitionV1>(),
-                    new CraftingGeneratorPolicyV1(
+                    Array.Empty<CraftingWeightedDefinition>(),
+                    new CraftingGeneratorPolicy(
                         StableId.Parse("crafting-policy.playmode"),
                         1,
                         new SoftActivationCurveParameters(0.1, 2, 2),
                         new ObsolescenceCurveParameters(2, 4.0, 0.1)));
-                CraftingRecipeCatalogV1 recipes = new CraftingRecipeCatalogV1(
+                CraftingRecipeCatalog recipes = new CraftingRecipeCatalog(
                     new[] { recipe });
-                ControllerFakeAuthority authority = new ControllerFakeAuthority(
+                ControllerFakeState authority = new ControllerFakeState(
                     balance,
                     recipes,
                     built.Catalog,
@@ -194,7 +194,7 @@ namespace ShooterMover.Tests.PlayMode.Flow.Crafting
                     10,
                     StableId.Parse("difficulty.playmode"),
                     1);
-                PlayerRouteProfilePayloadV1 route = PlayerRouteProfilePayloadV1.Create(
+                PlayerRouteProfilePayload route = PlayerRouteProfilePayload.Create(
                     StableId.Parse("character.playmode"),
                     StableId.Parse("loadout.playmode"),
                     new[]
@@ -208,18 +208,18 @@ namespace ShooterMover.Tests.PlayMode.Flow.Crafting
             }
         }
 
-        private sealed class ControllerFakeAuthority : ICraftingPresentationAuthorityPortV1
+        private sealed class ControllerFakeState : ICraftingPresentationStatePort
         {
-            private readonly CraftingRecipeCatalogV1 recipes;
+            private readonly CraftingRecipeCatalog recipes;
             private readonly EquipmentCatalog equipment;
             private readonly StableId qualityStableId;
             private readonly Dictionary<StableId, EquipmentInstance> applied =
                 new Dictionary<StableId, EquipmentInstance>();
             private bool returnedRetry;
 
-            public ControllerFakeAuthority(
+            public ControllerFakeState(
                 long balance,
-                CraftingRecipeCatalogV1 recipes,
+                CraftingRecipeCatalog recipes,
                 EquipmentCatalog equipment,
                 StableId qualityStableId)
             {
@@ -236,9 +236,9 @@ namespace ShooterMover.Tests.PlayMode.Flow.Crafting
             public bool ReturnRetryOnce { get; set; }
             public List<string> CommandFingerprints { get; } = new List<string>();
 
-            public CraftingPresentationAuthoritySnapshotV1 ExportSnapshot()
+            public CraftingPresentationStateSnapshot ExportSnapshot()
             {
-                return new CraftingPresentationAuthoritySnapshotV1(
+                return new CraftingPresentationStateSnapshot(
                     ScrapBalance,
                     ScrapSequence,
                     HoldingsSequence,
@@ -247,18 +247,18 @@ namespace ShooterMover.Tests.PlayMode.Flow.Crafting
                     "playmode|" + ScrapSequence + "|" + HoldingsSequence);
             }
 
-            public CraftingPresentationAuthorityResultV1 Preview(
-                CraftEquipmentCommandV1 command)
+            public CraftingPresentationStateResult Preview(
+                CraftEquipmentCommand command)
             {
                 return Result(
                     command,
-                    CraftingResultStatusV1.Crafted,
+                    CraftingResultStatus.Crafted,
                     CreateEquipment(command),
                     string.Empty);
             }
 
-            public CraftingPresentationAuthorityResultV1 Craft(
-                CraftEquipmentCommandV1 command)
+            public CraftingPresentationStateResult Craft(
+                CraftEquipmentCommand command)
             {
                 CommandFingerprints.Add(command.Fingerprint);
                 EquipmentInstance existing;
@@ -266,7 +266,7 @@ namespace ShooterMover.Tests.PlayMode.Flow.Crafting
                 {
                     return Result(
                         command,
-                        CraftingResultStatusV1.ExactDuplicateNoChange,
+                        CraftingResultStatus.ExactDuplicateNoChange,
                         existing,
                         string.Empty);
                 }
@@ -276,12 +276,12 @@ namespace ShooterMover.Tests.PlayMode.Flow.Crafting
                     returnedRetry = true;
                     return Result(
                         command,
-                        CraftingResultStatusV1.RewardApplicationRetryRequired,
+                        CraftingResultStatus.RewardApplicationRetryRequired,
                         CreateEquipment(command),
                         "pending");
                 }
 
-                CraftingRecipeV1 recipe = recipes.Find(command.RecipeStableId);
+                CraftingRecipe recipe = recipes.Find(command.RecipeStableId);
                 EquipmentInstance generated = CreateEquipment(command);
                 ScrapBalance -= recipe.ScrapCost;
                 ScrapSequence++;
@@ -290,19 +290,19 @@ namespace ShooterMover.Tests.PlayMode.Flow.Crafting
                 applied.Add(command.CraftTransactionStableId, generated);
                 return Result(
                     command,
-                    CraftingResultStatusV1.Crafted,
+                    CraftingResultStatus.Crafted,
                     generated,
                     string.Empty);
             }
 
-            private CraftingPresentationAuthorityResultV1 Result(
-                CraftEquipmentCommandV1 command,
-                CraftingResultStatusV1 status,
+            private CraftingPresentationStateResult Result(
+                CraftEquipmentCommand command,
+                CraftingResultStatus status,
                 EquipmentInstance generated,
                 string rejectionCode)
             {
-                CraftingRecipeV1 recipe = recipes.Find(command.RecipeStableId);
-                return new CraftingPresentationAuthorityResultV1(
+                CraftingRecipe recipe = recipes.Find(command.RecipeStableId);
+                return new CraftingPresentationStateResult(
                     status,
                     recipe.RecipeStableId,
                     recipe.ResolveUnlockLevel(command.RootSeed),
@@ -312,11 +312,11 @@ namespace ShooterMover.Tests.PlayMode.Flow.Crafting
                     rejectionCode);
             }
 
-            private EquipmentInstance CreateEquipment(CraftEquipmentCommandV1 command)
+            private EquipmentInstance CreateEquipment(CraftEquipmentCommand command)
             {
-                CraftingRecipeV1 recipe = recipes.Find(command.RecipeStableId);
+                CraftingRecipe recipe = recipes.Find(command.RecipeStableId);
                 return EquipmentInstance.Create(
-                    CraftingCanonicalV1.DeriveStableId(
+                    Crafting.DeriveStableId(
                         "craftitem",
                         command.CraftTransactionStableId.ToString()),
                     recipe.TargetEquipmentDefinitionStableId,

@@ -6,15 +6,15 @@
 
 ## Authority boundary
 
-`ShopScreenSessionV1` is a thin application/presentation adapter. It receives the already composed runtime authorities and immutable Hub route payload, then:
+`ShopScreenSession` is a thin application/presentation adapter. It receives the already composed runtime authorities and immutable Hub route payload, then:
 
-1. calls `ShopRuntimeServiceV1.Open` to obtain the deterministic run/shop inventory;
-2. projects `ShopInventoryViewV1` and `MoneyWalletService.Balance` into immutable UI cards;
-3. constructs `ShopPurchaseCommandV1` from the exact authority stock identity, inventory fingerprint, claimant, and price;
-4. submits purchases only through `ShopRuntimeServiceV1.Purchase`;
+1. calls `ShopLiveActions.Open` to obtain the deterministic run/shop inventory;
+2. projects `ShopInventoryView` and `MoneyWalletActions.Balance` into immutable UI cards;
+3. constructs `ShopPurchaseCommand` from the exact authority stock identity, inventory fingerprint, claimant, and price;
+4. submits purchases only through `ShopLiveActions.Purchase`;
 5. reopens the authority view after each result so sold and pending states are never cached as local truth.
 
-There are no direct calls to `MoneyWalletService.Spend`, `MoneyWalletService.Grant`, holdings mutation, or reward application from the screen layer.
+There are no direct calls to `MoneyWalletActions.Spend`, `MoneyWalletActions.Grant`, holdings mutation, or reward application from the screen layer.
 
 ## Deterministic stock and duplicate definitions
 
@@ -47,15 +47,15 @@ Scene:
 
 `Assets/ShooterMover/Scenes/Flow/Shop/Shop.unity`
 
-Before loading it, the composition root should create a real `ShopScreenSessionV1` and call:
+Before loading it, the composition root should create a real `ShopScreenSession` and call:
 
 ```csharp
-ShopScreenRuntimeHandoffV1.Prepare(session, routeAdapter);
+ShopScreenLiveHandoff.Prepare(session, routeAdapter);
 ```
 
-The handoff is one-shot and carries authority references, not copied shop data. Tests or embedded flows may instead call `ShopScreenControllerV1.Configure` directly.
+The handoff is one-shot and carries authority references, not copied shop data. Tests or embedded flows may instead call `ShopScreenController.Configure` directly.
 
-The route adapter receives `ShopScreenRouteV1.Hub` together with the exact incoming `PlayerRouteProfilePayloadV1` object. Back input is locked after the first emitted route, so repeated callbacks cannot emit multiple transitions or mutate the payload.
+The route adapter receives `ShopScreenRoute.Hub` together with the exact incoming `PlayerRouteProfilePayload` object. Back input is locked after the first emitted route, so repeated callbacks cannot emit multiple transitions or mutate the payload.
 
 ## Backplate and controls
 
@@ -77,7 +77,7 @@ The screen explicitly projects:
 - stale inventory or price rejection;
 - generic authority rejection.
 
-The authority fact is retained on `ShopScreenActionResultV1` for diagnostics and tests.
+The authority fact is retained on `ShopScreenActionResult` for diagnostics and tests.
 
 ## Validation expectations
 

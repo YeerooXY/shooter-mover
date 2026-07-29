@@ -15,7 +15,7 @@ namespace ShooterMover.UI.Skills
     [DisallowMultipleComponent]
     public sealed class SkillsSceneController :
         MonoBehaviour,
-        ISkillsScreenPresenterV1
+        ISkillsScreenPresenter
     {
         private const float DesignWidth = 1280f;
         private const float DesignHeight = 720f;
@@ -28,12 +28,12 @@ namespace ShooterMover.UI.Skills
         [SerializeField, Range(1, 100)] private int previewPlayerLevel = 20;
         [SerializeField] private string backSceneName = "MainMenu";
 
-        private SkillsScreenSessionV1 session;
-        private RankedSkillsScreenSessionV2 rankedSession;
-        private ISkillsScreenNavigationPortV1 navigationPort;
-        private PlayerRouteProfilePayloadV1 disconnectedPayload;
-        private SkillsScreenProjectionV1 projection;
-        private SkillsScreenAllocationResultV1 lastAllocation;
+        private SkillsScreenSession session;
+        private RankedSkillsScreenSession rankedSession;
+        private ISkillsScreenNavigationPort navigationPort;
+        private PlayerRouteProfilePayload disconnectedPayload;
+        private SkillsScreenView projection;
+        private SkillsScreenAllocationResult lastAllocation;
         private string unavailableReason = string.Empty;
         private Texture2D backplateTexture;
         private Vector2 scrollPosition;
@@ -46,8 +46,8 @@ namespace ShooterMover.UI.Skills
         private GUIStyle statusStyle;
 
         public bool IsVisible { get { return visible; } }
-        public SkillsScreenProjectionV1 CurrentProjection { get { return projection; } }
-        public SkillsScreenAllocationResultV1 LastAllocation { get { return lastAllocation; } }
+        public SkillsScreenView CurrentProjection { get { return projection; } }
+        public SkillsScreenAllocationResult LastAllocation { get { return lastAllocation; } }
         public bool HasBackplateAsset { get { return skillsBackplateAsset != null; } }
         public bool IsDisconnected { get { return visible && session == null && rankedSession == null; } }
         public bool IsRankedV2Connected { get { return visible && rankedSession != null; } }
@@ -89,8 +89,8 @@ namespace ShooterMover.UI.Skills
         }
 
         public void Show(
-            SkillsScreenSessionV1 presentedSession,
-            ISkillsScreenNavigationPortV1 presentedNavigationPort)
+            SkillsScreenSession presentedSession,
+            ISkillsScreenNavigationPort presentedNavigationPort)
         {
             session = presentedSession
                 ?? throw new ArgumentNullException(nameof(presentedSession));
@@ -107,8 +107,8 @@ namespace ShooterMover.UI.Skills
         }
 
         public void ShowRankedV2(
-            RankedSkillsScreenSessionV2 presentedSession,
-            ISkillsScreenNavigationPortV1 presentedNavigationPort)
+            RankedSkillsScreenSession presentedSession,
+            ISkillsScreenNavigationPort presentedNavigationPort)
         {
             rankedSession = presentedSession
                 ?? throw new ArgumentNullException(nameof(presentedSession));
@@ -125,8 +125,8 @@ namespace ShooterMover.UI.Skills
         }
 
         public void ShowDisconnected(
-            PlayerRouteProfilePayloadV1 routePayload,
-            ISkillsScreenNavigationPortV1 presentedNavigationPort)
+            PlayerRouteProfilePayload routePayload,
+            ISkillsScreenNavigationPort presentedNavigationPort)
         {
             ShowUnavailable(
                 routePayload,
@@ -135,8 +135,8 @@ namespace ShooterMover.UI.Skills
         }
 
         public void ShowUnavailable(
-            PlayerRouteProfilePayloadV1 routePayload,
-            ISkillsScreenNavigationPortV1 presentedNavigationPort,
+            PlayerRouteProfilePayload routePayload,
+            ISkillsScreenNavigationPort presentedNavigationPort,
             string rejectionCode)
         {
             disconnectedPayload = routePayload;
@@ -166,15 +166,15 @@ namespace ShooterMover.UI.Skills
         }
 
         public void ConfigureForTests(
-            SkillsScreenSessionV1 configuredSession,
-            ISkillsScreenNavigationPortV1 configuredNavigationPort)
+            SkillsScreenSession configuredSession,
+            ISkillsScreenNavigationPort configuredNavigationPort)
         {
             Show(configuredSession, configuredNavigationPort);
         }
 
         public void ConfigureRankedV2ForTests(
-            RankedSkillsScreenSessionV2 configuredSession,
-            ISkillsScreenNavigationPortV1 configuredNavigationPort)
+            RankedSkillsScreenSession configuredSession,
+            ISkillsScreenNavigationPort configuredNavigationPort)
         {
             ShowRankedV2(configuredSession, configuredNavigationPort);
         }
@@ -189,7 +189,7 @@ namespace ShooterMover.UI.Skills
             }
         }
 
-        public SkillsScreenAllocationResultV1 AllocateSkill(
+        public SkillsScreenAllocationResult AllocateSkill(
             string skillId,
             string operationId)
         {
@@ -201,7 +201,7 @@ namespace ShooterMover.UI.Skills
             return lastAllocation;
         }
 
-        public SkillsScreenAllocationResultV1 AllocateRankedSkill(string skillId)
+        public SkillsScreenAllocationResult AllocateRankedSkill(string skillId)
         {
             if (rankedSession == null)
                 throw new InvalidOperationException(
@@ -214,7 +214,7 @@ namespace ShooterMover.UI.Skills
         public bool Back()
         {
             if (backDispatched || navigationPort == null) return false;
-            PlayerRouteProfilePayloadV1 payload;
+            PlayerRouteProfilePayload payload;
             if (rankedSession != null)
                 payload = rankedSession.Back().RoutePayload;
             else if (session != null)
@@ -354,7 +354,7 @@ namespace ShooterMover.UI.Skills
 
         private void DrawSkillCard(
             Rect card,
-            SkillsScreenSkillProjectionV1 skill)
+            SkillsScreenSkillView skill)
         {
             GUI.Box(card, GUIContent.none);
             float inset = Mathf.Max(
@@ -451,32 +451,32 @@ namespace ShooterMover.UI.Skills
         }
 
         private static string FormatStatus(
-            SkillsScreenAllocationResultV1 result)
+            SkillsScreenAllocationResult result)
         {
-            SkillMutationFactV1 fact = result.MutationFact;
+            SkillMutationFact fact = result.MutationFact;
             switch (fact.Status)
             {
-                case SkillMutationStatusV1.Applied:
+                case SkillMutationStatus.Applied:
                     return fact.SkillId
                         + " increased to rank "
                         + fact.CurrentRank
                         + ".";
-                case SkillMutationStatusV1.DuplicateNoChange:
+                case SkillMutationStatus.DuplicateNoChange:
                     return "Duplicate operation ignored; no additional point was spent.";
-                case SkillMutationStatusV1.InsufficientPoints:
+                case SkillMutationStatus.InsufficientPoints:
                     return "Insufficient skill points.";
-                case SkillMutationStatusV1.PrerequisiteMissing:
+                case SkillMutationStatus.PrerequisiteMissing:
                     return "Missing prerequisite for "
                         + fact.SkillId
                         + ".";
-                case SkillMutationStatusV1.CategoryInvestmentMissing:
+                case SkillMutationStatus.CategoryInvestmentMissing:
                     return "Category investment requirement is not satisfied.";
-                case SkillMutationStatusV1.RankCapped:
+                case SkillMutationStatus.RankCapped:
                     return fact.SkillId
                         + " is already at maximum rank.";
-                case SkillMutationStatusV1.UnknownSkill:
+                case SkillMutationStatus.UnknownSkill:
                     return "Unknown skill identity.";
-                case SkillMutationStatusV1.InvalidRequest:
+                case SkillMutationStatus.InvalidRequest:
                     return "Allocation rejected: "
                         + (string.IsNullOrEmpty(fact.RejectionCode)
                             ? "invalid request"

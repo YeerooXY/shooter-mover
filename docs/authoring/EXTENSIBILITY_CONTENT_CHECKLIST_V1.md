@@ -10,13 +10,13 @@ When a mechanic already exists, adding content should normally add only definiti
 
 | Content | Public boundary | Fixture proof |
 |---|---|---|
-| Numerical skill | `RankedSkillDefinitionV2` → `RankedSkillCatalogV2` → `SkillEffectProjectorV2` → `SkillEffectModifierAdapterV1` | `skill.guardrail-critical-focus` adds critical chance without a new stat switch. |
-| Fact-window skill | `FactWindowConditionDefinitionV1` / `FactWindowConditionAuthorityV1` plus the same skill-to-modifier adapter | `skill.guardrail-pressure-cycle` activates only after two kill facts inside the authored window. |
-| Enemy | `EnemyCatalogJsonImporterV1` with `EnemyCatalogRegistryV1` | `enemy.guardrail-scout` uses registered pursuit, ranged decision, projectile, damage, XP, drop, and presentation IDs. No enemy factory/runtime-composition edit is required. |
-| Prop | `PropDefinitionV1` + `PropCapabilityRegistryV1.CreateBuiltIns()` + `PropRuntimeFactoryV1` | `prop.guardrail-switch` composes collision, interaction, switch, and objective capabilities. |
-| Room | `RoomContentJsonPackageV1` → `RoomContentJsonImporterV1` with `BuiltInRoomContentObjectCatalogV1` | `room.guardrail-entry` and its support terminal compile into the room graph using existing door, floor, and cover objects. |
-| Key / locked door | `RoomAccessReferenceCatalogV1` → `RoomAccessJsonImporterV1` | `holding.guardrail-key` is registered as a run holding and consumed by the authored progression door. |
-| Special event | `SpecialEventDefinitionV1` → `SpecialEventCatalogV1` → `ActiveEventModifierProjectionServiceV1` | `event.guardrail-drop-boost` multiplies only strongbox drop weight during its activation window. |
+| Numerical skill | `RankedSkillDefinition` → `RankedSkillCatalog` → `SkillEffectProjector` → `SkillEffectModifierBridge` | `skill.guardrail-critical-focus` adds critical chance without a new stat switch. |
+| Fact-window skill | `FactWindowConditionDefinition` / `FactWindowConditionState` plus the same skill-to-modifier adapter | `skill.guardrail-pressure-cycle` activates only after two kill facts inside the authored window. |
+| Enemy | `EnemyCatalogJsonImporter` with `EnemyCatalogRegistry` | `enemy.guardrail-scout` uses registered pursuit, ranged decision, projectile, damage, XP, drop, and presentation IDs. No enemy factory/runtime-composition edit is required. |
+| Prop | `PropDefinition` + `PropCapabilityRegistry.CreateBuiltIns()` + `PropLiveFactory` | `prop.guardrail-switch` composes collision, interaction, switch, and objective capabilities. |
+| Room | `RoomContentJsonPackage` → `RoomContentJsonImporter` with `BuiltInRoomContentObjectCatalog` | `room.guardrail-entry` and its support terminal compile into the room graph using existing door, floor, and cover objects. |
+| Key / locked door | `RoomAccessReferenceCatalog` → `RoomAccessJsonImporter` | `holding.guardrail-key` is registered as a run holding and consumed by the authored progression door. |
+| Special event | `SpecialEventDefinition` → `SpecialEventCatalog` → `ActiveEventModifierViewActions` | `event.guardrail-drop-boost` multiplies only strongbox drop weight during its activation window. |
 
 ## Equivalent schema and validation contract
 
@@ -35,7 +35,7 @@ Required fields:
 - capability-compatible projectile/area/melee parameter blocks;
 - registered XP and drop profiles plus room-clear role.
 
-Unknown references fail closed through `EnemyCatalogRegistryV1`. Diagnostics retain the authored JSON path, for example `$.definitions[0].attacks[0].capability`.
+Unknown references fail closed through `EnemyCatalogRegistry`. Diagnostics retain the authored JSON path, for example `$.definitions[0].attacks[0].capability`.
 
 ### Room package
 
@@ -45,7 +45,7 @@ A package contains a versioned manifest and one layout, enemy, prop, decor, and 
 - all referenced documents present;
 - matching room ID in every document;
 - valid bounds, spawns, doors, links, positions, and rotations;
-- object IDs registered by `IRoomContentObjectCatalogV1`;
+- object IDs registered by `IRoomContentObjectCatalog`;
 - deterministic generated identities for anonymous placements;
 - valid encounter completion and door-rule selectors.
 
@@ -53,7 +53,7 @@ Diagnostics include both the document key and exact field, such as `$documents["
 
 ### Prop definition
 
-A prop requires a stable definition ID, presentation ID, and one or more capabilities registered by `PropCapabilityRegistryV1`. Capability combinations must remain semantically valid:
+A prop requires a stable definition ID, presentation ID, and one or more capabilities registered by `PropCapabilityRegistry`. Capability combinations must remain semantically valid:
 
 - health, indestructible, and decorative modes may not conflict;
 - explosion/drop-on-destroy require health-based destructibility;
@@ -69,7 +69,7 @@ Required fields are schema/content version, stable event ID, start-inclusive/end
 
 ### Room access definition
 
-Required fields are version/layout, stable condition IDs, valid condition kinds, child/subject references, and door selectors. External holdings, objectives, switches, and drops must exist in `IRoomAccessReferenceRegistryV1`. Unknown IDs fail closed at exact authored paths such as `$.conditions[0].subject` or `$.doors[0].consume_holding`.
+Required fields are version/layout, stable condition IDs, valid condition kinds, child/subject references, and door selectors. External holdings, objectives, switches, and drops must exist in `IRoomAccessReferenceRegistry`. Unknown IDs fail closed at exact authored paths such as `$.conditions[0].subject` or `$.doors[0].consume_holding`.
 
 ### Ranked skill definition
 

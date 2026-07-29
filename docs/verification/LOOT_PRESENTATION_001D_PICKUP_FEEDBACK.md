@@ -15,7 +15,7 @@ destroyed. Rejected collection must leave the pickup available and visible.
 
 ## Authority and ownership
 
-- `RunLocalPickupAuthorityV1` remains the sole collection authority.
+- `RunLocalPickupState` remains the sole collection authority.
 - `RunPickupPresenter2D` owns the registry of currently visible physical projections.
 - `RunRewardPickup2D` submits the typed collection command and coordinates retirement
   only after receiving an accepted canonical result.
@@ -55,7 +55,7 @@ The generic fly/fade feedback is automatically available to every canonical
 `RunRewardPickup2D` created by `RunPickupPresenter2D`.
 
 The richer credits, scrap, and strongbox visual requires a presentation prefab carrying
-`LootPickupRunProjection2D`. The current live production registry composition was not
+`LootPickupRunView2D`. The current live production registry composition was not
 located confidently in this connector pass, so no retired Stage 1 bootstrap was recreated
 or guessed. Unsupported or unadapted content retains the existing registry sprite and
 generic feedback.
@@ -90,7 +90,7 @@ change.
 2. Confirm `ShooterMover.RunPickupUnity`, `ShooterMover.UI.StrongboxOpening`, and the
    RunPickups PlayMode test assembly compile.
 3. Run `RunPickupPresentationPlayModeTests`.
-4. Run `LootPickupRunProjectionPlayModeTests`.
+4. Run `LootPickupRunViewPlayModeTests`.
 5. In a scene with a configured canonical pickup presenter and player collector, collect
    one available pickup.
 6. Confirm the authoritative available count changes immediately and exactly once.

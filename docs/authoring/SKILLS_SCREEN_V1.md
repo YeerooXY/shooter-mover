@@ -6,11 +6,11 @@ SKILLUI-001 presents the merged XP-001 and SKILL-001 authorities as a functional
 
 ## Authority composition
 
-`SkillsScreenSessionV1` receives three existing objects:
+`SkillsScreenSession` receives three existing objects:
 
-1. the exact immutable `PlayerRouteProfilePayloadV1` from HUB-001;
-2. the persistent `IPlayerExperienceAuthorityV1` from XP-001;
-3. the persistent `SkillProgressionAuthorityV1` from SKILL-001.
+1. the exact immutable `PlayerRouteProfilePayload` from HUB-001;
+2. the persistent `IPlayerExperienceState` from XP-001;
+3. the persistent `SkillProgressionState` from SKILL-001.
 
 Before each projection or allocation, the session synchronizes the SKILL-001 player-level input from `XP.CurrentState.Level`. Total points come from `XP.CurrentState.TotalSkillPointsAwarded`. Spent ranks, available points, operation replay protection, prerequisites, and caps remain SKILL-001 authority behavior.
 
@@ -39,7 +39,7 @@ A node may remain visually `Available` or `Purchased` while `CanAllocate` is fal
 
 ## Allocation commands
 
-`SkillsScreenSessionV1.Allocate(operationId, skillId)` delegates directly to `SkillProgressionAuthorityV1.Allocate` and returns the real `SkillMutationFactV1` plus a refreshed immutable projection.
+`SkillsScreenSession.Allocate(operationId, skillId)` delegates directly to `SkillProgressionState.Allocate` and returns the real `SkillMutationFact` plus a refreshed immutable projection.
 
 The UI surfaces:
 
@@ -54,9 +54,9 @@ UI-created commands use unique operation identities. Tests and external callers 
 
 ## Hub and revisit flow
 
-`SkillsHubDestinationAdapterV1` implements the existing HUB destination adapter contract. When HUB presents `HubRouteV1.Skills`, it creates a fresh presentation session over the same persistent XP and SKILL authorities. Presenting any other route hides the screen.
+`SkillsHubDestinationBridge` implements the existing HUB destination adapter contract. When HUB presents `HubRoute.Skills`, it creates a fresh presentation session over the same persistent XP and SKILL authorities. Presenting any other route hides the screen.
 
-The controller invokes `ISkillsScreenNavigationPortV1.ReturnToHub` with the exact incoming route payload. A production composition root should implement that callback with HUB-001 navigation. Revisit rebuilds from current authority snapshots, so allocation state survives without local caches.
+The controller invokes `ISkillsScreenNavigationPort.ReturnToHub` with the exact incoming route payload. A production composition root should implement that callback with HUB-001 navigation. Revisit rebuilds from current authority snapshots, so allocation state survives without local caches.
 
 ## Backplate and controls
 

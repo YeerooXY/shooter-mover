@@ -10,7 +10,7 @@ using UnityEngine.TestTools;
 
 namespace ShooterMover.Tests.PlayMode.Weapons.Live
 {
-    public sealed partial class InventoryWeaponRuntimePlayModeTests
+    public sealed partial class InventoryWeaponLivePlayModeTests
     {
         [UnityTest]
         public IEnumerator MountedMuzzlesConvergeOnOneLockedTargetPoint()
@@ -29,23 +29,23 @@ namespace ShooterMover.Tests.PlayMode.Weapons.Live
             var emitter = emitterObject
                 .AddComponent<InventoryWeaponEffectEmitter2D>();
             var actor = new FixedActorSource();
-            var adapter = new InventoryBackedWeaponExecutionAdapter(
+            var adapter = new InventoryBackedWeaponExecutionBridge(
                 new InMemoryEquipmentLookup(equipment),
                 EquipmentCatalogFor(equipment),
                 WeaponCatalogFor(),
                 actor,
                 emitter,
                 60);
-            var runtime = new InventoryWeaponRuntimeComposition(
+            var runtime = new InventoryWeaponLiveSetup(
                 actor,
                 new[]
                 {
-                    new InventoryWeaponMountedRuntimeV1(
+                    new InventoryWeaponMountedLive(
                         StableId.Parse("weapon-mount.outer-left"),
                         new EquipmentInstanceId(
                             equipment[0].InstanceId),
                         -0.9d),
-                    new InventoryWeaponMountedRuntimeV1(
+                    new InventoryWeaponMountedLive(
                         StableId.Parse("weapon-mount.outer-right"),
                         new EquipmentInstanceId(
                             equipment[1].InstanceId),

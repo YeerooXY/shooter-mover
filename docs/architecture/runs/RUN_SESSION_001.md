@@ -14,27 +14,27 @@
 ## Ownership diagram
 
 ```text
-PlayerAccountSnapshotV1 / selected CharacterInstanceSnapshotV1
-        │ permanent truth; selected by CharacterCompositionCoordinatorV1
+PlayerAccountSnapshot / selected CharacterInstanceSnapshot
+        │ permanent truth; selected by CharacterSetupFlow
         ▼
-ProductionCharacterRuntimeGraphV1
+CharacterLiveGraph
         │ exports accepted immutable snapshots only
         ▼
-ProductionCharacterRunSessionStartSourceV1
+CharacterRunSessionStartSource
         │ freezes exact character revision/fingerprint, loadout, holdings,
         │ skill allocation, equipment instances/definitions and derived inputs
         ▼
-FrozenCharacterRunInputsV1 ───────► RunCombatProfileV1
+FrozenCharacterRunInputs ───────► RunCombatProfile
         │                              immutable derived run-start projection
         ▼
-RunSessionAggregateV1
-        ├── existing PlayerRuntimeComposition / PlayerActorAuthority port
+RunSessionAggregate
+        ├── existing PlayerLiveSetup / PlayerActorState port
         ├── existing inventory-backed weapon execution port
-        ├── existing StatusEffectAuthorityV1 port
+        ├── existing StatusEffectState port
         ├── narrow conditional-fact port (CONDITION-LIVE-001 boundary)
         ├── empty active-ability lifecycle port (ABILITY-RUNTIME-001 boundary)
         ├── narrow room query/lifecycle port (ROOM-JSON-LIVE-001 boundary)
-        └── existing MissionRunResultAuthorityV1 port
+        └── existing MissionRunResultState port
                  │ exact-once immutable mission result
                  ▼
        downstream permanent result application (not implemented here)
@@ -44,11 +44,11 @@ RunSessionAggregateV1
 
 | Component | Owns | Explicitly does not own |
 |---|---|---|
-| `CharacterCompositionCoordinatorV1` and selected production graph | Permanent selected character graph and subsystem save adapters | Mission health, cooldowns, effects, room state, projectiles, temporary pickups |
-| `ProductionCharacterRunSessionStartSourceV1` | One start-boundary read and immutable freeze of accepted permanent inputs | Permanent mutation, save writes, gameplay state |
-| `FrozenCharacterRunInputsV1` | Character revision/fingerprint, exact route/loadout/holdings/skills/equipment/stat fingerprints | Mutable authority or persisted primary truth |
-| `RunSessionAuthorityV1` | Start-operation replay ledger, deterministic run identity, run lookup | Account, inventory, reward, room or save authority |
-| `RunSessionAggregateV1` | Run lifecycle, restart/end replay, run-local counters/pickups/cash/statistics, immutable snapshots | Permanent XP/wallet/equipment/box mutation |
+| `CharacterSetupFlow` and selected production graph | Permanent selected character graph and subsystem save adapters | Mission health, cooldowns, effects, room state, projectiles, temporary pickups |
+| `CharacterRunSessionStartSource` | One start-boundary read and immutable freeze of accepted permanent inputs | Permanent mutation, save writes, gameplay state |
+| `FrozenCharacterRunInputs` | Character revision/fingerprint, exact route/loadout/holdings/skills/equipment/stat fingerprints | Mutable authority or persisted primary truth |
+| `RunSessionState` | Start-operation replay ledger, deterministic run identity, run lookup | Account, inventory, reward, room or save authority |
+| `RunSessionAggregate` | Run lifecycle, restart/end replay, run-local counters/pickups/cash/statistics, immutable snapshots | Permanent XP/wallet/equipment/box mutation |
 | Existing runtime ports | Their existing subsystem authority and generation-scoped behavior | A replacement authority inside the run aggregate |
 | Existing mission-result authority | Exact strongbox provenance and exactly-once mission result | Reward application, box opening or permanent grants |
 
@@ -66,7 +66,7 @@ RunSessionAggregateV1
 - event/account/achievement inputs supplied by their owning systems.
 
 These values are read once for a new start and represented by complete input
-fingerprints. `RunCombatProfileV1` is derived and is never persisted as primary
+fingerprints. `RunCombatProfile` is derived and is never persisted as primary
 character truth.
 
 ### Run-local truth
@@ -86,7 +86,7 @@ character truth.
 
 ## Start contract and identity
 
-`StartRunSessionCommandV1` is versioned and immutable. It includes:
+`StartRunSessionCommand` is versioned and immutable. It includes:
 
 - operation ID;
 - requested run ID or explicit run-instance identity material;
@@ -107,7 +107,7 @@ for the same character and seed.
 
 The production start source validates the selected production graph and freezes:
 
-- the exact accepted `CharacterInstanceSnapshotV1`;
+- the exact accepted `CharacterInstanceSnapshot`;
 - character revision/fingerprint;
 - current route/loadout sequence and fingerprint;
 - holdings sequence and fingerprint;
@@ -116,7 +116,7 @@ The production start source validates the selected production graph and freezes:
 - skill allocation snapshot and fingerprint;
 - injected class/level/equipment/augment/skill/event inputs consumed by the
   existing derived-stat composer;
-- `DerivedCharacterStatsSnapshotV1` and `RunCombatProfileV1`;
+- `DerivedCharacterStatsSnapshot` and `RunCombatProfile`;
 - complete aggregate input fingerprint.
 
 The active run never re-reads Hub state. A later start performs a fresh freeze, so
@@ -124,14 +124,14 @@ accepted Hub changes affect the later run only.
 
 ## Restart contract
 
-`RestartRunSessionCommandV1` is explicit; scene reload is not restart authority.
+`RestartRunSessionCommand` is explicit; scene reload is not restart authority.
 Restart performs a complete preflight across every lifecycle port before committing:
 
 1. validate run ID, generation and authoritative tick;
 2. require replacement generation to increment exactly once;
 3. preflight player, weapon, status, condition, ability and room ports;
 4. restart every existing runtime port;
-5. clear or retain run-local state according to `RunRestartPolicyV1`;
+5. clear or retain run-local state according to `RunRestartPolicy`;
 6. publish deterministic restart/debug fingerprints.
 
 The same run ID is preserved. The existing player runtime restores health and advances
@@ -151,14 +151,14 @@ The run exposes immutable versioned projections for:
 - deterministic test comparison;
 - optional run checkpoint data.
 
-`RunCheckpointV1` carries an explicit `IsPermanentCharacterTruth == false` invariant.
+`RunCheckpoint` carries an explicit `IsPermanentCharacterTruth == false` invariant.
 It is separate from account/character saves and cannot silently become permanent
 character truth.
 
 ## End Run
 
-`RunSessionAggregateV1.End` delegates to the existing
-`MissionRunResultAuthorityV1`. Exact replay returns the original immutable result.
+`RunSessionAggregate.End` delegates to the existing
+`MissionRunResultState`. Exact replay returns the original immutable result.
 Conflicting operation reuse rejects without additional mutation.
 
 The terminal receipt preserves:

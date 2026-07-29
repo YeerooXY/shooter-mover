@@ -9,7 +9,7 @@
 
 ## Ownership
 
-`PlayerActorAuthority`, created by the existing `PlayerRuntimeCompositionRoot`, is the only Stage 1 authority for:
+`PlayerActorState`, created by the existing `PlayerLiveSetupRoot`, is the only Stage 1 authority for:
 
 - current and maximum health;
 - accepted damage and healing operations;
@@ -28,9 +28,9 @@ The retained `MovementActorLifecycle` remains the Unity movement/input projectio
 
 The adapter:
 
-1. composes `PlayerRuntimeComposition` around the already-created Unity movement actor;
+1. composes `PlayerLiveSetup` around the already-created Unity movement actor;
 2. routes Blaster Turret and Mobile Blaster Droid projectile hit facts into
-   `PlayerRuntimeComposition.ApplyDamage`;
+   `PlayerLiveSetup.ApplyDamage`;
 3. replaces the player void-hazard combat port with an authority-backed
    `IVoidHazardCombatPort`;
 4. exposes immutable runtime and HUD snapshots;
@@ -47,7 +47,7 @@ healing, death, or restart outcomes.
 ## Idempotency
 
 Damage event identity is supplied by the existing projectile/hazard event IDs.
-`PlayerActorAuthority` applies the first matching command, returns `Duplicate` for an
+`PlayerActorState` applies the first matching command, returns `Duplicate` for an
 exact replay, and rejects conflicting reuse of the same event ID without mutation.
 
 Healing and restart retain their existing operation-ID replay behavior.
@@ -56,7 +56,7 @@ Healing and restart retain their existing operation-ID replay behavior.
 
 EditMode:
 
-`ShooterMover.Tests.EditMode.PlayerRuntime.PlayerLiveAuthorityTests`
+`ShooterMover.Tests.EditMode.PlayerRuntime.PlayerLiveStateTests`
 
 - damage changes state once;
 - exact duplicate damage is idempotent;
@@ -78,7 +78,7 @@ Suggested Unity commands:
 ```bash
 "$UNITY" -batchmode -nographics -quit -projectPath . \
   -runTests -testPlatform EditMode \
-  -testFilter ShooterMover.Tests.EditMode.PlayerRuntime.PlayerLiveAuthorityTests \
+  -testFilter ShooterMover.Tests.EditMode.PlayerRuntime.PlayerLiveStateTests \
   -testResults artifacts/test-results/PLAYER-LIVE-001-EditMode.xml
 
 "$UNITY" -batchmode -nographics -quit -projectPath . \
@@ -101,7 +101,7 @@ No changes are made to:
 
 The initial polling bridge was replaced by a synchronous typed composition boundary:
 
-- `QuickRestart` delegates to `PlayerRuntimeComposition.Restart` first. Only an
+- `QuickRestart` delegates to `PlayerLiveSetup.Restart` first. Only an
   accepted restart projects room, projectile, enemy, HUD and camera reset state.
 - rapid same-frame restart calls therefore advance `0 -> 1 -> 2` without an
   Update-based catch-up race;
@@ -125,7 +125,7 @@ Void hazard event IDs remain deterministic hashes. The damage and instant-death
 request contracts now carry the originating gameplay attempt generation explicitly;
 the compatibility constructors remain generation zero for existing fixtures. Live
 routing always supplies the bound scope generation, so delayed pre-restart requests
-are rejected by `PlayerActorAuthority` without trying to reverse a hash.
+are rejected by `PlayerActorState` without trying to reverse a hash.
 
 
 Projectile execution now publishes a package-neutral immutable emission fact that

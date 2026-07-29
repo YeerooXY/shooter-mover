@@ -51,13 +51,13 @@ namespace ShooterMover.Contracts.Encounters
     /// Identifies one loaded encounter runtime separately from the durable
     /// encounter definition, mission run, and room projection identities.
     /// </summary>
-    public sealed class EncounterRuntimeIdentity : IEquatable<EncounterRuntimeIdentity>
+    public sealed class EncounterLiveIdentity : IEquatable<EncounterLiveIdentity>
     {
-        public EncounterRuntimeIdentity(
+        public EncounterLiveIdentity(
             StableId encounterId,
             StableId runtimeId,
             StableId runId,
-            RoomProjectionIdentity room)
+            RoomViewIdentity room)
         {
             EncounterId = EncounterContractFormat.RequireNotNull(encounterId, nameof(encounterId));
             RuntimeId = EncounterContractFormat.RequireNotNull(runtimeId, nameof(runtimeId));
@@ -71,7 +71,7 @@ namespace ShooterMover.Contracts.Encounters
 
         public StableId RunId { get; }
 
-        public RoomProjectionIdentity Room { get; }
+        public RoomViewIdentity Room { get; }
 
         public string ToCanonicalString()
         {
@@ -85,7 +85,7 @@ namespace ShooterMover.Contracts.Encounters
                 + Room.ToCanonicalString();
         }
 
-        public bool Equals(EncounterRuntimeIdentity other)
+        public bool Equals(EncounterLiveIdentity other)
         {
             return !ReferenceEquals(other, null)
                 && EncounterId.Equals(other.EncounterId)
@@ -96,7 +96,7 @@ namespace ShooterMover.Contracts.Encounters
 
         public override bool Equals(object obj)
         {
-            return Equals(obj as EncounterRuntimeIdentity);
+            return Equals(obj as EncounterLiveIdentity);
         }
 
         public override int GetHashCode()
@@ -271,7 +271,7 @@ namespace ShooterMover.Contracts.Encounters
     public sealed class EncounterBudgetSample : IEquatable<EncounterBudgetSample>
     {
         public EncounterBudgetSample(
-            EncounterRuntimeIdentity encounter,
+            EncounterLiveIdentity encounter,
             StableId sampleId,
             int concurrentParticipants,
             int pendingReinforcementEntries,
@@ -295,7 +295,7 @@ namespace ShooterMover.Contracts.Encounters
             FrameTimeMilliseconds = frameTimeMilliseconds;
         }
 
-        public EncounterRuntimeIdentity Encounter { get; }
+        public EncounterLiveIdentity Encounter { get; }
 
         public StableId SampleId { get; }
 
@@ -416,7 +416,7 @@ namespace ShooterMover.Contracts.Encounters
         private readonly ReadOnlyCollection<EncounterParticipantEntry> entries;
 
         public EncounterStartMessage(
-            EncounterRuntimeIdentity encounter,
+            EncounterLiveIdentity encounter,
             StableId messageId,
             EncounterPerformanceBudget budget,
             IEnumerable<EncounterParticipantEntry> entries)
@@ -441,7 +441,7 @@ namespace ShooterMover.Contracts.Encounters
             }
         }
 
-        public EncounterRuntimeIdentity Encounter { get; }
+        public EncounterLiveIdentity Encounter { get; }
 
         public StableId MessageId { get; }
 
@@ -489,7 +489,7 @@ namespace ShooterMover.Contracts.Encounters
         private readonly ReadOnlyCollection<EncounterParticipantEntry> entries;
 
         public EncounterReinforcementMessage(
-            EncounterRuntimeIdentity encounter,
+            EncounterLiveIdentity encounter,
             StableId messageId,
             long reinforcementIndex,
             IEnumerable<EncounterParticipantEntry> entries)
@@ -515,7 +515,7 @@ namespace ShooterMover.Contracts.Encounters
             }
         }
 
-        public EncounterRuntimeIdentity Encounter { get; }
+        public EncounterLiveIdentity Encounter { get; }
 
         public StableId MessageId { get; }
 
@@ -560,7 +560,7 @@ namespace ShooterMover.Contracts.Encounters
     public sealed class EncounterRetreatMessage : IEquatable<EncounterRetreatMessage>
     {
         public EncounterRetreatMessage(
-            EncounterRuntimeIdentity encounter,
+            EncounterLiveIdentity encounter,
             StableId messageId,
             StableId sourceId,
             EncounterRetreatReason reason)
@@ -572,7 +572,7 @@ namespace ShooterMover.Contracts.Encounters
             Reason = reason;
         }
 
-        public EncounterRuntimeIdentity Encounter { get; }
+        public EncounterLiveIdentity Encounter { get; }
 
         public StableId MessageId { get; }
 
@@ -614,7 +614,7 @@ namespace ShooterMover.Contracts.Encounters
     public sealed class EncounterLockdownMessage : IEquatable<EncounterLockdownMessage>
     {
         public EncounterLockdownMessage(
-            EncounterRuntimeIdentity encounter,
+            EncounterLiveIdentity encounter,
             StableId messageId,
             EncounterLockdownState state,
             EncounterLockdownReason reason)
@@ -627,7 +627,7 @@ namespace ShooterMover.Contracts.Encounters
             Reason = reason;
         }
 
-        public EncounterRuntimeIdentity Encounter { get; }
+        public EncounterLiveIdentity Encounter { get; }
 
         public StableId MessageId { get; }
 
@@ -669,7 +669,7 @@ namespace ShooterMover.Contracts.Encounters
     public sealed class EncounterWithdrawalMessage : IEquatable<EncounterWithdrawalMessage>
     {
         public EncounterWithdrawalMessage(
-            EncounterRuntimeIdentity encounter,
+            EncounterLiveIdentity encounter,
             StableId messageId,
             StableId actorId,
             EncounterWithdrawalReason reason)
@@ -681,7 +681,7 @@ namespace ShooterMover.Contracts.Encounters
             Reason = reason;
         }
 
-        public EncounterRuntimeIdentity Encounter { get; }
+        public EncounterLiveIdentity Encounter { get; }
 
         public StableId MessageId { get; }
 
@@ -728,7 +728,7 @@ namespace ShooterMover.Contracts.Encounters
         IEquatable<EncounterCombatResolutionMessage>
     {
         public EncounterCombatResolutionMessage(
-            EncounterRuntimeIdentity encounter,
+            EncounterLiveIdentity encounter,
             VitalMessage vital)
         {
             Encounter = EncounterContractFormat.RequireNotNull(encounter, nameof(encounter));
@@ -742,7 +742,7 @@ namespace ShooterMover.Contracts.Encounters
             }
         }
 
-        public EncounterRuntimeIdentity Encounter { get; }
+        public EncounterLiveIdentity Encounter { get; }
 
         public VitalMessage Vital { get; }
 
@@ -802,7 +802,7 @@ namespace ShooterMover.Contracts.Encounters
         IEquatable<EncounterCompletionMessage>
     {
         public EncounterCompletionMessage(
-            EncounterRuntimeIdentity encounter,
+            EncounterLiveIdentity encounter,
             MissionEventEnvelope durableEvent)
         {
             Encounter = EncounterContractFormat.RequireNotNull(encounter, nameof(encounter));
@@ -828,7 +828,7 @@ namespace ShooterMover.Contracts.Encounters
             }
         }
 
-        public EncounterRuntimeIdentity Encounter { get; }
+        public EncounterLiveIdentity Encounter { get; }
 
         public MissionEventEnvelope DurableEvent { get; }
 

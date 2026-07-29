@@ -98,7 +98,7 @@ namespace ShooterMover.Tests.PlayMode.Rewards.GameplayDrops
                     GameplayDropOverrideAuthoring.Default(
                         "gameplay-drop-override.default-" + index),
                     sink);
-                IGameplayDropSourceV1 source = component;
+                IGameplayDropSource source = component;
                 GameplayDropResolutionResult resolution = source.ResolveGameplayDrop();
 
                 Assert.That(resolution.IsResolved, Is.True, resolution.Diagnostic);
@@ -142,7 +142,7 @@ namespace ShooterMover.Tests.PlayMode.Rewards.GameplayDrops
                     "gameplay-drop-profile.appended",
                     new RewardGrantAuthoring(
                         "gameplay-drop-grant.scrap",
-                        RewardGrantKindV1.Scrap,
+                        RewardGrantKind.Scrap,
                         "currency.scrap",
                         2L,
                         2L)),
@@ -153,7 +153,7 @@ namespace ShooterMover.Tests.PlayMode.Rewards.GameplayDrops
 
             Assert.That(
                 noneResolution.Operation.ResolvedProfile.Disposition,
-                Is.EqualTo(RewardProfileDispositionV1.ExplicitNoDrop));
+                Is.EqualTo(RewardProfileDisposition.ExplicitNoDrop));
             Assert.That(
                 appendResolution.Operation.ResolvedProfile.GuaranteedEntries.Count,
                 Is.EqualTo(2));
@@ -232,7 +232,7 @@ namespace ShooterMover.Tests.PlayMode.Rewards.GameplayDrops
                     {
                         new RewardGrantAuthoring(
                             "gameplay-drop-grant.money",
-                            RewardGrantKindV1.Money,
+                            RewardGrantKind.Money,
                             "currency.money",
                             5L,
                             5L),
@@ -271,18 +271,18 @@ namespace ShooterMover.Tests.PlayMode.Rewards.GameplayDrops
                     "Accepted first gameplay drop operation.");
             }
 
-            RewardOperationIdentityComparisonV1 comparison =
-                RewardOperationIdentityV1.Classify(
+            RewardOperationIdentityComparison comparison =
+                RewardOperationIdentity.Classify(
                     FirstPreview.OperationRequest,
                     preview.OperationRequest);
-            if (comparison == RewardOperationIdentityComparisonV1.ExactDuplicateNoChange)
+            if (comparison == RewardOperationIdentityComparison.ExactDuplicateNoChange)
             {
                 return new RewardSourceSubmissionResult(
                     RewardSourceSubmissionStatus.ExactDuplicateNoChange,
                     "Exact gameplay drop duplicate produced no additional operation.");
             }
 
-            if (comparison == RewardOperationIdentityComparisonV1.DistinctOperation)
+            if (comparison == RewardOperationIdentityComparison.DistinctOperation)
             {
                 return new RewardSourceSubmissionResult(
                     RewardSourceSubmissionStatus.Accepted,

@@ -8,7 +8,7 @@ namespace ShooterMover.Editor.BalanceSimulator
 {
     public sealed class BalanceSimulatorWindow : EditorWindow
     {
-        private BalanceSimulationModeV1 mode = BalanceSimulationModeV1.SingleOpen;
+        private BalanceSimulationMode mode = BalanceSimulationMode.SingleOpen;
         private int characterLevel = 10;
         private int strongboxTier = 1;
         private int strongboxLevel = 10;
@@ -33,20 +33,20 @@ namespace ShooterMover.Editor.BalanceSimulator
                 "Uses the production deterministic generator, strongbox power-budget resolver, shop pricing, crafting unlock policy, and augment-upgrade cost policy. No alternate reward algorithm is implemented here.",
                 MessageType.Info);
 
-            mode = (BalanceSimulationModeV1)EditorGUILayout.EnumPopup("Mode", mode);
+            mode = (BalanceSimulationMode)EditorGUILayout.EnumPopup("Mode", mode);
             characterLevel = Math.Max(0, EditorGUILayout.IntField("Character Level", characterLevel));
             strongboxTier = Math.Max(0, EditorGUILayout.IntField("Strongbox Tier", strongboxTier));
             strongboxLevel = Math.Max(0, EditorGUILayout.IntField("Strongbox Level", strongboxLevel));
             shopLevel = Math.Max(0, EditorGUILayout.IntField("Shop Level", shopLevel));
             seedText = EditorGUILayout.TextField("Deterministic Seed", seedText);
-            using (new EditorGUI.DisabledScope(mode == BalanceSimulationModeV1.SingleOpen))
+            using (new EditorGUI.DisabledScope(mode == BalanceSimulationMode.SingleOpen))
             {
                 simulations = Math.Max(1, EditorGUILayout.IntField("Number of Simulations", simulations));
             }
             startingMoney = Math.Max(0L, EditorGUILayout.LongField("Starting Money", startingMoney));
             startingScrap = Math.Max(0L, EditorGUILayout.LongField("Starting Scrap", startingScrap));
 
-            if (GUILayout.Button(mode == BalanceSimulationModeV1.SingleOpen ? "Run Single Open" : "Run Batch Simulation"))
+            if (GUILayout.Button(mode == BalanceSimulationMode.SingleOpen ? "Run Single Open" : "Run Batch Simulation"))
             {
                 RunSimulation();
             }
@@ -68,7 +68,7 @@ namespace ShooterMover.Editor.BalanceSimulator
 
             try
             {
-                BalanceSimulationRequestV1 request = new BalanceSimulationRequestV1(
+                BalanceSimulationRequest request = new BalanceSimulationRequest(
                     mode,
                     characterLevel,
                     strongboxTier,
@@ -78,8 +78,8 @@ namespace ShooterMover.Editor.BalanceSimulator
                     simulations,
                     startingMoney,
                     startingScrap);
-                BalanceSimulationReportV1 report = new BalanceSimulationServiceV1(
-                    new RuntimeBalanceScenarioV1()).Run(request);
+                BalanceSimulationReport report = new BalanceSimulationActions(
+                    new LiveBalanceScenario()).Run(request);
                 reportText = Format(report);
             }
             catch (Exception exception)
@@ -88,7 +88,7 @@ namespace ShooterMover.Editor.BalanceSimulator
             }
         }
 
-        private static string Format(BalanceSimulationReportV1 report)
+        private static string Format(BalanceSimulationReport report)
         {
             StringBuilder builder = new StringBuilder();
             builder.AppendLine("Fingerprint: " + report.Fingerprint)
@@ -116,7 +116,7 @@ namespace ShooterMover.Editor.BalanceSimulator
             return builder.ToString();
         }
 
-        private static void Append(StringBuilder builder, string heading, System.Collections.Generic.IReadOnlyList<BalanceCountV1> values)
+        private static void Append(StringBuilder builder, string heading, System.Collections.Generic.IReadOnlyList<BalanceCount> values)
         {
             builder.AppendLine().AppendLine(heading);
             if (values.Count == 0)

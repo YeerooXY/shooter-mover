@@ -9,7 +9,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class RunPickupTransformAcceptedFeedback2D : MonoBehaviour,
-        IRunRewardPickupAcceptedFeedbackV1
+        IRunRewardPickupAcceptedFeedback
     {
         private const float DurationSeconds = 0.24f;
 

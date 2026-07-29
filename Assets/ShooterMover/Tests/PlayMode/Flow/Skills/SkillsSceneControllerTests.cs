@@ -24,26 +24,26 @@ namespace ShooterMover.Tests.PlayMode.Flow.Skills
         {
             GameObject host = new GameObject("SKILLUI-001 controller test");
             SkillsSceneController controller = host.AddComponent<SkillsSceneController>();
-            PlayerExperienceAuthorityV1 experience = CreateExperience(4);
-            var skills = new SkillProgressionAuthorityV1(
-                SkillCatalogV1.CreateDefault(),
+            PlayerExperienceState experience = CreateExperience(4);
+            var skills = new SkillProgressionState(
+                SkillCatalog.CreateDefault(),
                 4);
             var navigation = new CaptureNavigationPort();
             controller.ConfigureForTests(
-                new SkillsScreenSessionV1(CreateRoute(), experience, skills),
+                new SkillsScreenSession(CreateRoute(), experience, skills),
                 navigation);
 
-            SkillsScreenAllocationResultV1 applied = controller.AllocateSkill(
+            SkillsScreenAllocationResult applied = controller.AllocateSkill(
                 "defense.1",
                 "skills-controller-operation.same");
-            SkillsScreenAllocationResultV1 duplicate = controller.AllocateSkill(
+            SkillsScreenAllocationResult duplicate = controller.AllocateSkill(
                 "defense.1",
                 "skills-controller-operation.same");
 
             Assert.That(applied.MutationFact.Status, Is.EqualTo(
-                SkillMutationStatusV1.Applied));
+                SkillMutationStatus.Applied));
             Assert.That(duplicate.MutationFact.Status, Is.EqualTo(
-                SkillMutationStatusV1.DuplicateNoChange));
+                SkillMutationStatus.DuplicateNoChange));
             Assert.That(controller.CurrentProjection.SpentSkillPoints, Is.EqualTo(1));
             Assert.That(navigation.ReturnCount, Is.Zero);
 
@@ -56,14 +56,14 @@ namespace ShooterMover.Tests.PlayMode.Flow.Skills
         {
             GameObject host = new GameObject("SKILLUI-001 back test");
             SkillsSceneController controller = host.AddComponent<SkillsSceneController>();
-            PlayerRouteProfilePayloadV1 route = CreateRoute();
+            PlayerRouteProfilePayload route = CreateRoute();
             var navigation = new CaptureNavigationPort();
             controller.ConfigureForTests(
-                new SkillsScreenSessionV1(
+                new SkillsScreenSession(
                     route,
                     CreateExperience(2),
-                    new SkillProgressionAuthorityV1(
-                        SkillCatalogV1.CreateDefault(),
+                    new SkillProgressionState(
+                        SkillCatalog.CreateDefault(),
                         2)),
                 navigation);
 
@@ -85,27 +85,27 @@ namespace ShooterMover.Tests.PlayMode.Flow.Skills
         {
             GameObject host = new GameObject("SKILLUI-001 hub adapter test");
             SkillsSceneController controller = host.AddComponent<SkillsSceneController>();
-            PlayerExperienceAuthorityV1 experience = CreateExperience(3);
-            var skills = new SkillProgressionAuthorityV1(
-                SkillCatalogV1.CreateDefault(),
+            PlayerExperienceState experience = CreateExperience(3);
+            var skills = new SkillProgressionState(
+                SkillCatalog.CreateDefault(),
                 3);
-            PlayerRouteProfilePayloadV1 route = CreateRoute();
+            PlayerRouteProfilePayload route = CreateRoute();
             var navigation = new CaptureNavigationPort();
-            var adapter = new SkillsHubDestinationAdapterV1(
+            var adapter = new SkillsHubDestinationBridge(
                 experience,
                 skills,
                 controller,
                 navigation);
 
-            adapter.Present(HubRouteV1.Skills, route);
+            adapter.Present(HubRoute.Skills, route);
             controller.AllocateSkill(
                 "utility.1",
                 "skills-controller-operation.revisit");
-            adapter.Present(HubRouteV1.InventoryLoadoutHub, route);
+            adapter.Present(HubRoute.InventoryLoadoutHub, route);
             Assert.That(controller.IsVisible, Is.False);
 
-            adapter.Present(HubRouteV1.Skills, route);
-            SkillsScreenSkillProjectionV1 utilityOne;
+            adapter.Present(HubRoute.Skills, route);
+            SkillsScreenSkillView utilityOne;
             Assert.That(controller.IsVisible, Is.True);
             Assert.That(controller.CurrentProjection.RoutePayload, Is.SameAs(route));
             Assert.That(controller.CurrentProjection.TryGetSkill(
@@ -119,26 +119,26 @@ namespace ShooterMover.Tests.PlayMode.Flow.Skills
             yield return null;
         }
 
-        private sealed class CaptureNavigationPort : ISkillsScreenNavigationPortV1
+        private sealed class CaptureNavigationPort : ISkillsScreenNavigationPort
         {
             public int ReturnCount { get; private set; }
-            public PlayerRouteProfilePayloadV1 LastPayload { get; private set; }
+            public PlayerRouteProfilePayload LastPayload { get; private set; }
 
-            public void ReturnToHub(PlayerRouteProfilePayloadV1 routePayload)
+            public void ReturnToHub(PlayerRouteProfilePayload routePayload)
             {
                 ReturnCount++;
                 LastPayload = routePayload;
             }
         }
 
-        private static PlayerExperienceAuthorityV1 CreateExperience(int level)
+        private static PlayerExperienceState CreateExperience(int level)
         {
-            var curve = new PlayerExperienceCurveV1(
+            var curve = new PlayerExperienceCurve(
                 100L,
                 100L,
                 50,
                 new SoftActivationCurveParameters(0.1, 10L, 10L));
-            var authority = new PlayerExperienceAuthorityV1(
+            var authority = new PlayerExperienceState(
                 curve,
                 ProgressionContext.Create(
                     1,
@@ -148,7 +148,7 @@ namespace ShooterMover.Tests.PlayMode.Flow.Skills
                     new List<StableId>()));
             if (level > 1)
             {
-                authority.Grant(new PlayerExperienceGrantRequestV1(
+                authority.Grant(new PlayerExperienceGrantRequest(
                     StableId.Parse("xp-source.skills-controller-level-" + level),
                     (level - 1L) * 100L));
             }
@@ -156,9 +156,9 @@ namespace ShooterMover.Tests.PlayMode.Flow.Skills
             return authority;
         }
 
-        private static PlayerRouteProfilePayloadV1 CreateRoute()
+        private static PlayerRouteProfilePayload CreateRoute()
         {
-            return PlayerRouteProfilePayloadV1.Create(
+            return PlayerRouteProfilePayload.Create(
                 StableId.Parse("character.skills-controller-tests"),
                 StableId.Parse("loadout-profile.skills-controller-tests"),
                 new List<StableId>

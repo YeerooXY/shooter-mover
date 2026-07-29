@@ -11,7 +11,7 @@ namespace ShooterMover.Application.Economy.Money
     /// </summary>
     public sealed class MoneyTransactionCommand
     {
-        private readonly EconomyTransactionCommandV1 economyCommand;
+        private readonly EconomyTransactionCommand economyCommand;
 
         private MoneyTransactionCommand(
             StableId transactionStableId,
@@ -29,14 +29,14 @@ namespace ShooterMover.Application.Economy.Money
                     "Money grants and spends require a positive amount.");
             }
 
-            EconomyTransactionOperationV1 operation;
+            EconomyTransactionOperation operation;
             switch (transactionKind)
             {
                 case MoneyTransactionKind.Grant:
-                    operation = EconomyTransactionOperationV1.Credit;
+                    operation = EconomyTransactionOperation.Credit;
                     break;
                 case MoneyTransactionKind.Spend:
-                    operation = EconomyTransactionOperationV1.Debit;
+                    operation = EconomyTransactionOperation.Debit;
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(
@@ -45,12 +45,12 @@ namespace ShooterMover.Application.Economy.Money
                         "Unknown money transaction kind.");
             }
 
-            economyCommand = EconomyTransactionCommandV1.Create(
+            economyCommand = EconomyTransactionCommand.Create(
                 transactionStableId,
                 operationStableId,
-                MoneyWalletIdsV1.AuthorityStableId,
+                MoneyWalletIds.AuthorityStableId,
                 operation,
-                EconomyResourceKindV1.Currency,
+                EconomyResourceKind.Currency,
                 currencyStableId,
                 null,
                 amount,
@@ -78,7 +78,7 @@ namespace ShooterMover.Application.Economy.Money
         public string Fingerprint =>
             economyCommand.PayloadFingerprint;
 
-        internal EconomyTransactionCommandV1 EconomyCommand =>
+        internal EconomyTransactionCommand EconomyCommand =>
             economyCommand;
 
         public static MoneyTransactionCommand CreateGrant(
@@ -90,7 +90,7 @@ namespace ShooterMover.Application.Economy.Money
             return CreateGrant(
                 transactionStableId,
                 operationStableId,
-                MoneyWalletIdsV1.CurrencyStableId,
+                MoneyWalletIds.CurrencyStableId,
                 amount,
                 expectedSequence);
         }
@@ -120,7 +120,7 @@ namespace ShooterMover.Application.Economy.Money
             return CreateSpend(
                 transactionStableId,
                 operationStableId,
-                MoneyWalletIdsV1.CurrencyStableId,
+                MoneyWalletIds.CurrencyStableId,
                 amount,
                 expectedSequence);
         }

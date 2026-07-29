@@ -40,8 +40,8 @@ namespace ShooterMover.Tests.EditMode.Weapons.Execution
                 new AugmentDefinition[0]);
             Assert.That(build.IsValid, Is.True);
 
-            WeaponCatalogRuntimeProfileResolver profiles =
-                new WeaponCatalogRuntimeProfileResolver(
+            WeaponCatalogLiveProfileResolver profiles =
+                new WeaponCatalogLiveProfileResolver(
                     build.Catalog,
                     Catalog(definition),
                     selector ?? new DefaultWeaponBehaviorSelector(),

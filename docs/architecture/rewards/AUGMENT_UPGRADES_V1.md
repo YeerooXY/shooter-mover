@@ -1,7 +1,7 @@
 # Augment Upgrades V1
 
 Status: AUG-001 runtime contract and implementation baseline
-Owner: `ShooterMover.Application.Equipment.Upgrades.AugmentUpgradeServiceV1`
+Owner: `ShooterMover.Application.Equipment.Upgrades.AugmentUpgradeActions`
 
 ## Scope
 
@@ -18,21 +18,21 @@ Upgrade limits are read from the existing `AugmentDefinition.TierRange` and
 three-tier ceiling. A catalog may use the common three-tier, ten-level design or
 another positive maximum.
 
-Money costs are supplied by `AugmentUpgradeCostPolicyV1`. The policy contains a
-canonical fingerprint and one `AugmentTierCostCurveV1` for every supported tier.
+Money costs are supplied by `AugmentUpgradeCostPolicy`. The policy contains a
+canonical fingerprint and one `AugmentTierCostCurve` for every supported tier.
 Different tiers may use different curves. The default step policy accepts only
 `current + 1`; a policy may explicitly permit a multi-level target, in which
 case the quote sums every intervening step cost.
 
 ## Quote contract
 
-`AugmentUpgradeQuoteRequestV1` identifies:
+`AugmentUpgradeQuoteRequest` identifies:
 
 - the owned equipment instance;
 - the installed augment instance (the stable slot identity);
 - the requested target level.
 
-A successful `AugmentUpgradeQuoteV1` retains:
+A successful `AugmentUpgradeQuote` retains:
 
 - equipment instance StableId and immutable fingerprint;
 - sorted augment slot index, augment instance StableId, definition StableId,
@@ -50,7 +50,7 @@ snapshot that confirmation must prove is still current.
 
 ## Confirmation and stale-data protection
 
-`AugmentUpgradeConfirmationV1` binds a caller-owned confirmation StableId to the
+`AugmentUpgradeConfirmation` binds a caller-owned confirmation StableId to the
 complete quote and the quote fingerprint the caller actually observed.
 Confirmation rejects before value mutation when any of the following is true:
 
@@ -137,7 +137,7 @@ Filesystem persistence is outside AUG-001.
 
 ## Terminal facts
 
-`AugmentUpgradeFactV1` reports machine-readable status plus:
+`AugmentUpgradeFact` reports machine-readable status plus:
 
 - confirmation and quote fingerprints;
 - money and holdings-removal transaction identities;

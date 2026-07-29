@@ -434,7 +434,7 @@ namespace ShooterMover.Domain.Combat
     /// </summary>
     public sealed class FourMountStatusSnapshot
     {
-        public const int SlotCount = WeaponRuntimeProfile.SupportedMountCount;
+        public const int SlotCount = WeaponLiveProfile.SupportedMountCount;
 
         private readonly FourMountSlotStatusSnapshot[] slots;
 

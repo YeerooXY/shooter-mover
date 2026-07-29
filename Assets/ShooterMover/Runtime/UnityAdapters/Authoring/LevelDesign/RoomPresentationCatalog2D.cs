@@ -79,14 +79,14 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 && prefab != null;
         }
 
-        public void ValidateFor(AuthorableRoomGraphDefinitionV1 definition)
+        public void ValidateFor(AuthorableRoomGraphDefinition definition)
         {
             if (definition == null) throw new ArgumentNullException(nameof(definition));
 
             EnsureResolved();
             for (int roomIndex = 0; roomIndex < definition.Rooms.Count; roomIndex++)
             {
-                AuthorableRoomDefinitionV1 room = definition.Rooms[roomIndex];
+                AuthorableRoomDefinition room = definition.Rooms[roomIndex];
                 for (int index = 0; index < room.Placements.Count; index++)
                 {
                     Require(room.Placements[index].PresentationStableId);

@@ -4,7 +4,7 @@
 
 This package persists the immutable snapshots already owned by the XP, holdings,
 money, scrap, ranked-skill, exact-instance loadout, and strongbox-opening
-systems inside `CharacterInstanceSnapshotV1` / `PlayerAccountSnapshotV1`.
+systems inside `CharacterInstanceSnapshot` / `PlayerAccountSnapshot`.
 
 It does not introduce a replacement gameplay authority, reconstruct the selected
 character into the Hub, add PlayerPrefs authority, or alter a scene/controller.
@@ -17,13 +17,13 @@ one validation boundary.
 
 | Component ID | Wrapper schema | Content version | Typed snapshot |
 | --- | ---: | --- | --- |
-| `save-component.player-experience` | 1 | `player-experience-explicit-v1` | `PlayerExperienceSnapshotV1` |
-| `save-component.player-holdings` | 1 | `player-holdings-explicit-v1` | `PlayerHoldingsSnapshotV1` |
+| `save-component.player-experience` | 1 | `player-experience-explicit-v1` | `PlayerExperienceSnapshot` |
+| `save-component.player-holdings` | 1 | `player-holdings-explicit-v1` | `PlayerHoldingsSnapshot` |
 | `save-component.money-wallet` | 1 | `money-wallet-explicit-v1` | `MoneyWalletSnapshot` |
-| `save-component.scrap-wallet` | 1 | `scrap-wallet-explicit-v1` | `ScrapSnapshotV1` |
-| `save-component.ranked-skill-allocation` | 1 | `ranked-skill-allocation-explicit-v2` | `RankedSkillAllocationSnapshotV2` |
-| `save-component.exact-instance-loadout` | 1 | `inventory-loadout-explicit-v1` | `InventoryLoadoutAuthoritySnapshotV1` |
-| `save-component.strongbox-state` | 1 | `strongbox-opening-explicit-v1` | `StrongboxOpeningSnapshotV1` |
+| `save-component.scrap-wallet` | 1 | `scrap-wallet-explicit-v1` | `ScrapSnapshot` |
+| `save-component.ranked-skill-allocation` | 1 | `ranked-skill-allocation-explicit-v2` | `RankedSkillAllocationSnapshot` |
+| `save-component.exact-instance-loadout` | 1 | `inventory-loadout-explicit-v1` | `InventoryLoadoutStateSnapshot` |
+| `save-component.strongbox-state` | 1 | `strongbox-opening-explicit-v1` | `StrongboxOpeningSnapshot` |
 
 The earlier arbitrary `CharacterStatistics<TSnapshot>` seam was removed.
 Statistics may become durable only after a canonical statistics snapshot is
@@ -32,7 +32,7 @@ unrelated snapshot types cannot share one durable contract.
 
 ## Persisted fields are explicit
 
-`CanonicalNodeCodecV1` provides only bounded scalar/list/object framing. It does
+`NodeCodec` provides only bounded scalar/list/object framing. It does
 not discover snapshot properties, constructors, parameter names, or CLR types.
 Every known codec manually declares persisted fields in stable order and calls a
 known public constructor or canonical factory.
@@ -56,7 +56,7 @@ does not change durable bytes. A persisted-field change requires an intentional
 content-version change and migration.
 
 Payloads never persist CLR type names and cannot select arbitrary runtime types.
-`KnownSaveComponentCodecsV1` directly references all seven codec types, so the
+`KnownSaveComponentCodecs` directly references all seven codec types, so the
 production path has no reflection/private-constructor discovery dependency.
 
 ## AOT / IL2CPP boundary
@@ -91,19 +91,19 @@ allocate a collection before its declared count has passed the bound.
 
 ## Known and unknown component versions
 
-Unknown component IDs remain opaque `SaveComponentSnapshotV1` payloads. The
+Unknown component IDs remain opaque `SaveComponentSnapshot` payloads. The
 account codec preserves their ID, schema, content version, and bytes without
 interpreting them, allowing a newer optional component to survive an older
 build's read/write cycle.
 
 Known component IDs are different: unsupported wrapper schemas or content
-versions reject. `KnownSaveComponentVersionGuardV1` is the durable store policy
+versions reject. `KnownSaveComponentVersionGuard` is the durable store policy
 for this boundary. A known unsupported component is never downgraded to an
 unknown optional component.
 
 ## Aggregate semantic consistency
 
-`PlayerAccountComponentSemanticsV1` validates relationships that cannot be
+`PlayerAccountComponentSemantics` validates relationships that cannot be
 proven by one component alone:
 
 - every equipped loadout instance must exist as an exact equipment instance in
@@ -123,7 +123,7 @@ remains `BOX-PERSIST-001` / later composition work.
 
 ## Compensating aggregate restore
 
-`AuthoritySnapshotSaveComponentAdapterV1<TSnapshot>` captures the current
+`StateSnapshotSaveComponentBridge<TSnapshot>` captures the current
 immutable snapshot and its explicit encoded bytes during prepare. Apply/import
 delegates should be internally atomic whenever possible, but aggregate
 correctness does not assume that they are.
@@ -174,7 +174,7 @@ that command is then an exact no-change replay. No selector model was invented.
 
 ## Atomic file protocol and recovery
 
-`AtomicPlayerAccountStoreV1` depends only on `IAtomicSaveFilePortV1` and does not
+`AtomicPlayerAccountStore` depends only on `IAtomicSaveFilePort` and does not
 use Unity APIs or PlayerPrefs.
 
 Save sequence:

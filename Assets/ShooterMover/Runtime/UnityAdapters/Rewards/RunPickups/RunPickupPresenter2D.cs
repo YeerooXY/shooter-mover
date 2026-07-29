@@ -6,9 +6,9 @@ using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Rewards.RunPickups
 {
-    public sealed class RunPickupPresentationSyncResultV1
+    public sealed class RunPickupPresentationSyncResult
     {
-        public RunPickupPresentationSyncResultV1(
+        public RunPickupPresentationSyncResult(
             int availableCount,
             int visibleCount,
             int createdCount,
@@ -44,7 +44,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
     [DisallowMultipleComponent]
     public sealed class RunPickupPresenter2D : MonoBehaviour
     {
-        [SerializeField] private RunPickupAuthorityHost2D authorityHost;
+        [SerializeField] private RunPickupStateHost2D authorityHost;
         [SerializeField] private RunPickupPresentationRegistry2D presentationRegistry;
         [SerializeField] private Transform pickupRoot;
 
@@ -55,10 +55,10 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
 
         public int VisiblePickupCount { get { return views.Count; } }
         public int RetiringPickupCount { get { return retiringViews.Count; } }
-        public RunPickupPresentationSyncResultV1 LastSyncResult { get; private set; }
+        public RunPickupPresentationSyncResult LastSyncResult { get; private set; }
 
         public void Configure(
-            RunPickupAuthorityHost2D authorityHost,
+            RunPickupStateHost2D authorityHost,
             RunPickupPresentationRegistry2D presentationRegistry,
             Transform pickupRoot = null)
         {
@@ -72,25 +72,25 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
             this.pickupRoot = pickupRoot == null ? transform : pickupRoot;
         }
 
-        public RunPickupPresentationSyncResultV1 Synchronize(
+        public RunPickupPresentationSyncResult Synchronize(
             StableId currentRoomStableId)
         {
             if (authorityHost == null
                 || !authorityHost.IsConfigured
                 || presentationRegistry == null)
             {
-                LastSyncResult = new RunPickupPresentationSyncResultV1(
+                LastSyncResult = new RunPickupPresentationSyncResult(
                     0, views.Count, 0, 0, 0, 1,
                     "run-pickup-presenter-not-configured");
                 return LastSyncResult;
             }
 
-            IReadOnlyList<RunPickupSnapshotV1> available =
+            IReadOnlyList<RunPickupSnapshot> available =
                 authorityHost.Authority.ExportAvailablePickups();
-            var desired = new Dictionary<StableId, RunPickupSnapshotV1>();
+            var desired = new Dictionary<StableId, RunPickupSnapshot>();
             for (int index = 0; index < available.Count; index++)
             {
-                RunPickupSnapshotV1 pickup = available[index];
+                RunPickupSnapshot pickup = available[index];
                 if (currentRoomStableId == null
                     || pickup.WorldSpawnContext.RoomStableId == currentRoomStableId)
                 {
@@ -103,7 +103,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
             int retained = 0;
             int failed = 0;
             string firstDiagnostic = string.Empty;
-            foreach (KeyValuePair<StableId, RunPickupSnapshotV1> pair in desired)
+            foreach (KeyValuePair<StableId, RunPickupSnapshot> pair in desired)
             {
                 RunRewardPickup2D existing;
                 if (views.TryGetValue(pair.Key, out existing)
@@ -114,7 +114,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
                     continue;
                 }
 
-                RunPickupPresentationEntryV1 presentation;
+                RunPickupPresentationEntry presentation;
                 string diagnostic;
                 if (!presentationRegistry.TryResolve(
                     pair.Value,
@@ -139,7 +139,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
                 created++;
             }
 
-            LastSyncResult = new RunPickupPresentationSyncResultV1(
+            LastSyncResult = new RunPickupPresentationSyncResult(
                 desired.Count,
                 views.Count,
                 created,
@@ -187,7 +187,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
         }
 
         private int RetireUndesired(
-            IDictionary<StableId, RunPickupSnapshotV1> desired)
+            IDictionary<StableId, RunPickupSnapshot> desired)
         {
             var remove = new List<StableId>();
             foreach (KeyValuePair<StableId, RunRewardPickup2D> pair in views)
@@ -206,8 +206,8 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
         }
 
         private bool TryCreateView(
-            RunPickupSnapshotV1 pickup,
-            RunPickupPresentationEntryV1 presentation,
+            RunPickupSnapshot pickup,
+            RunPickupPresentationEntry presentation,
             out RunRewardPickup2D view,
             out string diagnostic)
         {

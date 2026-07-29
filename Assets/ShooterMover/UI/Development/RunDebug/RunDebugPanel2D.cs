@@ -17,14 +17,14 @@ namespace ShooterMover.UI.Development.RunDebug
         [SerializeField] private string strongboxTier = "strongbox.common";
         [SerializeField] private string deterministicSeed = "1";
 
-        private RunDebugPanelSessionV1 session;
+        private RunDebugPanelSession session;
         private string diagnostic = string.Empty;
 
         private void Awake()
         {
             if (bridge != null)
             {
-                session = new RunDebugPanelSessionV1(bridge);
+                session = new RunDebugPanelSession(bridge);
             }
         }
 
@@ -63,14 +63,14 @@ namespace ShooterMover.UI.Development.RunDebug
 
             if (GUILayout.Button("End Run Once"))
             {
-                RunDebugEndResultV1 result =
-                    session.EndRun(MissionRunCompletionStateV1.Completed);
+                RunDebugEndResult result =
+                    session.EndRun(MissionRunCompletionState.Completed);
                 diagnostic = result == null
                     ? "End Run returned no result."
                     : result.Diagnostic;
             }
 
-            RunDebugSnapshotV1 snapshot = session == null
+            RunDebugSnapshot snapshot = session == null
                 ? null
                 : session.Refresh();
             GUI.enabled = true;
@@ -89,7 +89,7 @@ namespace ShooterMover.UI.Development.RunDebug
                 && session.LastEndResult != null
                 && session.LastEndResult.ResultsSession != null)
             {
-                MissionResultPayloadV1 payload =
+                MissionResultPayload payload =
                     session.LastEndResult.ResultsSession.Snapshot;
                 GUILayout.Label(
                     "Unopened exact instances: "
@@ -124,7 +124,7 @@ namespace ShooterMover.UI.Development.RunDebug
 
             try
             {
-                RunDebugSpawnBatchResultV1 result = session.Spawn(
+                RunDebugSpawnBatchResult result = session.Spawn(
                     bridge.CreateRequest(count, tier, seed));
                 diagnostic = result == null
                     ? "Spawn returned no result."

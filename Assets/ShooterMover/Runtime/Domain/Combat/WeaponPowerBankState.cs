@@ -38,7 +38,7 @@ namespace ShooterMover.Domain.Combat
         /// An unconfigured profile accepts only zero available units.
         /// </summary>
         public static WeaponPowerBankState FromProfile(
-            WeaponRuntimeProfile profile,
+            WeaponLiveProfile profile,
             double availableUnits)
         {
             if (profile == null)
@@ -76,7 +76,7 @@ namespace ShooterMover.Domain.Combat
                 profile.EmpoweredCostUnits);
         }
 
-        public static WeaponPowerBankState FullFromProfile(WeaponRuntimeProfile profile)
+        public static WeaponPowerBankState FullFromProfile(WeaponLiveProfile profile)
         {
             if (profile == null)
             {

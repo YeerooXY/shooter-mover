@@ -243,10 +243,10 @@ Contracts expose immutable requests, results, rejection statuses, traces, snapsh
 ```text
 ShooterMover.Application
 ├── Holdings
-│   ├── PlayerHoldingsService
+│   ├── PlayerHoldingsActions
 │   └── EquipmentInventoryService
 ├── Economy
-│   ├── MoneyWalletService
+│   ├── MoneyWalletActions
 │   └── ScrapWalletService
 ├── Rewards
 │   ├── RewardGenerationService

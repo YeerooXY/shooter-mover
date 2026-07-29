@@ -24,7 +24,7 @@ Extend SIM-001 to consume the authored weapon catalog and real strongbox tier de
 ## Exclusive owned files and paths
 
 - `Assets/ShooterMover/Editor/BalanceSimulator/BalanceSimulationModelsV1.cs`
-- `Assets/ShooterMover/Editor/BalanceSimulator/BalanceSimulationServiceV1.cs`
+- `Assets/ShooterMover/Editor/BalanceSimulator/BalanceSimulationActions.cs`
 - `Assets/ShooterMover/Editor/BalanceSimulator/BalanceSimulatorWindow.cs`
 - `Assets/ShooterMover/Editor/BalanceSimulator/RealContent/**`
 - `Assets/ShooterMover/Tests/EditMode/BalanceSimulator/RealContent/**`

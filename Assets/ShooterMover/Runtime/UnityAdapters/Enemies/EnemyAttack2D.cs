@@ -30,11 +30,11 @@ namespace ShooterMover.UnityAdapters.Enemies
         private readonly List<PendingShot> pending = new List<PendingShot>();
         private readonly Dictionary<StableId, EnemyShot2D> live =
             new Dictionary<StableId, EnemyShot2D>();
-        private readonly Dictionary<StableId, EnemyRuntimeAttackBindingV1> supported =
-            new Dictionary<StableId, EnemyRuntimeAttackBindingV1>();
+        private readonly Dictionary<StableId, EnemyLiveAttackBinding> supported =
+            new Dictionary<StableId, EnemyLiveAttackBinding>();
 
         private RoomEnemyActor2D actor;
-        private EnemyPlacementRuntimeInstanceV1 runtime;
+        private EnemyPlacementLiveInstance runtime;
         private PlayerBinding player;
         private Rigidbody2D body;
         private long revision;
@@ -53,7 +53,7 @@ namespace ShooterMover.UnityAdapters.Enemies
         private int playerAcquisitionWaitTicks;
         private string pendingPlayerDiagnostic;
 
-        public event Action<EnemyHitV1> Hit;
+        public event Action<EnemyHit> Hit;
 
         public bool IsBound
         {
@@ -70,7 +70,7 @@ namespace ShooterMover.UnityAdapters.Enemies
         public bool IsTerminalStopped { get { return stopped; } }
         public long PresentationRevision { get { return revision; } }
 
-        public static bool Supports(EnemyPlacementRuntimeInstanceV1 value)
+        public static bool Supports(EnemyPlacementLiveInstance value)
         {
             if (value == null || value.Attacks == null || value.Attacks.Count == 0)
             {
@@ -98,7 +98,7 @@ namespace ShooterMover.UnityAdapters.Enemies
                 throw new InvalidOperationException("enemy-attack-requires-live-runtime");
             }
 
-            EnemyPlacementRuntimeInstanceV1 next = boundActor.Runtime;
+            EnemyPlacementLiveInstance next = boundActor.Runtime;
             if (!Supports(next))
             {
                 throw new InvalidOperationException("enemy-attack-mechanics-unsupported");
@@ -147,7 +147,7 @@ namespace ShooterMover.UnityAdapters.Enemies
         }
 
         internal bool TryAccept(
-            EnemyAttackSequenceDispatchV1 sequence,
+            EnemyAttackSequenceDispatch sequence,
             out string diagnostic)
         {
             diagnostic = null;
@@ -167,13 +167,13 @@ namespace ShooterMover.UnityAdapters.Enemies
                 diagnostic = "enemy-attack-sequence-source-mismatch";
                 return false;
             }
-            if (sequence.Execution.ExecutionKind != EnemyAttackExecutionKindV1.Projectile)
+            if (sequence.Execution.ExecutionKind != EnemyAttackExecutionKind.Projectile)
             {
                 diagnostic = "enemy-attack-sequence-kind-unsupported";
                 return false;
             }
 
-            EnemyRuntimeAttackBindingV1 binding;
+            EnemyLiveAttackBinding binding;
             StableId attackId = sequence.Execution.Descriptor.AttackId;
             if (!supported.TryGetValue(attackId, out binding)
                 || binding == null
@@ -202,11 +202,11 @@ namespace ShooterMover.UnityAdapters.Enemies
                 return false;
             }
 
-            var incoming = new List<EnemyAttackEffectEmissionV1>(sequence.Emissions.Count);
+            var incoming = new List<EnemyAttackEffectEmission>(sequence.Emissions.Count);
             var ids = new HashSet<StableId>();
             for (int index = 0; index < sequence.Emissions.Count; index++)
             {
-                EnemyAttackEffectEmissionV1 emission = sequence.Emissions[index];
+                EnemyAttackEffectEmission emission = sequence.Emissions[index];
                 if (!ValidateEmission(emission, sequence, binding, out diagnostic))
                 {
                     return false;
@@ -229,7 +229,7 @@ namespace ShooterMover.UnityAdapters.Enemies
         }
 
         internal bool TryCancel(
-            EnemyAttackSequenceCancellationFactV1 cancellation,
+            EnemyAttackSequenceCancellationFact cancellation,
             out string diagnostic)
         {
             diagnostic = null;
@@ -340,8 +340,8 @@ namespace ShooterMover.UnityAdapters.Enemies
                 runtime.Definition.VisionArcDegrees,
                 tick);
 
-            EnemyPlacementDecisionV1 decision = runtime.Evaluate(perception);
-            var movementContext = new EnemyMovementRealizationContextV1(
+            EnemyPlacementDecision decision = runtime.Evaluate(perception);
+            var movementContext = new EnemyMovementRealizationContext(
                 runtime.SpawnStableId,
                 runtime.RoomStableId,
                 ToEnemy(position),
@@ -349,18 +349,18 @@ namespace ShooterMover.UnityAdapters.Enemies
                 tick,
                 runtime.DifficultyScaling.MovementMultiplier,
                 null);
-            EnemyMovementRealizationV1 movement =
+            EnemyMovementRealization movement =
                 runtime.RealizeMovement(decision, movementContext);
 
             EnemyAttackIntent requested = decision.Evaluation.Decision.RequestedAttack;
             if (requested != null)
             {
-                EnemyAttackExecutionResultV1 result = runtime.TryExecuteAttack(
+                EnemyAttackExecutionResult result = runtime.TryExecuteAttack(
                     decision,
                     BuildOperationId(requested.DecisionId, tick),
                     seconds);
-                if (result.Status == EnemyRuntimeOperationStatusV1.Rejected
-                    && result.Rejection != EnemyRuntimeRejectionCodeV1.CooldownActive)
+                if (result.Status == EnemyLiveOperationStatus.Rejected
+                    && result.Rejection != EnemyLiveRejectionCode.CooldownActive)
                 {
                     Report("enemy-attack-rejected:" + result.Rejection.ToString());
                 }
@@ -433,7 +433,7 @@ namespace ShooterMover.UnityAdapters.Enemies
             return false;
         }
 
-        private void ApplyMovement(EnemyMovementRealizationV1 movement)
+        private void ApplyMovement(EnemyMovementRealization movement)
         {
             if (movement == null)
             {
@@ -486,20 +486,20 @@ namespace ShooterMover.UnityAdapters.Enemies
             while (pending.Count > 0
                 && pending[0].Emission.ScheduledAtSeconds <= seconds)
             {
-                EnemyAttackEffectEmissionV1 emission = pending[0].Emission;
+                EnemyAttackEffectEmission emission = pending[0].Emission;
                 pending.RemoveAt(0);
                 Spawn(emission);
             }
         }
 
-        private void Spawn(EnemyAttackEffectEmissionV1 emission)
+        private void Spawn(EnemyAttackEffectEmission emission)
         {
             if (!IsCurrent() || !actor.IsAlive || player == null)
             {
                 return;
             }
 
-            EnemyProjectilePayloadV1 payload = emission.Projectile.Payload;
+            EnemyProjectilePayload payload = emission.Projectile.Payload;
             EnemyVector2 origin = emission.CommittedIntent.CommittedOrigin;
             Vector2 direction = ToUnity(emission.CommittedIntent.CommittedDirection);
             if (direction.sqrMagnitude <= 0.000001f)
@@ -529,7 +529,7 @@ namespace ShooterMover.UnityAdapters.Enemies
         }
 
         internal void Publish(
-            EnemyAttackEffectEmissionV1 emission,
+            EnemyAttackEffectEmission emission,
             Collider2D targetCollider)
         {
             if (emission == null || targetCollider == null || player == null)
@@ -548,9 +548,9 @@ namespace ShooterMover.UnityAdapters.Enemies
         }
 
         internal void PublishArea(
-            EnemyAttackEffectEmissionV1 emission,
+            EnemyAttackEffectEmission emission,
             Vector2 center,
-            EnemyAreaPayloadV1 area)
+            EnemyAreaPayload area)
         {
             if (emission == null
                 || area == null
@@ -585,7 +585,7 @@ namespace ShooterMover.UnityAdapters.Enemies
 
         private void PublishFact(
             StableId contactId,
-            EnemyAttackEffectEmissionV1 emission,
+            EnemyAttackEffectEmission emission,
             Collider2D targetCollider)
         {
             if (contactId == null
@@ -595,20 +595,20 @@ namespace ShooterMover.UnityAdapters.Enemies
             {
                 return;
             }
-            var fact = new EnemyHitV1(
+            var fact = new EnemyHit(
                 contactId,
                 emission,
                 player.EntityStableId,
                 targetCollider);
 
-            Action<EnemyHitV1> handler = Hit;
+            Action<EnemyHit> handler = Hit;
             if (handler == null) return;
             Delegate[] subscribers = handler.GetInvocationList();
             for (int index = 0; index < subscribers.Length; index++)
             {
                 try
                 {
-                    ((Action<EnemyHitV1>)subscribers[index])(fact);
+                    ((Action<EnemyHit>)subscribers[index])(fact);
                 }
                 catch (Exception exception)
                 {
@@ -627,14 +627,14 @@ namespace ShooterMover.UnityAdapters.Enemies
         }
 
         private bool ValidateEmission(
-            EnemyAttackEffectEmissionV1 emission,
-            EnemyAttackSequenceDispatchV1 sequence,
-            EnemyRuntimeAttackBindingV1 binding,
+            EnemyAttackEffectEmission emission,
+            EnemyAttackSequenceDispatch sequence,
+            EnemyLiveAttackBinding binding,
             out string diagnostic)
         {
             diagnostic = null;
             if (emission == null
-                || emission.Kind != EnemyAttackEffectEmissionKindV1.Projectile
+                || emission.Kind != EnemyAttackEffectEmissionKind.Projectile
                 || emission.Projectile == null)
             {
                 diagnostic = "enemy-attack-emission-projectile-required";
@@ -648,7 +648,7 @@ namespace ShooterMover.UnityAdapters.Enemies
                 diagnostic = "enemy-attack-emission-lifecycle-mismatch";
                 return false;
             }
-            EnemyProjectilePayloadV1 payload = emission.Projectile.Payload;
+            EnemyProjectilePayload payload = emission.Projectile.Payload;
             if (!IsSupportedPayload(payload))
             {
                 diagnostic = "enemy-attack-emission-mechanics-unsupported";
@@ -667,7 +667,7 @@ namespace ShooterMover.UnityAdapters.Enemies
             return true;
         }
 
-        private static bool IsSupportedShot(EnemyRuntimeAttackBindingV1 binding)
+        private static bool IsSupportedShot(EnemyLiveAttackBinding binding)
         {
             if (binding == null
                 || binding.Descriptor == null
@@ -676,21 +676,21 @@ namespace ShooterMover.UnityAdapters.Enemies
             {
                 return false;
             }
-            EnemyAttackCapabilityDescriptorV1 descriptor = binding.Descriptor;
-            EnemyShootingPatternV1 shooting = descriptor.ShootingPattern;
+            EnemyAttackCapabilityDescriptor descriptor = binding.Descriptor;
+            EnemyShootingPattern shooting = descriptor.ShootingPattern;
             return binding.Capability.Configuration.ExecutionKind
-                    == EnemyAttackExecutionKindV1.Projectile
+                    == EnemyAttackExecutionKind.Projectile
                 && shooting != null
                 && descriptor.MeleePattern == null
                 && descriptor.Damage > 0d
                 && shooting.ShotsPerSequence > 0
                 && shooting.ProjectilesPerShot > 0
                 && shooting.SequenceAimPolicy
-                    == EnemySequenceAimPolicyV1.LockAtSequenceStart
+                    == EnemySequenceAimPolicy.LockAtSequenceStart
                 && IsSupportedPayload(descriptor.ProjectilePayload);
         }
 
-        private static bool IsSupportedPayload(EnemyProjectilePayloadV1 payload)
+        private static bool IsSupportedPayload(EnemyProjectilePayload payload)
         {
             if (payload == null
                 || payload.ProjectileProfileId == null
@@ -702,7 +702,7 @@ namespace ShooterMover.UnityAdapters.Enemies
                 return false;
             }
 
-            EnemyAreaPayloadV1 area = payload.AreaPayload;
+            EnemyAreaPayload area = payload.AreaPayload;
             return area == null
                 || (area.DurationSeconds == 0d
                     && area.MaximumTargets > 0
@@ -714,12 +714,12 @@ namespace ShooterMover.UnityAdapters.Enemies
             return !double.IsNaN(value) && !double.IsInfinity(value) && value > 0d;
         }
 
-        private void BuildSupported(EnemyPlacementRuntimeInstanceV1 value)
+        private void BuildSupported(EnemyPlacementLiveInstance value)
         {
             supported.Clear();
             for (int index = 0; index < value.Attacks.Count; index++)
             {
-                EnemyRuntimeAttackBindingV1 binding = value.Attacks[index];
+                EnemyLiveAttackBinding binding = value.Attacks[index];
                 if (!IsSupportedShot(binding))
                 {
                     throw new InvalidOperationException("enemy-attack-mechanics-unsupported");
@@ -878,7 +878,7 @@ namespace ShooterMover.UnityAdapters.Enemies
                 return;
             }
 
-            EnemyAttackEffectEmissionV1 emission = pending[0].Emission;
+            EnemyAttackEffectEmission emission = pending[0].Emission;
             EnemyVector2 origin = emission.CommittedIntent.CommittedOrigin;
             Vector2 direction = ToUnity(
                 emission.CommittedIntent.CommittedDirection).normalized;
@@ -1098,12 +1098,12 @@ namespace ShooterMover.UnityAdapters.Enemies
 
         private sealed class PendingShot
         {
-            public PendingShot(EnemyAttackEffectEmissionV1 emission)
+            public PendingShot(EnemyAttackEffectEmission emission)
             {
                 Emission = emission ?? throw new ArgumentNullException(nameof(emission));
             }
 
-            public EnemyAttackEffectEmissionV1 Emission { get; }
+            public EnemyAttackEffectEmission Emission { get; }
 
             public static int Compare(PendingShot left, PendingShot right)
             {

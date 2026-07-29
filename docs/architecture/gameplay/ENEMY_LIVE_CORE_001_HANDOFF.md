@@ -9,8 +9,8 @@ Starting point: `b2bf4348ab6f827a737add53278d57568684f552` (`origin/main`, merge
 - `EnemyPerceptionBuilder` creates the immutable live perception snapshot.
 - `EnemyDecisionPolicy` selects movement and may emit `EnemyAttackIntent`.
 - The droid package converts only an accepted intent into its existing Blaster Machine Gun execution plan. It never writes player health directly.
-- `EnemyTarget2DAdapter` remains the droid hit target and submits damage to the existing actor authority.
-- `EnemyRuntimeProjection.BlocksRoomClear` remains definition-role plus canonical actor-state projection. No object name participates in room-clear classification.
+- `EnemyTarget2DBridge` remains the droid hit target and submits damage to the existing actor authority.
+- `EnemyLiveView.BlocksRoomClear` remains definition-role plus canonical actor-state projection. No object name participates in room-clear classification.
 
 ## Definition-driven live tuning
 
@@ -61,7 +61,7 @@ Unity 6000.3.19f1 was not available in the execution environment, so no Unity co
 Suggested commands:
 
 ```text
-Unity -batchmode -projectPath <project> -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Enemies.EnemyRuntimeFoundationTests -testResults <temp>/enemy-foundation.xml -logFile <temp>/enemy-foundation.log
+Unity -batchmode -projectPath <project> -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Enemies.EnemyLiveFoundationTests -testResults <temp>/enemy-foundation.xml -logFile <temp>/enemy-foundation.log
 Unity -batchmode -projectPath <project> -runTests -testPlatform PlayMode -testFilter ShooterMover.Tests.PlayMode.Enemies.MobileBlasterDroidPackageTests -testResults <temp>/mobile-droid-package.xml -logFile <temp>/mobile-droid-package.log
 Unity -batchmode -projectPath <project> -runTests -testPlatform PlayMode -testFilter ShooterMover.Tests.PlayMode.Enemies.MobileBlasterDroidLiveDecisionTests -testResults <temp>/mobile-droid-live.xml -logFile <temp>/mobile-droid-live.log
 ```

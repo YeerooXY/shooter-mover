@@ -28,7 +28,7 @@ The delay roll uses the repository deterministic random contract, the recipe ide
 
 ## Recipe model
 
-`CraftingRecipeV1` is immutable and canonical. It contains:
+`CraftingRecipe` is immutable and canonical. It contains:
 
 - schema/version and stable recipe identity;
 - target equipment definition identity;
@@ -44,11 +44,11 @@ The delay roll uses the repository deterministic random contract, the recipe ide
 
 Recipe option collections are identity-sorted before fingerprinting. Authoring order therefore cannot change the snapshot or result.
 
-`CraftingRecipeDefinitionAssetV1` is the Unity authoring adapter. It converts serialized StableId strings and numeric policy fields into the engine-independent recipe. This task ships no production recipe assets.
+`CraftingRecipeDefinitionAsset` is the Unity authoring adapter. It converts serialized StableId strings and numeric policy fields into the engine-independent recipe. This task ships no production recipe assets.
 
 ## Validation order
 
-`CraftingServiceV1.Craft` validates before creating a RAP commitment:
+`CraftingActions.Craft` validates before creating a RAP commitment:
 
 1. command and recipe identity;
 2. target equipment definition existence;
@@ -70,7 +70,7 @@ CRA-001 builds a task-local constrained projection of the authoritative equipmen
 - randomized quality supplies the recipe's canonical weighted candidates;
 - augment candidates come only from recipe data.
 
-The constrained catalog and policy are passed to `RewardGenerationServiceV1.GenerateEquipment`. CRA-001 does not duplicate GEN-001 selection, quality, slot, augment, tier, level, instance validation, or trace logic.
+The constrained catalog and policy are passed to `RewardGenerationActions.GenerateEquipment`. CRA-001 does not duplicate GEN-001 selection, quality, slot, augment, tier, level, instance validation, or trace logic.
 
 All derived operation, commitment, claim, grant, child transaction, equipment instance, and augment instance identities are deterministic. Reusing a craft transaction identity with the same canonical command regenerates the same plan. Reusing it with different content reaches RAP-001 as a conflicting duplicate.
 
@@ -83,15 +83,15 @@ The generated plan contains two RAP grants:
 
 RAP-001 retains the complete immutable plan, preflights every child authority before the first apply, and stores deterministic child transaction IDs for retry.
 
-`CraftingScrapSpendRewardChildAuthorityV1` is the CRA-owned semantic bridge from RAP's positive Scrap child quantity to SCR-001's typed `ScrapMutationKindV1.Spend` command with:
+`CraftingScrapSpendRewardChildState` is the CRA-owned semantic bridge from RAP's positive Scrap child quantity to SCR-001's typed `ScrapMutationKind.Spend` command with:
 
-- `ScrapIdentityV1.CraftingSpendReason`;
-- `ScrapIdentityV1.CraftingSourceKind`;
+- `ScrapIdentity.CraftingSpendReason`;
+- `ScrapIdentity.CraftingSourceKind`;
 - RAP's deterministic child transaction and operation identities;
 - the original source operation and claimant provenance;
 - optional expected sequence.
 
-Equipment uses the existing `PlayerHoldingsRewardChildAuthorityV1`. No wallet, holdings, generator, or RAP implementation is rewritten.
+Equipment uses the existing `PlayerHoldingsRewardChildState`. No wallet, holdings, generator, or RAP implementation is rewritten.
 
 An exact replay is no-change at RAP, SCR, and holdings. If an interruption occurs after one child applies, the next identical craft call detects the retained claimed commitment and invokes RAP retry. The same child transaction IDs and same equipment instance/fingerprint are reused.
 

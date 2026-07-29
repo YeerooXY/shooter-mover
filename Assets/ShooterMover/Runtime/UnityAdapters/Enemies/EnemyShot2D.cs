@@ -18,7 +18,7 @@ namespace ShooterMover.UnityAdapters.Enemies
         private EnemyAttack2D owner;
         private RoomEnemyActor2D source;
         private EnemyAttack2D.PlayerBinding target;
-        private EnemyAttackEffectEmissionV1 emission;
+        private EnemyAttackEffectEmission emission;
         private Rigidbody2D body;
         private Vector2 direction;
         private Vector2 origin;
@@ -29,9 +29,9 @@ namespace ShooterMover.UnityAdapters.Enemies
             EnemyAttack2D configuredOwner,
             RoomEnemyActor2D configuredSource,
             EnemyAttack2D.PlayerBinding configuredTarget,
-            EnemyAttackEffectEmissionV1 configuredEmission,
+            EnemyAttackEffectEmission configuredEmission,
             Vector2 configuredDirection,
-            EnemyProjectilePayloadV1 payload,
+            EnemyProjectilePayload payload,
             Sprite sprite)
         {
             owner = configuredOwner ?? throw new ArgumentNullException(nameof(configuredOwner));
@@ -86,7 +86,7 @@ namespace ShooterMover.UnityAdapters.Enemies
                 return;
             }
 
-            EnemyProjectilePayloadV1 payload = emission.Projectile.Payload;
+            EnemyProjectilePayload payload = emission.Projectile.Payload;
             Vector2 next = body.position
                 + direction * (float)payload.Speed * Time.fixedDeltaTime;
             body.MovePosition(next);
@@ -137,7 +137,7 @@ namespace ShooterMover.UnityAdapters.Enemies
                 && owner != null
                 && emission != null)
             {
-                EnemyAreaPayloadV1 area = emission.Projectile.Payload.AreaPayload;
+                EnemyAreaPayload area = emission.Projectile.Payload.AreaPayload;
                 if (area != null)
                 {
                     owner.PublishArea(emission, completionPoint, area);

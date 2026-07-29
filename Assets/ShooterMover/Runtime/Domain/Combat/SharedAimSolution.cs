@@ -182,7 +182,7 @@ namespace ShooterMover.Domain.Combat
     /// </summary>
     public sealed class FourMountAimSolution
     {
-        public const int MountCount = WeaponRuntimeProfile.SupportedMountCount;
+        public const int MountCount = WeaponLiveProfile.SupportedMountCount;
 
         private readonly SharedAimSolution[] solutions;
 

@@ -19,13 +19,13 @@ namespace ShooterMover.UI.StrongboxOpening
             }
 
             EnsureCamera();
-            runHudView = GetOrAddComponent<LootRunHudViewV1>(gameObject);
+            runHudView = GetOrAddComponent<LootRunHudView>(gameObject);
             ownedGroupsView =
-                GetOrAddComponent<OwnedStrongboxGroupsViewV1>(gameObject);
+                GetOrAddComponent<OwnedStrongboxGroupsView>(gameObject);
             rewardCardsView =
-                GetOrAddComponent<StrongboxRewardCardsViewV1>(gameObject);
+                GetOrAddComponent<StrongboxRewardCardsView>(gameObject);
             openingPresentationView =
-                GetOrAddComponent<StrongboxOpeningPresentationViewV1>(gameObject);
+                GetOrAddComponent<StrongboxOpeningPresentationView>(gameObject);
 
             runHudView.Bind(runTotals);
             gallery = BuildPickupGallery();
@@ -35,14 +35,14 @@ namespace ShooterMover.UI.StrongboxOpening
             openingSession = CreateOpeningSession("strongbox-tier.steel", "Steel");
             openingPresentationView.Bind(openingSession, rewardCardsView);
 
-            LootPickupPresentationV1 fixturePickup;
+            LootPickupPresentation fixturePickup;
             string fixtureDiagnostic;
-            ProductionStrongboxTierV1 steel =
-                ProductionStrongboxCatalogV1.GetByNumber(1);
-            if (!LootPickupPresentationV1.TryCreate(
+            StrongboxTier steel =
+                StrongboxCatalog.GetByNumber(1);
+            if (!LootPickupPresentation.TryCreate(
                 StableId.Parse("development-pickup.authoritative-steel"),
                 StableId.Parse("development-reward.authoritative-steel"),
-                RewardGrantKindV1.Strongbox,
+                RewardGrantKind.Strongbox,
                 steel.TierStableId,
                 1L,
                 out fixturePickup,
@@ -52,52 +52,52 @@ namespace ShooterMover.UI.StrongboxOpening
             }
 
             pickupFixture =
-                new DevelopmentPickupAuthorityFixtureV1(fixturePickup);
+                new DevelopmentPickupStateFixture(fixturePickup);
             initialized = true;
             ReconstructPickupFixtureView();
         }
 
-        private IReadOnlyList<LootPickupPresentationV1> BuildPickupGallery()
+        private IReadOnlyList<LootPickupPresentation> BuildPickupGallery()
         {
-            var result = new List<LootPickupPresentationV1>();
+            var result = new List<LootPickupPresentation>();
             AddPickup(
                 result,
                 "credits",
-                RewardGrantKindV1.Money,
+                RewardGrantKind.Money,
                 StableId.Parse("currency.money"),
                 125L);
             AddPickup(
                 result,
                 "scrap",
-                RewardGrantKindV1.Scrap,
+                RewardGrantKind.Scrap,
                 StableId.Parse("currency.scrap"),
                 18L);
             for (int index = 0;
-                 index < ProductionStrongboxCatalogV1.Tiers.Count;
+                 index < StrongboxCatalog.Tiers.Count;
                  index++)
             {
-                ProductionStrongboxTierV1 tier =
-                    ProductionStrongboxCatalogV1.Tiers[index];
+                StrongboxTier tier =
+                    StrongboxCatalog.Tiers[index];
                 AddPickup(
                     result,
                     "box-" + tier.Slug,
-                    RewardGrantKindV1.Strongbox,
+                    RewardGrantKind.Strongbox,
                     tier.TierStableId,
                     1L);
             }
-            return new ReadOnlyCollection<LootPickupPresentationV1>(result);
+            return new ReadOnlyCollection<LootPickupPresentation>(result);
         }
 
         private static void AddPickup(
-            ICollection<LootPickupPresentationV1> result,
+            ICollection<LootPickupPresentation> result,
             string suffix,
-            RewardGrantKindV1 kind,
+            RewardGrantKind kind,
             StableId contentStableId,
             long quantity)
         {
-            LootPickupPresentationV1 pickup;
+            LootPickupPresentation pickup;
             string diagnostic;
-            if (!LootPickupPresentationV1.TryCreate(
+            if (!LootPickupPresentation.TryCreate(
                 StableId.Create("development-pickup", suffix),
                 StableId.Create("development-reward", suffix),
                 kind,
@@ -112,7 +112,7 @@ namespace ShooterMover.UI.StrongboxOpening
         }
 
         private void SpawnGallery(
-            IReadOnlyList<LootPickupPresentationV1> pickups)
+            IReadOnlyList<LootPickupPresentation> pickups)
         {
             const int columns = 7;
             for (int index = 0; index < pickups.Count; index++)
@@ -132,7 +132,7 @@ namespace ShooterMover.UI.StrongboxOpening
         }
 
         private LootPickupVisual2D CreateVisual(
-            LootPickupPresentationV1 pickup,
+            LootPickupPresentation pickup,
             Vector3 position,
             string objectName)
         {
@@ -145,25 +145,25 @@ namespace ShooterMover.UI.StrongboxOpening
             return visual;
         }
 
-        private static IReadOnlyList<OwnedStrongboxGroupPresentationV1>
+        private static IReadOnlyList<OwnedStrongboxGroupPresentation>
             BuildGroups()
         {
             var exactInstances =
-                new List<OwnedStrongboxInstancePresentationV1>();
+                new List<OwnedStrongboxInstancePresentation>();
             for (int tierIndex = 0;
-                 tierIndex < ProductionStrongboxCatalogV1.Tiers.Count;
+                 tierIndex < StrongboxCatalog.Tiers.Count;
                  tierIndex++)
             {
-                ProductionStrongboxTierV1 tier =
-                    ProductionStrongboxCatalogV1.Tiers[tierIndex];
+                StrongboxTier tier =
+                    StrongboxCatalog.Tiers[tierIndex];
                 int quantity = tier.TierNumber == 1 ? 10 : 2;
                 for (int instanceIndex = 1;
                      instanceIndex <= quantity;
                      instanceIndex++)
                 {
-                    OwnedStrongboxInstancePresentationV1 instance;
+                    OwnedStrongboxInstancePresentation instance;
                     string diagnostic;
-                    if (!OwnedStrongboxInstancePresentationV1.TryCreate(
+                    if (!OwnedStrongboxInstancePresentation.TryCreate(
                         StableId.Create(
                             "development-strongbox",
                             tier.Slug
@@ -181,9 +181,9 @@ namespace ShooterMover.UI.StrongboxOpening
                 }
             }
 
-            IReadOnlyList<OwnedStrongboxGroupPresentationV1> projected;
+            IReadOnlyList<OwnedStrongboxGroupPresentation> projected;
             string projectionDiagnostic;
-            if (!StrongboxGroupingProjectorV1.TryProject(
+            if (!StrongboxGroupingProjector.TryProject(
                 exactInstances,
                 out projected,
                 out projectionDiagnostic))
@@ -193,28 +193,28 @@ namespace ShooterMover.UI.StrongboxOpening
             return projected;
         }
 
-        private static StrongboxOpeningPresentationResultV1
+        private static StrongboxOpeningPresentationResult
             BuildImmutableFixtureResult()
         {
-            return StrongboxOpeningPresentationResultV1.Success(
+            return StrongboxOpeningPresentationResult.Success(
                 new[]
                 {
-                    new StrongboxRewardRevealItemV1(
-                        StrongboxRewardPresentationKindV1.Money,
+                    new StrongboxRewardRevealItem(
+                        StrongboxRewardPresentationKind.Money,
                         "CREDITS",
                         "currency.money",
                         null,
                         275L,
                         "Immutable fixture value"),
-                    new StrongboxRewardRevealItemV1(
-                        StrongboxRewardPresentationKindV1.Scrap,
+                    new StrongboxRewardRevealItem(
+                        StrongboxRewardPresentationKind.Scrap,
                         "SCRAP",
                         "currency.scrap",
                         null,
                         48L,
                         "Immutable fixture value"),
-                    new StrongboxRewardRevealItemV1(
-                        StrongboxRewardPresentationKindV1.Equipment,
+                    new StrongboxRewardRevealItem(
+                        StrongboxRewardPresentationKind.Equipment,
                         "Arc Blaster",
                         "equipment.arc-blaster",
                         "development-equipment.arc-blaster-0001",
@@ -226,19 +226,19 @@ namespace ShooterMover.UI.StrongboxOpening
                 "IMMUTABLE DEVELOPMENT RESULT");
         }
 
-        private StrongboxOpeningSceneSessionV1 CreateOpeningSession(
+        private StrongboxOpeningSceneSession CreateOpeningSession(
             string tierId,
             string tierLabel)
         {
             var configuration =
-                new StrongboxOpeningPreviewConfigurationV1(
+                new StrongboxOpeningPreviewConfiguration(
                     tierId,
                     tierLabel,
                     9001001UL,
                     Mathf.Max(0.05f, openingDurationSeconds),
                     Mathf.Max(0.05f, revealIntervalSeconds),
                     0.35f);
-            return new StrongboxOpeningSceneSessionV1(
+            return new StrongboxOpeningSceneSession(
                 configuration,
                 delegate { return immutableFixtureResult; });
         }

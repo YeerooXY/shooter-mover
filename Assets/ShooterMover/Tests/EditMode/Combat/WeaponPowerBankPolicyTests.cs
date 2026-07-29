@@ -17,7 +17,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void FromProfile_CreatesImmutableValidatedMountLocalState()
         {
-            WeaponRuntimeProfile profile = BuildProfile(100d, 25d);
+            WeaponLiveProfile profile = BuildProfile(100d, 25d);
             DomainPowerBankState state = DomainPowerBankState.FromProfile(profile, 60d);
 
             Assert.That(state.IsConfigured, Is.True);
@@ -49,7 +49,7 @@ namespace ShooterMover.Tests.EditMode.Combat
             Assert.Throws<ArgumentOutOfRangeException>(
                 () => DomainPowerBankState.FromProfile(profile, double.NaN));
 
-            WeaponRuntimeProfile noBankProfile = BuildProfile(0d, 0d, false);
+            WeaponLiveProfile noBankProfile = BuildProfile(0d, 0d, false);
             DomainPowerBankState none = DomainPowerBankState.FromProfile(noBankProfile, 0d);
             Assert.That(none.IsConfigured, Is.False);
             Assert.Throws<ArgumentOutOfRangeException>(
@@ -348,7 +348,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                 Is.False);
         }
 
-        private static WeaponRuntimeProfile BuildProfile(
+        private static WeaponLiveProfile BuildProfile(
             double capacityUnits,
             double empoweredCostUnits,
             bool hasIndependentPowerBank = true)
@@ -356,8 +356,8 @@ namespace ShooterMover.Tests.EditMode.Combat
             double authoredCapacity = hasIndependentPowerBank ? capacityUnits : 0d;
             double authoredCost = hasIndependentPowerBank ? empoweredCostUnits : 0d;
 
-            return WeaponRuntimeProfile.Create(
-                WeaponRuntimeProfile.CurrentProfileVersion,
+            return WeaponLiveProfile.Create(
+                WeaponLiveProfile.CurrentProfileVersion,
                 StableId.Parse("weapon-profile.power-bank-test"),
                 0.2d,
                 1,

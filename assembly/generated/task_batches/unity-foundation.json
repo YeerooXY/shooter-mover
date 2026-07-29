@@ -384,7 +384,7 @@
       "priority": "P0",
       "milestone": "S1.0 Foundation and evidence harness",
       "allowed_areas": [
-        "Assets/ShooterMover/Runtime/Bootstrap/BootstrapCompositionRoot.cs",
+        "Assets/ShooterMover/Runtime/Bootstrap/BootstrapSetupRoot.cs",
         "Assets/ShooterMover/Runtime/Bootstrap/BOOTSTRAP_LIFECYCLE.md"
       ],
       "depends_on": [
@@ -416,7 +416,7 @@
         "No gameplay, persistence, content, diagnostics, or UI service implementation is included."
       ],
       "verification": [
-        "Automated: Unity compilation succeeds and a static scan rejects forbidden scene-search APIs in BootstrapCompositionRoot.cs. UF-009 owns lifecycle construction/disposal tests.",
+        "Automated: Unity compilation succeeds and a static scan rejects forbidden scene-search APIs in BootstrapSetupRoot.cs. UF-009 owns lifecycle construction/disposal tests.",
         "Manual/playable: Reviewer reads the lifecycle and can identify registration, start, stop, and disposal phases. Unity enters and exits play mode twice without duplicate bootstrap instances after UF-007 is complete."
       ],
       "proof_required": [
@@ -595,7 +595,7 @@
       "milestone": "S1.0 Foundation and evidence harness",
       "allowed_areas": [
         "Assets/ShooterMover/Tests/EditMode/Foundation/AssemblyDependencyTests.cs",
-        "Assets/ShooterMover/Tests/EditMode/Foundation/BootstrapCompositionRootTests.cs",
+        "Assets/ShooterMover/Tests/EditMode/Foundation/BootstrapSetupRootTests.cs",
         "Assets/ShooterMover/Tests/PlayMode/Foundation/BootstrapLifecycleTests.cs",
         "Assets/ShooterMover/Tests/PlayMode/Foundation/FoundationSmokeSceneTests.cs"
       ],

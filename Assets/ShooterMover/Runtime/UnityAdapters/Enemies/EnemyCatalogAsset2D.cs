@@ -17,24 +17,24 @@ namespace ShooterMover.UnityAdapters.Enemies
             get { return enemyCatalog; }
         }
 
-        public EnemyCatalogImportResultV1 Import()
+        public EnemyCatalogImportResult Import()
         {
             if (enemyCatalog == null)
             {
-                return new EnemyCatalogImportResultV1(
+                return new EnemyCatalogImportResult(
                     null,
                     new[]
                     {
-                        new EnemyCatalogIssueV1(
+                        new EnemyCatalogIssue(
                             "enemy-catalog-asset-missing",
                             "$",
                             "An enemy catalogue TextAsset is required."),
                     });
             }
 
-            return EnemyCatalogJsonImporterV1.Import(
+            return EnemyCatalogJsonImporter.Import(
                 enemyCatalog.text,
-                BuiltInEnemyCatalogRegistryV1.Create());
+                BuiltInEnemyCatalogRegistry.Create());
         }
     }
 }

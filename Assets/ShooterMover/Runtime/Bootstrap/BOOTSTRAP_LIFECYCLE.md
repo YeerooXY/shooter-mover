@@ -6,7 +6,7 @@ diagnostics, or UI service.
 
 ## Ownership boundary
 
-`BootstrapCompositionRoot` is a plain C# object in `ShooterMover.Bootstrap`.
+`BootstrapSetupRoot` is a plain C# object in `ShooterMover.Bootstrap`.
 UF-007 owns the Unity adapter and Bootstrap scene that create one root and call
 its lifecycle methods. The root does not use scene-name lookup,
 `FindObjectOfType`, static singleton state, a global service locator, or Script

@@ -117,7 +117,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
     {
         public static IReadOnlyList<StrongboxCatalogCoverageEntry> BuildCatalogCoverage(
             StrongboxSimulationReport report,
-            IStrongboxSimulationProductionGateway production)
+            IStrongboxSimulationGateway production)
         {
             if (report == null) throw new ArgumentNullException(nameof(report));
             if (production == null) throw new ArgumentNullException(nameof(production));
@@ -291,9 +291,9 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
         {
             tierNumber = 0;
             if (tierId == null) return false;
-            for (int index = 0; index < ProductionStrongboxCatalogV1.Tiers.Count; index++)
+            for (int index = 0; index < StrongboxCatalog.Tiers.Count; index++)
             {
-                ProductionStrongboxTierV1 tier = ProductionStrongboxCatalogV1.Tiers[index];
+                StrongboxTier tier = StrongboxCatalog.Tiers[index];
                 if (tier != null && tier.TierStableId == tierId)
                 {
                     tierNumber = tier.TierNumber;
@@ -306,8 +306,8 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
         private static int ResolveTopTierNumber()
         {
             int maximum = 0;
-            for (int index = 0; index < ProductionStrongboxCatalogV1.Tiers.Count; index++)
-                maximum = Math.Max(maximum, ProductionStrongboxCatalogV1.Tiers[index].TierNumber);
+            for (int index = 0; index < StrongboxCatalog.Tiers.Count; index++)
+                maximum = Math.Max(maximum, StrongboxCatalog.Tiers[index].TierNumber);
             return maximum;
         }
 

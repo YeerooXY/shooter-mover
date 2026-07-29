@@ -33,7 +33,7 @@ Optional art can be authored as `SideProfileArtReference` or `SideProfileArtRefe
 
 Imported archetypes, families and definitions are normalized with ordinal identity ordering. Catalog fingerprints are SHA-256 values over a length-prefixed canonical representation of every preserved field, so input collection order cannot change catalog identity.
 
-`WeaponCatalogCanonicalJson.Export` emits byte-stable compact JSON plus one trailing LF. Importing that export produces the same fingerprint and exporting it again produces identical bytes.
+`WeaponCatalogJson.Export` emits byte-stable compact JSON plus one trailing LF. Importing that export produces the same fingerprint and exporting it again produces identical bytes.
 
 ## Validation
 

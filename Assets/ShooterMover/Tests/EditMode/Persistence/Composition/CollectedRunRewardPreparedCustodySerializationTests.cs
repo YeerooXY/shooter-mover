@@ -19,13 +19,13 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void AwaitingAcceptedEndRoundTripPreservesExactRecord()
         {
-            CollectedRunRewardPreparedTransferV1 source = CreateAwaiting("awaiting");
+            CollectedRunRewardPreparedTransfer source = CreateAwaiting("awaiting");
 
-            CollectedRunRewardPreparedTransferV1 restored = RoundTrip(source);
+            CollectedRunRewardPreparedTransfer restored = RoundTrip(source);
 
             Assert.That(restored.State,
                 Is.EqualTo(
-                    CollectedRunRewardPreparedTransferStateV1.AwaitingAcceptedEnd));
+                    CollectedRunRewardPreparedTransferState.AwaitingAcceptedEnd));
             Assert.That(restored.Fingerprint, Is.EqualTo(source.Fingerprint));
             Assert.That(restored.TransferOperationStableId, Is.Null);
             Assert.That(restored.AcceptedMissionResultStableId, Is.Null);
@@ -34,12 +34,12 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void PreparedRoundTripPreservesAcceptedMissionAndPlanFacts()
         {
-            CollectedRunRewardPreparedTransferV1 source = CreatePrepared("prepared");
+            CollectedRunRewardPreparedTransfer source = CreatePrepared("prepared");
 
-            CollectedRunRewardPreparedTransferV1 restored = RoundTrip(source);
+            CollectedRunRewardPreparedTransfer restored = RoundTrip(source);
 
             Assert.That(restored.State,
-                Is.EqualTo(CollectedRunRewardPreparedTransferStateV1.Prepared));
+                Is.EqualTo(CollectedRunRewardPreparedTransferState.Prepared));
             Assert.That(restored.Fingerprint, Is.EqualTo(source.Fingerprint));
             Assert.That(restored.TransferOperationStableId,
                 Is.EqualTo(source.TransferOperationStableId));
@@ -56,14 +56,14 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void PersistedRoundTripPreservesReceiptFingerprint()
         {
-            CollectedRunRewardPreparedTransferV1 source =
+            CollectedRunRewardPreparedTransfer source =
                 CreatePrepared("persisted").MarkPersisted(
                     Fingerprint("receipt-persisted"));
 
-            CollectedRunRewardPreparedTransferV1 restored = RoundTrip(source);
+            CollectedRunRewardPreparedTransfer restored = RoundTrip(source);
 
             Assert.That(restored.State,
-                Is.EqualTo(CollectedRunRewardPreparedTransferStateV1.Persisted));
+                Is.EqualTo(CollectedRunRewardPreparedTransferState.Persisted));
             Assert.That(restored.PersistedReceiptFingerprint,
                 Is.EqualTo(source.PersistedReceiptFingerprint));
             Assert.That(restored.Fingerprint, Is.EqualTo(source.Fingerprint));
@@ -72,9 +72,9 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void ExactEquipmentInstanceAndAugmentsSurviveRoundTrip()
         {
-            CollectedRunRewardPreparedTransferV1 source = CreatePrepared("equipment");
+            CollectedRunRewardPreparedTransfer source = CreatePrepared("equipment");
 
-            CollectedRunRewardPreparedTransferV1 restored = RoundTrip(source);
+            CollectedRunRewardPreparedTransfer restored = RoundTrip(source);
             EquipmentInstance expected = source.Equipment.Single();
             EquipmentInstance actual = restored.Equipment.Single();
 
@@ -102,11 +102,11 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void ExactUnopenedStrongboxContextSurvivesRoundTrip()
         {
-            CollectedRunRewardPreparedTransferV1 source = CreatePrepared("strongbox");
+            CollectedRunRewardPreparedTransfer source = CreatePrepared("strongbox");
 
-            CollectedRunRewardPreparedTransferV1 restored = RoundTrip(source);
-            StrongboxInstanceContextV1 expected = source.Strongboxes.Single();
-            StrongboxInstanceContextV1 actual = restored.Strongboxes.Single();
+            CollectedRunRewardPreparedTransfer restored = RoundTrip(source);
+            StrongboxInstanceContext expected = source.Strongboxes.Single();
+            StrongboxInstanceContext actual = restored.Strongboxes.Single();
 
             Assert.That(actual.InstanceStableId,
                 Is.EqualTo(expected.InstanceStableId));
@@ -128,12 +128,12 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void IdenticalSnapshotsEncodeToByteIdenticalPayloads()
         {
-            CollectedRunRewardPreparedTransferSnapshotV1 first =
-                new CollectedRunRewardPreparedTransferSnapshotV1(
+            CollectedRunRewardPreparedTransferSnapshot first =
+                new CollectedRunRewardPreparedTransferSnapshot(
                     7L,
                     new[] { CreatePrepared("identical") });
-            CollectedRunRewardPreparedTransferSnapshotV1 second =
-                new CollectedRunRewardPreparedTransferSnapshotV1(
+            CollectedRunRewardPreparedTransferSnapshot second =
+                new CollectedRunRewardPreparedTransferSnapshot(
                     7L,
                     new[] { CreatePrepared("identical") });
 
@@ -150,12 +150,12 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void CorruptedPayloadIsRejected()
         {
-            CollectedRunRewardPreparedTransferSnapshotV1 source = Snapshot(
+            CollectedRunRewardPreparedTransferSnapshot source = Snapshot(
                 CreatePrepared("corrupt"));
             byte[] bytes = Convert.FromBase64String(Codec.Encode(source));
             bytes[0] ^= 0x7F;
 
-            CollectedRunRewardPreparedTransferSnapshotV1 decoded;
+            CollectedRunRewardPreparedTransferSnapshot decoded;
             string rejection;
             bool accepted = Codec.TryDecode(
                 Convert.ToBase64String(bytes),
@@ -172,7 +172,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void TrailingDataIsRejected()
         {
-            CollectedRunRewardPreparedTransferSnapshotV1 source = Snapshot(
+            CollectedRunRewardPreparedTransferSnapshot source = Snapshot(
                 CreatePrepared("trailing"));
             byte[] original = Convert.FromBase64String(Codec.Encode(source));
             byte[] withTrailing = new byte[original.Length + 3];
@@ -181,7 +181,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             withTrailing[original.Length + 1] = 2;
             withTrailing[original.Length + 2] = 3;
 
-            CollectedRunRewardPreparedTransferSnapshotV1 decoded;
+            CollectedRunRewardPreparedTransferSnapshot decoded;
             string rejection;
             bool accepted = Codec.TryDecode(
                 Convert.ToBase64String(withTrailing),
@@ -198,31 +198,31 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void ComponentFingerprintMismatchIsRejectedByAccountExpectation()
         {
-            CollectedRunRewardPreparedTransferV1 source =
+            CollectedRunRewardPreparedTransfer source =
                 CreatePrepared("fingerprint-mismatch");
-            CollectedRunRewardPreparedTransferAuthorityV1 authority =
-                new CollectedRunRewardPreparedTransferAuthorityV1(
+            CollectedRunRewardPreparedTransferStore authority =
+                new CollectedRunRewardPreparedTransferStore(
                     Snapshot(source));
-            ISaveComponentAdapterV1 adapter =
-                CollectedRunRewardPreparedTransferSaveComponentV1
+            ISaveComponentBridge adapter =
+                CollectedRunRewardPreparedTransferSaveComponent
                     .CreateAdapter(authority);
-            SaveComponentSnapshotV1 component = adapter.ExportComponent();
-            CharacterInstanceSnapshotV1[] slots =
-                new CharacterInstanceSnapshotV1[
-                    PlayerAccountSnapshotV1.CharacterSlotCount];
-            slots[0] = new CharacterInstanceSnapshotV1(
+            SaveComponentSnapshot component = adapter.ExportComponent();
+            CharacterInstanceSnapshot[] slots =
+                new CharacterInstanceSnapshot[
+                    PlayerAccountSnapshot.CharacterSlotCount];
+            slots[0] = new CharacterInstanceSnapshot(
                 source.SelectedCharacterStableId,
                 Id("loadout-profile.striker"),
                 0,
                 "Fingerprint Pilot",
                 0L,
                 new[] { component });
-            PlayerAccountSnapshotV1 account = new PlayerAccountSnapshotV1(
+            PlayerAccountSnapshot account = new PlayerAccountSnapshot(
                 Id("account.fingerprint-mismatch"),
                 0L,
                 slots,
                 null);
-            using (CollectedRunRewardPersistenceExpectationV1.Begin(
+            using (CollectedRunRewardPersistenceExpectation.Begin(
                 source.SelectedCharacterStableId,
                 new Dictionary<StableId, string>
                 {
@@ -232,8 +232,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     },
                 }))
             {
-                SaveComponentValidationResultV1 validation =
-                    CollectedRunRewardPersistenceExpectationV1.Validate(account);
+                SaveComponentValidationResult validation =
+                    CollectedRunRewardPersistenceExpectation.Validate(account);
 
                 Assert.That(validation.Succeeded, Is.False);
                 Assert.That(validation.RejectionCode,
@@ -246,16 +246,16 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void ReorderedUnorderedInputsProduceCanonicalOutput()
         {
-            CollectedRunRewardPreparedTransferV1 forward =
+            CollectedRunRewardPreparedTransfer forward =
                 CreateAwaiting("canonical", false);
-            CollectedRunRewardPreparedTransferV1 reversed =
+            CollectedRunRewardPreparedTransfer reversed =
                 CreateAwaiting("canonical", true);
-            CollectedRunRewardPreparedTransferSnapshotV1 first =
-                new CollectedRunRewardPreparedTransferSnapshotV1(
+            CollectedRunRewardPreparedTransferSnapshot first =
+                new CollectedRunRewardPreparedTransferSnapshot(
                     3L,
                     new[] { forward });
-            CollectedRunRewardPreparedTransferSnapshotV1 second =
-                new CollectedRunRewardPreparedTransferSnapshotV1(
+            CollectedRunRewardPreparedTransferSnapshot second =
+                new CollectedRunRewardPreparedTransferSnapshot(
                     3L,
                     new[] { reversed });
 
@@ -267,29 +267,29 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void SixCharacterSlotsRemainIsolatedAfterRoundTrip()
         {
-            List<CollectedRunRewardPreparedTransferV1> records =
-                new List<CollectedRunRewardPreparedTransferV1>();
+            List<CollectedRunRewardPreparedTransfer> records =
+                new List<CollectedRunRewardPreparedTransfer>();
             for (int slot = 0; slot < 6; slot++)
             {
                 records.Add(CreatePrepared(
                     "slot-" + slot,
                     Id("character-instance.slot-" + slot)));
             }
-            CollectedRunRewardPreparedTransferSnapshotV1 source =
-                new CollectedRunRewardPreparedTransferSnapshotV1(
+            CollectedRunRewardPreparedTransferSnapshot source =
+                new CollectedRunRewardPreparedTransferSnapshot(
                     19L,
-                    records.Reverse<CollectedRunRewardPreparedTransferV1>());
+                    records.Reverse<CollectedRunRewardPreparedTransfer>());
 
-            CollectedRunRewardPreparedTransferSnapshotV1 restored =
+            CollectedRunRewardPreparedTransferSnapshot restored =
                 RoundTripSnapshot(source);
-            CollectedRunRewardPreparedTransferAuthorityV1 authority =
-                new CollectedRunRewardPreparedTransferAuthorityV1(restored);
+            CollectedRunRewardPreparedTransferStore authority =
+                new CollectedRunRewardPreparedTransferStore(restored);
 
             Assert.That(restored.Records.Count, Is.EqualTo(6));
             for (int slot = 0; slot < 6; slot++)
             {
                 StableId character = Id("character-instance.slot-" + slot);
-                IReadOnlyList<CollectedRunRewardPreparedTransferV1> recoverable =
+                IReadOnlyList<CollectedRunRewardPreparedTransfer> recoverable =
                     authority.ExportRecoverable(character);
                 Assert.That(recoverable.Count, Is.EqualTo(1));
                 Assert.That(recoverable[0].SelectedCharacterStableId,
@@ -299,28 +299,28 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             }
         }
 
-        private static CollectedRunRewardPreparedTransferSaveComponentV1.Codec
+        private static CollectedRunRewardPreparedTransferSaveComponent.Codec
             Codec
         {
             get
             {
-                return CollectedRunRewardPreparedTransferSaveComponentV1
+                return CollectedRunRewardPreparedTransferSaveComponent
                     .Codec.Instance;
             }
         }
 
-        private static CollectedRunRewardPreparedTransferV1 RoundTrip(
-            CollectedRunRewardPreparedTransferV1 source)
+        private static CollectedRunRewardPreparedTransfer RoundTrip(
+            CollectedRunRewardPreparedTransfer source)
         {
             return RoundTripSnapshot(Snapshot(source)).Records.Single();
         }
 
-        private static CollectedRunRewardPreparedTransferSnapshotV1
+        private static CollectedRunRewardPreparedTransferSnapshot
             RoundTripSnapshot(
-                CollectedRunRewardPreparedTransferSnapshotV1 source)
+                CollectedRunRewardPreparedTransferSnapshot source)
         {
             string payload = Codec.Encode(source);
-            CollectedRunRewardPreparedTransferSnapshotV1 restored;
+            CollectedRunRewardPreparedTransferSnapshot restored;
             string rejection;
             Assert.That(Codec.TryDecode(payload, out restored, out rejection),
                 Is.True,
@@ -332,19 +332,19 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             return restored;
         }
 
-        private static CollectedRunRewardPreparedTransferSnapshotV1 Snapshot(
-            CollectedRunRewardPreparedTransferV1 record)
+        private static CollectedRunRewardPreparedTransferSnapshot Snapshot(
+            CollectedRunRewardPreparedTransfer record)
         {
-            return new CollectedRunRewardPreparedTransferSnapshotV1(
+            return new CollectedRunRewardPreparedTransferSnapshot(
                 1L,
                 new[] { record });
         }
 
-        private static CollectedRunRewardPreparedTransferV1 CreatePrepared(
+        private static CollectedRunRewardPreparedTransfer CreatePrepared(
             string suffix,
             StableId character = null)
         {
-            CollectedRunRewardPreparedTransferV1 awaiting =
+            CollectedRunRewardPreparedTransfer awaiting =
                 CreateAwaiting(suffix, false, character);
             return awaiting.AcceptEnd(
                 Id("operation.transfer-" + suffix),
@@ -354,7 +354,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 Fingerprint("plan-" + suffix));
         }
 
-        private static CollectedRunRewardPreparedTransferV1 CreateAwaiting(
+        private static CollectedRunRewardPreparedTransfer CreateAwaiting(
             string suffix,
             bool reverse = false,
             StableId character = null)
@@ -399,8 +399,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                         Id("progression-tag.campaign"),
                         Id("progression-tag.event"),
                     });
-            StrongboxInstanceContextV1 strongbox =
-                StrongboxInstanceContextV1.Create(
+            StrongboxInstanceContext strongbox =
+                StrongboxInstanceContext.Create(
                     strongboxId,
                     strongboxTier,
                     0xA11CEUL,
@@ -409,17 +409,17 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     Id("source-context." + suffix),
                     Id("collection-provenance." + suffix),
                     Fingerprint("strongbox-algorithm-" + suffix));
-            CollectedRunRewardTransferItemV1 equipmentReward = Reward(
+            CollectedRunRewardTransferItem equipmentReward = Reward(
                 equipmentId,
-                RewardGrantKindV1.EquipmentReference,
+                RewardGrantKind.EquipmentReference,
                 equipmentDefinition,
                 run,
                 1L,
                 1L,
                 suffix + "-equipment");
-            CollectedRunRewardTransferItemV1 strongboxReward = Reward(
+            CollectedRunRewardTransferItem strongboxReward = Reward(
                 strongboxId,
-                RewardGrantKindV1.Strongbox,
+                RewardGrantKind.Strongbox,
                 strongboxTier,
                 run,
                 1L,
@@ -439,11 +439,11 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 authorities.Add("holdings", Fingerprint("holdings-" + suffix));
                 authorities.Add("strongboxes", Fingerprint("boxes-" + suffix));
             }
-            IEnumerable<CollectedRunRewardTransferItemV1> rewards = reverse
+            IEnumerable<CollectedRunRewardTransferItem> rewards = reverse
                 ? new[] { strongboxReward, equipmentReward }
                 : new[] { equipmentReward, strongboxReward };
 
-            return CollectedRunRewardPreparedTransferV1.AwaitingAcceptedEnd(
+            return CollectedRunRewardPreparedTransfer.AwaitingAcceptedEnd(
                 Id("custody." + suffix),
                 Id("operation.prepare-" + suffix),
                 run,
@@ -466,16 +466,16 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 new[] { strongbox });
         }
 
-        private static CollectedRunRewardTransferItemV1 Reward(
+        private static CollectedRunRewardTransferItem Reward(
             StableId rewardInstance,
-            RewardGrantKindV1 kind,
+            RewardGrantKind kind,
             StableId content,
             StableId run,
             long lifecycle,
             long collectionOrder,
             string suffix)
         {
-            return new CollectedRunRewardTransferItemV1(
+            return new CollectedRunRewardTransferItem(
                 rewardInstance,
                 kind,
                 content,
@@ -509,7 +509,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
 
         private static string Fingerprint(string material)
         {
-            return StrongboxCanonicalV1.Fingerprint(material);
+            return Strongbox.Fingerprint(material);
         }
 
         private static StableId Id(string canonical)

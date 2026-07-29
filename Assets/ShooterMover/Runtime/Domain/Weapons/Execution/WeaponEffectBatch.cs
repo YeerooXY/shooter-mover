@@ -122,9 +122,9 @@ namespace ShooterMover.Domain.Weapons.Execution
     /// envelope. All execution values are already baked into the request profile and initial state;
     /// downstream adapters must launch this state instead of rebuilding values from a blueprint.
     /// </summary>
-    public sealed class CanonicalProjectileLaunchEffect : IWeaponEffectDescription
+    public sealed class ProjectileLaunchEffect : IWeaponEffectDescription
     {
-        public CanonicalProjectileLaunchEffect(
+        public ProjectileLaunchEffect(
             ProjectileLaunchRequest launchRequest,
             ProjectileLifecycleState initialState)
         {
@@ -393,7 +393,7 @@ namespace ShooterMover.Domain.Weapons.Execution
             }
 
             if (effectDescriptions.Count < 1
-                || effectDescriptions.Count > WeaponRuntimeFiringProfile.MaximumEffectsPerFire)
+                || effectDescriptions.Count > WeaponLiveFiringProfile.MaximumEffectsPerFire)
             {
                 throw new ArgumentOutOfRangeException(nameof(effectDescriptions));
             }

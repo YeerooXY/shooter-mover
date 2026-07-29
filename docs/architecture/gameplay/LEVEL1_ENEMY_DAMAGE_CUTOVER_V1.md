@@ -37,8 +37,8 @@ Adding another ranged enemy would have required editing the player bridge and ad
 Each enemy source registers one immutable `EnemyProjectileDamageBinding2D` containing:
 
 - exact source actor identity;
-- its existing `CombatHit2DAdapter`;
-- its existing `ProjectileExecutionPlanAdapter`;
+- its existing `CombatHit2DBridge`;
+- its existing `ProjectileExecutionPlanBridge`;
 - configured damage.
 
 The router then applies one path for every registered source:
@@ -55,7 +55,7 @@ No lifecycle data is decoded from IDs.
 
 ## Player authority boundary
 
-The router does not reference `PlayerRuntimeComposition` or `PlayerActorAuthority`.
+The router does not reference `PlayerLiveSetup` or `PlayerActorState`.
 
 The Level 1 scene adapter consumes the immutable impact and creates the existing `PlayerDamageRequest`. Damage, duplicate admission, conflicting replay, stale lifecycle rejection, death, and restart remain owned by the existing player authority.
 

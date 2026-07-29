@@ -323,7 +323,7 @@ namespace ShooterMover.Tests.PlayMode.Authoring
                 family,
                 null);
             placed.SetRuntimeSpawnIdentity(
-                new RuntimeSpawnIdentityInput(
+                new LiveSpawnIdentityInput(
                     StableId.Parse("placed.spawned-a"),
                     StableId.Parse("spawn.operation-a")));
 

@@ -176,7 +176,7 @@ None of these additions requires editing:
 - existing profiles.
 
 Only a genuinely new reward kind requires one new handler registered through
-`RewardGrantHandlerRegistryV1`.
+`RewardGrantHandlerRegistry`.
 
 ## Hybrid strongbox rarity mapping
 
@@ -201,7 +201,7 @@ shared augment level = 8
 installed augment instances = []
 ```
 
-`GeneratedEquipmentAugmentSignatureV1` freezes the source box, hybrid policy ID and
+`GeneratedEquipmentAugmentSignature` freezes the source box, hybrid policy ID and
 fingerprint, capacity, shared level and algorithm version. The exact-instance
 authority is idempotent, rejects conflicting duplicates and exports/restores a
 sorted snapshot. Installed `AugmentInstance` objects remain owned exclusively by

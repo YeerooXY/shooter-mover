@@ -16,24 +16,24 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
         [Test]
         public void FailedEmptySlotCreationKeepsPersistedActiveAndLeavesNoPartialCharacter()
         {
-            ProductionCharacterRuntimeGraphFactoryV1 factory =
-                ProductionCharacterRuntimeGraphFactoryV1
+            CharacterLiveGraphFactory factory =
+                CharacterLiveGraphFactory
                     .CreateVerticalSliceDefaults();
-            CharacterInstanceSnapshotV1 alpha = StarterCharacter(
+            CharacterInstanceSnapshot alpha = StarterCharacter(
                 factory,
                 0,
                 "creation-transaction-alpha");
-            PlayerAccountSnapshotV1 durable = Account(alpha);
-            var authority = new PlayerAccountSaveAuthorityV1(durable);
+            PlayerAccountSnapshot durable = Account(alpha);
+            var authority = new PlayerAccountSaveState(durable);
             int saveCalls = 0;
-            Func<PlayerAccountSnapshotV1, PlayerAccountStoreResultV1> save =
+            Func<PlayerAccountSnapshot, PlayerAccountStoreResult> save =
                 snapshot =>
                 {
                     saveCalls++;
                     if (saveCalls == 2)
                     {
-                        return new PlayerAccountStoreResultV1(
-                            PlayerAccountStoreStatusV1.IoFailure,
+                        return new PlayerAccountStoreResult(
+                            PlayerAccountStoreStatus.IoFailure,
                             "simulated-character-create-write-failure",
                             null);
                     }
@@ -41,12 +41,12 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     durable = snapshot;
                     return Saved(snapshot);
                 };
-            var composition = new CharacterCompositionCoordinatorV1(
+            var composition = new CharacterSetupFlow(
                 authority,
                 factory,
                 save);
             Assert.That(composition.Select(0).Succeeded, Is.True);
-            var alphaGraph = (ProductionCharacterRuntimeGraphV1)
+            var alphaGraph = (CharacterLiveGraph)
                 composition.ActiveRuntime;
             alphaGraph.MoneyWallet.Grant(
                 Id("transaction.creation-transaction-alpha-money"),
@@ -54,8 +54,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 73L);
             Assert.That(alphaGraph.MoneyWallet.Balance, Is.EqualTo(73L));
 
-            LegacyCharacterProfileMigrationResultV1 attempted =
-                new LegacyCharacterProfileMigrationV1(
+            LegacyCharacterProfileMigrationResult attempted =
+                new LegacyCharacterProfileMigration(
                     authority,
                     factory,
                     save).Migrate(new[]
@@ -76,32 +76,32 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             Assert.That(durable.CharacterAt(1), Is.Null);
 
             composition.Dispose();
-            var restarted = new CharacterCompositionCoordinatorV1(
-                new PlayerAccountSaveAuthorityV1(durable),
+            var restarted = new CharacterSetupFlow(
+                new PlayerAccountSaveState(durable),
                 factory,
                 Saved);
-            CharacterCompositionResultV1 restored = restarted.Select(0);
+            CharacterSetupResult restored = restarted.Select(0);
 
             Assert.That(restored.Succeeded, Is.True, restored.Diagnostic);
             Assert.That(restarted.Account.CharacterAt(1), Is.Null);
             Assert.That(
-                ((ProductionCharacterRuntimeGraphV1)restarted.ActiveRuntime)
+                ((CharacterLiveGraph)restarted.ActiveRuntime)
                     .MoneyWallet.Balance,
                 Is.EqualTo(73L));
         }
 
-        private static LegacyCharacterProfileV1 LegacyProfile(
+        private static LegacyCharacterProfile LegacyProfile(
             int slotIndex,
             string suffix)
         {
             StableId classId = Id("loadout-profile.juggernaut");
-            PlayerRouteProfilePayloadV1 route =
-                PlayerRouteProfilePayloadV1.Create(
+            PlayerRouteProfilePayload route =
+                PlayerRouteProfilePayload.Create(
                     Id("character." + suffix),
                     classId,
                     new StableId[
-                        PlayerRouteProfilePayloadV1.WeaponSlotCount]);
-            return new LegacyCharacterProfileV1(
+                        PlayerRouteProfilePayload.WeaponSlotCount]);
+            return new LegacyCharacterProfile(
                 slotIndex,
                 suffix,
                 route.SelectedCharacterStableId,
@@ -110,24 +110,24 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 route);
         }
 
-        private static CharacterInstanceSnapshotV1 StarterCharacter(
-            ProductionCharacterRuntimeGraphFactoryV1 factory,
+        private static CharacterInstanceSnapshot StarterCharacter(
+            CharacterLiveGraphFactory factory,
             int slotIndex,
             string suffix)
         {
-            LegacyCharacterProfileV1 profile = LegacyProfile(slotIndex, suffix);
+            LegacyCharacterProfile profile = LegacyProfile(slotIndex, suffix);
             StableId characterId = Id("character-instance." + suffix);
-            ICharacterRuntimeGraphV1 graph = factory.CreateStarter(
+            ICharacterLiveGraph graph = factory.CreateStarter(
                 slotIndex,
                 characterId,
                 profile.ClassDefinitionStableId,
                 suffix,
                 profile.LegacyContext);
-            IReadOnlyList<SaveComponentSnapshotV1> components =
-                PlayerAccountRestoreCoordinatorV1.ExportComponents(
+            IReadOnlyList<SaveComponentSnapshot> components =
+                PlayerAccountRestoreFlow.ExportComponents(
                     graph.SaveAdapters);
             graph.Dispose();
-            return new CharacterInstanceSnapshotV1(
+            return new CharacterInstanceSnapshot(
                 characterId,
                 profile.ClassDefinitionStableId,
                 slotIndex,
@@ -136,27 +136,27 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 components);
         }
 
-        private static PlayerAccountSnapshotV1 Account(
-            params CharacterInstanceSnapshotV1[] characters)
+        private static PlayerAccountSnapshot Account(
+            params CharacterInstanceSnapshot[] characters)
         {
-            var slots = new CharacterInstanceSnapshotV1[
-                PlayerAccountSnapshotV1.CharacterSlotCount];
-            foreach (CharacterInstanceSnapshotV1 character in characters)
+            var slots = new CharacterInstanceSnapshot[
+                PlayerAccountSnapshot.CharacterSlotCount];
+            foreach (CharacterInstanceSnapshot character in characters)
             {
                 slots[character.SlotIndex] = character;
             }
-            return new PlayerAccountSnapshotV1(
+            return new PlayerAccountSnapshot(
                 Id("account.character-creation-transaction-regression"),
                 0L,
                 slots,
                 null);
         }
 
-        private static PlayerAccountStoreResultV1 Saved(
-            PlayerAccountSnapshotV1 snapshot)
+        private static PlayerAccountStoreResult Saved(
+            PlayerAccountSnapshot snapshot)
         {
-            return new PlayerAccountStoreResultV1(
-                PlayerAccountStoreStatusV1.Saved,
+            return new PlayerAccountStoreResult(
+                PlayerAccountStoreStatus.Saved,
                 string.Empty,
                 snapshot);
         }

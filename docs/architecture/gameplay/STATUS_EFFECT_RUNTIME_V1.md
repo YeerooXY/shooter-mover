@@ -11,13 +11,13 @@ not edited.
 
 ## Ownership
 
-- `StatusEffectDefinitionV1` describes versioned content.
-- `StatusEffectCatalogV1` validates and fingerprints definitions.
-- `StatusEffectAuthorityV1` owns active stacks, expiry, lifecycle generation, and
+- `StatusEffectDefinition` describes versioned content.
+- `StatusEffectCatalog` validates and fingerprints definitions.
+- `StatusEffectState` owns active stacks, expiry, lifecycle generation, and
   operation replay truth.
-- `RuntimeModifierSnapshotV1` remains the only numerical modifier language.
-- `FactWindowConditionAuthorityV1` remains the fact-window authority.
-- `FactWindowStatusEffectBridgeV1` converts an accepted generic condition
+- `LiveModifierSnapshot` remains the only numerical modifier language.
+- `FactWindowConditionState` remains the fact-window authority.
+- `FactWindowStatusEffectBridge` converts an accepted generic condition
   activation into an ordinary status-effect application command.
 - Combat, UI, skills, equipment, and Unity collision callbacks do not mutate
   active status-effect state directly.
@@ -52,8 +52,8 @@ Expired stacks disappear from both active snapshots and modifier projections.
 ## Modifier projection
 
 Each live stack projects the definition's existing
-`RuntimeModifierDefinitionV1` contributions into one immutable
-`RuntimeModifierSnapshotV1`.
+`LiveModifierDefinition` contributions into one immutable
+`LiveModifierSnapshot`.
 
 Projected source IDs include:
 
@@ -79,7 +79,7 @@ All command kinds share one operation-ID ledger:
 
 ## Checkpoints
 
-`StatusEffectAuthoritySnapshotV1` contains:
+`StatusEffectLedgerSnapshot` contains:
 
 - current immutable state;
 - catalog fingerprint;
@@ -105,11 +105,11 @@ Old-generation commands reject.
 
 A killing spree requires no `KillingSpreeController`:
 
-1. `FactWindowConditionAuthorityV1` observes generic `fact.enemy-killed` facts.
-2. Its data-defined condition emits `RuntimeConditionActivationFactV1`.
-3. `FactWindowStatusEffectBridgeV1` resolves the condition ID through a binding.
-4. The bridge creates an ordinary `ApplyStatusEffectCommandV1`.
-5. `StatusEffectAuthorityV1` applies the data-defined damage modifier for its
+1. `FactWindowConditionState` observes generic `fact.enemy-killed` facts.
+2. Its data-defined condition emits `LiveConditionActivationFact`.
+3. `FactWindowStatusEffectBridge` resolves the condition ID through a binding.
+4. The bridge creates an ordinary `ApplyStatusEffectCommand`.
+5. `StatusEffectState` applies the data-defined damage modifier for its
    authored duration.
 
 Another fact-window effect uses another binding and definition, not another
@@ -123,7 +123,7 @@ authority branch.
 - no skill-specific, enemy-specific, room-specific, or weapon-specific status
   controller;
 - no rewrite of `RuntimeModifierFoundationV1.cs` or
-  `FactWindowConditionAuthorityV1.cs`.
+  `FactWindowConditionState.cs`.
 
 A future generic deterministic periodic-effect capability may consume active
 status-effect snapshots and emit explicit replay-safe damage commands, but that

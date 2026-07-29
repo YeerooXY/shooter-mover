@@ -45,13 +45,13 @@ The presentation session caches the first End Run result. Repeated confirm,
 retry, or callback input returns that cached result and does not call RUN-001
 again. Before ending, the bridge refreshes physical pickup state and records all
 new verified collection facts. RUN-001 then freezes the terminal result from
-current INV and BOX snapshots. Only that immutable `MissionResultPayloadV1` is
-placed in `MissionResultsSessionV1` and sent to the injected Results route sink.
+current INV and BOX snapshots. Only that immutable `MissionResultPayload` is
+placed in `MissionResultsSession` and sent to the injected Results route sink.
 
 ## Build boundary
 
 The IMGUI panel is compiled only when `UNITY_EDITOR` or `DEVELOPMENT_BUILD` is
-defined. The runtime bridge also fails closed through `RunDebugBuildGuardV1`
+defined. The runtime bridge also fails closed through `RunDebugBuildGuard`
 outside those builds.
 
 No production scene is modified by this package. In particular,
@@ -62,12 +62,12 @@ the panel to a dedicated development scene or development-only bootstrap.
 
 Configure `RunDebugRewardBridge2D` with:
 
-1. the stable run identity and immutable `PlayerRouteProfilePayloadV1`;
-2. the existing `IPlayerHoldingsAuthorityV1`;
+1. the stable run identity and immutable `PlayerRouteProfilePayload`;
+2. the existing `IPlayerHoldingsState`;
 3. the existing BOX snapshot exporter;
-4. the existing `MissionRunResultAuthorityV1`;
+4. the existing `MissionRunResultState`;
 5. the configured `RewardPickupDropFactory2D`;
-6. an optional Results route callback accepting `MissionResultsSessionV1`.
+6. an optional Results route callback accepting `MissionResultsSession`.
 
 Assign the bridge to `RunDebugPanel2D`. The pickup factory must already be wired
 to the shared GEN service, progression context, RAP adapter, and gameplay restart

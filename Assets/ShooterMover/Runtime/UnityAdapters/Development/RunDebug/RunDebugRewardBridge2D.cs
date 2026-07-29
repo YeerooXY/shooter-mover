@@ -28,11 +28,11 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
     /// the frozen terminal result. It never writes holdings or Results directly.
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed class RunDebugRewardBridge2D : MonoBehaviour, IRunDebugRuntimePortV1
+    public sealed class RunDebugRewardBridge2D : MonoBehaviour, IRunDebugLivePort
     {
-        private sealed class RuntimeBox
+        private sealed class LiveBox
         {
-            public RunDebugBoxFactV1 Fact;
+            public RunDebugBoxFact Fact;
             public RewardPickup2D Pickup;
         }
 
@@ -40,16 +40,16 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
         [SerializeField] private Transform spawnOrigin;
         [SerializeField, Min(0.1f)] private float spawnSpacing = 1.25f;
 
-        private readonly List<RuntimeBox> runtimeBoxes = new List<RuntimeBox>();
+        private readonly List<LiveBox> runtimeBoxes = new List<LiveBox>();
         private StableId runStableId;
-        private PlayerRouteProfilePayloadV1 routePayload;
-        private IPlayerHoldingsAuthorityV1 holdingsAuthority;
-        private Func<StrongboxOpeningSnapshotV1> strongboxSnapshotExporter;
-        private MissionRunResultAuthorityV1 runAuthority;
-        private Action<MissionResultsSessionV1> resultsRouter;
-        private RunDebugSpawnRequestV1 acceptedRequest;
-        private RunDebugSnapshotV1 snapshot;
-        private RunDebugEndResultV1 terminalEndResult;
+        private PlayerRouteProfilePayload routePayload;
+        private IPlayerHoldingsState holdingsAuthority;
+        private Func<StrongboxOpeningSnapshot> strongboxSnapshotExporter;
+        private MissionRunResultState runAuthority;
+        private Action<MissionResultsSession> resultsRouter;
+        private RunDebugSpawnRequest acceptedRequest;
+        private RunDebugSnapshot snapshot;
+        private RunDebugEndResult terminalEndResult;
         private GameplayDropProfileDefinitionAsset runtimeProfile;
         private int endRunAuthorityCallCount;
 
@@ -67,20 +67,20 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
         }
 
         public int EndRunAuthorityCallCount { get { return endRunAuthorityCallCount; } }
-        public RunDebugSnapshotV1 CurrentSnapshot { get { return snapshot; } }
-        public MissionResultsSessionV1 LastResultsSession
+        public RunDebugSnapshot CurrentSnapshot { get { return snapshot; } }
+        public MissionResultsSession LastResultsSession
         {
             get { return terminalEndResult == null ? null : terminalEndResult.ResultsSession; }
         }
 
         public void ConfigureRuntime(
             StableId runStableId,
-            PlayerRouteProfilePayloadV1 routePayload,
-            IPlayerHoldingsAuthorityV1 holdingsAuthority,
-            Func<StrongboxOpeningSnapshotV1> strongboxSnapshotExporter,
-            MissionRunResultAuthorityV1 runAuthority,
+            PlayerRouteProfilePayload routePayload,
+            IPlayerHoldingsState holdingsAuthority,
+            Func<StrongboxOpeningSnapshot> strongboxSnapshotExporter,
+            MissionRunResultState runAuthority,
             RewardPickupDropFactory2D dropFactory,
-            Action<MissionResultsSessionV1> resultsRouter = null)
+            Action<MissionResultsSession> resultsRouter = null)
         {
             if (acceptedRequest != null || terminalEndResult != null)
             {
@@ -110,7 +110,7 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
             this.resultsRouter = resultsRouter;
         }
 
-        public RunDebugSpawnRequestV1 CreateRequest(
+        public RunDebugSpawnRequest CreateRequest(
             int strongboxCount,
             StableId strongboxTierStableId,
             ulong deterministicSeed)
@@ -121,7 +121,7 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
                     "Run debug bridge must be configured before creating a request.");
             }
 
-            return RunDebugSpawnRequestV1.Create(
+            return RunDebugSpawnRequest.Create(
                 runStableId,
                 routePayload,
                 strongboxCount,
@@ -129,20 +129,20 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
                 deterministicSeed);
         }
 
-        public RunDebugSpawnBatchResultV1 Spawn(RunDebugSpawnRequestV1 request)
+        public RunDebugSpawnBatchResult Spawn(RunDebugSpawnRequest request)
         {
-            if (!RunDebugBuildGuardV1.IsAvailable)
+            if (!RunDebugBuildGuard.IsAvailable)
             {
-                return new RunDebugSpawnBatchResultV1(
-                    RunDebugSpawnBatchStatusV1.Disabled,
+                return new RunDebugSpawnBatchResult(
+                    RunDebugSpawnBatchStatus.Disabled,
                     snapshot,
                     "DEV-001 is disabled outside Editor and Development builds.");
             }
 
             if (!IsConfigured || request == null)
             {
-                return new RunDebugSpawnBatchResultV1(
-                    RunDebugSpawnBatchStatusV1.InvalidRequest,
+                return new RunDebugSpawnBatchResult(
+                    RunDebugSpawnBatchStatus.InvalidRequest,
                     snapshot,
                     "Run debug bridge is not configured or the request is null.");
             }
@@ -153,16 +153,16 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
                     routePayload.Fingerprint,
                     StringComparison.Ordinal))
             {
-                return new RunDebugSpawnBatchResultV1(
-                    RunDebugSpawnBatchStatusV1.InvalidRequest,
+                return new RunDebugSpawnBatchResult(
+                    RunDebugSpawnBatchStatus.InvalidRequest,
                     snapshot,
                     "Debug request run or route payload does not match the configured mission.");
             }
 
             if (terminalEndResult != null)
             {
-                return new RunDebugSpawnBatchResultV1(
-                    RunDebugSpawnBatchStatusV1.Rejected,
+                return new RunDebugSpawnBatchResult(
+                    RunDebugSpawnBatchStatus.Rejected,
                     snapshot,
                     "The mission run already has a terminal result.");
             }
@@ -174,12 +174,12 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
                     acceptedRequest.Fingerprint,
                     request.Fingerprint,
                     StringComparison.Ordinal);
-                return new RunDebugSpawnBatchResultV1(
+                return new RunDebugSpawnBatchResult(
                     exact
-                        ? RunDebugSpawnBatchStatusV1.ExactDuplicateNoChange
+                        ? RunDebugSpawnBatchStatus.ExactDuplicateNoChange
                         : sameOperation
-                            ? RunDebugSpawnBatchStatusV1.ConflictingDuplicate
-                            : RunDebugSpawnBatchStatusV1.Rejected,
+                            ? RunDebugSpawnBatchStatus.ConflictingDuplicate
+                            : RunDebugSpawnBatchStatus.Rejected,
                     RefreshSnapshot(),
                     exact
                         ? "Exact deterministic spawn request reused the existing physical projections."
@@ -189,8 +189,8 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
             }
 
             acceptedRequest = request;
-            IReadOnlyList<RunDebugBoxPlanV1> plan = RunDebugPlannerV1.CreatePlan(request);
-            RewardProfileV1 profile = CreateProfile(request);
+            IReadOnlyList<RunDebugBoxPlan> plan = RunDebugPlanner.CreatePlan(request);
+            RewardProfile profile = CreateProfile(request);
             runtimeBoxes.Clear();
             Transform origin = spawnOrigin == null ? transform : spawnOrigin;
             Vector3 originalFactoryPosition = dropFactory.transform.position;
@@ -199,7 +199,7 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
             {
                 for (int index = 0; index < plan.Count; index++)
                 {
-                    RunDebugBoxPlanV1 item = plan[index];
+                    RunDebugBoxPlan item = plan[index];
                     dropFactory.transform.position =
                         origin.position + Vector3.right * (spawnSpacing * index);
                     runtimeBoxes.Add(SpawnOne(request, item, profile));
@@ -211,13 +211,13 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
             }
 
             snapshot = BuildSnapshot("Debug batch resolved through DROP, GEN, PICK, and RAP.");
-            return new RunDebugSpawnBatchResultV1(
-                RunDebugSpawnBatchStatusV1.Spawned,
+            return new RunDebugSpawnBatchResult(
+                RunDebugSpawnBatchStatus.Spawned,
                 snapshot,
                 snapshot.Diagnostic);
         }
 
-        public RunDebugSnapshotV1 RefreshSnapshot()
+        public RunDebugSnapshot RefreshSnapshot()
         {
             if (acceptedRequest == null)
             {
@@ -226,7 +226,7 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
 
             for (int index = 0; index < runtimeBoxes.Count; index++)
             {
-                RuntimeBox entry = runtimeBoxes[index];
+                LiveBox entry = runtimeBoxes[index];
                 if (entry.Fact.RecordedCollected
                     || !entry.Fact.PhysicalPickupSpawned
                     || entry.Pickup == null
@@ -243,16 +243,16 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
             return snapshot;
         }
 
-        public RunDebugEndResultV1 EndRun(MissionRunCompletionStateV1 completionState)
+        public RunDebugEndResult EndRun(MissionRunCompletionState completionState)
         {
             if (terminalEndResult != null)
             {
                 return terminalEndResult;
             }
 
-            if (!RunDebugBuildGuardV1.IsAvailable)
+            if (!RunDebugBuildGuard.IsAvailable)
             {
-                terminalEndResult = new RunDebugEndResultV1(
+                terminalEndResult = new RunDebugEndResult(
                     null,
                     null,
                     false,
@@ -262,7 +262,7 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
 
             if (!IsConfigured)
             {
-                terminalEndResult = new RunDebugEndResultV1(
+                terminalEndResult = new RunDebugEndResult(
                     null,
                     null,
                     false,
@@ -271,11 +271,11 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
             }
 
             RefreshSnapshot();
-            PlayerHoldingsSnapshotV1 holdings = holdingsAuthority.ExportSnapshot();
-            StrongboxOpeningSnapshotV1 openings = strongboxSnapshotExporter();
+            PlayerHoldingsSnapshot holdings = holdingsAuthority.ExportSnapshot();
+            StrongboxOpeningSnapshot openings = strongboxSnapshotExporter();
             if (holdings == null || openings == null)
             {
-                terminalEndResult = new RunDebugEndResultV1(
+                terminalEndResult = new RunDebugEndResult(
                     null,
                     null,
                     false,
@@ -283,12 +283,12 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
                 return terminalEndResult;
             }
 
-            StableId operationStableId = RewardApplicationCanonicalV1.DeriveStableId(
+            StableId operationStableId = RewardApplication.DeriveStableId(
                 "rundebugend",
                 runStableId.ToString(),
                 routePayload.Fingerprint,
                 ((int)completionState).ToString(CultureInfo.InvariantCulture));
-            EndMissionRunCommandV1 command = EndMissionRunCommandV1.Create(
+            EndMissionRunCommand command = EndMissionRunCommand.Create(
                 operationStableId,
                 runStableId,
                 routePayload,
@@ -300,12 +300,12 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
                 openings.Fingerprint);
 
             endRunAuthorityCallCount++;
-            MissionRunAuthorityResultV1 result = runAuthority.EndRun(command);
-            MissionResultsSessionV1 resultsSession = null;
+            MissionRunStateResult result = runAuthority.EndRun(command);
+            MissionResultsSession resultsSession = null;
             bool routed = false;
             if (result != null && result.Succeeded && result.ResultPayload != null)
             {
-                resultsSession = new MissionResultsSessionV1(result.ResultPayload);
+                resultsSession = new MissionResultsSession(result.ResultPayload);
                 if (resultsRouter != null)
                 {
                     resultsRouter(resultsSession);
@@ -313,7 +313,7 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
                 }
             }
 
-            terminalEndResult = new RunDebugEndResultV1(
+            terminalEndResult = new RunDebugEndResult(
                 result,
                 resultsSession,
                 routed,
@@ -325,17 +325,17 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
             return terminalEndResult;
         }
 
-        private RuntimeBox SpawnOne(
-            RunDebugSpawnRequestV1 request,
-            RunDebugBoxPlanV1 plan,
-            RewardProfileV1 profile)
+        private LiveBox SpawnOne(
+            RunDebugSpawnRequest request,
+            RunDebugBoxPlan plan,
+            RewardProfile profile)
         {
-            GameplayDropOverrideV1 manualOverride = GameplayDropOverrideV1.Default(
-                RewardApplicationCanonicalV1.DeriveStableId(
+            GameplayDropOverride manualOverride = GameplayDropOverride.Default(
+                RewardApplication.DeriveStableId(
                     "rundebugoverride",
                     request.RunStableId.ToString(),
                     plan.SourceInstanceStableId.ToString()));
-            GameplayDropOperationV1 operation = GameplayDropOperationFactoryV1.Create(
+            GameplayDropOperation operation = GameplayDropOperationFactory.Create(
                 request.RunStableId,
                 plan.SourceInstanceStableId,
                 profile,
@@ -348,9 +348,9 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
                 operation.RestartParticipantStableId,
                 operation.Fingerprint);
             RewardSourceSubmissionResult submission = dropFactory.Submit(preview);
-            RewardPickupSpawnResultV1 spawn = dropFactory.LastSpawnResult;
+            RewardPickupSpawnResult spawn = dropFactory.LastSpawnResult;
 
-            RunDebugBoxFactV1 fact;
+            RunDebugBoxFact fact;
             RewardPickup2D pickup = null;
             string rejection = null;
             if (submission == null
@@ -359,7 +359,7 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
                 || spawn.Pickup == null
                 || !TryReadStrongboxFact(plan, spawn.Pickup, out fact, out rejection))
             {
-                fact = new RunDebugBoxFactV1(
+                fact = new RunDebugBoxFact(
                     plan,
                     false,
                     false,
@@ -378,13 +378,13 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
                 pickup = spawn.Pickup;
             }
 
-            return new RuntimeBox { Fact = fact, Pickup = pickup };
+            return new LiveBox { Fact = fact, Pickup = pickup };
         }
 
         private static bool TryReadStrongboxFact(
-            RunDebugBoxPlanV1 plan,
+            RunDebugBoxPlan plan,
             RewardPickup2D pickup,
-            out RunDebugBoxFactV1 fact,
+            out RunDebugBoxFact fact,
             out string rejection)
         {
             fact = null;
@@ -397,12 +397,12 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
                 return false;
             }
 
-            RewardCommitCommandV1 command = pickup.Payload.CommitCommand;
-            RewardGrantApplicationPayloadV1 strongboxPayload = null;
+            RewardCommitCommand command = pickup.Payload.CommitCommand;
+            RewardGrantApplicationPayload strongboxPayload = null;
             for (int index = 0; index < command.GrantPayloads.Count; index++)
             {
-                RewardGrantApplicationPayloadV1 candidate = command.GrantPayloads[index];
-                if (candidate.Grant.Kind != RewardGrantKindV1.Strongbox) continue;
+                RewardGrantApplicationPayload candidate = command.GrantPayloads[index];
+                if (candidate.Grant.Kind != RewardGrantKind.Strongbox) continue;
                 if (strongboxPayload != null)
                 {
                     rejection = "Debug DROP produced more than one strongbox grant payload.";
@@ -420,7 +420,7 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
                 return false;
             }
 
-            fact = new RunDebugBoxFactV1(
+            fact = new RunDebugBoxFact(
                 plan,
                 true,
                 false,
@@ -433,9 +433,9 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
             return true;
         }
 
-        private void RecordCollection(RuntimeBox entry)
+        private void RecordCollection(LiveBox entry)
         {
-            PlayerHoldingsSnapshotV1 holdings = holdingsAuthority.ExportSnapshot();
+            PlayerHoldingsSnapshot holdings = holdingsAuthority.ExportSnapshot();
             if (holdings == null)
             {
                 entry.Fact = entry.Fact.WithDiagnostic(
@@ -443,8 +443,8 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
                 return;
             }
 
-            MissionRunCollectStrongboxCommandV1 command =
-                MissionRunCollectStrongboxCommandV1.Create(
+            MissionRunCollectStrongboxCommand command =
+                MissionRunCollectStrongboxCommand.Create(
                     entry.Fact.Plan.CollectionOperationStableId,
                     runStableId,
                     routePayload,
@@ -455,7 +455,7 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
                     runAuthority.Sequence,
                     holdingsAuthority.Sequence,
                     holdings.Fingerprint);
-            MissionRunAuthorityResultV1 result = runAuthority.RecordCollectedStrongbox(command);
+            MissionRunStateResult result = runAuthority.RecordCollectedStrongbox(command);
             if (result != null
                 && result.Succeeded
                 && result.Collection != null
@@ -472,19 +472,19 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
                     : "RUN-001 rejected collection: " + result.RejectionCode);
         }
 
-        private RewardProfileV1 CreateProfile(RunDebugSpawnRequestV1 request)
+        private RewardProfile CreateProfile(RunDebugSpawnRequest request)
         {
             if (runtimeProfile != null)
             {
                 Destroy(runtimeProfile);
             }
 
-            StableId profileId = RewardApplicationCanonicalV1.DeriveStableId(
+            StableId profileId = RewardApplication.DeriveStableId(
                 "rundebugprofile",
                 request.RunStableId.ToString(),
                 request.StrongboxTierStableId.ToString(),
                 request.DeterministicSeed.ToString(CultureInfo.InvariantCulture));
-            StableId grantId = RewardApplicationCanonicalV1.DeriveStableId(
+            StableId grantId = RewardApplication.DeriveStableId(
                 "rundebuggrant",
                 request.RunStableId.ToString(),
                 request.StrongboxTierStableId.ToString(),
@@ -496,7 +496,7 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
                 {
                     new RewardGrantAuthoring(
                         grantId.ToString(),
-                        RewardGrantKindV1.Strongbox,
+                        RewardGrantKind.Strongbox,
                         request.StrongboxTierStableId.ToString(),
                         1L,
                         1L)
@@ -506,15 +506,15 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
             return runtimeProfile.BuildProfile();
         }
 
-        private RunDebugSnapshotV1 BuildSnapshot(string diagnostic)
+        private RunDebugSnapshot BuildSnapshot(string diagnostic)
         {
-            var values = new List<RunDebugBoxFactV1>(runtimeBoxes.Count);
+            var values = new List<RunDebugBoxFact>(runtimeBoxes.Count);
             for (int index = 0; index < runtimeBoxes.Count; index++)
             {
                 values.Add(runtimeBoxes[index].Fact);
             }
 
-            return new RunDebugSnapshotV1(acceptedRequest, values, diagnostic);
+            return new RunDebugSnapshot(acceptedRequest, values, diagnostic);
         }
 
         private void OnDestroy()

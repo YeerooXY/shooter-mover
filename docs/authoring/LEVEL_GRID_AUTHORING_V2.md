@@ -12,7 +12,7 @@ This PR implements **Track A Phase 1**:
 - transactional authoring-folder export.
 
 It does **not** complete the playable-room cutover. The exported package is not
-currently consumed by `RoomContentJsonImporterV1`, `RoomContentBundleV1`, or the
+currently consumed by `RoomContentJsonImporter`, `RoomContentBundle`, or the
 COMBAT LOOP TEST runtime path. Exported `level.json` states:
 
 ```json

@@ -2,19 +2,19 @@
 
 ## Scope
 
-This boundary begins with an accepted `PendingTerminalDropAdmissionResultV1` from
+This boundary begins with an accepted `PendingTerminalDropAdmissionResult` from
 `DROP-FACT-BIND-001` and ends after the exact generated reward child is recorded as
-collected in the one shared production `RunSessionAggregateV1`.
+collected in the one shared production `RunSessionAggregate`.
 
 ```text
 accepted pending terminal-drop batch
   -> retained exact-admission delivery queue
-  -> exact GeneratedTerminalDropRewardV1 child
-  -> RunLocalPickupAuthorityV1 attached to shared Run Session
+  -> exact GeneratedTerminalDropReward child
+  -> RunLocalPickupState attached to shared Run Session
   -> reconstructable Unity presentation
-  -> RunPickupCollectionCommandV1
-  -> immutable RunPickupCollectionFactV1
-  -> RunSessionCollectedRewardV1 in the shared aggregate
+  -> RunPickupCollectionCommand
+  -> immutable RunPickupCollectionFact
+  -> RunSessionCollectedReward in the shared aggregate
 ```
 
 It deliberately does **not** apply money, scrap, strongboxes, or equipment to permanent
@@ -27,7 +27,7 @@ Stage 1 has exactly one production aggregate, owned by
 `Stage1PlayableLoopCompositionV1` on the `ENEMY-ATTACK-PATTERN-LIVE-001` integration line.
 
 ```text
-shared RunSessionAggregateV1
+shared RunSessionAggregate
 ├── player and frozen weapons
 ├── canonical conditions and status effects
 ├── active abilities
@@ -39,10 +39,10 @@ shared RunSessionAggregateV1
 
 `Stage1RunPickupBootstrap2D` is a consumer only. It calls
 `TryResolveSharedRunSession`, passes that exact aggregate to
-`RunPickupLiveCompositionV1.Create`, and owns only pickup-specific source, realization,
+`RunPickupLiveSetup.Create`, and owns only pickup-specific source, realization,
 presentation, and collector adapters.
 
-It does not construct `RunSessionAuthorityV1`, submit `StartRunSessionCommandV1`, create a
+It does not construct `RunSessionState`, submit `StartRunSessionCommand`, create a
 runtime-port factory, or provide replacement player, weapon, condition, status, ability,
 room, or mission-result ports. The former `Stage1PickupRunSessionPortsV1.cs` shadow graph
 was deleted.
@@ -55,7 +55,7 @@ changing pickup ownership.
 
 `DROP-FACT-BIND-001` owns terminal adaptation, canonical DROP operation construction,
 deterministic GEN execution, child ordering, exact generated child identity, and batch
-fingerprint. `TerminalDropRunPickupAdapterV1` copies those immutable facts into the pickup
+fingerprint. `TerminalDropRunPickupBridge` copies those immutable facts into the pickup
 boundary. It performs no profile lookup and has no DROP or GEN dependency.
 
 Enemy and prop terminal consumers may publish the accepted pending-admission result to the
@@ -92,7 +92,7 @@ generation, admission, position registration, and queue handoff until acknowledg
 
 ## Physical pickup authority
 
-`RunLocalPickupAuthorityV1` owns run-local pickup truth:
+`RunLocalPickupState` owns run-local pickup truth:
 
 - stable pickup identity;
 - exact generated reward child identity and fingerprint;
@@ -110,12 +110,12 @@ A Unity `GameObject` owns none of these facts.
 
 ## Shared Run Session journal
 
-`ExistingRunSessionPickupPortV1` adapts the shared aggregate. For each accepted collection it
-projects one `RunSessionCollectedRewardV1` containing the exact pickup, generated child,
+`ExistingRunSessionPickupPort` adapts the shared aggregate. For each accepted collection it
+projects one `RunSessionCollectedReward` containing the exact pickup, generated child,
 source DROP operation, provenance, reward content and quantity, world-spawn context,
 collector, collection operation, order, and authoritative tick.
 
-`RunSessionAggregateV1.RecordCollectedRunReward` validates the active lifecycle and exact
+`RunSessionAggregate.RecordCollectedRunReward` validates the active lifecycle and exact
 player actor/participant, admits the record through the aggregate fact boundary, and stores
 it in a lifecycle-filtered journal.
 
@@ -149,7 +149,7 @@ Consequences:
 
 ## Source-position resolution
 
-`IRunPickupSourcePositionPortV1` is the engine-neutral boundary.
+`IRunPickupSourcePositionPort` is the engine-neutral boundary.
 `RunPickupSourcePositionRegistry2D` stores the exact run, lifecycle, source entity, optional
 placement, room, committed world position, and source-position fingerprint.
 
@@ -178,7 +178,7 @@ The production player receives `RunPickupCollector2D` identities from the shared
 player snapshot. Tags, names, hierarchy paths, collider IDs, and callback counts are not
 authority.
 
-A trigger submits `RunPickupCollectionCommandV1` containing the collection operation, pickup,
+A trigger submits `RunPickupCollectionCommand` containing the collection operation, pickup,
 exact child, run/lifecycle, collector identities, and expected pickup fingerprint.
 
 - First valid collection records the exact child and transitions `Available -> Collected`.
@@ -193,7 +193,7 @@ Collection means only:
 
 ## Authoritative restart
 
-PR #278 owns mission restart through `RunSessionAggregateV1.Restart`. The authority and
+PR #278 owns mission restart through `RunSessionAggregate.Restart`. The authority and
 aggregate object, run ID, frozen character/loadout inputs, fact replay history, and journal
 storage survive. The lifecycle generation advances exactly once and transient ports reset
 through the aggregate transaction.

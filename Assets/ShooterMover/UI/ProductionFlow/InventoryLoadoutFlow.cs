@@ -20,24 +20,24 @@ namespace ShooterMover.UI.ProductionFlow
         private static InventoryLoadoutFlow instance;
 
         private GameFlow coordinator;
-        private ProductionFlowProfileRecordV1 currentProfile;
-        private ProductionPlayerLoadoutRuntimeV1 runtime;
-        private InventoryLoadoutScreenControllerV1 boundController;
+        private FlowProfileRecord currentProfile;
+        private PlayerLoadoutLive runtime;
+        private InventoryLoadoutScreenController boundController;
         private string boundPayloadFingerprint = string.Empty;
 
-        public ProductionPlayerLoadoutRuntimeV1 Runtime
+        public PlayerLoadoutLive Runtime
         {
             get { return runtime; }
         }
 
-        public ProductionFlowProfileRecordV1 CurrentProfile
+        public FlowProfileRecord CurrentProfile
         {
             get { return currentProfile; }
         }
 
         public static bool TryGetCurrent(
-            out ProductionPlayerLoadoutRuntimeV1 currentRuntime,
-            out ProductionFlowProfileRecordV1 profile)
+            out PlayerLoadoutLive currentRuntime,
+            out FlowProfileRecord profile)
         {
             currentRuntime = instance == null ? null : instance.runtime;
             profile = instance == null ? null : instance.currentProfile;
@@ -45,8 +45,8 @@ namespace ShooterMover.UI.ProductionFlow
         }
 
         public static bool TryResolveCurrent(
-            out ProductionPlayerLoadoutRuntimeV1 currentRuntime,
-            out ProductionFlowProfileRecordV1 profile)
+            out PlayerLoadoutLive currentRuntime,
+            out FlowProfileRecord profile)
         {
             EnsureInstalled();
             if (instance == null || !instance.SynchronizeNow())
@@ -146,8 +146,8 @@ namespace ShooterMover.UI.ProductionFlow
 
             CaptureConfirmedResult();
 
-            ProductionCharacterRuntimeGraphV1 graph;
-            ProductionFlowProfileRecordV1 profile;
+            CharacterLiveGraph graph;
+            FlowProfileRecord profile;
             if (!CharacterAccount.TryResolveCurrent(
                 out graph,
                 out profile))
@@ -170,7 +170,7 @@ namespace ShooterMover.UI.ProductionFlow
         }
 
         private void HandleConfirmed(
-            PlayerRouteProfilePayloadV1 confirmedPayload)
+            PlayerRouteProfilePayload confirmedPayload)
         {
             if (confirmedPayload == null
                 || !confirmedPayload.HasValidFingerprint()
@@ -179,7 +179,7 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
 
-            CharacterCompositionResultV1 saved =
+            CharacterSetupResult saved =
                 CharacterAccount.PersistCurrent(
                     "inventory-loadout-confirmed",
                     confirmedPayload.Fingerprint);
@@ -194,8 +194,8 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
 
-            ProductionCharacterRuntimeGraphV1 graph;
-            ProductionFlowProfileRecordV1 profile;
+            CharacterLiveGraph graph;
+            FlowProfileRecord profile;
             if (CharacterAccount.TryResolveCurrent(
                 out graph,
                 out profile))
@@ -211,7 +211,7 @@ namespace ShooterMover.UI.ProductionFlow
                 || boundController.LastResult == null
                 || boundController.LastResult.Status
                     != ShooterMover.Application.Inventory.LoadoutScreen
-                        .InventoryLoadoutScreenStatusV1.Confirmed
+                        .InventoryLoadoutScreenStatus.Confirmed
                 || boundController.LastResult.RoutePayload == null)
             {
                 return;
@@ -227,22 +227,22 @@ namespace ShooterMover.UI.ProductionFlow
                 || coordinator.Transitions.IsTransitionPending
                 || !string.Equals(
                     SceneManager.GetActiveScene().path,
-                    ProductionFlowScenePathsV1.Inventory,
+                    FlowScenePaths.Inventory,
                     StringComparison.Ordinal))
             {
                 return;
             }
 
-            InventoryLoadoutScreenControllerV1 controller =
+            InventoryLoadoutScreenController controller =
                 UnityEngine.Object.FindFirstObjectByType<
-                    InventoryLoadoutScreenControllerV1>(
+                    InventoryLoadoutScreenController>(
                     FindObjectsInactive.Include);
             if (controller == null)
             {
                 return;
             }
 
-            PlayerRouteProfilePayloadV1 payload = runtime.CurrentRoutePayload;
+            PlayerRouteProfilePayload payload = runtime.CurrentRoutePayload;
             if (ReferenceEquals(boundController, controller)
                 && string.Equals(
                     boundPayloadFingerprint,
@@ -254,12 +254,12 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             DetachBoundController();
-            ProductionWeaponMountLoadoutRegistryV2.Register(
+            WeaponMountLoadoutRegistry.Register(
                 runtime.WeaponHoldings,
                 runtime.MountLoadoutAuthority);
             controller.ConnectCanonicalAuthorities(
                 runtime.Holdings,
-                runtime.CatalogAdapter,
+                runtime.CatalogBridge,
                 runtime.WeaponHoldings,
                 runtime.LoadoutAuthority,
                 runtime.MountLayout,
@@ -267,7 +267,7 @@ namespace ShooterMover.UI.ProductionFlow
             controller.ConfigureWeaponPresentation(
                 runtime.EquipmentCatalog,
                 runtime.WeaponCatalog);
-            controller.Present(HubRouteV1.Inventory, payload);
+            controller.Present(HubRoute.Inventory, payload);
 
             controller.Confirmed -= HandleConfirmed;
             controller.Confirmed += HandleConfirmed;

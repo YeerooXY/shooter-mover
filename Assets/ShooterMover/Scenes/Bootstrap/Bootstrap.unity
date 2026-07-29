@@ -94,7 +94,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d2f622bbaf05488a8948d4502244b3d6, type: 3}
   m_Name:
-  m_EditorClassIdentifier: ShooterMover.Bootstrap::ShooterMover.Bootstrap.Unity.BootstrapSceneAdapter
+  m_EditorClassIdentifier: ShooterMover.Bootstrap::ShooterMover.Bootstrap.Unity.BootstrapSceneBridge
 --- !u!1 &2000
 GameObject:
   m_ObjectHideFlags: 0

@@ -31,9 +31,9 @@ namespace ShooterMover.Contracts.Authoring
     /// <summary>
     /// The only accepted input for an identity that did not originate as an authored placement.
     /// </summary>
-    public sealed class RuntimeSpawnIdentityInput
+    public sealed class LiveSpawnIdentityInput
     {
-        public RuntimeSpawnIdentityInput(StableId runtimeObjectId, StableId spawnOperationId)
+        public LiveSpawnIdentityInput(StableId runtimeObjectId, StableId spawnOperationId)
         {
             RuntimeObjectId = runtimeObjectId ?? throw new ArgumentNullException(nameof(runtimeObjectId));
             SpawnOperationId = spawnOperationId ?? throw new ArgumentNullException(nameof(spawnOperationId));

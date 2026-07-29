@@ -45,7 +45,7 @@ namespace ShooterMover.Domain.Economy.Ledger
 
         public static LedgerDecision Reject(string rejectionCode)
         {
-            if (!LedgerCanonicalText.IsValidRejectionCode(rejectionCode))
+            if (!LedgerText.IsValidRejectionCode(rejectionCode))
             {
                 throw new ArgumentException(
                     "A rejection code must be 1-128 printable ASCII characters.",
@@ -814,7 +814,7 @@ namespace ShooterMover.Domain.Economy.Ledger
                 return false;
             }
 
-            if (!LedgerCanonicalText.IsValidPayload(entry.CanonicalPayload))
+            if (!LedgerText.IsValidPayload(entry.CanonicalPayload))
             {
                 rejectionCode = "canonical-payload-invalid";
                 return false;
@@ -849,7 +849,7 @@ namespace ShooterMover.Domain.Economy.Ledger
                     return false;
                 }
 
-                if (!LedgerCanonicalText.IsValidPayload(entry.CanonicalPayload))
+                if (!LedgerText.IsValidPayload(entry.CanonicalPayload))
                 {
                     rejectionCode = "snapshot-entry-payload-invalid";
                     return false;
@@ -914,7 +914,7 @@ namespace ShooterMover.Domain.Economy.Ledger
                     return false;
                 }
 
-                if (!LedgerCanonicalText.IsValidPayload(
+                if (!LedgerText.IsValidPayload(
                     transaction.CanonicalPayload))
                 {
                     rejectionCode = "snapshot-transaction-payload-invalid";
@@ -1007,7 +1007,7 @@ namespace ShooterMover.Domain.Economy.Ledger
                     if (transaction.SequenceAfter != transaction.SequenceBefore
                         || transaction.CurrentQuantity
                         != transaction.PreviousQuantity
-                        || !LedgerCanonicalText.IsValidRejectionCode(
+                        || !LedgerText.IsValidRejectionCode(
                             transaction.RejectionCode))
                     {
                         rejectionCode = "snapshot-rejected-result-invalid";
@@ -1250,7 +1250,7 @@ namespace ShooterMover.Domain.Economy.Ledger
         }
     }
 
-    internal static class LedgerCanonicalText
+    internal static class LedgerText
     {
         public static bool IsValidPayload(string value)
         {

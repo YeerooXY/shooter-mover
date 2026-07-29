@@ -623,7 +623,7 @@ namespace ShooterMover.Domain.Enemies
 
     /// <summary>
     /// Encounter-resolution-ready terminal fact. The later adapter supplies the
-    /// EncounterRuntimeIdentity; this actor does not own encounter or mission state.
+    /// EncounterLiveIdentity; this actor does not own encounter or mission state.
     /// </summary>
     public sealed class EnemyEncounterResolutionNotification : EnemyActorNotification
     {

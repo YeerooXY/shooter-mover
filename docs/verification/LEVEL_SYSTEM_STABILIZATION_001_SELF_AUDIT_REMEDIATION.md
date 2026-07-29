@@ -14,10 +14,10 @@ A playable-source export that fails after moving the previous destination to bac
 ## Authority map
 
 - Scene objects below the exact `LevelDesignSceneAuthoringRoot2D` remain authored topology authority.
-- `LevelGridEditorOperationsV2` remains the explicit Grid V2 command authority.
-- `LevelGridPlayableMetadataV2` remains exact start/final object-reference authority.
-- `LevelGridPlayableValidationV2` remains shared playable-graph validation composition.
-- `LevelGridV2PlayableExporter` remains compiler-ready source-package transaction authority.
+- `LevelGridEditorOperations` remains the explicit Grid V2 command authority.
+- `LevelGridPlayableMetadata` remains exact start/final object-reference authority.
+- `LevelGridPlayableValidation` remains shared playable-graph validation composition.
+- `LevelGridPlayableExporter` remains compiler-ready source-package transaction authority.
 - Compatibility menus, inspectors, gizmos and tests remain projections or callers, never write authorities.
 
 ## Self-audit findings remediated
@@ -28,7 +28,7 @@ A playable-source export that fails after moving the previous destination to bac
 
 ### Legacy actions inside the canonical editor
 
-The `Legacy/` submenu and its calls to the starter, draft-export and validated-authoring commands were removed from `LevelGridEditorWindowV2.Playable.cs`. The retained top-level legacy commands remain disabled through Unity menu validation guards for migration/test compatibility.
+The `Legacy/` submenu and its calls to the starter, draft-export and validated-authoring commands were removed from `LevelGridEditorWindow.Playable.cs`. The retained top-level legacy commands remain disabled through Unity menu validation guards for migration/test compatibility.
 
 ### Direct component context workflows
 
@@ -38,7 +38,7 @@ The root's direct context validation implementations were removed rather than re
 
 ### Truthful validation presentation
 
-The root inspector and integrated Problems panel now require `LevelGridValidationPurposeV2.ProductionPublish` before displaying production publication as allowed. A clean Draft result is displayed as production validation **not run**.
+The root inspector and integrated Problems panel now require `LevelGridValidationPurpose.ProductionPublish` before displaying production publication as allowed. A clean Draft result is displayed as production validation **not run**.
 
 ### Exact final-exit presentation and ownership
 
@@ -104,7 +104,7 @@ The tests use the existing `InternalsVisibleTo("ShooterMover.Tests.EditorTooling
 ## Exact Unity acceptance route still required
 
 - [ ] Import the branch and complete domain reload without errors.
-- [ ] Run `ShooterMover.Tests.EditorTooling.LevelDesign.Foundation.LevelSystemStabilizationV2Tests`.
+- [ ] Run `ShooterMover.Tests.EditorTooling.LevelDesign.Foundation.LevelSystemStabilizationTests`.
 - [ ] Select a placement nested below a room and execute **Snap Selected To Authored Grid**.
 - [ ] Confirm room and Grid V2 door selection redirects to the canonical editor instead of directly snapping.
 - [ ] Confirm the canonical editor contains no Legacy submenu.

@@ -71,7 +71,7 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
         [Test]
         public void CraftingUnlockGatesAreSeededReproducibleAndDistributedAcrossConfiguredBand()
         {
-            CraftingRecipeV1 recipe = BuildCraftingRecipe();
+            CraftingRecipe recipe = BuildCraftingRecipe();
             int[] first = ResolveCraftingUnlocks(recipe, 1000, 0xC8AF71UL);
             int[] replay = ResolveCraftingUnlocks(recipe, 1000, 0xC8AF71UL);
             long at55 = 0L;
@@ -102,34 +102,34 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
             ulong boundarySeed = StatisticalVerificationAssertions.Seed(0xC8AF71UL, 7);
             int boundary = recipe.ResolveUnlockLevel(boundarySeed);
             CraftingGateFixture belowFixture = new CraftingGateFixture(recipe);
-            CraftingResultV1 below = belowFixture.Craft(
+            CraftingResult below = belowFixture.Craft(
                 "stat.craft.below",
                 boundarySeed,
                 boundary - 1);
             CraftingGateFixture unlockedFixture = new CraftingGateFixture(recipe);
-            CraftingResultV1 unlocked = unlockedFixture.Craft(
+            CraftingResult unlocked = unlockedFixture.Craft(
                 "stat.craft.unlocked",
                 boundarySeed,
                 boundary);
 
-            Assert.That(below.Status, Is.EqualTo(CraftingResultStatusV1.ProgressionUnavailable));
+            Assert.That(below.Status, Is.EqualTo(CraftingResultStatus.ProgressionUnavailable));
             Assert.That(below.UnlockLevel, Is.EqualTo(boundary));
-            Assert.That(unlocked.Status, Is.EqualTo(CraftingResultStatusV1.Crafted));
+            Assert.That(unlocked.Status, Is.EqualTo(CraftingResultStatus.Crafted));
             Assert.That(unlocked.UnlockLevel, Is.EqualTo(boundary));
         }
 
         [Test]
         public void AugmentUpgradeCostsAreReproducibleMonotonicAndTierOrdered()
         {
-            AugmentUpgradeCostPolicyV1 policy = AugmentUpgradeCostPolicyV1.Create(
+            AugmentUpgradeCostPolicy policy = AugmentUpgradeCostPolicy.Create(
                 Id("stat.augment-upgrade-cost-policy"),
                 1,
                 false,
                 new[]
                 {
-                    AugmentTierCostCurveV1.Create(1, 100L, 10L),
-                    AugmentTierCostCurveV1.Create(2, 250L, 25L),
-                    AugmentTierCostCurveV1.Create(3, 500L, 50L)
+                    AugmentTierCostCurve.Create(1, 100L, 10L),
+                    AugmentTierCostCurve.Create(2, 250L, 25L),
+                    AugmentTierCostCurve.Create(3, 500L, 50L)
                 });
             List<string> first = CalculateUpgradeCosts(policy);
             List<string> replay = CalculateUpgradeCosts(policy);
@@ -148,13 +148,13 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                 long tierThree;
                 Assert.That(
                     policy.TryCalculateCost(1, targetLevel - 1, targetLevel, out tierOne),
-                    Is.EqualTo(AugmentUpgradeCostStatusV1.Calculated));
+                    Is.EqualTo(AugmentUpgradeCostStatus.Calculated));
                 Assert.That(
                     policy.TryCalculateCost(2, targetLevel - 1, targetLevel, out tierTwo),
-                    Is.EqualTo(AugmentUpgradeCostStatusV1.Calculated));
+                    Is.EqualTo(AugmentUpgradeCostStatus.Calculated));
                 Assert.That(
                     policy.TryCalculateCost(3, targetLevel - 1, targetLevel, out tierThree),
-                    Is.EqualTo(AugmentUpgradeCostStatusV1.Calculated));
+                    Is.EqualTo(AugmentUpgradeCostStatus.Calculated));
 
                 Assert.That(tierOne, Is.GreaterThan(previousTierOne));
                 Assert.That(tierTwo, Is.GreaterThan(previousTierTwo));
@@ -194,7 +194,7 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
         {
             EconomyStrongboxFixture fixture = new EconomyStrongboxFixture();
             PreparedStrongboxOpen prepared = fixture.Prepare(0, 0x1D3A90UL);
-            StrongboxOpeningResultRuntimeV1 first = fixture.Service.Open(prepared.Command);
+            StrongboxOpeningResultLive first = fixture.Service.Open(prepared.Command);
             long moneyAfterFirst = fixture.Money.Balance;
             long moneySequenceAfterFirst = fixture.Money.Sequence;
             long scrapAfterFirst = fixture.Scrap.Balance;
@@ -203,10 +203,10 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
             long openingSequenceAfterFirst = fixture.Service.Sequence;
             long rapSequenceAfterFirst = fixture.Rap.Sequence;
 
-            StrongboxOpeningResultRuntimeV1 replay = fixture.Service.Open(prepared.Command);
+            StrongboxOpeningResultLive replay = fixture.Service.Open(prepared.Command);
 
-            Assert.That(first.Status, Is.EqualTo(StrongboxOpeningRuntimeStatusV1.Opened));
-            Assert.That(replay.Status, Is.EqualTo(StrongboxOpeningRuntimeStatusV1.ExactDuplicateNoChange));
+            Assert.That(first.Status, Is.EqualTo(StrongboxOpeningLiveStatus.Opened));
+            Assert.That(replay.Status, Is.EqualTo(StrongboxOpeningLiveStatus.ExactDuplicateNoChange));
             Assert.That(replay.TerminalFact.Fingerprint, Is.EqualTo(first.TerminalFact.Fingerprint));
             Assert.That(fixture.Money.Balance, Is.EqualTo(moneyAfterFirst));
             Assert.That(fixture.Money.Sequence, Is.EqualTo(moneySequenceAfterFirst));
@@ -230,7 +230,7 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
             for (int index = 0; index < inventoryCount; index++)
             {
                 string suffix = index.ToString("D4", CultureInfo.InvariantCulture);
-                ShopInventoryOpenResultV1 result = fixture.Service.Open(
+                ShopInventoryOpenResult result = fixture.Service.Open(
                     Id("stat.shop.run." + suffix),
                     fixture.Definition,
                     fixture.Catalog,
@@ -243,7 +243,7 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                 }
 
                 fingerprints.Add(result.Inventory.InventoryFingerprint);
-                foreach (ShopStockEntryV1 entry in result.Inventory.Entries)
+                foreach (ShopStockEntry entry in result.Inventory.Entries)
                 {
                     entryCount++;
                     if (entry.Price <= 0L) { nonPositivePriceCount++; }
@@ -277,7 +277,7 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
         }
 
         private static int[] ResolveCraftingUnlocks(
-            CraftingRecipeV1 recipe,
+            CraftingRecipe recipe,
             int sampleCount,
             ulong rootSeed)
         {
@@ -291,7 +291,7 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
             return values;
         }
 
-        private static List<string> CalculateUpgradeCosts(AugmentUpgradeCostPolicyV1 policy)
+        private static List<string> CalculateUpgradeCosts(AugmentUpgradeCostPolicy policy)
         {
             List<string> values = new List<string>();
             for (int tier = 1; tier <= 3; tier++)
@@ -299,12 +299,12 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                 for (int targetLevel = 2; targetLevel <= 10; targetLevel++)
                 {
                     long cost;
-                    AugmentUpgradeCostStatusV1 status = policy.TryCalculateCost(
+                    AugmentUpgradeCostStatus status = policy.TryCalculateCost(
                         tier,
                         targetLevel - 1,
                         targetLevel,
                         out cost);
-                    Assert.That(status, Is.EqualTo(AugmentUpgradeCostStatusV1.Calculated));
+                    Assert.That(status, Is.EqualTo(AugmentUpgradeCostStatus.Calculated));
                     values.Add(tier.ToString(CultureInfo.InvariantCulture)
                         + ":" + targetLevel.ToString(CultureInfo.InvariantCulture)
                         + ":" + cost.ToString(CultureInfo.InvariantCulture));
@@ -331,8 +331,8 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                     StatisticalVerificationAssertions.Seed(rootSeed, index));
                 long moneyBefore = fixture.Money.Balance;
                 long scrapBefore = fixture.Scrap.Balance;
-                StrongboxOpeningResultRuntimeV1 result = fixture.Service.Open(prepared.Command);
-                if (result.Status != StrongboxOpeningRuntimeStatusV1.Opened)
+                StrongboxOpeningResultLive result = fixture.Service.Open(prepared.Command);
+                if (result.Status != StrongboxOpeningLiveStatus.Opened)
                 {
                     rejectionCount++;
                     fingerprints.Add("rejected:" + result.Status + ":" + result.RejectionCode);
@@ -357,9 +357,9 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                 StatisticalVerificationAssertions.Fingerprint(fingerprints));
         }
 
-        private static CraftingRecipeV1 BuildCraftingRecipe()
+        private static CraftingRecipe BuildCraftingRecipe()
         {
-            return new CraftingRecipeV1(
+            return new CraftingRecipe(
                 1,
                 Id("stat.recipe.weapon"),
                 Id("stat.craft.weapon"),
@@ -367,18 +367,18 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                 50,
                 50,
                 5,
-                new CraftingDelayVarianceV1(0, 2),
+                new CraftingDelayVariance(0, 2),
                 10L,
-                CraftingQualityPolicyKindV1.Fixed,
-                new[] { new CraftingWeightedDefinitionV1(CommonQualityId, 1UL) },
+                CraftingQualityPolicyKind.Fixed,
+                new[] { new CraftingWeightedDefinition(CommonQualityId, 1UL) },
                 50,
                 60,
                 0,
                 0,
                 1,
                 1,
-                Array.Empty<CraftingWeightedDefinitionV1>(),
-                new CraftingGeneratorPolicyV1(
+                Array.Empty<CraftingWeightedDefinition>(),
+                new CraftingGeneratorPolicy(
                     Id("stat.crafting.generator-policy"),
                     DeterministicRandom.AlgorithmVersion1,
                     new SoftActivationCurveParameters(0.25, 5L, 5L),
@@ -437,9 +437,9 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
             return build.Catalog;
         }
 
-        private static ShopDefinitionV1 BuildShopDefinition()
+        private static ShopDefinition BuildShopDefinition()
         {
-            EquipmentGenerationPolicyV1 generation = EquipmentGenerationPolicyV1.Create(
+            EquipmentGenerationPolicy generation = EquipmentGenerationPolicy.Create(
                 Id("stat.shop.generation-policy"),
                 new[]
                 {
@@ -448,16 +448,16 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                 },
                 new[]
                 {
-                    EquipmentQualityCandidateV1.Create(CommonQualityId, 0L, 3UL),
-                    EquipmentQualityCandidateV1.Create(RareQualityId, 0L, 1UL)
+                    EquipmentQualityCandidate.Create(CommonQualityId, 0L, 3UL),
+                    EquipmentQualityCandidate.Create(RareQualityId, 0L, 1UL)
                 },
-                Array.Empty<AugmentGenerationCandidateV1>(),
+                Array.Empty<AugmentGenerationCandidate>(),
                 0,
                 0,
                 true,
                 new SoftActivationCurveParameters(0.10, 5L, 5L),
                 new ObsolescenceCurveParameters(25L, 15.0, 0.20));
-            ShopPricingPolicyV1 pricing = ShopPricingPolicyV1.Create(
+            ShopPricingPolicy pricing = ShopPricingPolicy.Create(
                 Id("stat.shop.pricing-policy"),
                 1L,
                 20L,
@@ -466,24 +466,24 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                 17L,
                 5L,
                 2L);
-            return ShopDefinitionV1.Create(
+            return ShopDefinition.Create(
                 Id("stat.shop.definition"),
                 4,
                 new[] { EquipmentCategoryIds.Armor },
                 new[] { Id("stat.shop.tag") },
                 Array.Empty<StableId>(),
                 generation,
-                ShopProgressionContextPolicyV1.FreezeOnFirstOpen,
+                ShopProgressionContextPolicy.FreezeOnFirstOpen,
                 pricing,
-                ShopRefreshPolicyV1.Disabled,
+                ShopRefreshPolicy.Disabled,
                 0,
                 0,
                 DeterministicRandom.AlgorithmVersion1);
         }
 
-        private static EquipmentGenerationCandidateV1 ShopCandidate(string definitionId)
+        private static EquipmentGenerationCandidate ShopCandidate(string definitionId)
         {
-            return EquipmentGenerationCandidateV1.Create(
+            return EquipmentGenerationCandidate.Create(
                 Id(definitionId),
                 0,
                 100,
@@ -506,19 +506,19 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                 Array.Empty<StableId>());
         }
 
-        private static void FundScrap(ScrapWalletServiceV1 wallet, long amount)
+        private static void FundScrap(ScrapWalletActions wallet, long amount)
         {
-            ScrapTransactionResultV1 result = wallet.Apply(
-                new ScrapTransactionCommandV1(
+            ScrapTransactionResult result = wallet.Apply(
+                new ScrapTransactionCommand(
                     Id("stat.scrap.initial.transaction"),
                     Id("stat.scrap.initial.operation"),
                     wallet.AuthorityStableId,
                     wallet.CurrencyStableId,
-                    ScrapMutationKindV1.Grant,
+                    ScrapMutationKind.Grant,
                     amount,
-                    ScrapIdentityV1.RewardGrantReason,
-                    new ScrapProvenanceV1(
-                        ScrapIdentityV1.RewardSourceKind,
+                    ScrapIdentity.RewardGrantReason,
+                    new ScrapProvenance(
+                        ScrapIdentity.RewardSourceKind,
                         Id("stat.scrap.initial.reward-operation"),
                         Id("stat.player"))));
             Assert.That(result.ChangedState, Is.True);
@@ -543,22 +543,22 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
             {
                 Catalog = BuildShopCatalog();
                 Definition = BuildShopDefinition();
-                Money = new MoneyWalletService();
-                ScrapWalletServiceV1 scrap = new ScrapWalletServiceV1(
+                Money = new MoneyWalletActions();
+                ScrapWalletActions scrap = new ScrapWalletActions(
                     ScrapAuthorityId,
                     ScrapCurrencyId);
                 CatalogValidator validator = new CatalogValidator(Catalog);
-                PlayerHoldingsService holdings = new PlayerHoldingsService(
+                PlayerHoldingsActions holdings = new PlayerHoldingsActions(
                     HoldingsAuthorityId,
                     10000L,
                     validator);
-                RewardApplicationServiceV1 rap = new RewardApplicationServiceV1(
+                RewardApplicationActions rap = new RewardApplicationActions(
                     RapAuthorityId,
-                    new MoneyRewardChildAuthorityV1(Money),
-                    new ScrapRewardChildAuthorityV1(scrap),
-                    new PlayerHoldingsRewardChildAuthorityV1(holdings, validator));
-                Service = new ShopRuntimeServiceV1(
-                    new RewardGenerationServiceV1(),
+                    new MoneyRewardChildState(Money),
+                    new ScrapRewardChildState(scrap),
+                    new PlayerHoldingsRewardChildState(holdings, validator));
+                Service = new ShopLiveActions(
+                    new RewardGenerationActions(),
                     Money,
                     rap,
                     ScrapAuthorityId,
@@ -566,49 +566,49 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
             }
 
             public EquipmentCatalog Catalog { get; }
-            public ShopDefinitionV1 Definition { get; }
-            public MoneyWalletService Money { get; }
-            public ShopRuntimeServiceV1 Service { get; }
+            public ShopDefinition Definition { get; }
+            public MoneyWalletActions Money { get; }
+            public ShopLiveActions Service { get; }
         }
 
         private sealed class CraftingGateFixture
         {
-            public CraftingGateFixture(CraftingRecipeV1 recipe)
+            public CraftingGateFixture(CraftingRecipe recipe)
             {
                 EquipmentCatalog catalog = BuildCraftingCatalog();
                 CatalogValidator validator = new CatalogValidator(catalog);
-                MoneyWalletService money = new MoneyWalletService();
-                ScrapWalletServiceV1 scrap = new ScrapWalletServiceV1(
+                MoneyWalletActions money = new MoneyWalletActions();
+                ScrapWalletActions scrap = new ScrapWalletActions(
                     ScrapAuthorityId,
                     ScrapCurrencyId);
                 FundScrap(scrap, 100L);
-                PlayerHoldingsService holdings = new PlayerHoldingsService(
+                PlayerHoldingsActions holdings = new PlayerHoldingsActions(
                     HoldingsAuthorityId,
                     100L,
                     validator);
-                RewardApplicationServiceV1 rap = new RewardApplicationServiceV1(
+                RewardApplicationActions rap = new RewardApplicationActions(
                     RapAuthorityId,
-                    new MoneyRewardChildAuthorityV1(money),
-                    new CraftingScrapSpendRewardChildAuthorityV1(scrap),
-                    new PlayerHoldingsRewardChildAuthorityV1(holdings, validator));
-                Service = new CraftingServiceV1(
-                    new CraftingRecipeCatalogV1(new[] { recipe }),
+                    new MoneyRewardChildState(money),
+                    new CraftingScrapSpendRewardChildState(scrap),
+                    new PlayerHoldingsRewardChildState(holdings, validator));
+                Service = new CraftingActions(
+                    new CraftingRecipeCatalog(new[] { recipe }),
                     catalog,
-                    new RewardGenerationServiceV1(),
+                    new RewardGenerationActions(),
                     rap,
                     scrap,
-                    MoneyWalletIdsV1.AuthorityStableId,
+                    MoneyWalletIds.AuthorityStableId,
                     HoldingsAuthorityId);
                 Recipe = recipe;
             }
 
-            public CraftingRecipeV1 Recipe { get; }
-            public CraftingServiceV1 Service { get; }
+            public CraftingRecipe Recipe { get; }
+            public CraftingActions Service { get; }
 
-            public CraftingResultV1 Craft(string transactionId, ulong rootSeed, int characterLevel)
+            public CraftingResult Craft(string transactionId, ulong rootSeed, int characterLevel)
             {
                 return Service.Craft(
-                    new CraftEquipmentCommandV1(
+                    new CraftEquipmentCommand(
                         Id(transactionId),
                         Recipe.RecipeStableId,
                         Id("stat.craft.run"),
@@ -625,69 +625,69 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
 
             public EconomyStrongboxFixture()
             {
-                RewardGrantSpecificationV1 moneyGrant = RewardGrantSpecificationV1.Create(
+                RewardGrantSpecification moneyGrant = RewardGrantSpecification.Create(
                     Id("stat.economy-box.money-grant"),
-                    RewardGrantKindV1.Money,
-                    MoneyWalletIdsV1.CurrencyStableId,
-                    RewardQuantityRangeV1.Create(5L, 15L),
-                    Array.Empty<RewardScalingInputDescriptorV1>());
-                RewardProfileV1 profile = RewardProfileV1.Create(
+                    RewardGrantKind.Money,
+                    MoneyWalletIds.CurrencyStableId,
+                    RewardQuantityRange.Create(5L, 15L),
+                    Array.Empty<RewardScalingInputDescriptor>());
+                RewardProfile profile = RewardProfile.Create(
                     Id("stat.economy-box.profile"),
                     new[] { moneyGrant },
-                    Array.Empty<IndependentRewardRollV1>(),
-                    Array.Empty<ExclusiveRewardGroupV1>());
-                Definition = StrongboxDefinitionV1.Create(
+                    Array.Empty<IndependentRewardRoll>(),
+                    Array.Empty<ExclusiveRewardGroup>());
+                Definition = StrongboxDefinition.Create(
                     TierId,
                     0,
                     1L,
                     1L,
                     0L,
-                    StrongboxRewardCountPolicyV1.Create(2, 2),
-                    StrongboxMandatoryScrapPolicyV1.Create(ScrapCurrencyId, 2L, 8L),
+                    StrongboxRewardCountPolicy.Create(2, 2),
+                    StrongboxMandatoryScrapPolicy.Create(ScrapCurrencyId, 2L, 8L),
                     Id("stat.economy-box.generation-policy"),
                     profile,
                     Id("stat.scaling.source-tier"),
                     Id("stat.scaling.exceptional"));
-                Money = new MoneyWalletService();
-                Scrap = new ScrapWalletServiceV1(ScrapAuthorityId, ScrapCurrencyId);
+                Money = new MoneyWalletActions();
+                Scrap = new ScrapWalletActions(ScrapAuthorityId, ScrapCurrencyId);
                 AcceptingEquipmentValidator validator = new AcceptingEquipmentValidator();
-                Holdings = new PlayerHoldingsService(HoldingsAuthorityId, 10000L, validator);
-                Rap = new RewardApplicationServiceV1(
+                Holdings = new PlayerHoldingsActions(HoldingsAuthorityId, 10000L, validator);
+                Rap = new RewardApplicationActions(
                     RapAuthorityId,
-                    new MoneyRewardChildAuthorityV1(Money),
-                    new ScrapRewardChildAuthorityV1(Scrap),
-                    new PlayerHoldingsRewardChildAuthorityV1(Holdings, validator));
-                Service = new StrongboxOpeningServiceV1(
-                    new StrongboxDefinitionCatalogV1(new[] { Definition }),
-                    new SharedStrongboxRewardGeneratorV1(new RewardGenerationServiceV1()),
+                    new MoneyRewardChildState(Money),
+                    new ScrapRewardChildState(Scrap),
+                    new PlayerHoldingsRewardChildState(Holdings, validator));
+                Service = new StrongboxOpeningActions(
+                    new StrongboxDefinitionCatalog(new[] { Definition }),
+                    new SharedStrongboxRewardGenerator(new RewardGenerationActions()),
                     Holdings,
                     Rap,
-                    new DeterministicStrongboxGrantPayloadResolverV1());
+                    new DeterministicStrongboxGrantPayloadResolver());
             }
 
-            public StrongboxDefinitionV1 Definition { get; }
-            public MoneyWalletService Money { get; }
-            public ScrapWalletServiceV1 Scrap { get; }
-            public PlayerHoldingsService Holdings { get; }
-            public RewardApplicationServiceV1 Rap { get; }
-            public StrongboxOpeningServiceV1 Service { get; }
+            public StrongboxDefinition Definition { get; }
+            public MoneyWalletActions Money { get; }
+            public ScrapWalletActions Scrap { get; }
+            public PlayerHoldingsActions Holdings { get; }
+            public RewardApplicationActions Rap { get; }
+            public StrongboxOpeningActions Service { get; }
 
             public PreparedStrongboxOpen Prepare(int index, ulong seed)
             {
                 string suffix = index.ToString("D4", CultureInfo.InvariantCulture);
                 StableId boxId = Id("stat.economy-box.instance." + suffix);
-                PlayerHoldingsMutationResultV1 added = Holdings.Apply(
-                    PlayerHoldingsCommandV1.AddStrongbox(
+                PlayerHoldingsMutationResult added = Holdings.Apply(
+                    PlayerHoldingsCommand.AddStrongbox(
                         Id("stat.economy-box.add-tx." + suffix),
                         Id("stat.economy-box.add-op." + suffix),
                         HoldingsAuthorityId,
                         Definition.TierStableId,
                         boxId,
-                        HoldingProvenanceV1.Create(
+                        HoldingProvenance.Create(
                             Id("stat.economy-box.add-grant." + suffix),
                             Id("stat.economy-box.add-source." + suffix))));
-                Assert.That(added.Status, Is.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
-                StrongboxInstanceContextV1 context = StrongboxInstanceContextV1.Create(
+                Assert.That(added.Status, Is.EqualTo(PlayerHoldingsMutationStatus.Applied));
+                StrongboxInstanceContext context = StrongboxInstanceContext.Create(
                     boxId,
                     Definition.TierStableId,
                     seed,
@@ -696,14 +696,14 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
                     Id("stat.economy-box.source." + suffix),
                     Id("stat.economy-box.provenance." + suffix),
                     Definition.Fingerprint);
-                StrongboxRegistrationResultV1 registered = Service.RegisterInstance(context);
-                Assert.That(registered.Status, Is.EqualTo(StrongboxRegistrationStatusV1.Registered));
-                StrongboxOpenCommandV1 command = StrongboxOpenCommandV1.Create(
+                StrongboxRegistrationResult registered = Service.RegisterInstance(context);
+                Assert.That(registered.Status, Is.EqualTo(StrongboxRegistrationStatus.Registered));
+                StrongboxOpenCommand command = StrongboxOpenCommand.Create(
                     Id("stat.economy-box.opening." + suffix),
                     Id("stat.economy-box.run"),
                     boxId,
                     PlayerId,
-                    MoneyWalletIdsV1.AuthorityStableId,
+                    MoneyWalletIds.AuthorityStableId,
                     ScrapAuthorityId,
                     HoldingsAuthorityId);
                 return new PreparedStrongboxOpen(command);
@@ -712,12 +712,12 @@ namespace ShooterMover.Tests.EditMode.StatisticalVerification
 
         private sealed class PreparedStrongboxOpen
         {
-            public PreparedStrongboxOpen(StrongboxOpenCommandV1 command)
+            public PreparedStrongboxOpen(StrongboxOpenCommand command)
             {
                 Command = command;
             }
 
-            public StrongboxOpenCommandV1 Command { get; }
+            public StrongboxOpenCommand Command { get; }
         }
 
         private sealed class CatalogValidator : IEquipmentInstanceValidator

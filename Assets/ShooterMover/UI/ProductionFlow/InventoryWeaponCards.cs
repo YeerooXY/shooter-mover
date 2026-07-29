@@ -19,10 +19,10 @@ namespace ShooterMover.UI.ProductionFlow
     {
         [SerializeField] private Texture2D weaponPreviewOverride;
         [SerializeField] private string weaponPreviewResourcePath =
-            WeaponInventoryCardPresentationV1.TemporaryImageResourceKey;
+            WeaponInventoryCardPresentation.TemporaryImageResourceKey;
 
-        private InventoryLoadoutScreenControllerV1 controller;
-        private ProductionPlayerLoadoutRuntimeV1 runtime;
+        private InventoryLoadoutScreenController controller;
+        private PlayerLoadoutLive runtime;
         private Texture2D preview;
         private bool previewResolved;
         private bool bound;
@@ -58,14 +58,14 @@ namespace ShooterMover.UI.ProductionFlow
         {
             Scene scene = SceneManager.GetActiveScene();
             if (!scene.IsValid()
-                || scene.path != ProductionFlowScenePathsV1.Inventory)
+                || scene.path != FlowScenePaths.Inventory)
             {
                 return;
             }
 
-            InventoryLoadoutScreenControllerV1 target =
+            InventoryLoadoutScreenController target =
                 UnityEngine.Object.FindFirstObjectByType<
-                    InventoryLoadoutScreenControllerV1>(
+                    InventoryLoadoutScreenController>(
                     FindObjectsInactive.Include);
             if (target == null) return;
 
@@ -81,7 +81,7 @@ namespace ShooterMover.UI.ProductionFlow
 
         private void Awake()
         {
-            controller = GetComponent<InventoryLoadoutScreenControllerV1>();
+            controller = GetComponent<InventoryLoadoutScreenController>();
         }
 
         private void Update()
@@ -100,15 +100,15 @@ namespace ShooterMover.UI.ProductionFlow
         {
             if (controller == null)
             {
-                controller = GetComponent<InventoryLoadoutScreenControllerV1>();
+                controller = GetComponent<InventoryLoadoutScreenController>();
             }
             if (controller == null || controller.IncomingPayload == null)
             {
                 return false;
             }
 
-            ProductionPlayerLoadoutRuntimeV1 currentRuntime;
-            ProductionFlowProfileRecordV1 profile;
+            PlayerLoadoutLive currentRuntime;
+            FlowProfileRecord profile;
             return InventoryLoadoutFlow.TryResolveCurrent(
                     out currentRuntime,
                     out profile)
@@ -118,18 +118,18 @@ namespace ShooterMover.UI.ProductionFlow
         }
 
         public bool BindForTests(
-            InventoryLoadoutScreenControllerV1 target,
-            ProductionPlayerLoadoutRuntimeV1 currentRuntime)
+            InventoryLoadoutScreenController target,
+            PlayerLoadoutLive currentRuntime)
         {
             return Bind(target, currentRuntime);
         }
 
         private bool Bind(
-            InventoryLoadoutScreenControllerV1 target,
-            ProductionPlayerLoadoutRuntimeV1 currentRuntime)
+            InventoryLoadoutScreenController target,
+            PlayerLoadoutLive currentRuntime)
         {
             if (target == null || currentRuntime == null) return false;
-            PlayerRouteProfilePayloadV1 payload =
+            PlayerRouteProfilePayload payload =
                 currentRuntime.CurrentRoutePayload;
             if (payload == null || !payload.HasValidFingerprint())
             {
@@ -139,12 +139,12 @@ namespace ShooterMover.UI.ProductionFlow
             controller = target;
             runtime = currentRuntime;
             controller.enabled = true;
-            ProductionWeaponMountLoadoutRegistryV2.Register(
+            WeaponMountLoadoutRegistry.Register(
                 runtime.WeaponHoldings,
                 runtime.MountLoadoutAuthority);
             controller.ConnectCanonicalAuthorities(
                 runtime.Holdings,
-                runtime.CatalogAdapter,
+                runtime.CatalogBridge,
                 runtime.WeaponHoldings,
                 runtime.LoadoutAuthority,
                 runtime.MountLayout,
@@ -152,7 +152,7 @@ namespace ShooterMover.UI.ProductionFlow
             controller.ConfigureWeaponPresentation(
                 runtime.EquipmentCatalog,
                 runtime.WeaponCatalog);
-            controller.Present(HubRouteV1.Inventory, payload);
+            controller.Present(HubRoute.Inventory, payload);
             bound = controller.CanonicalSnapshot != null;
             if (bound) controller.enabled = false;
             return bound;
@@ -160,7 +160,7 @@ namespace ShooterMover.UI.ProductionFlow
 
         private void OnGUI()
         {
-            CanonicalWeaponInventorySnapshotV2 snapshot =
+            WeaponInventorySnapshot snapshot =
                 bound && controller != null
                     ? controller.CanonicalSnapshot
                     : null;
@@ -211,19 +211,19 @@ namespace ShooterMover.UI.ProductionFlow
             GUI.depth = priorDepth;
         }
 
-        private void DrawMounts(CanonicalWeaponInventorySnapshotV2 snapshot)
+        private void DrawMounts(WeaponInventorySnapshot snapshot)
         {
             GUILayout.BeginVertical(GUILayout.Width(280f));
             GUILayout.Label("WEAPON MOUNTS", titleStyle);
             mountScroll = GUILayout.BeginScrollView(mountScroll);
             for (int index = 0; index < snapshot.Mounts.Count; index++)
             {
-                CanonicalWeaponInventoryMountV2 mount =
+                WeaponInventoryMount mount =
                     snapshot.Mounts[index];
                 bool selected = mount.Position.LoadoutSlotStableId
                     == controller.ActiveSlotStableId;
                 bool locked = mount.Position.Availability
-                    != ProductionWeaponMountAvailabilityV1.Active;
+                    != WeaponMountAvailability.Active;
                 string equipped = mount.EquippedCard == null
                     ? "EMPTY"
                     : mount.EquippedCard.DisplayName;
@@ -245,7 +245,7 @@ namespace ShooterMover.UI.ProductionFlow
         }
 
         private void DrawWeapons(
-            CanonicalWeaponInventorySnapshotV2 snapshot)
+            WeaponInventorySnapshot snapshot)
         {
             GUILayout.BeginVertical();
             GUILayout.Label("OWNED WEAPONS", titleStyle);
@@ -262,12 +262,12 @@ namespace ShooterMover.UI.ProductionFlow
         }
 
         private void DrawCard(
-            CanonicalWeaponInventorySnapshotV2 snapshot,
-            CanonicalWeaponInventoryCardV2 card)
+            WeaponInventorySnapshot snapshot,
+            WeaponInventoryCard card)
         {
-            WeaponInventoryCardPresentationV1 info;
+            WeaponInventoryCardPresentation info;
             string error;
-            bool resolved = WeaponInventoryCardPresentationV1.TryCreate(
+            bool resolved = WeaponInventoryCardPresentation.TryCreate(
                 runtime.WeaponCatalog,
                 card.Instance.WeaponDefinitionId.Value,
                 out info,
@@ -310,11 +310,11 @@ namespace ShooterMover.UI.ProductionFlow
             GUILayout.EndVertical();
             GUILayout.EndHorizontal();
 
-            CanonicalWeaponInventoryMountV2 active =
+            WeaponInventoryMount active =
                 snapshot.FindMount(controller.ActiveSlotStableId);
             GUI.enabled = active != null
                 && active.Position.Availability
-                    == ProductionWeaponMountAvailabilityV1.Active;
+                    == WeaponMountAvailability.Active;
             if (GUILayout.Button(
                 "EQUIP TO ACTIVE MOUNT",
                 GUILayout.MinHeight(36f)))
@@ -379,7 +379,7 @@ namespace ShooterMover.UI.ProductionFlow
             previewResolved = true;
             string path = string.IsNullOrWhiteSpace(
                     weaponPreviewResourcePath)
-                ? WeaponInventoryCardPresentationV1
+                ? WeaponInventoryCardPresentation
                     .TemporaryImageResourceKey
                 : weaponPreviewResourcePath.Trim();
             Sprite sprite = Resources.Load<Sprite>(path);

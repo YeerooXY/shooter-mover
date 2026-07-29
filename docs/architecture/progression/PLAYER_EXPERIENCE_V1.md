@@ -14,14 +14,14 @@ The permanent authority identity is `authority.player-experience`.
 - Player levels are limited to the closed interval 1 through 100.
 - Total awarded skill points always equal the current player level.
 - Therefore a fresh level-1 player starts with one awarded skill point.
-- Every crossed level boundary emits one ordered `PlayerLevelUpFactV1` with
+- Every crossed level boundary emits one ordered `PlayerLevelUpFact` with
   `SkillPointsGranted = 1`.
 - Spending or refunding skill points is outside XP-001; this authority records only
   the total awarded by player-level progression.
 
 ## Deterministic XP curve
 
-`PlayerExperienceCurveV1` consumes the accepted shared
+`PlayerExperienceCurve` consumes the accepted shared
 `SoftActivationCurveParameters` and `ProgressionCurveMath.EvaluateSoftActivation`
 infrastructure. Authored inputs are:
 
@@ -40,7 +40,7 @@ level cost. Snapshot import requires an exact curve-fingerprint match.
 
 ## XP state and level cap
 
-`PlayerExperienceStateV1` exposes:
+`PlayerExperienceState` exposes:
 
 - `CumulativeExperience`: every accepted XP unit, including over-cap XP;
 - `ProgressionExperience`: cumulative XP clamped to the level-100 threshold;
@@ -88,7 +88,7 @@ returns level-up facts. Exact and conflicting duplicates produce no additional X
 
 ## Snapshot export and import
 
-`PlayerExperienceSnapshotV1` contains:
+`PlayerExperienceSnapshot` contains:
 
 - schema version and authority identity;
 - monotonic applied-grant sequence;
@@ -117,7 +117,7 @@ imported source records retain replay protection after restart.
 
 ## Level-up fact consumption
 
-The returned `PlayerExperienceGrantFactV1.LevelUpFacts` collection is the
+The returned `PlayerExperienceGrantFact.LevelUpFacts` collection is the
 authoritative event batch for a grant. Consumers may translate those immutable
 facts into presentation or analytics events after a successful grant. They must
 not infer level-ups by polling or replay level-up side effects for duplicate

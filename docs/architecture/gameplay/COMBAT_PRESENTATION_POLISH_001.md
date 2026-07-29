@@ -13,7 +13,7 @@ post-`ENEMY-ATTACK-PATTERN-001` main commit.
 
 ## Immutable health presentation
 
-`CombatHealthBarSnapshotV1` contains only detached presentation facts:
+`CombatHealthBarSnapshot` contains only detached presentation facts:
 
 - stable entity identity;
 - lifecycle generation;
@@ -33,27 +33,27 @@ Combat presentation is attached inside the existing generic `RegisterEnemy(...)`
 ```text
 enemy registration
     -> CombatEnemyPresentationRegistration2D.Attach(...)
-    -> transparent CombatPresentationEnemyActorAuthority2D decorator
+    -> transparent CombatPresentationEnemyActorState2D decorator
     -> existing EnemyBinding / collider registration
 ```
 
 The presentation installer contains no Mobile Blaster Droid, Blaster Turret, enemy definition ID, scene object
 name, or package-type branch. Current enemies and a third test enemy use the same public registration.
 
-The decorator delegates every authoritative method to the original `IEnemyActor2DAuthority`. It only observes
+The decorator delegates every authoritative method to the original `IEnemyActor2DState`. It only observes
 the immutable accepted `EnemyActorStepResult`, so damage, terminal state, room state and rewards remain owned by
 their existing authorities.
 
 Future factory-created enemies may use the canonical registration overload backed by
-`EnemyRuntimeProjection`; no presenter changes are needed.
+`EnemyLiveView`; no presenter changes are needed.
 
 ## Canonical terminal fact path
 
-`EnemyDeathVfxPresenter2D` consumes one neutral `EnemyTerminalPresentationFactV1`.
+`EnemyDeathVfxPresenter2D` consumes one neutral `EnemyTerminalPresentationFact`.
 
 Two projectors are provided:
 
-- canonical `EnemyRuntimeComposition.EnemyDeathFactV1` -> presentation fact;
+- canonical `EnemyRuntimeComposition.EnemyDeathFact` -> presentation fact;
 - transitional `EnemyDestroyedNotification` -> presentation fact for retained EN-002 Unity packages.
 
 The canonical projector preserves `DeathEventStableId`, exact entity identity and lifecycle generation from the
@@ -74,7 +74,7 @@ Production loads:
 ```text
 Resources/CombatPresentation/Stage1DefaultEnemyDeathVfx
     -> retained ExplosiveDestructionAnimation.asset
-    -> SpriteAnimationCombatDeathVfxDefinitionV1
+    -> SpriteAnimationCombatDeathVfxDefinition
     -> shared bounded CombatDeathVfxPool2D
 ```
 
@@ -110,7 +110,7 @@ EditMode coverage includes:
 - identity mismatch, stale lifecycle, terminal hide and restart restore;
 - three independent enemies through one generic registration;
 - transparent authority delegation and exact terminal replay;
-- canonical `EnemyDeathFactV1` projection and lifecycle replay rules;
+- canonical `EnemyDeathFact` projection and lifecycle replay rules;
 - injected VFX-factory ownership and no VFX physics/gameplay components;
 - production source audit for zero package-specific presentation installation;
 - retained explosion resource GUID proof;

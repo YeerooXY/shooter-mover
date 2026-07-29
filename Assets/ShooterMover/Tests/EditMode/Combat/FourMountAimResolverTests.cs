@@ -25,7 +25,7 @@ namespace ShooterMover.Tests.EditMode.Combat
             Assert.That(result.Count, Is.EqualTo(WeaponMountContractRules.MountCount));
             Assert.That(
                 FourMountAimSolution.MountCount,
-                Is.EqualTo(WeaponRuntimeProfile.SupportedMountCount));
+                Is.EqualTo(WeaponLiveProfile.SupportedMountCount));
             for (int index = 0; index < result.Count; index++)
             {
                 SharedAimSolution solution = result.GetByStableIndex(index);

@@ -15,7 +15,7 @@ exact equipped EquipmentInstance
   -> immutable EffectiveWeapon
   -> WeaponFiringScheduler
   -> scheduler-authorized AcceptedEmission
-  -> AcceptedEmissionRuntimeAdapter
+  -> AcceptedEmissionLiveBridge
   -> immutable caller-owned pending-delivery state
   -> composition-owned due-time drain
   -> WeaponBehaviorRegistry
@@ -45,7 +45,7 @@ the existing effect sink accepts the projected batch.
 The canonical live route does not construct or invoke:
 
 - `WeaponExecutionCore`;
-- `WeaponCatalogRuntimeProfileResolver`;
+- `WeaponCatalogLiveProfileResolver`;
 - `DefaultWeaponBehaviorSelector`.
 
 ## Effective weapon resolution
@@ -67,7 +67,7 @@ extension point and returns stable diagnostics:
 - other blueprint mapper exception: `weapon-live-blueprint-mapping-exception`;
 - augment resolver exception: `weapon-live-augment-resolution-exception`.
 
-`InventoryBackedWeaponExecutionAdapter` also guards the complete effective-resolution call as a final
+`InventoryBackedWeaponExecutionBridge` also guards the complete effective-resolution call as a final
 containment layer. An otherwise unclassified overflow returns
 `weapon-live-effective-resolution-numerical-exception`; any other unexpected resolver exception returns
 `weapon-live-effective-resolution-exception`.
@@ -143,7 +143,7 @@ For a successful scheduler transition:
 5. adapt every emission into its immutable projected batch;
 6. admit the full schedule into the already-aligned candidate pending snapshot;
 7. prune candidate receipts against scheduler `NextState`;
-8. under `InventoryWeaponRuntimeComposition.firingStateGate`, publish the scheduler and pending
+8. under `InventoryWeaponLiveSetup.firingStateGate`, publish the scheduler and pending
    snapshots together;
 9. only after publication, drain entries already due.
 
@@ -158,7 +158,7 @@ remains represented and cannot be scheduled again as a new shot.
 The production effect-delivery route is only:
 
 ```text
-InventoryWeaponRuntimeComposition
+InventoryWeaponLiveSetup
   -> firingStateGate
   -> resolve current actor and lifecycle
   -> inspect composition-owned pending state
@@ -167,7 +167,7 @@ InventoryWeaponRuntimeComposition
   -> mark delivered only after Accepted or exact AlreadyAccepted
 ```
 
-`InventoryBackedWeaponExecutionAdapter.TryDeliverPending` is assembly-internal. The player composition
+`InventoryBackedWeaponExecutionBridge.TryDeliverPending` is assembly-internal. The player composition
 root no longer publicly exposes the concrete adapter; `Runtime` is the production firing surface.
 
 No public production method can submit an arbitrary pending entry. The composition enforces:

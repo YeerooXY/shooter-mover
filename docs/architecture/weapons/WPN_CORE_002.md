@@ -8,7 +8,7 @@ Starting point: `b2bf4348ab6f827a737add53278d57568684f552` from `origin/main`.
 
 ## Reconciliation findings
 
-The accepted `WeaponCatalog` / `WeaponDefinitionData` model remains the sole weapon-definition source. `WeaponCatalogRuntimeProfileResolver` projects a live catalog definition into a validated runtime firing profile; it does not create a second catalog. The equipment-to-weapon link is isolated behind `IEquipmentWeaponDefinitionIdResolver`, with the default using `EquipmentDefinition.RuntimeWeaponReferenceId`.
+The accepted `WeaponCatalog` / `WeaponDefinitionData` model remains the sole weapon-definition source. `WeaponCatalogLiveProfileResolver` projects a live catalog definition into a validated runtime firing profile; it does not create a second catalog. The equipment-to-weapon link is isolated behind `IEquipmentWeaponDefinitionIdResolver`, with the default using `EquipmentDefinition.RuntimeWeaponReferenceId`.
 
 PR #206 contributed useful catalog-driven cadence, projectile count, spread, range and damage ideas, independent equipment state, deterministic spread, and fail-closed behavior. Its vertical-slice-only runtime and controller integration were not retained.
 

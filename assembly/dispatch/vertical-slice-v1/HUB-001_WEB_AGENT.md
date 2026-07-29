@@ -56,7 +56,7 @@ No other production, test, documentation, scene, prefab, asset, generated, conte
 
 ## Acceptance criteria
 
-- [ ] Defines one immutable, versioned, deterministic `PlayerRouteProfilePayloadV1` (or equivalently named V1 contract) containing selected character/loadout-profile identity and ordered concrete equipment-instance identities for all available weapon slots.
+- [ ] Defines one immutable, versioned, deterministic `PlayerRouteProfilePayload` (or equivalently named V1 contract) containing selected character/loadout-profile identity and ordered concrete equipment-instance identities for all available weapon slots.
 - [ ] Payload validation rejects missing/duplicate slot identities, malformed StableIds, unsupported schema/version, and inconsistent fingerprints without mutation.
 - [ ] Main Menu routes to Character Select; Character Select continuation routes to Inventory/Loadout Hub.
 - [ ] Hub has real buttons/routes for Skills, Shop, Crafting, and Play plus Back/Main Menu.

@@ -12,7 +12,7 @@ or atomic application implementation.
 
 ## Command identity
 
-`EconomyTransactionCommandV1` carries:
+`EconomyTransactionCommand` carries:
 
 - `TransactionStableId`: idempotency identity for one authority mutation;
 - `OperationStableId`: aggregate/source/product operation that requested it;
@@ -31,7 +31,7 @@ is a conflicting duplicate.
 
 ## Operation vocabulary
 
-`EconomyTransactionOperationV1` defines:
+`EconomyTransactionOperation` defines:
 
 - `Credit`;
 - `Debit`;
@@ -40,7 +40,7 @@ is a conflicting duplicate.
 - `AddUnique`; and
 - `RemoveUnique`.
 
-`EconomyResourceKindV1` defines:
+`EconomyResourceKind` defines:
 
 - `Currency`;
 - `Item`;
@@ -74,7 +74,7 @@ expectation does not match. This contract does not read or store sequences.
 
 ## Duplicate classification
 
-`EconomyTransactionIdentityV1.Classify` compares two immutable commands:
+`EconomyTransactionIdentity.Classify` compares two immutable commands:
 
 | Condition | Classification |
 |---|---|
@@ -91,7 +91,7 @@ fingerprints.
 
 ## Result vocabulary
 
-`EconomyTransactionStatusV1` defines the shared result language:
+`EconomyTransactionStatus` defines the shared result language:
 
 - `Applied`;
 - `ExactDuplicateNoChange`;
@@ -101,7 +101,7 @@ fingerprints.
 - `InsufficientCapacity`; and
 - `ExpectedSequenceConflict`.
 
-`EconomyTransactionResultV1` contains:
+`EconomyTransactionResult` contains:
 
 - transaction ID;
 - status;

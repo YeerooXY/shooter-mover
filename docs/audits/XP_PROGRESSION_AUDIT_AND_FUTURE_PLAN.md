@@ -21,7 +21,7 @@ Player weapon damages enemy
 -> NoRewardPort discards it
 ```
 
-The normal production Skills route is also deliberately disconnected. The visible screen is based on the older `SkillProgressionAuthorityV1`, while the persisted character graph owns `RankedSkillAllocationAuthorityV2`.
+The normal production Skills route is also deliberately disconnected. The visible screen is based on the older `SkillProgressionState`, while the persisted character graph owns `RankedSkillAllocationState`.
 
 Therefore, the player currently cannot:
 
@@ -59,13 +59,13 @@ This is the correct seam for XP and rewards. XP logic should consume the accepte
 
 Relevant files:
 
-- `Assets/ShooterMover/Runtime/EnemyRuntimeComposition/EnemyPlacementRuntimeInstanceV1.cs`
+- `Assets/ShooterMover/Runtime/EnemyRuntimeComposition/EnemyPlacementLiveInstance.cs`
 - `Assets/ShooterMover/Runtime/UnityAdapters/Missions/Rooms/RoomEnemyActor2D.cs`
 - `Assets/ShooterMover/Runtime/UnityAdapters/Missions/Rooms/RoomEnemySpawner2D.cs`
 
 ### 2. XP-001 is ready to be used
 
-`PlayerExperienceAuthorityV1` already provides:
+`PlayerExperienceState` already provides:
 
 - deterministic level thresholds;
 - exactly-once source operation handling;
@@ -80,7 +80,7 @@ The current production default uses a flat placeholder curve of 100 XP per level
 
 Relevant files:
 
-- `Assets/ShooterMover/Runtime/Application/Progression/Experience/PlayerExperienceAuthorityV1.cs`
+- `Assets/ShooterMover/Runtime/Application/Progression/Experience/PlayerExperienceState.cs`
 - `Assets/ShooterMover/Runtime/Domain/Progression/Experience/PlayerExperienceModelV1.cs`
 - `docs/architecture/progression/PLAYER_EXPERIENCE_V1.md`
 
@@ -98,9 +98,9 @@ This is internally consistent across XP and ranked-skill tests. It should be con
 
 ### 4. Production owns ranked skills V2, but the visible screen uses V1
 
-The account-backed `ProductionCharacterRuntimeGraphV1` owns and persists `RankedSkillAllocationAuthorityV2`. V2 supports class eligibility, variable caps, prerequisites, category gates, milestones, synergies, migration, and respec foundations.
+The account-backed `CharacterLiveGraph` owns and persists `RankedSkillAllocationState`. V2 supports class eligibility, variable caps, prerequisites, category gates, milestones, synergies, migration, and respec foundations.
 
-The current `SkillsScreenSessionV1` instead uses `SkillProgressionAuthorityV1`. `ProductionFlowCoordinatorV1` opens the Skills scene with `ShowDisconnected(...)`, so the normal route deliberately cannot mutate either authority.
+The current `SkillsScreenSession` instead uses `SkillProgressionState`. `ProductionFlowCoordinatorV1` opens the Skills scene with `ShowDisconnected(...)`, so the normal route deliberately cannot mutate either authority.
 
 This split should be resolved by making V2 the only production skill mutation route. V1 may remain temporarily as a compatibility/test fixture, but new production features should not extend both models.
 
@@ -114,7 +114,7 @@ Relevant files:
 
 ### 5. V2 allocation should not trust caller-supplied level
 
-`AllocateSkillRankCommandV2` currently accepts `playerLevel` from the caller and uses it as the point budget. A production view should not be able to provide progression truth.
+`AllocateSkillRankCommand` currently accepts `playerLevel` from the caller and uses it as the point budget. A production view should not be able to provide progression truth.
 
 The production application boundary should read the authoritative XP state itself and pass either:
 
@@ -132,9 +132,9 @@ The ranked-skill projector also has its own `Apply(...)` stacking implementation
 The sustainable route is:
 
 ```text
-RankedSkillAllocationSnapshotV2
+RankedSkillAllocationSnapshot
 -> skill-to-runtime-modifier projection
--> DerivedStatModifierSourceV1 with Skills priority
+-> DerivedStatModifierSource with Skills priority
 -> canonical derived-stat composition
 -> player movement/health/weapon/reward consumers
 ```
@@ -185,13 +185,13 @@ It is safe to connect the existing islands. It is not yet safe to author a large
 
 ### Step 1 — Connect canonical enemy death to persisted XP
 
-Create a production `IEnemyExperienceFactConsumerV1` adapter that:
+Create a production `IEnemyExperienceFactConsumer` adapter that:
 
 1. consumes the canonical accepted enemy death fact;
 2. validates the run participant/killer policy against the active selected character;
 3. resolves XP through a stable XP reward profile and enemy level;
 4. derives a deterministic operation identity from stable run/death/enemy facts;
-5. grants through the active graph's existing `PlayerExperienceAuthorityV1`;
+5. grants through the active graph's existing `PlayerExperienceState`;
 6. exposes the returned XP and ordered level-up facts to presentation;
 7. persists the active character after an applied mutation.
 
@@ -226,7 +226,7 @@ Add a skill-to-derived-stat adapter, align stable target IDs, and make the real 
 
 ### Step 4 — Add level-up presentation and define milestone rewards
 
-Consume the authoritative ordered `PlayerLevelUpFactV1` batch for:
+Consume the authoritative ordered `PlayerLevelUpFact` batch for:
 
 - `+XP` feedback;
 - XP bar update;
@@ -300,7 +300,7 @@ Other audits may reduce this number when they touch the same shared files.
 These files/modules should have one active owner at a time across all feature audits:
 
 - `Assets/ShooterMover/Runtime/UnityAdapters/Missions/Rooms/RoomEnemySpawner2D.cs`
-- `Assets/ShooterMover/Runtime/Application/Flow/Production/ProductionCharacterRuntimeGraphV1.cs`
+- `Assets/ShooterMover/Runtime/Application/Flow/Production/CharacterLiveGraph.cs`
 - `Assets/ShooterMover/UI/ProductionFlow/ProductionFlowCoordinatorV1.cs`
 - `Assets/ShooterMover/UI/ProductionFlow/ProductionCharacterAccountCompositionV1.cs`
 - save component definitions/codecs/adapters under `Application/Persistence/Components`

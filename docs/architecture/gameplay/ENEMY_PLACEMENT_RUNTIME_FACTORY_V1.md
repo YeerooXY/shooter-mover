@@ -11,7 +11,7 @@
 
 ## Composition flow
 
-`EnemyPlacementRuntimeFactoryV1` turns imported room placements into independent enemy runtimes by resolving the exact room object, enemy definition, presentation, level/difficulty scaling, stable actor and participant identities, lifecycle generation, registered behavior policies, canonical actor state, and room occupancy. It contains no enemy-type, room-number, prefab-name, or hierarchy-name dispatcher.
+`EnemyPlacementLiveFactory` turns imported room placements into independent enemy runtimes by resolving the exact room object, enemy definition, presentation, level/difficulty scaling, stable actor and participant identities, lifecycle generation, registered behavior policies, canonical actor state, and room occupancy. It contains no enemy-type, room-number, prefab-name, or hierarchy-name dispatcher.
 
 ## Issued-decision authority
 
@@ -37,7 +37,7 @@ RoutePlayerImpact(
     observedTargetLifecycleGeneration)
 ```
 
-`EnemyPlayerDamageRequestV1` carries both source lifecycle generation and `ObservedTargetLifecycleGeneration`. The observed target generation is included in impact replay identity and forwarded unchanged to the downstream PlayerActorAuthority / Combat Hit Policy adapter.
+`EnemyPlayerDamageRequest` carries both source lifecycle generation and `ObservedTargetLifecycleGeneration`. The observed target generation is included in impact replay identity and forwarded unchanged to the downstream PlayerActorState / Combat Hit Policy adapter.
 
 This allows a downstream authority adapter to reject a projectile that observed player generation 4 after the same stable player entity has restarted into generation 5. One hit-event operation ID also cannot be replayed across different target generations.
 
@@ -53,7 +53,7 @@ A temporary obsolete three-argument overload exists only so earlier test/caller 
 - A projectile issued while the enemy was alive remains authorized after ordinary enemy death.
 - Death does not permit new attack execution or movement realization.
 - Enemy recomposition creates a fresh lifecycle ledger; old enemy decisions and executions reject.
-- Player lifecycle freshness remains downstream authority: the factory carries the immutable observed generation rather than duplicating PlayerActorAuthority.
+- Player lifecycle freshness remains downstream authority: the factory carries the immutable observed generation rather than duplicating PlayerActorState.
 
 ## Terminal and downstream facts
 
@@ -74,7 +74,7 @@ The lifecycle regressions prove that an impact observed against player generatio
 ```bash
 "<UNITY_EDITOR>" -batchmode -nographics -projectPath . \
   -runTests -testPlatform EditMode \
-  -testFilter ShooterMover.Tests.EditMode.Enemies.EnemyPlacementRuntimeFactoryV1Tests \
+  -testFilter ShooterMover.Tests.EditMode.Enemies.EnemyPlacementLiveFactoryTests \
   -testResults artifacts/enemy-factory-001-editmode.xml \
   -logFile artifacts/enemy-factory-001-editmode.log -quit
 ```

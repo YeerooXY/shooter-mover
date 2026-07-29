@@ -114,7 +114,7 @@ namespace ShooterMover.UnityAdapters.Authoring
             "scope.gameplay";
         [SerializeField] private bool bindOnEnable = true;
 
-        private RuntimeSpawnIdentityInput _runtimeSpawnIdentityInput;
+        private LiveSpawnIdentityInput _runtimeSpawnIdentityInput;
         private GameplaySceneScope2D _boundScope;
         private PlacedObjectIdentity _resolvedIdentity;
         private ObjectDefinitionReference _resolvedDefinitionReference;
@@ -174,7 +174,7 @@ namespace ShooterMover.UnityAdapters.Authoring
         /// Runtime-spawned identity is accepted only as explicit stable input.
         /// It must be supplied before binding.
         /// </summary>
-        public void SetRuntimeSpawnIdentity(RuntimeSpawnIdentityInput input)
+        public void SetRuntimeSpawnIdentity(LiveSpawnIdentityInput input)
         {
             if (_boundScope != null)
             {

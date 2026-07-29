@@ -144,7 +144,7 @@ namespace ShooterMover.Application.Weapons.Execution
         public WeaponBehaviorContext(
             WeaponFireCommand command,
             RunParticipantId participantId,
-            WeaponRuntimeFiringProfile profile,
+            WeaponLiveFiringProfile profile,
             long shotSequence)
         {
             if (shotSequence < 0L)
@@ -160,7 +160,7 @@ namespace ShooterMover.Application.Weapons.Execution
 
         public WeaponFireCommand Command { get; }
         public RunParticipantId ParticipantId { get; }
-        public WeaponRuntimeFiringProfile Profile { get; }
+        public WeaponLiveFiringProfile Profile { get; }
         public long ShotSequence { get; }
 
         public WeaponEffectIdentity IdentityFor(int ordinal)

@@ -15,28 +15,28 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         [Test]
         public void LevelOneDefinition_IsValidOrderedAndTraversable()
         {
-            RoomGraphDefinitionV1 definition =
-                Level1RoomGraphDefinitionV1.Create();
+            RoomGraphDefinition definition =
+                Level1RoomGraphDefinition.Create();
 
             Assert.That(definition.LayoutStableId, Is.EqualTo(
-                Level1RoomGraphDefinitionV1.LayoutStableId));
+                Level1RoomGraphDefinition.LayoutStableId));
             Assert.That(definition.Rooms.Count, Is.EqualTo(2));
             Assert.That(definition.Rooms[0].RoomStableId, Is.EqualTo(
-                Level1RoomGraphDefinitionV1.EntryRoomStableId));
+                Level1RoomGraphDefinition.EntryRoomStableId));
             Assert.That(definition.Rooms[1].RoomStableId, Is.EqualTo(
-                Level1RoomGraphDefinitionV1.TerminalRoomStableId));
+                Level1RoomGraphDefinition.TerminalRoomStableId));
             Assert.That(definition.Connections.Count, Is.EqualTo(1));
             Assert.That(
                 definition.Connections[0].Directionality,
-                Is.EqualTo(RoomConnectionDirectionalityV1.Bidirectional));
+                Is.EqualTo(RoomConnectionDirectionality.Bidirectional));
             Assert.That(
                 definition.GetExitsFromRoom(
-                    Level1RoomGraphDefinitionV1.EntryRoomStableId)[0].ExitType,
-                Is.EqualTo(RoomExitTypeV1.Progression));
+                    Level1RoomGraphDefinition.EntryRoomStableId)[0].ExitType,
+                Is.EqualTo(RoomExitType.Progression));
             Assert.That(
                 definition.GetExitsFromRoom(
-                    Level1RoomGraphDefinitionV1.TerminalRoomStableId)[0].ExitType,
-                Is.EqualTo(RoomExitTypeV1.Return));
+                    Level1RoomGraphDefinition.TerminalRoomStableId)[0].ExitType,
+                Is.EqualTo(RoomExitType.Return));
             Assert.That(definition.Fingerprint, Does.StartWith("sha256:"));
         }
 
@@ -49,15 +49,15 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
             second.Entries.Reverse();
             second.Connections.Reverse();
             second.DoorLinks.Reverse();
-            RoomConnectionDefinitionV1 connection = second.Connections[0];
-            second.Connections[0] = new RoomConnectionDefinitionV1(
+            RoomConnectionDefinition connection = second.Connections[0];
+            second.Connections[0] = new RoomConnectionDefinition(
                 connection.ConnectionStableId,
                 connection.Directionality,
                 connection.DoorLinkStableId,
                 new[] { connection.Exits[1], connection.Exits[0] });
 
-            RoomGraphValidationResultV1 firstResult = first.Validate();
-            RoomGraphValidationResultV1 secondResult = second.Validate();
+            RoomGraphValidationResult firstResult = first.Validate();
+            RoomGraphValidationResult secondResult = second.Validate();
 
             Assert.That(firstResult.IsValid, Is.True, Describe(firstResult));
             Assert.That(secondResult.IsValid, Is.True, Describe(secondResult));
@@ -73,17 +73,17 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         public void DuplicateRoomIdentity_IsRejected()
         {
             GraphFixture fixture = GraphFixture.Create();
-            fixture.Rooms.Add(new RoomDefinitionV1(
+            fixture.Rooms.Add(new RoomDefinition(
                 fixture.StartRoomId,
                 2,
-                RoomInitialAvailabilityV1.Locked,
+                RoomInitialAvailability.Locked,
                 false));
 
-            RoomGraphValidationResultV1 result = fixture.Validate();
+            RoomGraphValidationResult result = fixture.Validate();
 
             Assert.That(result.IsValid, Is.False);
             Assert.That(
-                result.HasCode(RoomGraphValidationCodeV1.DuplicateRoomStableId),
+                result.HasCode(RoomGraphValidationCode.DuplicateRoomStableId),
                 Is.True,
                 Describe(result));
         }
@@ -92,29 +92,29 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         public void MissingExitReferences_AreRejected()
         {
             GraphFixture fixture = GraphFixture.Create();
-            RoomExitDefinitionV1 invalid = new RoomExitDefinitionV1(
+            RoomExitDefinition invalid = new RoomExitDefinition(
                 StableId.Parse("exit.invalid-reference"),
                 StableId.Parse("room.missing-source"),
                 StableId.Parse("entry.missing-target"),
                 0,
-                RoomExitTypeV1.Progression,
+                RoomExitType.Progression,
                 false,
                 null);
-            fixture.Connections[0] = new RoomConnectionDefinitionV1(
+            fixture.Connections[0] = new RoomConnectionDefinition(
                 fixture.ConnectionId,
-                RoomConnectionDirectionalityV1.OneWay,
+                RoomConnectionDirectionality.OneWay,
                 fixture.DoorLinkId,
                 new[] { invalid });
 
-            RoomGraphValidationResultV1 result = fixture.Validate();
+            RoomGraphValidationResult result = fixture.Validate();
 
             Assert.That(result.IsValid, Is.False);
             Assert.That(result.HasCode(
-                RoomGraphValidationCodeV1.MissingExitSourceRoomReference),
+                RoomGraphValidationCode.MissingExitSourceRoomReference),
                 Is.True,
                 Describe(result));
             Assert.That(result.HasCode(
-                RoomGraphValidationCodeV1.MissingExitTargetEntryReference),
+                RoomGraphValidationCode.MissingExitTargetEntryReference),
                 Is.True,
                 Describe(result));
         }
@@ -123,18 +123,18 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         public void DanglingDoorLink_IsRejected()
         {
             GraphFixture fixture = GraphFixture.Create();
-            fixture.Connections[0] = new RoomConnectionDefinitionV1(
+            fixture.Connections[0] = new RoomConnectionDefinition(
                 fixture.ConnectionId,
-                RoomConnectionDirectionalityV1.Bidirectional,
+                RoomConnectionDirectionality.Bidirectional,
                 StableId.Parse("door-link.undefined"),
                 fixture.Connections[0].Exits);
             fixture.DoorLinks.Clear();
 
-            RoomGraphValidationResultV1 result = fixture.Validate();
+            RoomGraphValidationResult result = fixture.Validate();
 
             Assert.That(result.IsValid, Is.False);
             Assert.That(
-                result.HasCode(RoomGraphValidationCodeV1.DanglingDoorLink),
+                result.HasCode(RoomGraphValidationCode.DanglingDoorLink),
                 Is.True,
                 Describe(result));
         }
@@ -143,25 +143,25 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         public void SelfLink_IsRejected()
         {
             GraphFixture fixture = GraphFixture.Create();
-            RoomExitDefinitionV1 self = new RoomExitDefinitionV1(
+            RoomExitDefinition self = new RoomExitDefinition(
                 fixture.ForwardExitId,
                 fixture.StartRoomId,
                 fixture.StartEntryId,
                 0,
-                RoomExitTypeV1.Progression,
+                RoomExitType.Progression,
                 false,
                 null);
-            fixture.Connections[0] = new RoomConnectionDefinitionV1(
+            fixture.Connections[0] = new RoomConnectionDefinition(
                 fixture.ConnectionId,
-                RoomConnectionDirectionalityV1.OneWay,
+                RoomConnectionDirectionality.OneWay,
                 fixture.DoorLinkId,
                 new[] { self });
 
-            RoomGraphValidationResultV1 result = fixture.Validate();
+            RoomGraphValidationResult result = fixture.Validate();
 
             Assert.That(result.IsValid, Is.False);
             Assert.That(
-                result.HasCode(RoomGraphValidationCodeV1.SelfLink),
+                result.HasCode(RoomGraphValidationCode.SelfLink),
                 Is.True,
                 Describe(result));
         }
@@ -170,26 +170,26 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         public void MismatchedBidirectionalExits_AreRejected()
         {
             GraphFixture fixture = GraphFixture.Create();
-            RoomExitDefinitionV1 first = fixture.Connections[0].Exits[0];
-            RoomExitDefinitionV1 second = new RoomExitDefinitionV1(
+            RoomExitDefinition first = fixture.Connections[0].Exits[0];
+            RoomExitDefinition second = new RoomExitDefinition(
                 fixture.ReturnExitId,
                 fixture.StartRoomId,
                 fixture.TerminalEntryId,
                 1,
-                RoomExitTypeV1.Return,
+                RoomExitType.Return,
                 false,
                 null);
-            fixture.Connections[0] = new RoomConnectionDefinitionV1(
+            fixture.Connections[0] = new RoomConnectionDefinition(
                 fixture.ConnectionId,
-                RoomConnectionDirectionalityV1.Bidirectional,
+                RoomConnectionDirectionality.Bidirectional,
                 fixture.DoorLinkId,
                 new[] { first, second });
 
-            RoomGraphValidationResultV1 result = fixture.Validate();
+            RoomGraphValidationResult result = fixture.Validate();
 
             Assert.That(result.IsValid, Is.False);
             Assert.That(result.HasCode(
-                RoomGraphValidationCodeV1.MismatchedReverseLink),
+                RoomGraphValidationCode.MismatchedReverseLink),
                 Is.True,
                 Describe(result));
         }
@@ -201,15 +201,15 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
             fixture.Connections.Clear();
             fixture.DoorLinks.Clear();
 
-            RoomGraphValidationResultV1 result = fixture.Validate();
+            RoomGraphValidationResult result = fixture.Validate();
 
             Assert.That(result.IsValid, Is.False);
             Assert.That(result.HasCode(
-                RoomGraphValidationCodeV1.UnreachableRequiredRoom),
+                RoomGraphValidationCode.UnreachableRequiredRoom),
                 Is.True,
                 Describe(result));
             Assert.That(result.HasCode(
-                RoomGraphValidationCodeV1.UnreachableTerminalRoom),
+                RoomGraphValidationCode.UnreachableTerminalRoom),
                 Is.True,
                 Describe(result));
         }
@@ -221,15 +221,15 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
             fixture.StartRoomId = StableId.Parse("room.undefined-start");
             fixture.TerminalRoomId = StableId.Parse("room.undefined-terminal");
 
-            RoomGraphValidationResultV1 result = fixture.Validate();
+            RoomGraphValidationResult result = fixture.Validate();
 
             Assert.That(result.IsValid, Is.False);
             Assert.That(
-                result.HasCode(RoomGraphValidationCodeV1.InvalidStartRoom),
+                result.HasCode(RoomGraphValidationCode.InvalidStartRoom),
                 Is.True,
                 Describe(result));
             Assert.That(
-                result.HasCode(RoomGraphValidationCodeV1.InvalidTerminalRoom),
+                result.HasCode(RoomGraphValidationCode.InvalidTerminalRoom),
                 Is.True,
                 Describe(result));
         }
@@ -237,61 +237,61 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         [Test]
         public void StateTransitions_TrackLockedAvailableCurrentVisitedAndCompleted()
         {
-            var layout = new RoomMissionLayoutV1(
-                Level1RoomGraphDefinitionV1.Create());
+            var layout = new RoomMissionLayout(
+                Level1RoomGraphDefinition.Create());
 
             AssertRoom(
                 layout.GetRoomState(
-                    Level1RoomGraphDefinitionV1.EntryRoomStableId),
-                RoomAvailabilityStateV1.Available,
+                    Level1RoomGraphDefinition.EntryRoomStableId),
+                RoomAvailabilityState.Available,
                 true,
                 true,
                 false);
             AssertRoom(
                 layout.GetRoomState(
-                    Level1RoomGraphDefinitionV1.TerminalRoomStableId),
-                RoomAvailabilityStateV1.Locked,
+                    Level1RoomGraphDefinition.TerminalRoomStableId),
+                RoomAvailabilityState.Locked,
                 false,
                 false,
                 false);
             Assert.That(
                 layout.GetExitState(
-                    Level1RoomGraphDefinitionV1.ForwardExitStableId).IsAvailable,
+                    Level1RoomGraphDefinition.ForwardExitStableId).IsAvailable,
                 Is.False);
             Assert.That(
                 layout.Traverse(
-                    Level1RoomGraphDefinitionV1.ForwardExitStableId).Status,
-                Is.EqualTo(RoomGraphOperationStatusV1.ExitLocked));
+                    Level1RoomGraphDefinition.ForwardExitStableId).Status,
+                Is.EqualTo(RoomGraphOperationStatus.ExitLocked));
 
-            RoomGraphOperationResultV1 completed = layout.CompleteCurrentRoom();
-            RoomGraphOperationResultV1 traversed = layout.Traverse(
-                Level1RoomGraphDefinitionV1.ForwardExitStableId);
+            RoomGraphOperationResult completed = layout.CompleteCurrentRoom();
+            RoomGraphOperationResult traversed = layout.Traverse(
+                Level1RoomGraphDefinition.ForwardExitStableId);
 
             Assert.That(completed.Status, Is.EqualTo(
-                RoomGraphOperationStatusV1.Applied));
+                RoomGraphOperationStatus.Applied));
             Assert.That(traversed.Status, Is.EqualTo(
-                RoomGraphOperationStatusV1.Applied));
+                RoomGraphOperationStatus.Applied));
             AssertRoom(
                 layout.GetRoomState(
-                    Level1RoomGraphDefinitionV1.EntryRoomStableId),
-                RoomAvailabilityStateV1.Available,
+                    Level1RoomGraphDefinition.EntryRoomStableId),
+                RoomAvailabilityState.Available,
                 false,
                 true,
                 true);
             AssertRoom(
                 layout.GetRoomState(
-                    Level1RoomGraphDefinitionV1.TerminalRoomStableId),
-                RoomAvailabilityStateV1.Available,
+                    Level1RoomGraphDefinition.TerminalRoomStableId),
+                RoomAvailabilityState.Available,
                 true,
                 true,
                 false);
             Assert.That(
                 layout.GetExitState(
-                    Level1RoomGraphDefinitionV1.ForwardExitStableId).IsAvailable,
+                    Level1RoomGraphDefinition.ForwardExitStableId).IsAvailable,
                 Is.True);
             Assert.That(
                 layout.GetExitState(
-                    Level1RoomGraphDefinitionV1.ReturnExitStableId).IsAvailable,
+                    Level1RoomGraphDefinition.ReturnExitStableId).IsAvailable,
                 Is.True);
             Assert.That(layout.CurrentSnapshot.Sequence, Is.EqualTo(2L));
         }
@@ -299,80 +299,80 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
         [Test]
         public void Restart_RestoresExactInitialSnapshot()
         {
-            var fresh = new RoomMissionLayoutV1(
-                Level1RoomGraphDefinitionV1.Create());
+            var fresh = new RoomMissionLayout(
+                Level1RoomGraphDefinition.Create());
             string initialFingerprint = fresh.CurrentSnapshot.Fingerprint;
             fresh.CompleteCurrentRoom();
             fresh.Traverse(
-                Level1RoomGraphDefinitionV1.ForwardExitStableId);
+                Level1RoomGraphDefinition.ForwardExitStableId);
             fresh.CompleteCurrentRoom();
 
-            RoomGraphOperationResultV1 restart = fresh.Restart();
+            RoomGraphOperationResult restart = fresh.Restart();
 
             Assert.That(restart.Status, Is.EqualTo(
-                RoomGraphOperationStatusV1.Applied));
+                RoomGraphOperationStatus.Applied));
             Assert.That(fresh.CurrentSnapshot.Sequence, Is.Zero);
             Assert.That(
                 fresh.CurrentSnapshot.Fingerprint,
                 Is.EqualTo(initialFingerprint));
             Assert.That(
                 fresh.CurrentRoomState.RoomStableId,
-                Is.EqualTo(Level1RoomGraphDefinitionV1.EntryRoomStableId));
+                Is.EqualTo(Level1RoomGraphDefinition.EntryRoomStableId));
             Assert.That(
                 fresh.GetRoomState(
-                    Level1RoomGraphDefinitionV1.TerminalRoomStableId).Availability,
-                Is.EqualTo(RoomAvailabilityStateV1.Locked));
+                    Level1RoomGraphDefinition.TerminalRoomStableId).Availability,
+                Is.EqualTo(RoomAvailabilityState.Locked));
             Assert.That(fresh.Restart().Status, Is.EqualTo(
-                RoomGraphOperationStatusV1.NoChange));
+                RoomGraphOperationStatus.NoChange));
         }
 
         [Test]
         public void SnapshotRoundTrip_IsCanonicalAndRestartSafe()
         {
-            RoomGraphDefinitionV1 definition =
-                Level1RoomGraphDefinitionV1.Create();
-            var original = new RoomMissionLayoutV1(definition);
+            RoomGraphDefinition definition =
+                Level1RoomGraphDefinition.Create();
+            var original = new RoomMissionLayout(definition);
             original.CompleteCurrentRoom();
             original.Traverse(
-                Level1RoomGraphDefinitionV1.ForwardExitStableId);
-            RoomGraphSnapshotV1 exported = original.CurrentSnapshot;
-            var reversedRooms = new List<RoomStateSnapshotV1>(exported.Rooms);
-            var reversedExits = new List<RoomExitStateSnapshotV1>(exported.Exits);
+                Level1RoomGraphDefinition.ForwardExitStableId);
+            RoomGraphSnapshot exported = original.CurrentSnapshot;
+            var reversedRooms = new List<RoomStateSnapshot>(exported.Rooms);
+            var reversedExits = new List<RoomExitStateSnapshot>(exported.Exits);
             reversedRooms.Reverse();
             reversedExits.Reverse();
-            RoomGraphSnapshotV1 reordered = RoomGraphSnapshotV1.CreateCanonical(
+            RoomGraphSnapshot reordered = RoomGraphSnapshot.CreateCanonical(
                 exported.LayoutStableId,
                 exported.DefinitionFingerprint,
                 exported.Sequence,
                 reversedRooms,
                 reversedExits);
-            var restored = new RoomMissionLayoutV1(definition);
+            var restored = new RoomMissionLayout(definition);
 
-            RoomGraphImportResultV1 result = restored.TryImport(reordered);
+            RoomGraphImportResult result = restored.TryImport(reordered);
 
             Assert.That(reordered.Fingerprint, Is.EqualTo(exported.Fingerprint));
-            Assert.That(result.Status, Is.EqualTo(RoomGraphImportStatusV1.Imported));
+            Assert.That(result.Status, Is.EqualTo(RoomGraphImportStatus.Imported));
             Assert.That(
                 restored.CurrentSnapshot.Fingerprint,
                 Is.EqualTo(exported.Fingerprint));
             Assert.That(
                 restored.CurrentRoomState.RoomStableId,
-                Is.EqualTo(Level1RoomGraphDefinitionV1.TerminalRoomStableId));
+                Is.EqualTo(Level1RoomGraphDefinition.TerminalRoomStableId));
             restored.Restart();
             Assert.That(restored.CurrentSnapshot.Sequence, Is.Zero);
             Assert.That(
                 restored.CurrentRoomState.RoomStableId,
-                Is.EqualTo(Level1RoomGraphDefinitionV1.EntryRoomStableId));
+                Is.EqualTo(Level1RoomGraphDefinition.EntryRoomStableId));
         }
 
         [Test]
         public void CorruptSnapshot_IsRejectedAtomically()
         {
-            var layout = new RoomMissionLayoutV1(
-                Level1RoomGraphDefinitionV1.Create());
+            var layout = new RoomMissionLayout(
+                Level1RoomGraphDefinition.Create());
             layout.CompleteCurrentRoom();
-            RoomGraphSnapshotV1 before = layout.CurrentSnapshot;
-            var corrupt = new RoomGraphSnapshotV1(
+            RoomGraphSnapshot before = layout.CurrentSnapshot;
+            var corrupt = new RoomGraphSnapshot(
                 before.SchemaVersion,
                 before.LayoutStableId,
                 before.DefinitionFingerprint,
@@ -381,84 +381,84 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
                 before.Exits,
                 before.Fingerprint);
 
-            RoomGraphImportResultV1 result = layout.TryImport(corrupt);
+            RoomGraphImportResult result = layout.TryImport(corrupt);
 
             Assert.That(
                 result.Status,
-                Is.EqualTo(RoomGraphImportStatusV1.FingerprintMismatch));
+                Is.EqualTo(RoomGraphImportStatus.FingerprintMismatch));
             Assert.That(layout.CurrentSnapshot, Is.SameAs(before));
             Assert.That(
                 layout.CurrentRoomState.RoomStableId,
-                Is.EqualTo(Level1RoomGraphDefinitionV1.EntryRoomStableId));
+                Is.EqualTo(Level1RoomGraphDefinition.EntryRoomStableId));
         }
 
         [Test]
         public void SnapshotFromDifferentDefinition_IsRejectedBeforeMutation()
         {
-            RoomGraphDefinitionV1 sourceDefinition =
-                Level1RoomGraphDefinitionV1.Create();
-            var source = new RoomMissionLayoutV1(sourceDefinition);
+            RoomGraphDefinition sourceDefinition =
+                Level1RoomGraphDefinition.Create();
+            var source = new RoomMissionLayout(sourceDefinition);
             source.CompleteCurrentRoom();
-            RoomGraphSnapshotV1 snapshot = source.CurrentSnapshot;
+            RoomGraphSnapshot snapshot = source.CurrentSnapshot;
             GraphFixture alteredFixture = GraphFixture.Create();
-            RoomConnectionDefinitionV1 originalConnection =
+            RoomConnectionDefinition originalConnection =
                 alteredFixture.Connections[0];
-            RoomExitDefinitionV1 originalForward = originalConnection.Exits[0];
-            RoomExitDefinitionV1 changedForward = new RoomExitDefinitionV1(
+            RoomExitDefinition originalForward = originalConnection.Exits[0];
+            RoomExitDefinition changedForward = new RoomExitDefinition(
                 originalForward.ExitStableId,
                 originalForward.SourceRoomStableId,
                 originalForward.TargetEntryStableId,
                 originalForward.Order,
-                RoomExitTypeV1.Optional,
+                RoomExitType.Optional,
                 originalForward.InitiallyLocked,
                 originalForward.UnlockRequiredCompletedRoomStableId);
-            alteredFixture.Connections[0] = new RoomConnectionDefinitionV1(
+            alteredFixture.Connections[0] = new RoomConnectionDefinition(
                 originalConnection.ConnectionStableId,
                 originalConnection.Directionality,
                 originalConnection.DoorLinkStableId,
                 new[] { changedForward, originalConnection.Exits[1] });
-            RoomGraphValidationResultV1 alteredResult = alteredFixture.Validate();
+            RoomGraphValidationResult alteredResult = alteredFixture.Validate();
             Assert.That(alteredResult.IsValid, Is.True, Describe(alteredResult));
-            var target = new RoomMissionLayoutV1(alteredResult.Definition);
-            RoomGraphSnapshotV1 before = target.CurrentSnapshot;
+            var target = new RoomMissionLayout(alteredResult.Definition);
+            RoomGraphSnapshot before = target.CurrentSnapshot;
 
-            RoomGraphImportResultV1 result = target.TryImport(snapshot);
+            RoomGraphImportResult result = target.TryImport(snapshot);
 
             Assert.That(result.Status, Is.EqualTo(
-                RoomGraphImportStatusV1.DefinitionFingerprintMismatch));
+                RoomGraphImportStatus.DefinitionFingerprintMismatch));
             Assert.That(target.CurrentSnapshot, Is.SameAs(before));
         }
 
         [Test]
         public void DebugProjection_ContainsStableTopologyAndStateFacts()
         {
-            var layout = new RoomMissionLayoutV1(
-                Level1RoomGraphDefinitionV1.Create());
+            var layout = new RoomMissionLayout(
+                Level1RoomGraphDefinition.Create());
             layout.CompleteCurrentRoom();
 
             string projection = layout.CreateDebugProjection();
 
             Assert.That(projection, Does.Contain(
-                Level1RoomGraphDefinitionV1.EntryRoomStableId.ToString()));
+                Level1RoomGraphDefinition.EntryRoomStableId.ToString()));
             Assert.That(projection, Does.Contain(
-                Level1RoomGraphDefinitionV1.TerminalRoomStableId.ToString()));
+                Level1RoomGraphDefinition.TerminalRoomStableId.ToString()));
             Assert.That(projection, Does.Contain("type=Progression"));
             Assert.That(projection, Does.Contain(
-                Level1RoomGraphDefinitionV1.DoorLinkStableId.ToString()));
+                Level1RoomGraphDefinition.DoorLinkStableId.ToString()));
             Assert.That(projection, Does.Contain("completed=1"));
         }
 
         [Test]
         public void RoomGraphAssemblies_HaveNoUnityEngineDependency()
         {
-            AssertNoUnityReference(typeof(RoomGraphDefinitionV1).Assembly);
-            AssertNoUnityReference(typeof(IRoomMissionLayoutV1).Assembly);
-            AssertNoUnityReference(typeof(RoomMissionLayoutV1).Assembly);
+            AssertNoUnityReference(typeof(RoomGraphDefinition).Assembly);
+            AssertNoUnityReference(typeof(IRoomMissionLayout).Assembly);
+            AssertNoUnityReference(typeof(RoomMissionLayout).Assembly);
         }
 
         private static void AssertRoom(
-            RoomRuntimeStateV1 state,
-            RoomAvailabilityStateV1 availability,
+            RoomLiveState state,
+            RoomAvailabilityState availability,
             bool current,
             bool visited,
             bool completed)
@@ -469,7 +469,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
             Assert.That(state.IsCompleted, Is.EqualTo(completed));
         }
 
-        private static string Describe(RoomGraphValidationResultV1 result)
+        private static string Describe(RoomGraphValidationResult result)
         {
             if (result == null)
             {
@@ -479,7 +479,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
             var messages = new List<string>();
             for (int index = 0; index < result.Issues.Count; index++)
             {
-                RoomGraphValidationIssueV1 issue = result.Issues[index];
+                RoomGraphValidationIssue issue = result.Issues[index];
                 messages.Add(issue.Code + "[" + issue.Subject + "]: " + issue.Message);
             }
 
@@ -522,86 +522,86 @@ namespace ShooterMover.Tests.EditMode.Missions.Rooms
 
             public StableId DoorLinkId { get; private set; }
 
-            public List<RoomDefinitionV1> Rooms { get; private set; }
+            public List<RoomDefinition> Rooms { get; private set; }
 
-            public List<RoomEntryDefinitionV1> Entries { get; private set; }
+            public List<RoomEntryDefinition> Entries { get; private set; }
 
-            public List<RoomConnectionDefinitionV1> Connections { get; private set; }
+            public List<RoomConnectionDefinition> Connections { get; private set; }
 
-            public List<RoomDoorLinkDefinitionV1> DoorLinks { get; private set; }
+            public List<RoomDoorLinkDefinition> DoorLinks { get; private set; }
 
             public static GraphFixture Create()
             {
                 var fixture = new GraphFixture
                 {
-                    LayoutId = Level1RoomGraphDefinitionV1.LayoutStableId,
-                    StartRoomId = Level1RoomGraphDefinitionV1.EntryRoomStableId,
-                    TerminalRoomId = Level1RoomGraphDefinitionV1.TerminalRoomStableId,
-                    StartEntryId = Level1RoomGraphDefinitionV1.EntryRoomEntryStableId,
-                    TerminalEntryId = Level1RoomGraphDefinitionV1.TerminalRoomEntryStableId,
-                    ForwardExitId = Level1RoomGraphDefinitionV1.ForwardExitStableId,
-                    ReturnExitId = Level1RoomGraphDefinitionV1.ReturnExitStableId,
-                    ConnectionId = Level1RoomGraphDefinitionV1.ConnectionStableId,
-                    DoorLinkId = Level1RoomGraphDefinitionV1.DoorLinkStableId,
+                    LayoutId = Level1RoomGraphDefinition.LayoutStableId,
+                    StartRoomId = Level1RoomGraphDefinition.EntryRoomStableId,
+                    TerminalRoomId = Level1RoomGraphDefinition.TerminalRoomStableId,
+                    StartEntryId = Level1RoomGraphDefinition.EntryRoomEntryStableId,
+                    TerminalEntryId = Level1RoomGraphDefinition.TerminalRoomEntryStableId,
+                    ForwardExitId = Level1RoomGraphDefinition.ForwardExitStableId,
+                    ReturnExitId = Level1RoomGraphDefinition.ReturnExitStableId,
+                    ConnectionId = Level1RoomGraphDefinition.ConnectionStableId,
+                    DoorLinkId = Level1RoomGraphDefinition.DoorLinkStableId,
                 };
-                fixture.Rooms = new List<RoomDefinitionV1>
+                fixture.Rooms = new List<RoomDefinition>
                 {
-                    new RoomDefinitionV1(
+                    new RoomDefinition(
                         fixture.StartRoomId,
                         0,
-                        RoomInitialAvailabilityV1.Available,
+                        RoomInitialAvailability.Available,
                         true),
-                    new RoomDefinitionV1(
+                    new RoomDefinition(
                         fixture.TerminalRoomId,
                         1,
-                        RoomInitialAvailabilityV1.Locked,
+                        RoomInitialAvailability.Locked,
                         true),
                 };
-                fixture.Entries = new List<RoomEntryDefinitionV1>
+                fixture.Entries = new List<RoomEntryDefinition>
                 {
-                    new RoomEntryDefinitionV1(
+                    new RoomEntryDefinition(
                         fixture.StartEntryId,
                         fixture.StartRoomId,
                         0),
-                    new RoomEntryDefinitionV1(
+                    new RoomEntryDefinition(
                         fixture.TerminalEntryId,
                         fixture.TerminalRoomId,
                         0),
                 };
-                var forward = new RoomExitDefinitionV1(
+                var forward = new RoomExitDefinition(
                     fixture.ForwardExitId,
                     fixture.StartRoomId,
                     fixture.TerminalEntryId,
                     0,
-                    RoomExitTypeV1.Progression,
+                    RoomExitType.Progression,
                     true,
                     fixture.StartRoomId);
-                var reverse = new RoomExitDefinitionV1(
+                var reverse = new RoomExitDefinition(
                     fixture.ReturnExitId,
                     fixture.TerminalRoomId,
                     fixture.StartEntryId,
                     0,
-                    RoomExitTypeV1.Return,
+                    RoomExitType.Return,
                     true,
                     fixture.StartRoomId);
-                fixture.Connections = new List<RoomConnectionDefinitionV1>
+                fixture.Connections = new List<RoomConnectionDefinition>
                 {
-                    new RoomConnectionDefinitionV1(
+                    new RoomConnectionDefinition(
                         fixture.ConnectionId,
-                        RoomConnectionDirectionalityV1.Bidirectional,
+                        RoomConnectionDirectionality.Bidirectional,
                         fixture.DoorLinkId,
                         new[] { forward, reverse }),
                 };
-                fixture.DoorLinks = new List<RoomDoorLinkDefinitionV1>
+                fixture.DoorLinks = new List<RoomDoorLinkDefinition>
                 {
-                    new RoomDoorLinkDefinitionV1(fixture.DoorLinkId),
+                    new RoomDoorLinkDefinition(fixture.DoorLinkId),
                 };
                 return fixture;
             }
 
-            public RoomGraphValidationResultV1 Validate()
+            public RoomGraphValidationResult Validate()
             {
-                return RoomGraphDefinitionV1.ValidateAndCreate(
+                return RoomGraphDefinition.ValidateAndCreate(
                     LayoutId,
                     StartRoomId,
                     TerminalRoomId,

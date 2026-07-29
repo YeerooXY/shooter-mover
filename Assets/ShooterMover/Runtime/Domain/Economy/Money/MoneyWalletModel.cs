@@ -16,7 +16,7 @@ namespace ShooterMover.Domain.Economy.Money
         }
     }
 
-    public static class MoneyWalletIdsV1
+    public static class MoneyWalletIds
     {
         public static readonly StableId AuthorityStableId =
             StableId.Parse("authority.money");
@@ -241,7 +241,7 @@ namespace ShooterMover.Domain.Economy.Money
             {
                 MoneyWalletContributionSnapshot contribution = Contributions[index];
                 entries.Add(new LedgerSnapshotEntry(
-                    MoneyWalletIdsV1.EntryTypeStableId.ToString(),
+                    MoneyWalletIds.EntryTypeStableId.ToString(),
                     contribution.CurrencyStableId,
                     contribution.CommandFingerprint,
                     contribution.Quantity));
@@ -254,7 +254,7 @@ namespace ShooterMover.Domain.Economy.Money
                 MoneyWalletTransactionSnapshot transaction = Transactions[index];
                 transactions.Add(new LedgerTransactionSnapshot(
                     transaction.TransactionStableId,
-                    MoneyWalletIdsV1.EntryTypeStableId.ToString(),
+                    MoneyWalletIds.EntryTypeStableId.ToString(),
                     transaction.CurrencyStableId,
                     transaction.CommandFingerprint,
                     transaction.QuantityDelta,

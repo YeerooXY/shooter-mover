@@ -17,11 +17,11 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void MixedCadence_HeldFireAdvancesMountsIndependently()
         {
-            WeaponRuntimeProfile fast = BuildProfile(
+            WeaponLiveProfile fast = BuildProfile(
                 profileSuffix: "fast",
                 cadenceSeconds: 0.1d,
                 recoverySeconds: 0d);
-            WeaponRuntimeProfile slow = BuildProfile(
+            WeaponLiveProfile slow = BuildProfile(
                 profileSuffix: "slow",
                 cadenceSeconds: 0.25d,
                 recoverySeconds: 0d);
@@ -52,7 +52,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void BurstRelease_InterruptsRemainingShotsAndEntersRecovery()
         {
-            WeaponRuntimeProfile profile = BuildProfile(
+            WeaponLiveProfile profile = BuildProfile(
                 profileSuffix: "burst",
                 cadenceSeconds: 0.4d,
                 burstShotCount: 3,
@@ -87,7 +87,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void HeatOverheat_DepletesUntilFullCooldownBoundary()
         {
-            WeaponRuntimeProfile profile = BuildProfile(
+            WeaponLiveProfile profile = BuildProfile(
                 profileSuffix: "heat",
                 cadenceSeconds: 0.1d,
                 burstShotCount: 3,
@@ -132,7 +132,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void ChargeCompletion_TransitionsAtExactBoundary()
         {
-            WeaponRuntimeProfile profile = BuildProfile(
+            WeaponLiveProfile profile = BuildProfile(
                 profileSuffix: "charge",
                 cadenceSeconds: 0.1d,
                 recoverySeconds: 0d,
@@ -169,7 +169,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void RecoveryAndCadence_BlockUntilBothComplete()
         {
-            WeaponRuntimeProfile profile = BuildProfile(
+            WeaponLiveProfile profile = BuildProfile(
                 profileSuffix: "recovery",
                 cadenceSeconds: 0.2d,
                 recoverySeconds: 0.5d);
@@ -203,7 +203,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void RapidInput_DoesNotQueueARequestWhileBlocked()
         {
-            WeaponRuntimeProfile profile = BuildProfile(
+            WeaponLiveProfile profile = BuildProfile(
                 profileSuffix: "rapid",
                 cadenceSeconds: 0.2d,
                 recoverySeconds: 0.4d);
@@ -230,7 +230,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void InvalidElapsedTime_FaultsClosedWithActionableDiagnostic()
         {
-            WeaponRuntimeProfile profile = BuildProfile(profileSuffix: "elapsed");
+            WeaponLiveProfile profile = BuildProfile(profileSuffix: "elapsed");
             double[] invalidValues =
             {
                 -0.01d,
@@ -261,7 +261,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void MalformedState_FaultsClosedInsteadOfAdvancingImpossiblePhase()
         {
-            WeaponRuntimeProfile profile = BuildProfile(
+            WeaponLiveProfile profile = BuildProfile(
                 profileSuffix: "malformed",
                 cadenceSeconds: 0.5d);
             ConstructorInfo constructor = typeof(DomainMountState)
@@ -303,7 +303,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void FaultDuringRecovery_IsTerminalAndDoesNotChangeAnotherMount()
         {
-            WeaponRuntimeProfile profile = BuildProfile(
+            WeaponLiveProfile profile = BuildProfile(
                 profileSuffix: "fault",
                 cadenceSeconds: 0.2d,
                 recoverySeconds: 0.5d);
@@ -349,7 +349,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void LargeFixedStepCatchUp_MatchesPartitionedFixedSteps()
         {
-            WeaponRuntimeProfile profile = BuildProfile(
+            WeaponLiveProfile profile = BuildProfile(
                 profileSuffix: "catchup",
                 cadenceSeconds: 0.2d,
                 recoverySeconds: 0d);
@@ -384,7 +384,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void FixedProfileAndInputSequence_ProducesByteStableTraceRows()
         {
-            WeaponRuntimeProfile profile = BuildProfile(
+            WeaponLiveProfile profile = BuildProfile(
                 profileSuffix: "deterministic",
                 cadenceSeconds: 0.3d,
                 burstShotCount: 3,
@@ -402,7 +402,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void StateFields_ProjectToFourMountWeaponsV1HeatAndChargeSnapshots()
         {
-            WeaponRuntimeProfile heatProfile = BuildProfile(
+            WeaponLiveProfile heatProfile = BuildProfile(
                 profileSuffix: "contractheat",
                 cadenceSeconds: 0.2d,
                 cycleMode: WeaponCycleMode.Heat,
@@ -429,7 +429,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                 ContractCombat.WeaponRecoilState.None,
                 ContractCombat.WeaponPowerBankState.None);
 
-            WeaponRuntimeProfile chargeProfile = BuildProfile(
+            WeaponLiveProfile chargeProfile = BuildProfile(
                 profileSuffix: "contractcharge",
                 cadenceSeconds: 0.2d,
                 cycleMode: WeaponCycleMode.Charge,
@@ -467,7 +467,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         [Test]
         public void FourSyntheticMountTraces_AreIndependentAndLogged()
         {
-            WeaponRuntimeProfile[] profiles =
+            WeaponLiveProfile[] profiles =
             {
                 BuildProfile("traceone", 0.1d, recoverySeconds: 0d),
                 BuildProfile("tracetwo", 0.5d, 3, 0.05d, 0.1d),
@@ -584,7 +584,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         }
 
         private static string[] RunTrace(
-            WeaponRuntimeProfile profile,
+            WeaponLiveProfile profile,
             double[] elapsed,
             bool[] fire)
         {
@@ -627,7 +627,7 @@ namespace ShooterMover.Tests.EditMode.Combat
             });
         }
 
-        private static WeaponRuntimeProfile BuildProfile(
+        private static WeaponLiveProfile BuildProfile(
             string profileSuffix = "standard",
             double cadenceSeconds = 0.2d,
             int burstShotCount = 1,
@@ -639,8 +639,8 @@ namespace ShooterMover.Tests.EditMode.Combat
             double heatRecoveryUnitsPerSecond = 0d,
             double chargeSeconds = 0d)
         {
-            return WeaponRuntimeProfile.Create(
-                WeaponRuntimeProfile.CurrentProfileVersion,
+            return WeaponLiveProfile.Create(
+                WeaponLiveProfile.CurrentProfileVersion,
                 StableId.Parse("weapon-profile." + profileSuffix),
                 cadenceSeconds,
                 burstShotCount,

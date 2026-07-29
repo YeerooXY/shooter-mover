@@ -10,7 +10,7 @@ namespace ShooterMover.Application.Weapons.Execution
         private static BatchBuildResult BuildBatch(
             WeaponFireCommand command,
             RunParticipantId participant,
-            WeaponRuntimeFiringProfile profile,
+            WeaponLiveFiringProfile profile,
             IWeaponBehavior behavior,
             long shotSequence)
         {
@@ -92,7 +92,7 @@ namespace ShooterMover.Application.Weapons.Execution
         private static bool ValidateBatch(
             WeaponFireCommand command,
             RunParticipantId participant,
-            WeaponRuntimeFiringProfile profile,
+            WeaponLiveFiringProfile profile,
             long sequence,
             WeaponEffectBatch batch,
             out string code)

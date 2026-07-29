@@ -32,7 +32,7 @@ namespace ShooterMover.Tests.PlayMode.Foundation
         [UnityTest]
         public IEnumerator AdapterDisableEnableAndDestroy_PairsRootLifecycle()
         {
-            BootstrapSceneAdapter adapter = RequireSingleBootstrapAdapter();
+            BootstrapSceneBridge adapter = RequireSingleBootstrapAdapter();
             string adapterPath = DescribeAdapter(adapter);
 
             Assert.That(
@@ -78,7 +78,7 @@ namespace ShooterMover.Tests.PlayMode.Foundation
         [UnityTest]
         public IEnumerator AdditiveDuplicateBootstrap_IsRejectedWithoutReplacingOwner()
         {
-            BootstrapSceneAdapter original = RequireSingleBootstrapAdapter();
+            BootstrapSceneBridge original = RequireSingleBootstrapAdapter();
             int originalInstanceId = original.GetInstanceID();
             var existingHandles = new HashSet<SceneHandle>(
                 LoadedScenesNamed(BootstrapSceneName).Select(scene => scene.handle));
@@ -95,7 +95,7 @@ namespace ShooterMover.Tests.PlayMode.Foundation
             Scene duplicateScene = RequireNewBootstrapScene(existingHandles);
             AssertSingleRunningBootstrap("after additive duplicate Bootstrap load");
 
-            BootstrapSceneAdapter remaining = RequireSingleBootstrapAdapter();
+            BootstrapSceneBridge remaining = RequireSingleBootstrapAdapter();
             Assert.That(
                 remaining.GetInstanceID(),
                 Is.EqualTo(originalInstanceId),
@@ -154,13 +154,13 @@ namespace ShooterMover.Tests.PlayMode.Foundation
             }
         }
 
-        private static BootstrapSceneAdapter RequireSingleBootstrapAdapter()
+        private static BootstrapSceneBridge RequireSingleBootstrapAdapter()
         {
-            List<BootstrapSceneAdapter> adapters = FindAllBootstrapAdapters();
+            List<BootstrapSceneBridge> adapters = FindAllBootstrapAdapters();
             if (adapters.Count != 1)
             {
                 Assert.Fail(
-                    "Expected exactly one BootstrapSceneAdapter; found "
+                    "Expected exactly one BootstrapSceneBridge; found "
                     + adapters.Count + ". " + DescribeAdapters());
             }
 
@@ -169,13 +169,13 @@ namespace ShooterMover.Tests.PlayMode.Foundation
 
         private static void AssertSingleRunningBootstrap(string context)
         {
-            List<BootstrapSceneAdapter> adapters = FindAllBootstrapAdapters();
+            List<BootstrapSceneBridge> adapters = FindAllBootstrapAdapters();
             int runningCount = adapters.Count(adapter => adapter.IsCompositionRootRunning);
 
             Assert.That(
                 adapters.Count,
                 Is.EqualTo(1),
-                "Expected one BootstrapSceneAdapter " + context + "; found "
+                "Expected one BootstrapSceneBridge " + context + "; found "
                 + adapters.Count + ". " + DescribeAdapters());
             Assert.That(
                 runningCount,
@@ -184,9 +184,9 @@ namespace ShooterMover.Tests.PlayMode.Foundation
                 + "; found " + runningCount + ". " + DescribeAdapters());
         }
 
-        private static List<BootstrapSceneAdapter> FindAllBootstrapAdapters()
+        private static List<BootstrapSceneBridge> FindAllBootstrapAdapters()
         {
-            var adapters = new List<BootstrapSceneAdapter>();
+            var adapters = new List<BootstrapSceneBridge>();
             for (int sceneIndex = 0; sceneIndex < SceneManager.sceneCount; sceneIndex++)
             {
                 Scene scene = SceneManager.GetSceneAt(sceneIndex);
@@ -199,7 +199,7 @@ namespace ShooterMover.Tests.PlayMode.Foundation
                 for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
                 {
                     adapters.AddRange(
-                        roots[rootIndex].GetComponentsInChildren<BootstrapSceneAdapter>(true));
+                        roots[rootIndex].GetComponentsInChildren<BootstrapSceneBridge>(true));
                 }
             }
 
@@ -239,7 +239,7 @@ namespace ShooterMover.Tests.PlayMode.Foundation
 
         private static string DescribeAdapters()
         {
-            List<BootstrapSceneAdapter> adapters = FindAllBootstrapAdapters();
+            List<BootstrapSceneBridge> adapters = FindAllBootstrapAdapters();
             if (adapters.Count == 0)
             {
                 return "Adapters: none. " + DescribeLoadedScenes();
@@ -250,7 +250,7 @@ namespace ShooterMover.Tests.PlayMode.Foundation
                 adapters.Select(DescribeAdapter).ToArray());
         }
 
-        private static string DescribeAdapter(BootstrapSceneAdapter adapter)
+        private static string DescribeAdapter(BootstrapSceneBridge adapter)
         {
             if (adapter == null)
             {

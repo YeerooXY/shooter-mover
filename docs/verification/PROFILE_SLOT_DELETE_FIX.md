@@ -22,7 +22,7 @@
 Unity version: `6000.3.19f1`
 
 ```text
-Unity -batchmode -nographics -projectPath . -runTests -testPlatform PlayMode -testFilter ShooterMover.Tests.PlayMode.Flow.ProductionFlow.ProductionFlowPlayModeTests -testResults Temp/profile-slot-delete-fix-playmode.xml -logFile Temp/profile-slot-delete-fix-playmode.log
+Unity -batchmode -nographics -projectPath . -runTests -testPlatform PlayMode -testFilter ShooterMover.Tests.PlayMode.Flow.ProductionFlow.FlowPlayModeTests -testResults Temp/profile-slot-delete-fix-playmode.xml -logFile Temp/profile-slot-delete-fix-playmode.log
 ```
 
 Do not add `-quit`; `-runTests` exits Unity after the test run.

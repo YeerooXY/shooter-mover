@@ -20,7 +20,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             LevelDoorTravelPolicy.Bidirectional;
 
         [Header("Existing DOOR-001 package")]
-        [Tooltip("Assign a component implementing ILevelDoorPackageAdapter. The foundation validates the existing door package but does not replace it.")]
+        [Tooltip("Assign a component implementing ILevelDoorPackageBridge. The foundation validates the existing door package but does not replace it.")]
         [SerializeField] private MonoBehaviour packageAdapter;
 
         [Header("Map metadata")]
@@ -59,8 +59,8 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 
         public LevelDoorRecord BuildRecord()
         {
-            ILevelDoorPackageAdapter adapter =
-                packageAdapter as ILevelDoorPackageAdapter;
+            ILevelDoorPackageBridge adapter =
+                packageAdapter as ILevelDoorPackageBridge;
             return new LevelDoorRecord(
                 doorId,
                 sourceRoom == null ? null : sourceRoom.RoomIdText,
@@ -132,7 +132,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             MonoBehaviour[] candidates = GetComponents<MonoBehaviour>();
             for (int index = 0; index < candidates.Length; index++)
             {
-                if (candidates[index] is ILevelDoorPackageAdapter)
+                if (candidates[index] is ILevelDoorPackageBridge)
                 {
                     return candidates[index];
                 }

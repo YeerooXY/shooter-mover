@@ -225,8 +225,8 @@ namespace ShooterMover.TestSupport.Foundation
 
             for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
             {
-                BootstrapSceneAdapter[] adapters =
-                    roots[rootIndex].GetComponentsInChildren<BootstrapSceneAdapter>(true);
+                BootstrapSceneBridge[] adapters =
+                    roots[rootIndex].GetComponentsInChildren<BootstrapSceneBridge>(true);
 
                 for (int adapterIndex = 0; adapterIndex < adapters.Length; adapterIndex++)
                 {
@@ -238,7 +238,7 @@ namespace ShooterMover.TestSupport.Foundation
             if (adapterCount != 1 || !isRunning)
             {
                 throw new InvalidOperationException(
-                    "Expected exactly one running BootstrapSceneAdapter; found "
+                    "Expected exactly one running BootstrapSceneBridge; found "
                     + adapterCount + ".");
             }
         }

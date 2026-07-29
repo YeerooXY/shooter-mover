@@ -9,13 +9,13 @@ It does not replace those authorities. It stores their immutable snapshots under
 ## Aggregate
 
 ```text
-PlayerAccountSnapshotV1
+PlayerAccountSnapshot
   account identity
   revision
   six nullable character positions
   account components
 
-CharacterInstanceSnapshotV1
+CharacterInstanceSnapshot
   concrete character-instance identity
   class-definition identity
   exact slot index
@@ -28,7 +28,7 @@ Class is data-defined. A healer, striker, juggernaut, or future class is represe
 
 ## Component extension model
 
-A `SaveComponentSnapshotV1` contains:
+A `SaveComponentSnapshot` contains:
 
 - stable component identity;
 - component schema version;
@@ -60,7 +60,7 @@ Adding another component does not require modifying the account aggregate or its
 
 ## Mutation authority
 
-`PlayerAccountSaveAuthorityV1` supports:
+`PlayerAccountSaveState` supports:
 
 - creating one exact character in one empty slot;
 - replacing one subsystem snapshot for one exact character instance;
@@ -79,7 +79,7 @@ This foundation does not yet:
 
 - serialize the canonical payloads to JSON or disk;
 - adapt the existing XP, holdings, wallet, skills, loadout, or BOX snapshots;
-- replace `PlayerPrefsProductionFlowProfileStoreV1`;
+- replace `PlayerPrefsFlowProfileStore`;
 - persist transient mission health, position, cooldowns, active effects, or bullets;
 - implement cloud synchronization or multiplayer conflict resolution;
 - compact old replay records.
@@ -90,7 +90,7 @@ Those are follow-up adapter and storage tasks. Runtime cooldowns remain run-loca
 
 1. Add typed component adapters over each existing authority snapshot.
 2. Add a versioned JSON file store with temp-file write, flush, atomic replacement, backup, and corruption recovery.
-3. Migrate the six existing PlayerPrefs route profiles into six `CharacterInstanceSnapshotV1` records.
+3. Migrate the six existing PlayerPrefs route profiles into six `CharacterInstanceSnapshot` records.
 4. Compose a selected character's authorities from its saved component set before entering the Hub.
 5. Commit mission rewards and unopened boxes into one updated character save after authoritative run completion.
 
@@ -99,5 +99,5 @@ Those are follow-up adapter and storage tasks. Runtime cooldowns remain run-loca
 Focused EditMode filter:
 
 ```text
-ShooterMover.Tests.EditMode.Persistence.Accounts.PlayerAccountSaveAuthorityV1Tests
+ShooterMover.Tests.EditMode.Persistence.Accounts.PlayerAccountSaveStateTests
 ```

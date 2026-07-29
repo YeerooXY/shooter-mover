@@ -425,7 +425,7 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
 
             Assert.That(source, Does.Contain("StableId.TryParse"));
             Assert.That(source, Does.Contain("GetComponentsInChildren"));
-            Assert.That(source, Does.Contain("ILevelDoorPackageAdapter"));
+            Assert.That(source, Does.Contain("ILevelDoorPackageBridge"));
         }
 
         private static LevelRoomRecord Room(

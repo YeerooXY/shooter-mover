@@ -139,7 +139,7 @@ namespace ShooterMover.GameplayEntities.Enemies
     public sealed class EnemyDebugSnapshot
     {
         internal EnemyDebugSnapshot(
-            EnemyRuntimeProjection runtime,
+            EnemyLiveView runtime,
             EnemyDecisionProfile profile,
             EnemyDecisionSnapshot decision,
             EnemyVector2 currentFacing,
@@ -227,7 +227,7 @@ namespace ShooterMover.GameplayEntities.Enemies
         private static readonly StableId AttackRejectedReason = StableId.Create("enemy-decision", "attack-conditions-rejected");
 
         public static EnemyDecisionEvaluation Evaluate(
-            EnemyRuntimeProjection runtime,
+            EnemyLiveView runtime,
             EnemyDecisionProfile profile,
             EnemyPerceptionSnapshot perception)
         {
@@ -239,7 +239,7 @@ namespace ShooterMover.GameplayEntities.Enemies
         }
 
         public static EnemyDecisionEvaluation Evaluate(
-            EnemyRuntimeProjection runtime,
+            EnemyLiveView runtime,
             EnemyDecisionProfile profile,
             EnemyPerceptionSnapshot perception,
             EnemyVector2 committedAttackOrigin)

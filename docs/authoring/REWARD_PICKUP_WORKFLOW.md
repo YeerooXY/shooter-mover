@@ -20,20 +20,20 @@ No pickup component mutates a money or scrap wallet, and no pickup inserts holdi
 
 Attach the factory to a runtime drop anchor and inject:
 
-1. `RewardGenerationServiceV1`;
+1. `RewardGenerationActions`;
 2. the immutable `ProgressionContext` for the source;
 3. deterministic root seed and algorithm version;
-4. a `RewardPickupApplicationAuthority2D` configured with the live RAP service;
+4. a `RewardPickupApplicationState2D` configured with the live RAP service;
 5. the owning `GameplaySceneScope2D` for quick restart;
 6. optionally, a pickup prefab and an equipment payload resolver.
 
 The factory implements `IRewardSourceOperationSink`, so a `RewardSourceAuthoring2D` can submit its resolved SRC preview directly. Repeated SRC callbacks regenerate the same deterministic reward, reuse the same commitment and pickup identities, and return exact-duplicate/no-change instead of creating another projection.
 
-Profile-based strongbox grants receive deterministic instance identities derived from source operation, grant identity, and instance ordinal. Profile-based equipment-reference grants require an `IRewardPickupEquipmentPayloadResolverV1`, because RAP/INV must retain the exact immutable `EquipmentInstance` objects. A missing resolver fails closed.
+Profile-based strongbox grants receive deterministic instance identities derived from source operation, grant identity, and instance ordinal. Profile-based equipment-reference grants require an `IRewardPickupEquipmentPayloadResolver`, because RAP/INV must retain the exact immutable `EquipmentInstance` objects. A missing resolver fails closed.
 
 ### Forced drops
 
-Call `RewardPickupDropFactory2D.SpawnForced` with a fully prepared `RewardCommitCommandV1`. Forced and profile-based drops converge at the same RAP commit boundary. This path supports pre-resolved equipment instances, exact strongbox identities, value grants, stacks, and mixed commitments without introducing a second collection algorithm.
+Call `RewardPickupDropFactory2D.SpawnForced` with a fully prepared `RewardCommitCommand`. Forced and profile-based drops converge at the same RAP commit boundary. This path supports pre-resolved equipment instances, exact strongbox identities, value grants, stacks, and mixed commitments without introducing a second collection algorithm.
 
 ### `RewardPickup2D`
 
@@ -44,7 +44,7 @@ A pickup automatically ensures it has:
 - the configured collection radius;
 - category-selected sprite, tint, and local scale.
 
-Use `RewardPickupPresentationStyleV1` entries to configure money, scrap, strongbox, equipment, and miscellaneous presentation independently. A mixed commitment uses the miscellaneous category.
+Use `RewardPickupPresentationStyle` entries to configure money, scrap, strongbox, equipment, and miscellaneous presentation independently. A mixed commitment uses the miscellaneous category.
 
 The trigger accepts only an explicit `RewardPickupClaimant2D`. Claimant identity is a canonical `StableId`; tags, object names, hierarchy positions, and Unity instance IDs never participate in reward identity.
 

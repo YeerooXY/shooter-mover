@@ -9,14 +9,14 @@ namespace ShooterMover.Content.Definitions.Rewards.GameplayDrops
     [Serializable]
     public sealed class GameplayDropOverrideAuthoring
     {
-        [SerializeField] private GameplayDropOverrideModeV1 mode =
-            GameplayDropOverrideModeV1.Default;
+        [SerializeField] private GameplayDropOverrideMode mode =
+            GameplayDropOverrideMode.Default;
         [SerializeField] private string overrideId = "gameplay-drop-override.default";
         [SerializeField] private string resultProfileId =
             "gameplay-drop-profile.override-result";
         [SerializeField] private RewardGrantAuthoring reward = new RewardGrantAuthoring();
 
-        public GameplayDropOverrideModeV1 Mode
+        public GameplayDropOverrideMode Mode
         {
             get { return mode; }
         }
@@ -24,7 +24,7 @@ namespace ShooterMover.Content.Definitions.Rewards.GameplayDrops
         public static GameplayDropOverrideAuthoring Default(string overrideId)
         {
             return Create(
-                GameplayDropOverrideModeV1.Default,
+                GameplayDropOverrideMode.Default,
                 overrideId,
                 null,
                 null);
@@ -35,7 +35,7 @@ namespace ShooterMover.Content.Definitions.Rewards.GameplayDrops
             string resultProfileId)
         {
             return Create(
-                GameplayDropOverrideModeV1.ForcedNone,
+                GameplayDropOverrideMode.ForcedNone,
                 overrideId,
                 resultProfileId,
                 null);
@@ -47,7 +47,7 @@ namespace ShooterMover.Content.Definitions.Rewards.GameplayDrops
             RewardGrantAuthoring reward)
         {
             return Create(
-                GameplayDropOverrideModeV1.ForcedSpecificReward,
+                GameplayDropOverrideMode.ForcedSpecificReward,
                 overrideId,
                 resultProfileId,
                 reward);
@@ -59,30 +59,30 @@ namespace ShooterMover.Content.Definitions.Rewards.GameplayDrops
             RewardGrantAuthoring reward)
         {
             return Create(
-                GameplayDropOverrideModeV1.AppendGuaranteedReward,
+                GameplayDropOverrideMode.AppendGuaranteedReward,
                 overrideId,
                 resultProfileId,
                 reward);
         }
 
-        public GameplayDropOverrideV1 Build()
+        public GameplayDropOverride Build()
         {
             StableId parsedOverrideId = StableId.Parse(overrideId);
             switch (mode)
             {
-                case GameplayDropOverrideModeV1.Default:
-                    return GameplayDropOverrideV1.Default(parsedOverrideId);
-                case GameplayDropOverrideModeV1.ForcedNone:
-                    return GameplayDropOverrideV1.ForcedNone(
+                case GameplayDropOverrideMode.Default:
+                    return GameplayDropOverride.Default(parsedOverrideId);
+                case GameplayDropOverrideMode.ForcedNone:
+                    return GameplayDropOverride.ForcedNone(
                         parsedOverrideId,
                         StableId.Parse(resultProfileId));
-                case GameplayDropOverrideModeV1.ForcedSpecificReward:
-                    return GameplayDropOverrideV1.ForcedSpecificReward(
+                case GameplayDropOverrideMode.ForcedSpecificReward:
+                    return GameplayDropOverride.ForcedSpecificReward(
                         parsedOverrideId,
                         StableId.Parse(resultProfileId),
                         RequireReward().Build());
-                case GameplayDropOverrideModeV1.AppendGuaranteedReward:
-                    return GameplayDropOverrideV1.AppendGuaranteedReward(
+                case GameplayDropOverrideMode.AppendGuaranteedReward:
+                    return GameplayDropOverride.AppendGuaranteedReward(
                         parsedOverrideId,
                         StableId.Parse(resultProfileId),
                         RequireReward().Build());
@@ -93,7 +93,7 @@ namespace ShooterMover.Content.Definitions.Rewards.GameplayDrops
         }
 
         private static GameplayDropOverrideAuthoring Create(
-            GameplayDropOverrideModeV1 mode,
+            GameplayDropOverrideMode mode,
             string overrideId,
             string resultProfileId,
             RewardGrantAuthoring reward)

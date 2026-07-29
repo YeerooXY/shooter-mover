@@ -22,13 +22,13 @@ When a production canonical weapon is selected in Inventory:
 
 | Concept | Authoritative owner | Compatibility/projection role |
 |---|---|---|
-| Exact owned weapon | `ProductionWeaponHoldingsAuthorityV2` | Generic `EquipmentInstance` remains an immutable reward/strongbox receipt only |
-| Equipped exact weapon | `ProductionWeaponMountLoadoutAuthorityV2` | Legacy loadout projection remains compatibility/navigation state |
-| Weapon definition | Canonical `WeaponDefinitionId` resolved by `ProductionWeaponCatalogProvider` | `EquipmentDefinition.RuntimeWeaponReferenceId` links the generic receipt projection |
-| Generic augment upgrade | `AugmentUpgradeServiceV1` for non-canonical generic equipment only | It must never replace a canonical weapon receipt |
-| Canonical receipt mutation boundary | `CanonicalFirstPlayerHoldingsAuthorityV2` | Generic receipts are written only after canonical acceptance and are compensated on failure |
-| Unsupported-operation decision | `CanonicalWeaponSafetyPolicyV1` | Inventory and live adapters consume its structured result; neither becomes an authority |
-| Live compatibility projection | `CanonicalWeaponEquipmentProjectionLookupV2` | May read immutable augment receipt payloads but cannot write ownership or assignments |
+| Exact owned weapon | `WeaponHoldingsState` | Generic `EquipmentInstance` remains an immutable reward/strongbox receipt only |
+| Equipped exact weapon | `WeaponMountLoadoutState` | Legacy loadout projection remains compatibility/navigation state |
+| Weapon definition | Canonical `WeaponDefinitionId` resolved by `WeaponCatalogProvider` | `EquipmentDefinition.RuntimeWeaponReferenceId` links the generic receipt projection |
+| Generic augment upgrade | `AugmentUpgradeActions` for non-canonical generic equipment only | It must never replace a canonical weapon receipt |
+| Canonical receipt mutation boundary | `FirstPlayerHoldingsState` | Generic receipts are written only after canonical acceptance and are compensated on failure |
+| Unsupported-operation decision | `WeaponSafetyPolicy` | Inventory and live adapters consume its structured result; neither becomes an authority |
+| Live compatibility projection | `WeaponEquipmentViewLookup` | May read immutable augment receipt payloads but cannot write ownership or assignments |
 
 ## Explicit design decisions
 
@@ -42,9 +42,9 @@ That model is **not** adopted for canonical weapons in this PR. A production-cat
 
 `CanonicalizingPlayerHoldingsAuthorityV2` is removed from the runtime assembly rather than retained as a deprecated or throwing compatibility shell.
 
-The removed adapter wrote the generic receipt first and projected into canonical holdings second. A canonical rejection could therefore occur after the receipt had already changed, with no complete compensation path. The production runtime had already moved to `CanonicalFirstPlayerHoldingsAuthorityV2`, so removing the obsolete type changes no save schema, migration payload or active production composition.
+The removed adapter wrote the generic receipt first and projected into canonical holdings second. A canonical rejection could therefore occur after the receipt had already changed, with no complete compensation path. The production runtime had already moved to `FirstPlayerHoldingsState`, so removing the obsolete type changes no save schema, migration payload or active production composition.
 
-`ProductionWeaponHoldingsMigrationV2` remains as the deterministic read/restore conversion helper. It does not own runtime mutation and does not recreate a receipt-first writer.
+`WeaponHoldingsMigration` remains as the deterministic read/restore conversion helper. It does not own runtime mutation and does not recreate a receipt-first writer.
 
 ### Augment assignment identity
 
@@ -72,7 +72,7 @@ Character-bound versus account-wide core ownership remains intentionally undecid
 
 ### Generic upgrade quote
 
-`AugmentUpgradeServiceV1.Quote`
+`AugmentUpgradeActions.Quote`
 
 1. resolves the generic holding;
 2. resolves its equipment definition;
@@ -83,13 +83,13 @@ Synthetic or historical generic equipment outside the authoritative production c
 
 ### Generic upgrade confirmation
 
-`AugmentUpgradeServiceV1.TryPrepare`
+`AugmentUpgradeActions.TryPrepare`
 
 The same decision is recomputed from current catalogue and holding state before replacement construction and before `Execute` can spend money or remove holdings. A previously created or fabricated quote cannot bypass the gate.
 
 ### Canonical holdings writer
 
-`ProductionWeaponHoldingsAuthorityV2`
+`WeaponHoldingsState`
 
 - `TryAdd` resolves the canonical definition and evaluates reward/admission safety before a new exact instance can enter runtime authority state.
 - `TryRemove` resolves the exact current canonical definition before destructive mutation.
@@ -98,7 +98,7 @@ The same decision is recomputed from current catalogue and holding state before 
 
 ### Production weapon rewards and receipts
 
-`CanonicalFirstPlayerHoldingsAuthorityV2.TryResolveCanonicalMutation`
+`FirstPlayerHoldingsState.TryResolveCanonicalMutation`
 
 Canonical definition and overclock policy are validated before the canonical-first ownership commit. Rejection occurs before either canonical ownership or the immutable receipt ledger changes.
 
@@ -108,11 +108,11 @@ There is no remaining public legacy-first adapter. Runtime reward and compatibil
 
 ### Live execution
 
-`CanonicalWeaponEquipmentProjectionLookupV2.TryResolve`
+`WeaponEquipmentViewLookup.TryResolve`
 
 The exact owned canonical instance is resolved first. `LastAvailability` records the structured decision. Non-empty overclock assignments reject before any compatibility equipment projection is produced.
 
-`CanonicalPlayerWeaponSourceV2.TryResolveLiveEquipment` propagates that exact rejection code to the gameplay caller and stores the fuller diagnostic message. It creates no fallback weapon.
+`PlayerWeaponSource.TryResolveLiveEquipment` propagates that exact rejection code to the gameplay caller and stores the fuller diagnostic message. It creates no fallback weapon.
 
 ## Transaction behavior
 
@@ -187,39 +187,39 @@ The exact owned canonical instance is resolved first. `LastAvailability` records
 ```text
 Inventory route
 → ProductionHubLoadoutCompositionV1.BindInventoryScene
-→ InventoryLoadoutScreenControllerV1.DrawSelectedWeapon
+→ InventoryLoadoutScreenController.DrawSelectedWeapon
 → DrawCanonicalSafety
-→ CanonicalWeaponSafetyPolicyV1
+→ WeaponSafetyPolicy
 ```
 
 ```text
 Generic upgrade caller
-→ AugmentUpgradeServiceV1.Quote / Confirm
+→ AugmentUpgradeActions.Quote / Confirm
 → EvaluateGenericUpgradeAvailability
-→ CanonicalWeaponSafetyPolicyV1
+→ WeaponSafetyPolicy
 → reject before AugmentUpgradeExecutionV1
 ```
 
 ```text
 Production reward
-→ CanonicalFirstPlayerHoldingsAuthorityV2.Apply
-→ ProductionWeaponHoldingsAuthorityV2.TryAdd / TryRemove
+→ FirstPlayerHoldingsState.Apply
+→ WeaponHoldingsState.TryAdd / TryRemove
 → receipt write only after canonical acceptance
 → snapshot compensation on receipt failure
 ```
 
 ```text
 Direct canonical runtime write
-→ ProductionWeaponHoldingsAuthorityV2.TryAdd / TryRemove
-→ CanonicalWeaponSafetyPolicyV1 or definition-resolution guard
+→ WeaponHoldingsState.TryAdd / TryRemove
+→ WeaponSafetyPolicy or definition-resolution guard
 → commit only when supported
 ```
 
 ```text
 Live firing resolution
-→ CanonicalPlayerWeaponSourceV2.TryResolveLiveEquipment
-→ CanonicalWeaponEquipmentProjectionLookupV2.TryResolve
-→ CanonicalWeaponSafetyPolicyV1.EvaluateLiveExecution
+→ PlayerWeaponSource.TryResolveLiveEquipment
+→ WeaponEquipmentViewLookup.TryResolve
+→ WeaponSafetyPolicy.EvaluateLiveExecution
 → exact rejection code or supported compatibility projection
 ```
 

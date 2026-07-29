@@ -45,7 +45,7 @@ namespace ShooterMover.Tests.PlayMode.Props
             {
                 GameplaySceneScope2D scope = CreateScope(root);
                 family = CreateFamily(20f, Vector2.one, Vector2.zero, null, "Disable");
-                CombatHit2DAdapter adapter = new CombatHit2DAdapter(
+                CombatHit2DBridge adapter = new CombatHit2DBridge(
                     StableId.Parse("actor.test-player"));
                 List<Configured> configured = new List<Configured>();
                 for (int index = 0; index < 10; index++)
@@ -100,7 +100,7 @@ namespace ShooterMover.Tests.PlayMode.Props
             {
                 GameplaySceneScope2D scope = CreateScope(root);
                 family = CreateFamily(20f, Vector2.one, Vector2.zero, null, "Disable");
-                CombatHit2DAdapter adapter = new CombatHit2DAdapter(
+                CombatHit2DBridge adapter = new CombatHit2DBridge(
                     StableId.Parse("actor.test-player"));
                 CreateConfigured(
                     root.transform,
@@ -162,7 +162,7 @@ namespace ShooterMover.Tests.PlayMode.Props
                     root.transform,
                     scope,
                     family,
-                    new CombatHit2DAdapter(StableId.Parse("actor.test-player")),
+                    new CombatHit2DBridge(StableId.Parse("actor.test-player")),
                     "Any Designer Name",
                     "placed.policy-test");
 
@@ -289,7 +289,7 @@ namespace ShooterMover.Tests.PlayMode.Props
             Transform parent,
             GameplaySceneScope2D scope,
             ScriptableObject family,
-            CombatHit2DAdapter adapter,
+            CombatHit2DBridge adapter,
             string objectName,
             string placedId)
         {

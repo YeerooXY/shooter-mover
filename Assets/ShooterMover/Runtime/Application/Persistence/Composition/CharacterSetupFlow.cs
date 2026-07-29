@@ -1,0 +1,973 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using System.Text;
+using ShooterMover.Application.Persistence.Accounts;
+using ShooterMover.Application.Persistence.Components;
+using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Persistence.Accounts;
+
+namespace ShooterMover.Application.Persistence.Composition
+{
+    /// <summary>
+    /// One selected-character runtime graph. It composes existing subsystem authorities
+    /// and their merged save-component adapters; it owns no replacement subsystem truth.
+    /// </summary>
+    public interface ICharacterLiveGraph : IDisposable
+    {
+        CharacterInstanceSnapshot Character { get; }
+
+        IReadOnlyList<ISaveComponentBridge> SaveAdapters { get; }
+
+        bool IsDisposed { get; }
+
+        void MarkPersisted(CharacterInstanceSnapshot character);
+    }
+
+    public interface ICharacterLiveGraphFactory
+    {
+        ICharacterLiveGraph CreateRestoreTarget(
+            CharacterInstanceSnapshot character);
+    }
+
+    public interface IStarterCharacterLiveGraphFactory
+    {
+        ICharacterLiveGraph CreateStarter(
+            int slotIndex,
+            StableId exactCharacterInstanceStableId,
+            StableId classDefinitionStableId,
+            string displayName,
+            object legacyContext);
+    }
+
+    public enum CharacterSetupStatus
+    {
+        Selected = 1,
+        Persisted = 2,
+        ExactNoChange = 3,
+        Migrated = 4,
+        Rejected = 5,
+    }
+
+    public sealed class CharacterSetupResult
+    {
+        public CharacterSetupResult(
+            CharacterSetupStatus status,
+            string diagnostic,
+            PlayerAccountSnapshot account,
+            CharacterInstanceSnapshot character)
+        {
+            Status = status;
+            Diagnostic = diagnostic ?? string.Empty;
+            Account = account;
+            Character = character;
+        }
+
+        public CharacterSetupStatus Status { get; }
+
+        public string Diagnostic { get; }
+
+        public PlayerAccountSnapshot Account { get; }
+
+        public CharacterInstanceSnapshot Character { get; }
+
+        public bool Succeeded
+        {
+            get { return Status != CharacterSetupStatus.Rejected; }
+        }
+    }
+
+    /// <summary>
+    /// Account-to-Hub composition boundary. Existing-slot selection durably persists the
+    /// active graph before disposal. Empty-slot creation is a separate transaction:
+    /// persist active, stage and restore the starter graph, durably commit the aggregate,
+    /// then publish the new graph. Failures keep the old graph active and remove the staged
+    /// character from both the authority and, where possible, durable storage.
+    /// </summary>
+    public sealed class CharacterSetupFlow : IDisposable
+    {
+        private static readonly ReadOnlyCollection<StableId>
+            requiredCharacterComponentIds =
+                new ReadOnlyCollection<StableId>(new List<StableId>
+                {
+                    KnownSaveComponentDefinitions.PlayerExperience()
+                        .ComponentStableId,
+                    KnownSaveComponentDefinitions.PlayerHoldings()
+                        .ComponentStableId,
+                    KnownSaveComponentDefinitions.MoneyWallet()
+                        .ComponentStableId,
+                    KnownSaveComponentDefinitions.ScrapWallet()
+                        .ComponentStableId,
+                    KnownSaveComponentDefinitions.RankedSkillAllocation()
+                        .ComponentStableId,
+                    KnownSaveComponentDefinitions.ExactInstanceLoadout()
+                        .ComponentStableId,
+                });
+        private static readonly ConditionalWeakTable<
+            PlayerAccountSaveState,
+            CharacterSetupFlow> coordinators =
+                new ConditionalWeakTable<
+                    PlayerAccountSaveState,
+                    CharacterSetupFlow>();
+        private static readonly object coordinatorGate = new object();
+
+        private readonly PlayerAccountSaveState accountAuthority;
+        private readonly ICharacterLiveGraphFactory runtimeFactory;
+        private readonly PlayerAccountRestoreFlow restoreCoordinator;
+        private readonly Func<PlayerAccountSnapshot, PlayerAccountStoreResult>
+            saveAccount;
+        private ICharacterLiveGraph activeRuntime;
+        private int activeSlotIndex = -1;
+        private bool disposed;
+
+        public CharacterSetupFlow(
+            PlayerAccountSaveState accountAuthority,
+            ICharacterLiveGraphFactory runtimeFactory,
+            Func<PlayerAccountSnapshot, PlayerAccountStoreResult> saveAccount,
+            Func<PlayerAccountSnapshot, SaveComponentValidationResult>
+                validateAggregate = null)
+        {
+            this.accountAuthority = accountAuthority
+                ?? throw new ArgumentNullException(nameof(accountAuthority));
+            this.runtimeFactory = runtimeFactory
+                ?? throw new ArgumentNullException(nameof(runtimeFactory));
+            this.saveAccount = saveAccount
+                ?? throw new ArgumentNullException(nameof(saveAccount));
+            restoreCoordinator = new PlayerAccountRestoreFlow(
+                validateAggregate: validateAggregate
+                    ?? (snapshot =>
+                        PlayerAccountComponentSemantics.Validate(snapshot)));
+
+            lock (coordinatorGate)
+            {
+                coordinators.Remove(accountAuthority);
+                coordinators.Add(accountAuthority, this);
+            }
+        }
+
+        public PlayerAccountSnapshot Account
+        {
+            get { return accountAuthority.Current; }
+        }
+
+        public ICharacterLiveGraph ActiveRuntime
+        {
+            get { return activeRuntime; }
+        }
+
+        public int ActiveSlotIndex
+        {
+            get { return activeSlotIndex; }
+        }
+
+        public static IReadOnlyList<StableId> RequiredCharacterComponentIds
+        {
+            get { return requiredCharacterComponentIds; }
+        }
+
+        internal static bool TryResolve(
+            PlayerAccountSaveState authority,
+            out CharacterSetupFlow coordinator)
+        {
+            coordinator = null;
+            if (authority == null)
+            {
+                return false;
+            }
+
+            lock (coordinatorGate)
+            {
+                CharacterSetupFlow resolved;
+                if (!coordinators.TryGetValue(authority, out resolved)
+                    || resolved == null
+                    || resolved.disposed)
+                {
+                    return false;
+                }
+                coordinator = resolved;
+                return true;
+            }
+        }
+
+        public CharacterSetupResult Select(int slotIndex)
+        {
+            ThrowIfDisposed();
+            if (!IsSlotIndexValid(slotIndex))
+            {
+                return Reject("character-selection-slot-invalid", null);
+            }
+
+            PlayerAccountSnapshot account = accountAuthority.Current;
+            CharacterInstanceSnapshot selected = account.CharacterAt(slotIndex);
+            if (selected == null)
+            {
+                return Reject("character-selection-slot-empty", null);
+            }
+
+            if (activeRuntime != null
+                && !activeRuntime.IsDisposed
+                && activeSlotIndex == slotIndex
+                && activeRuntime.Character != null
+                && activeRuntime.Character.CharacterInstanceStableId
+                    == selected.CharacterInstanceStableId)
+            {
+                return new CharacterSetupResult(
+                    CharacterSetupStatus.Selected,
+                    string.Empty,
+                    account,
+                    selected);
+            }
+
+            if (activeRuntime != null && !activeRuntime.IsDisposed)
+            {
+                CharacterSetupResult persisted = PersistActive(
+                    SwitchSaveOperationId(slotIndex, selected));
+                if (persisted == null || !persisted.Succeeded)
+                {
+                    return Reject(
+                        persisted == null
+                            ? "character-switch-save-result-null"
+                            : "character-switch-save-rejected:"
+                                + persisted.Diagnostic,
+                        selected);
+                }
+                account = accountAuthority.Current;
+                selected = account.CharacterAt(slotIndex);
+                if (selected == null)
+                {
+                    return Reject(
+                        "character-selection-slot-disappeared-after-save",
+                        null);
+                }
+            }
+
+            // The old graph is disposed only after persistence succeeded. It is fully gone
+            // before the target graph factory can construct subscriptions or scene bindings.
+            UnbindActive();
+
+            ICharacterLiveGraph candidate = null;
+            try
+            {
+                candidate = runtimeFactory.CreateRestoreTarget(selected);
+                string graphError;
+                if (!TryValidateGraph(candidate, selected, out graphError))
+                {
+                    DisposeGraph(candidate);
+                    return Reject(graphError, selected);
+                }
+
+                PlayerAccountRestoreResult restored =
+                    restoreCoordinator.Restore(
+                        account,
+                        BuildBindings(account, slotIndex, candidate));
+                if (restored == null || !restored.Succeeded)
+                {
+                    DisposeGraph(candidate);
+                    return Reject(
+                        restored == null
+                            ? "character-restore-result-null"
+                            : "character-restore-rejected:"
+                                + restored.RejectionCode,
+                        selected);
+                }
+
+                candidate.MarkPersisted(selected);
+                activeRuntime = candidate;
+                activeSlotIndex = slotIndex;
+                return new CharacterSetupResult(
+                    CharacterSetupStatus.Selected,
+                    string.Empty,
+                    account,
+                    selected);
+            }
+            catch (Exception exception)
+            {
+                DisposeGraph(candidate);
+                return Reject(
+                    "character-restore-threw:"
+                        + DescribeException(exception),
+                    selected);
+            }
+        }
+
+        public CharacterSetupResult CreateAndSelect(
+            LegacyCharacterProfile profile)
+        {
+            ThrowIfDisposed();
+            if (profile == null)
+            {
+                return Reject("character-create-profile-null", null);
+            }
+            if (accountAuthority.Current.CharacterAt(profile.SlotIndex) != null)
+            {
+                return Reject(
+                    "character-create-target-slot-occupied:"
+                        + profile.SlotIndex.ToString(CultureInfo.InvariantCulture),
+                    accountAuthority.Current.CharacterAt(profile.SlotIndex));
+            }
+
+            IStarterCharacterLiveGraphFactory starterFactory =
+                runtimeFactory as IStarterCharacterLiveGraphFactory;
+            if (starterFactory == null)
+            {
+                return Reject("character-create-starter-factory-missing", null);
+            }
+
+            if (activeRuntime != null && !activeRuntime.IsDisposed)
+            {
+                CharacterSetupResult persisted = PersistActive(
+                    CreateSaveOperationId(profile));
+                if (persisted == null || !persisted.Succeeded)
+                {
+                    return Reject(
+                        persisted == null
+                            ? "character-create-pre-save-result-null"
+                            : "character-create-pre-save-rejected:"
+                                + persisted.Diagnostic,
+                        null);
+                }
+            }
+
+            PlayerAccountSaveStateSnapshot rollback =
+                accountAuthority.ExportSnapshot();
+            ICharacterLiveGraph candidate = null;
+            CharacterInstanceSnapshot createdCharacter = null;
+            bool creationStoreInvoked = false;
+            try
+            {
+                StableId exactCharacterId =
+                    LegacyCharacterProfileMigration.ExactCharacterId(
+                        accountAuthority.Current.AccountStableId,
+                        profile);
+                candidate = starterFactory.CreateStarter(
+                    profile.SlotIndex,
+                    exactCharacterId,
+                    profile.ClassDefinitionStableId,
+                    profile.DisplayName,
+                    profile.LegacyContext);
+
+                IReadOnlyList<SaveComponentSnapshot> components =
+                    PlayerAccountRestoreFlow.ExportComponents(
+                        candidate.SaveAdapters);
+                createdCharacter = new CharacterInstanceSnapshot(
+                    exactCharacterId,
+                    profile.ClassDefinitionStableId,
+                    profile.SlotIndex,
+                    profile.DisplayName,
+                    0L,
+                    components);
+
+                string graphError;
+                if (!TryValidateGraph(
+                    candidate,
+                    createdCharacter,
+                    out graphError))
+                {
+                    RollBackAuthority(rollback);
+                    DisposeGraph(candidate);
+                    return Reject(
+                        "character-create-" + graphError,
+                        createdCharacter);
+                }
+
+                PlayerAccountSaveResult created = accountAuthority.Apply(
+                    PlayerAccountSaveCommand.CreateCharacter(
+                        CreateCharacterOperationId(profile, exactCharacterId),
+                        accountAuthority.Current.Revision,
+                        createdCharacter));
+                if (created == null
+                    || (created.Status != PlayerAccountSaveStatus.Applied
+                        && created.Status
+                            != PlayerAccountSaveStatus.ExactDuplicateNoChange))
+                {
+                    string rollbackError = RollBackAuthority(rollback);
+                    DisposeGraph(candidate);
+                    return Reject(
+                        created == null
+                            ? "character-create-account-result-null"
+                            : "character-create-account-rejected:"
+                                + created.RejectionCode
+                                + SuffixRollback(rollbackError),
+                        createdCharacter);
+                }
+
+                PlayerAccountSnapshot stagedAccount = accountAuthority.Current;
+                CharacterInstanceSnapshot stagedCharacter =
+                    stagedAccount.CharacterAt(profile.SlotIndex);
+                PlayerAccountRestoreResult restored =
+                    restoreCoordinator.Restore(
+                        stagedAccount,
+                        BuildBindings(
+                            stagedAccount,
+                            profile.SlotIndex,
+                            candidate));
+                if (restored == null || !restored.Succeeded)
+                {
+                    string rollbackError = RollBackAuthority(rollback);
+                    DisposeGraph(candidate);
+                    return Reject(
+                        restored == null
+                            ? "character-create-restore-result-null"
+                            : "character-create-restore-rejected:"
+                                + restored.RejectionCode
+                                + SuffixRollback(rollbackError),
+                        createdCharacter);
+                }
+
+                candidate.MarkPersisted(stagedCharacter);
+
+                PlayerAccountStoreResult stored;
+                try
+                {
+                    creationStoreInvoked = true;
+                    stored = saveAccount(stagedAccount);
+                }
+                catch (Exception exception)
+                {
+                    string rollbackError = RollBackCreationDurably(rollback);
+                    DisposeGraph(candidate);
+                    return Reject(
+                        "character-create-store-threw:"
+                            + exception.GetType().Name
+                            + SuffixRollback(rollbackError),
+                        createdCharacter);
+                }
+
+                if (stored == null || !stored.Succeeded || stored.Snapshot == null)
+                {
+                    string rollbackError = RollBackCreationDurably(rollback);
+                    DisposeGraph(candidate);
+                    return Reject(
+                        stored == null
+                            ? "character-create-store-result-null"
+                            : "character-create-store-rejected:"
+                                + stored.RejectionCode
+                                + SuffixRollback(rollbackError),
+                        createdCharacter);
+                }
+
+                CharacterInstanceSnapshot persistedCharacter =
+                    stored.Snapshot.CharacterAt(profile.SlotIndex);
+                if (!SameCharacterIdentity(
+                    persistedCharacter,
+                    createdCharacter))
+                {
+                    string rollbackError = RollBackCreationDurably(rollback);
+                    DisposeGraph(candidate);
+                    return Reject(
+                        "character-create-store-snapshot-mismatch"
+                            + SuffixRollback(rollbackError),
+                        createdCharacter);
+                }
+
+                candidate.MarkPersisted(persistedCharacter);
+                ICharacterLiveGraph previous = activeRuntime;
+                try
+                {
+                    DisposeGraph(previous);
+                }
+                catch (Exception exception)
+                {
+                    string rollbackError = RollBackCreationDurably(rollback);
+                    DisposeGraph(candidate);
+                    return Reject(
+                        "character-create-unbind-threw:"
+                            + exception.GetType().Name
+                            + SuffixRollback(rollbackError),
+                        createdCharacter);
+                }
+
+                activeRuntime = candidate;
+                activeSlotIndex = profile.SlotIndex;
+                candidate = null;
+                return new CharacterSetupResult(
+                    CharacterSetupStatus.Selected,
+                    string.Empty,
+                    stored.Snapshot,
+                    persistedCharacter);
+            }
+            catch (Exception exception)
+            {
+                string rollbackError = creationStoreInvoked
+                    ? RollBackCreationDurably(rollback)
+                    : RollBackAuthority(rollback);
+                DisposeGraph(candidate);
+                return Reject(
+                    "character-create-threw:"
+                        + DescribeException(exception)
+                        + SuffixRollback(rollbackError),
+                    createdCharacter);
+            }
+        }
+
+        public CharacterSetupResult PersistActive(
+            StableId saveOperationStableId)
+        {
+            ThrowIfDisposed();
+            if (saveOperationStableId == null)
+            {
+                return Reject("character-save-operation-id-missing", null);
+            }
+            if (activeRuntime == null
+                || activeRuntime.IsDisposed
+                || !IsSlotIndexValid(activeSlotIndex))
+            {
+                return Reject("character-save-no-active-runtime", null);
+            }
+
+            PlayerAccountSnapshot before = accountAuthority.Current;
+            CharacterInstanceSnapshot beforeCharacter =
+                before.CharacterAt(activeSlotIndex);
+            if (beforeCharacter == null
+                || beforeCharacter.CharacterInstanceStableId
+                    != activeRuntime.Character.CharacterInstanceStableId)
+            {
+                return Reject(
+                    "character-save-active-identity-mismatch",
+                    beforeCharacter);
+            }
+
+            IReadOnlyList<SaveComponentSnapshot> exported;
+            try
+            {
+                exported = PlayerAccountRestoreFlow.ExportComponents(
+                    activeRuntime.SaveAdapters);
+            }
+            catch (Exception exception)
+            {
+                return Reject(
+                    "character-save-export-threw:"
+                        + exception.GetType().Name,
+                    beforeCharacter);
+            }
+
+            var changed = new List<SaveComponentSnapshot>();
+            for (int index = 0; index < exported.Count; index++)
+            {
+                SaveComponentSnapshot component = exported[index];
+                SaveComponentSnapshot existing;
+                if (!beforeCharacter.TryGetComponent(
+                        component.ComponentStableId,
+                        out existing)
+                    || !string.Equals(
+                        existing.Fingerprint,
+                        component.Fingerprint,
+                        StringComparison.Ordinal))
+                {
+                    changed.Add(component);
+                }
+            }
+
+            if (changed.Count == 0)
+            {
+                return new CharacterSetupResult(
+                    CharacterSetupStatus.ExactNoChange,
+                    string.Empty,
+                    before,
+                    beforeCharacter);
+            }
+
+            PlayerAccountSaveStateSnapshot rollback =
+                accountAuthority.ExportSnapshot();
+            changed.Sort((left, right) => string.CompareOrdinal(
+                left.ComponentStableId.ToString(),
+                right.ComponentStableId.ToString()));
+
+            for (int index = 0; index < changed.Count; index++)
+            {
+                SaveComponentSnapshot component = changed[index];
+                PlayerAccountSaveResult applied = accountAuthority.Apply(
+                    PlayerAccountSaveCommand.UpsertCharacterComponent(
+                        ComponentOperationId(
+                            saveOperationStableId,
+                            component,
+                            index),
+                        accountAuthority.Current.Revision,
+                        activeSlotIndex,
+                        beforeCharacter.CharacterInstanceStableId,
+                        component));
+                if (applied == null
+                    || (applied.Status != PlayerAccountSaveStatus.Applied
+                        && applied.Status
+                            != PlayerAccountSaveStatus.ExactDuplicateNoChange))
+                {
+                    string rollbackError;
+                    accountAuthority.TryImport(rollback, out rollbackError);
+                    return Reject(
+                        applied == null
+                            ? "character-save-account-result-null"
+                            : "character-save-account-rejected:"
+                                + applied.RejectionCode
+                                + SuffixRollback(rollbackError),
+                        beforeCharacter);
+                }
+            }
+
+            PlayerAccountStoreResult stored;
+            try
+            {
+                stored = saveAccount(accountAuthority.Current);
+            }
+            catch (Exception exception)
+            {
+                string rollbackError;
+                accountAuthority.TryImport(rollback, out rollbackError);
+                return Reject(
+                    "character-save-store-threw:"
+                        + exception.GetType().Name
+                        + SuffixRollback(rollbackError),
+                    beforeCharacter);
+            }
+
+            if (stored == null || !stored.Succeeded || stored.Snapshot == null)
+            {
+                string rollbackError;
+                accountAuthority.TryImport(rollback, out rollbackError);
+                return Reject(
+                    stored == null
+                        ? "character-save-store-result-null"
+                        : "character-save-store-rejected:"
+                            + stored.RejectionCode
+                            + SuffixRollback(rollbackError),
+                    beforeCharacter);
+            }
+
+            CharacterInstanceSnapshot persisted =
+                stored.Snapshot.CharacterAt(activeSlotIndex);
+            activeRuntime.MarkPersisted(persisted);
+            return new CharacterSetupResult(
+                CharacterSetupStatus.Persisted,
+                string.Empty,
+                stored.Snapshot,
+                persisted);
+        }
+
+        public void UnbindActive()
+        {
+            if (disposed)
+            {
+                return;
+            }
+            DisposeGraph(activeRuntime);
+            activeRuntime = null;
+            activeSlotIndex = -1;
+        }
+
+        public void Dispose()
+        {
+            if (disposed)
+            {
+                return;
+            }
+            UnbindActive();
+            disposed = true;
+            lock (coordinatorGate)
+            {
+                CharacterSetupFlow registered;
+                if (coordinators.TryGetValue(accountAuthority, out registered)
+                    && ReferenceEquals(registered, this))
+                {
+                    coordinators.Remove(accountAuthority);
+                }
+            }
+        }
+
+        private CharacterSetupResult Reject(
+            string diagnostic,
+            CharacterInstanceSnapshot character)
+        {
+            return new CharacterSetupResult(
+                CharacterSetupStatus.Rejected,
+                diagnostic,
+                accountAuthority.Current,
+                character);
+        }
+
+        private static bool TryValidateGraph(
+            ICharacterLiveGraph graph,
+            CharacterInstanceSnapshot selected,
+            out string rejectionCode)
+        {
+            if (graph == null)
+            {
+                rejectionCode = "character-runtime-factory-returned-null";
+                return false;
+            }
+            if (graph.IsDisposed)
+            {
+                rejectionCode = "character-runtime-factory-returned-disposed";
+                return false;
+            }
+            if (graph.Character == null
+                || graph.Character.CharacterInstanceStableId
+                    != selected.CharacterInstanceStableId
+                || graph.Character.ClassDefinitionStableId
+                    != selected.ClassDefinitionStableId
+                || graph.Character.SlotIndex != selected.SlotIndex)
+            {
+                rejectionCode = "character-runtime-factory-identity-mismatch";
+                return false;
+            }
+            if (graph.SaveAdapters == null
+                || graph.SaveAdapters.Any(item => item == null
+                    || item.Definition == null))
+            {
+                rejectionCode = "character-runtime-adapter-null";
+                return false;
+            }
+
+            var ids = new HashSet<StableId>();
+            for (int index = 0; index < graph.SaveAdapters.Count; index++)
+            {
+                if (!ids.Add(
+                    graph.SaveAdapters[index].Definition.ComponentStableId))
+                {
+                    rejectionCode = "character-runtime-adapter-duplicate";
+                    return false;
+                }
+            }
+            for (int index = 0;
+                index < requiredCharacterComponentIds.Count;
+                index++)
+            {
+                StableId required = requiredCharacterComponentIds[index];
+                if (!ids.Contains(required))
+                {
+                    rejectionCode =
+                        "character-runtime-required-adapter-missing:" + required;
+                    return false;
+                }
+                if (!selected.Components.ContainsKey(required))
+                {
+                    rejectionCode =
+                        "character-snapshot-required-component-missing:" + required;
+                    return false;
+                }
+            }
+
+            rejectionCode = string.Empty;
+            return true;
+        }
+
+        private static IReadOnlyList<CharacterSaveRestoreBinding>
+            BuildBindings(
+                PlayerAccountSnapshot account,
+                int selectedSlotIndex,
+                ICharacterLiveGraph selectedGraph)
+        {
+            var bindings = new List<CharacterSaveRestoreBinding>();
+            for (int slotIndex = 0;
+                slotIndex < PlayerAccountSnapshot.CharacterSlotCount;
+                slotIndex++)
+            {
+                CharacterInstanceSnapshot character =
+                    account.CharacterAt(slotIndex);
+                if (character == null)
+                {
+                    continue;
+                }
+                bindings.Add(new CharacterSaveRestoreBinding(
+                    slotIndex,
+                    character.CharacterInstanceStableId,
+                    slotIndex == selectedSlotIndex
+                        ? selectedGraph.SaveAdapters
+                        : Array.Empty<ISaveComponentBridge>()));
+            }
+            return bindings;
+        }
+
+        private StableId SwitchSaveOperationId(
+            int targetSlotIndex,
+            CharacterInstanceSnapshot target)
+        {
+            string material = activeSlotIndex
+                + "|"
+                + activeRuntime.Character.CharacterInstanceStableId
+                + "|"
+                + targetSlotIndex
+                + "|"
+                + target.CharacterInstanceStableId;
+            return DerivedOperationId(
+                "operation.character-switch-save-",
+                material);
+        }
+
+        private StableId CreateSaveOperationId(
+            LegacyCharacterProfile profile)
+        {
+            return DerivedOperationId(
+                "operation.character-create-pre-save-",
+                activeSlotIndex
+                    + "|"
+                    + (activeRuntime == null
+                        ? string.Empty
+                        : activeRuntime.Character.CharacterInstanceStableId.ToString())
+                    + "|"
+                    + profile.SlotIndex.ToString(CultureInfo.InvariantCulture)
+                    + "|"
+                    + profile.SourceFingerprint);
+        }
+
+        private static StableId CreateCharacterOperationId(
+            LegacyCharacterProfile profile,
+            StableId exactCharacterId)
+        {
+            return DerivedOperationId(
+                "operation.character-create-",
+                profile.SlotIndex.ToString(CultureInfo.InvariantCulture)
+                    + "|"
+                    + exactCharacterId
+                    + "|"
+                    + profile.SourceFingerprint);
+        }
+
+        private static StableId ComponentOperationId(
+            StableId saveOperationStableId,
+            SaveComponentSnapshot component,
+            int index)
+        {
+            return DerivedOperationId(
+                "operation.character-component-save-",
+                saveOperationStableId
+                    + "|"
+                    + component.ComponentStableId
+                    + "|"
+                    + component.Fingerprint
+                    + "|"
+                    + index);
+        }
+
+        private static StableId DerivedOperationId(
+            string prefix,
+            string material)
+        {
+            using (SHA256 sha = SHA256.Create())
+            {
+                byte[] digest = sha.ComputeHash(
+                    Encoding.UTF8.GetBytes(material ?? string.Empty));
+                var builder = new StringBuilder(32);
+                for (int offset = 0; offset < 16; offset++)
+                {
+                    builder.Append(digest[offset].ToString("x2"));
+                }
+                return StableId.Parse(prefix + builder);
+            }
+        }
+
+        private string RollBackCreationDurably(
+            PlayerAccountSaveStateSnapshot rollback)
+        {
+            string rollbackError = RollBackAuthority(rollback);
+            if (!string.IsNullOrEmpty(rollbackError))
+            {
+                return rollbackError;
+            }
+
+            try
+            {
+                PlayerAccountStoreResult restored =
+                    saveAccount(accountAuthority.Current);
+                if (restored == null)
+                {
+                    return "durable-rollback-result-null";
+                }
+                if (!restored.Succeeded || restored.Snapshot == null)
+                {
+                    return "durable-rollback-rejected:"
+                        + restored.RejectionCode;
+                }
+                return string.Empty;
+            }
+            catch (Exception exception)
+            {
+                return "durable-rollback-threw:"
+                    + exception.GetType().Name;
+            }
+        }
+
+        private string RollBackAuthority(
+            PlayerAccountSaveStateSnapshot rollback)
+        {
+            string rollbackError;
+            accountAuthority.TryImport(rollback, out rollbackError);
+            return rollbackError;
+        }
+
+        private static bool SameCharacterIdentity(
+            CharacterInstanceSnapshot left,
+            CharacterInstanceSnapshot right)
+        {
+            return left != null
+                && right != null
+                && left.SlotIndex == right.SlotIndex
+                && left.CharacterInstanceStableId
+                    == right.CharacterInstanceStableId
+                && left.ClassDefinitionStableId
+                    == right.ClassDefinitionStableId;
+        }
+
+        private static string DescribeException(Exception exception)
+        {
+            if (exception == null)
+            {
+                return "Exception";
+            }
+
+            Exception root = exception.GetBaseException() ?? exception;
+            string description = exception.GetType().Name;
+            if (!ReferenceEquals(root, exception))
+            {
+                description += "->" + root.GetType().Name;
+            }
+
+            if (string.IsNullOrWhiteSpace(root.Message))
+            {
+                return description;
+            }
+
+            string message = root.Message
+                .Replace('\r', ' ')
+                .Replace('\n', ' ')
+                .Trim();
+            if (message.Length > 256)
+            {
+                message = message.Substring(0, 256);
+            }
+            return description + ":" + message;
+        }
+
+        private static string SuffixRollback(string rollbackError)
+        {
+            return string.IsNullOrEmpty(rollbackError)
+                ? string.Empty
+                : ";account-rollback=" + rollbackError;
+        }
+
+        private static void DisposeGraph(ICharacterLiveGraph graph)
+        {
+            if (graph != null && !graph.IsDisposed)
+            {
+                graph.Dispose();
+            }
+        }
+
+        private static bool IsSlotIndexValid(int slotIndex)
+        {
+            return slotIndex >= 0
+                && slotIndex < PlayerAccountSnapshot.CharacterSlotCount;
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (disposed)
+            {
+                throw new ObjectDisposedException(
+                    nameof(CharacterSetupFlow));
+            }
+        }
+    }
+}

@@ -11,7 +11,7 @@ It consumes:
 - Combat Messages v1 (`VitalMessage`) for terminal combat resolution;
 - Mission Messages v1 (`MissionEventEnvelope` and `RoomClearedEvent`) for durable
   completion;
-- Room Projection v1 (`RoomProjectionIdentity`) for loaded-room identity.
+- Room Projection v1 (`RoomViewIdentity`) for loaded-room identity.
 
 It does **not** implement AI, spawning, scene loading, rewards, persistence, or
 mission state.
@@ -31,7 +31,7 @@ the loaded encounter.
 Room projection + encounter definition
         |
         v
-EncounterRuntimeIdentity
+EncounterLiveIdentity
         |
         v
 Ready --Start--> Active --BeginRetreat--> Retreating
@@ -54,14 +54,14 @@ second source of mission truth.
 
 ## Identity
 
-`EncounterRuntimeIdentity` contains four explicit identities:
+`EncounterLiveIdentity` contains four explicit identities:
 
 | Field | Meaning |
 |---|---|
 | `EncounterId` | Durable encounter/content identity |
 | `RuntimeId` | One loaded runtime instance |
 | `RunId` | Authoritative mission run |
-| `Room` | One loaded `RoomProjectionIdentity` |
+| `Room` | One loaded `RoomViewIdentity` |
 
 Two runtime instances of the same encounter remain distinct. A reload can create
 a new runtime ID without changing the durable encounter ID.

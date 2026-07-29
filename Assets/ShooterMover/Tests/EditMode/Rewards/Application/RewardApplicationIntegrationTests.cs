@@ -29,15 +29,15 @@ namespace ShooterMover.Tests.EditMode.Rewards.Application
         public void RealMoneyAuthorityAppliesExactlyOnce()
         {
             RealFixture fixture = new RealFixture();
-            RewardCommitCommandV1 commit = Commit(
-                Value("grant.money", RewardGrantKindV1.Money, MoneyWalletIdsV1.CurrencyStableId, 31L));
+            RewardCommitCommand commit = Commit(
+                Value("grant.money", RewardGrantKind.Money, MoneyWalletIds.CurrencyStableId, 31L));
             fixture.Service.Commit(commit);
-            RewardClaimCommandV1 claim = fixture.Claim(commit);
+            RewardClaimCommand claim = fixture.Claim(commit);
 
             Assert.That(fixture.Service.Claim(claim).Status,
-                Is.EqualTo(RewardApplicationResultStatusV1.Applied));
+                Is.EqualTo(RewardApplicationResultStatus.Applied));
             Assert.That(fixture.Service.Claim(claim).Status,
-                Is.EqualTo(RewardApplicationResultStatusV1.AlreadyAppliedNoChange));
+                Is.EqualTo(RewardApplicationResultStatus.AlreadyAppliedNoChange));
             Assert.That(fixture.Money.Balance, Is.EqualTo(31L));
             Assert.That(fixture.Money.Sequence, Is.EqualTo(1L));
         }
@@ -46,15 +46,15 @@ namespace ShooterMover.Tests.EditMode.Rewards.Application
         public void RealScrapAuthorityAppliesExactlyOnce()
         {
             RealFixture fixture = new RealFixture();
-            RewardCommitCommandV1 commit = Commit(
-                Value("grant.scrap", RewardGrantKindV1.Scrap, ScrapCurrency, 17L));
+            RewardCommitCommand commit = Commit(
+                Value("grant.scrap", RewardGrantKind.Scrap, ScrapCurrency, 17L));
             fixture.Service.Commit(commit);
-            RewardClaimCommandV1 claim = fixture.Claim(commit);
+            RewardClaimCommand claim = fixture.Claim(commit);
 
             Assert.That(fixture.Service.Claim(claim).Status,
-                Is.EqualTo(RewardApplicationResultStatusV1.Applied));
+                Is.EqualTo(RewardApplicationResultStatus.Applied));
             Assert.That(fixture.Service.Claim(claim).Status,
-                Is.EqualTo(RewardApplicationResultStatusV1.AlreadyAppliedNoChange));
+                Is.EqualTo(RewardApplicationResultStatus.AlreadyAppliedNoChange));
             Assert.That(fixture.Scrap.Balance, Is.EqualTo(17L));
             Assert.That(fixture.Scrap.Sequence, Is.EqualTo(1L));
         }
@@ -64,21 +64,21 @@ namespace ShooterMover.Tests.EditMode.Rewards.Application
         {
             RealFixture fixture = new RealFixture();
             StableId instanceId = Id("strongbox-instance.integration");
-            RewardCommitCommandV1 commit = Commit(
-                RewardGrantApplicationPayloadV1.ForStrongboxes(
-                    RewardGrantV1.Create(
+            RewardCommitCommand commit = Commit(
+                RewardGrantApplicationPayload.ForStrongboxes(
+                    RewardGrant.Create(
                         Id("grant.strongbox"),
-                        RewardGrantKindV1.Strongbox,
+                        RewardGrantKind.Strongbox,
                         Id("strongbox-definition.tier-one"),
                         1L),
                     new[] { instanceId }));
             fixture.Service.Commit(commit);
 
             Assert.That(fixture.Service.Claim(fixture.Claim(commit)).Status,
-                Is.EqualTo(RewardApplicationResultStatusV1.Applied));
-            UniqueHoldingSnapshotV1 holding;
+                Is.EqualTo(RewardApplicationResultStatus.Applied));
+            UniqueHoldingSnapshot holding;
             Assert.That(fixture.Holdings.TryGetUnique(instanceId, out holding), Is.True);
-            Assert.That(holding.RewardKind, Is.EqualTo(RewardGrantKindV1.Strongbox));
+            Assert.That(holding.RewardKind, Is.EqualTo(RewardGrantKind.Strongbox));
         }
 
         [Test]
@@ -91,19 +91,19 @@ namespace ShooterMover.Tests.EditMode.Rewards.Application
                 1,
                 Id("quality.common"),
                 Array.Empty<AugmentInstance>());
-            RewardCommitCommandV1 commit = Commit(
-                RewardGrantApplicationPayloadV1.ForEquipment(
-                    RewardGrantV1.Create(
+            RewardCommitCommand commit = Commit(
+                RewardGrantApplicationPayload.ForEquipment(
+                    RewardGrant.Create(
                         Id("grant.equipment"),
-                        RewardGrantKindV1.EquipmentReference,
+                        RewardGrantKind.EquipmentReference,
                         equipment.DefinitionId,
                         1L),
                     new[] { equipment }));
             fixture.Service.Commit(commit);
 
             Assert.That(fixture.Service.Claim(fixture.Claim(commit)).Status,
-                Is.EqualTo(RewardApplicationResultStatusV1.Applied));
-            UniqueHoldingSnapshotV1 holding;
+                Is.EqualTo(RewardApplicationResultStatus.Applied));
+            UniqueHoldingSnapshot holding;
             Assert.That(fixture.Holdings.TryGetUnique(equipment.InstanceId, out holding), Is.True);
             Assert.That(holding.EquipmentInstance.Fingerprint, Is.EqualTo(equipment.Fingerprint));
         }
@@ -113,14 +113,14 @@ namespace ShooterMover.Tests.EditMode.Rewards.Application
         {
             RealFixture fixture = new RealFixture();
             StableId itemId = Id("misc.integration-widget");
-            RewardCommitCommandV1 commit = Commit(
-                Value("grant.misc", RewardGrantKindV1.Miscellaneous, itemId, 8L));
+            RewardCommitCommand commit = Commit(
+                Value("grant.misc", RewardGrantKind.Miscellaneous, itemId, 8L));
             fixture.Service.Commit(commit);
 
             Assert.That(fixture.Service.Claim(fixture.Claim(commit)).Status,
-                Is.EqualTo(RewardApplicationResultStatusV1.Applied));
+                Is.EqualTo(RewardApplicationResultStatus.Applied));
             Assert.That(fixture.Holdings.GetStackQuantity(
-                RewardGrantKindV1.Miscellaneous,
+                RewardGrantKind.Miscellaneous,
                 itemId), Is.EqualTo(8L));
         }
 
@@ -134,22 +134,22 @@ namespace ShooterMover.Tests.EditMode.Rewards.Application
                 1,
                 Id("quality.common"),
                 Array.Empty<AugmentInstance>());
-            RewardCommitCommandV1 commit = Commit(
-                Value("grant.money", RewardGrantKindV1.Money,
-                    MoneyWalletIdsV1.CurrencyStableId, 40L),
-                RewardGrantApplicationPayloadV1.ForEquipment(
-                    RewardGrantV1.Create(
+            RewardCommitCommand commit = Commit(
+                Value("grant.money", RewardGrantKind.Money,
+                    MoneyWalletIds.CurrencyStableId, 40L),
+                RewardGrantApplicationPayload.ForEquipment(
+                    RewardGrant.Create(
                         Id("grant.equipment"),
-                        RewardGrantKindV1.EquipmentReference,
+                        RewardGrantKind.EquipmentReference,
                         equipment.DefinitionId,
                         1L),
                     new[] { equipment }));
             fixture.Service.Commit(commit);
 
-            RewardApplicationResultV1 result = fixture.Service.Claim(fixture.Claim(commit));
+            RewardApplicationResult result = fixture.Service.Claim(fixture.Claim(commit));
 
             Assert.That(result.Status,
-                Is.EqualTo(RewardApplicationResultStatusV1.ChildAuthorityRejected));
+                Is.EqualTo(RewardApplicationResultStatus.ChildAuthorityRejected));
             Assert.That(fixture.Money.Balance, Is.Zero);
             Assert.That(fixture.Money.Sequence, Is.Zero);
             Assert.That(fixture.Holdings.Sequence, Is.Zero);
@@ -166,65 +166,65 @@ namespace ShooterMover.Tests.EditMode.Rewards.Application
                 Id("quality.common"),
                 Array.Empty<AugmentInstance>());
             StableId boxInstance = Id("strongbox-instance.mixed-integration");
-            RewardCommitCommandV1 commit = Commit(
-                Value("grant.money", RewardGrantKindV1.Money, MoneyWalletIdsV1.CurrencyStableId, 40L),
-                Value("grant.scrap", RewardGrantKindV1.Scrap, ScrapCurrency, 9L),
-                RewardGrantApplicationPayloadV1.ForEquipment(
-                    RewardGrantV1.Create(
+            RewardCommitCommand commit = Commit(
+                Value("grant.money", RewardGrantKind.Money, MoneyWalletIds.CurrencyStableId, 40L),
+                Value("grant.scrap", RewardGrantKind.Scrap, ScrapCurrency, 9L),
+                RewardGrantApplicationPayload.ForEquipment(
+                    RewardGrant.Create(
                         Id("grant.equipment"),
-                        RewardGrantKindV1.EquipmentReference,
+                        RewardGrantKind.EquipmentReference,
                         equipment.DefinitionId,
                         1L),
                     new[] { equipment }),
-                RewardGrantApplicationPayloadV1.ForStrongboxes(
-                    RewardGrantV1.Create(
+                RewardGrantApplicationPayload.ForStrongboxes(
+                    RewardGrant.Create(
                         Id("grant.strongbox"),
-                        RewardGrantKindV1.Strongbox,
+                        RewardGrantKind.Strongbox,
                         Id("strongbox-definition.tier-two"),
                         1L),
                     new[] { boxInstance }));
             fixture.Service.Commit(commit);
 
-            RewardApplicationResultV1 result = fixture.Service.Claim(fixture.Claim(commit));
+            RewardApplicationResult result = fixture.Service.Claim(fixture.Claim(commit));
 
-            Assert.That(result.Status, Is.EqualTo(RewardApplicationResultStatusV1.Applied));
+            Assert.That(result.Status, Is.EqualTo(RewardApplicationResultStatus.Applied));
             Assert.That(fixture.Money.Balance, Is.EqualTo(40L));
             Assert.That(fixture.Scrap.Balance, Is.EqualTo(9L));
-            UniqueHoldingSnapshotV1 holding;
+            UniqueHoldingSnapshot holding;
             Assert.That(fixture.Holdings.TryGetUnique(equipment.InstanceId, out holding), Is.True);
             Assert.That(fixture.Holdings.TryGetUnique(boxInstance, out holding), Is.True);
             Assert.That(fixture.Holdings.Sequence, Is.EqualTo(2L));
         }
 
-        private static RewardGrantApplicationPayloadV1 Value(
+        private static RewardGrantApplicationPayload Value(
             string grantId,
-            RewardGrantKindV1 kind,
+            RewardGrantKind kind,
             StableId contentId,
             long quantity)
         {
-            return RewardGrantApplicationPayloadV1.ForValue(
-                RewardGrantV1.Create(Id(grantId), kind, contentId, quantity));
+            return RewardGrantApplicationPayload.ForValue(
+                RewardGrant.Create(Id(grantId), kind, contentId, quantity));
         }
 
-        private static RewardCommitCommandV1 Commit(
-            params RewardGrantApplicationPayloadV1[] payloads)
+        private static RewardCommitCommand Commit(
+            params RewardGrantApplicationPayload[] payloads)
         {
-            RewardOperationRequestV1 operation = RewardOperationRequestV1.Create(
+            RewardOperationRequest operation = RewardOperationRequest.Create(
                 Id("run.integration"),
                 Id("source-instance.integration"),
                 Id("source-operation.integration"),
                 Id("commitment.integration"),
                 Id("reward-profile.integration"),
                 Hash('c'));
-            var grants = new List<RewardGrantV1>();
+            var grants = new List<RewardGrant>();
             for (int index = 0; index < payloads.Length; index++)
             {
                 grants.Add(payloads[index].Grant);
             }
 
-            return RewardCommitCommandV1.Create(
+            return RewardCommitCommand.Create(
                 operation,
-                RewardResultV1.CreateGrants(
+                RewardResult.CreateGrants(
                     operation.CommitmentStableId,
                     operation.SourceOperationStableId,
                     grants),
@@ -239,7 +239,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Application
 
         private static string Hash(char value)
         {
-            return RewardApplicationCanonicalV1.Fingerprint(value.ToString());
+            return RewardApplication.Fingerprint(value.ToString());
         }
 
         private sealed class RealFixture
@@ -248,32 +248,32 @@ namespace ShooterMover.Tests.EditMode.Rewards.Application
 
             public RealFixture(IEquipmentInstanceValidator validator = null)
             {
-                Money = new MoneyWalletService();
-                Scrap = new ScrapWalletServiceV1(ScrapAuthority, ScrapCurrency);
+                Money = new MoneyWalletActions();
+                Scrap = new ScrapWalletActions(ScrapAuthority, ScrapCurrency);
                 this.validator = validator ?? new AcceptingEquipmentValidator();
-                Holdings = new PlayerHoldingsService(
+                Holdings = new PlayerHoldingsActions(
                     HoldingsAuthority,
                     1000L,
                     this.validator);
-                Service = new RewardApplicationServiceV1(
+                Service = new RewardApplicationActions(
                     RapAuthority,
-                    new MoneyRewardChildAuthorityV1(Money),
-                    new ScrapRewardChildAuthorityV1(Scrap),
-                    new PlayerHoldingsRewardChildAuthorityV1(Holdings, this.validator));
+                    new MoneyRewardChildState(Money),
+                    new ScrapRewardChildState(Scrap),
+                    new PlayerHoldingsRewardChildState(Holdings, this.validator));
             }
 
-            public MoneyWalletService Money { get; }
-            public ScrapWalletServiceV1 Scrap { get; }
-            public PlayerHoldingsService Holdings { get; }
-            public RewardApplicationServiceV1 Service { get; }
+            public MoneyWalletActions Money { get; }
+            public ScrapWalletActions Scrap { get; }
+            public PlayerHoldingsActions Holdings { get; }
+            public RewardApplicationActions Service { get; }
 
-            public RewardClaimCommandV1 Claim(RewardCommitCommandV1 commit)
+            public RewardClaimCommand Claim(RewardCommitCommand commit)
             {
-                return RewardClaimCommandV1.Create(
+                return RewardClaimCommand.Create(
                     Id("claim.integration"),
                     commit.CommitmentStableId,
                     Id("player.integration"),
-                    MoneyWalletIdsV1.AuthorityStableId,
+                    MoneyWalletIds.AuthorityStableId,
                     ScrapAuthority,
                     HoldingsAuthority);
             }

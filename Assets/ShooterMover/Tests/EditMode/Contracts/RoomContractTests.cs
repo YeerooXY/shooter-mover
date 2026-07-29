@@ -17,13 +17,13 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void IdentityAndProjectionKey_AreExplicitDeterministicAndRoomBound()
         {
-            RoomProjectionIdentity identity = Identity(
+            RoomViewIdentity identity = Identity(
                 "room.factory-receiving",
                 "projection.factory-receiving-a");
-            RoomProjectionIdentity equal = Identity(
+            RoomViewIdentity equal = Identity(
                 "room.factory-receiving",
                 "projection.factory-receiving-a");
-            RoomProjectionKey key = Key("room.factory-receiving", 4L);
+            RoomViewKey key = Key("room.factory-receiving", 4L);
 
             Assert.That(identity, Is.EqualTo(equal));
             Assert.That(identity.GetHashCode(), Is.EqualTo(equal.GetHashCode()));
@@ -35,7 +35,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
             Assert.That(key.RunId, Is.EqualTo(Id("run.factory-run-0001")));
             Assert.That(key.Sequence.Value, Is.EqualTo(4L));
 
-            RoomProjectionLifecycle lifecycle = RoomProjectionLifecycle.Create(identity);
+            RoomViewLifecycle lifecycle = RoomViewLifecycle.Create(identity);
             Assert.Throws<ArgumentException>(
                 () => lifecycle.Load(Key("room.factory-cargo-sort", 4L)));
         }
@@ -43,10 +43,10 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void Connection_RequiresCompatibleSocketsAndIsOrderIndependent()
         {
-            RoomProjectionIdentity firstRoom = Identity(
+            RoomViewIdentity firstRoom = Identity(
                 "room.factory-receiving",
                 "projection.factory-receiving-a");
-            RoomProjectionIdentity secondRoom = Identity(
+            RoomViewIdentity secondRoom = Identity(
                 "room.factory-cargo-sort",
                 "projection.factory-cargo-sort-a");
             RoomSocket exit = new RoomSocket(
@@ -88,106 +88,106 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void Lifecycle_RepeatedLoadAndRefreshAreIdempotentAndStaleRefreshIsRejected()
         {
-            RoomProjectionLifecycle unloaded = RoomProjectionLifecycle.Create(
+            RoomViewLifecycle unloaded = RoomViewLifecycle.Create(
                 Identity("room.factory-receiving", "projection.factory-receiving-a"));
-            RoomProjectionKey initialKey = Key("room.factory-receiving", 4L);
-            RoomProjectionKey refreshedKey = Key("room.factory-receiving", 5L);
+            RoomViewKey initialKey = Key("room.factory-receiving", 4L);
+            RoomViewKey refreshedKey = Key("room.factory-receiving", 5L);
 
-            RoomProjectionTransition load = unloaded.Load(initialKey);
-            Assert.That(load.Kind, Is.EqualTo(RoomProjectionTransitionKind.Applied));
-            RoomProjectionLifecycle loaded = load.Next;
+            RoomViewTransition load = unloaded.Load(initialKey);
+            Assert.That(load.Kind, Is.EqualTo(RoomViewTransitionKind.Applied));
+            RoomViewLifecycle loaded = load.Next;
 
-            RoomProjectionTransition repeatedLoad = loaded.Load(initialKey);
-            Assert.That(repeatedLoad.Kind, Is.EqualTo(RoomProjectionTransitionKind.NoChange));
+            RoomViewTransition repeatedLoad = loaded.Load(initialKey);
+            Assert.That(repeatedLoad.Kind, Is.EqualTo(RoomViewTransitionKind.NoChange));
             Assert.That(repeatedLoad.Next, Is.SameAs(loaded));
 
-            RoomProjectionTransition refresh = loaded.Refresh(refreshedKey);
-            Assert.That(refresh.Kind, Is.EqualTo(RoomProjectionTransitionKind.Applied));
-            RoomProjectionLifecycle refreshed = refresh.Next;
+            RoomViewTransition refresh = loaded.Refresh(refreshedKey);
+            Assert.That(refresh.Kind, Is.EqualTo(RoomViewTransitionKind.Applied));
+            RoomViewLifecycle refreshed = refresh.Next;
             Assert.That(refreshed.ActiveKey, Is.EqualTo(refreshedKey));
 
-            RoomProjectionTransition repeatedRefresh = refreshed.Refresh(refreshedKey);
+            RoomViewTransition repeatedRefresh = refreshed.Refresh(refreshedKey);
             Assert.That(
                 repeatedRefresh.Kind,
-                Is.EqualTo(RoomProjectionTransitionKind.NoChange));
+                Is.EqualTo(RoomViewTransitionKind.NoChange));
             Assert.That(repeatedRefresh.Next, Is.SameAs(refreshed));
 
-            RoomProjectionTransition staleRefresh = refreshed.Refresh(initialKey);
+            RoomViewTransition staleRefresh = refreshed.Refresh(initialKey);
             Assert.That(
                 staleRefresh.Rejection,
-                Is.EqualTo(RoomProjectionTransitionRejection.StaleProjectionKey));
+                Is.EqualTo(RoomViewTransitionRejection.StaleProjectionKey));
             Assert.That(staleRefresh.Next, Is.SameAs(refreshed));
         }
 
         [Test]
         public void Lifecycle_ReloadAfterCompletedUnloadRestoresProjectionWithoutDurableState()
         {
-            RoomProjectionLifecycle loaded = RoomProjectionLifecycle.Create(
+            RoomViewLifecycle loaded = RoomViewLifecycle.Create(
                     Identity("room.factory-receiving", "projection.factory-receiving-a"))
                 .Load(Key("room.factory-receiving", 7L))
                 .Next;
-            RoomProjectionLifecycle unloading = loaded.BeginUnload().Next;
-            RoomProjectionLifecycle unloaded = unloading.CompleteUnload().Next;
+            RoomViewLifecycle unloading = loaded.BeginUnload().Next;
+            RoomViewLifecycle unloaded = unloading.CompleteUnload().Next;
 
-            Assert.That(unloaded.Phase, Is.EqualTo(RoomProjectionLifecyclePhase.Unloaded));
+            Assert.That(unloaded.Phase, Is.EqualTo(RoomViewLifecyclePhase.Unloaded));
             Assert.That(unloaded.ActiveKey, Is.Null);
 
-            RoomProjectionKey reloadKey = Key("room.factory-receiving", 7L);
-            RoomProjectionTransition reload = unloaded.Reload(reloadKey);
-            Assert.That(reload.Kind, Is.EqualTo(RoomProjectionTransitionKind.Applied));
-            Assert.That(reload.Next.Phase, Is.EqualTo(RoomProjectionLifecyclePhase.Loaded));
+            RoomViewKey reloadKey = Key("room.factory-receiving", 7L);
+            RoomViewTransition reload = unloaded.Reload(reloadKey);
+            Assert.That(reload.Kind, Is.EqualTo(RoomViewTransitionKind.Applied));
+            Assert.That(reload.Next.Phase, Is.EqualTo(RoomViewLifecyclePhase.Loaded));
             Assert.That(reload.Next.ActiveKey, Is.EqualTo(reloadKey));
 
-            RoomProjectionTransition repeatedReload = reload.Next.Reload(reloadKey);
+            RoomViewTransition repeatedReload = reload.Next.Reload(reloadKey);
             Assert.That(
                 repeatedReload.Kind,
-                Is.EqualTo(RoomProjectionTransitionKind.NoChange));
+                Is.EqualTo(RoomViewTransitionKind.NoChange));
         }
 
         [Test]
         public void Lifecycle_InterruptedUnloadCanResumeIdempotently()
         {
-            RoomProjectionLifecycle loaded = RoomProjectionLifecycle.Create(
+            RoomViewLifecycle loaded = RoomViewLifecycle.Create(
                     Identity("room.factory-receiving", "projection.factory-receiving-a"))
                 .Load(Key("room.factory-receiving", 9L))
                 .Next;
-            RoomProjectionLifecycle unloading = loaded.BeginUnload().Next;
+            RoomViewLifecycle unloading = loaded.BeginUnload().Next;
 
-            Assert.That(unloading.Phase, Is.EqualTo(RoomProjectionLifecyclePhase.Unloading));
-            RoomProjectionTransition resumed = unloading.ResumeAfterInterruptedUnload();
-            Assert.That(resumed.Kind, Is.EqualTo(RoomProjectionTransitionKind.Applied));
-            Assert.That(resumed.Next.Phase, Is.EqualTo(RoomProjectionLifecyclePhase.Loaded));
+            Assert.That(unloading.Phase, Is.EqualTo(RoomViewLifecyclePhase.Unloading));
+            RoomViewTransition resumed = unloading.ResumeAfterInterruptedUnload();
+            Assert.That(resumed.Kind, Is.EqualTo(RoomViewTransitionKind.Applied));
+            Assert.That(resumed.Next.Phase, Is.EqualTo(RoomViewLifecyclePhase.Loaded));
             Assert.That(resumed.Next.ActiveKey, Is.EqualTo(loaded.ActiveKey));
 
-            RoomProjectionTransition repeated = resumed.Next.ResumeAfterInterruptedUnload();
-            Assert.That(repeated.Kind, Is.EqualTo(RoomProjectionTransitionKind.NoChange));
+            RoomViewTransition repeated = resumed.Next.ResumeAfterInterruptedUnload();
+            Assert.That(repeated.Kind, Is.EqualTo(RoomViewTransitionKind.NoChange));
             Assert.That(repeated.Next, Is.SameAs(resumed.Next));
 
-            RoomProjectionTransition invalidCompletion = resumed.Next.CompleteUnload();
+            RoomViewTransition invalidCompletion = resumed.Next.CompleteUnload();
             Assert.That(
                 invalidCompletion.Rejection,
-                Is.EqualTo(RoomProjectionTransitionRejection.InvalidTransition));
+                Is.EqualTo(RoomViewTransitionRejection.InvalidTransition));
         }
 
         [Test]
         public void ProjectionReader_RepresentsUnknownKeysExplicitly()
         {
-            RoomProjectionKey knownKey = Key("room.factory-receiving", 3L);
-            FakeProjectionReader reader = new FakeProjectionReader(
+            RoomViewKey knownKey = Key("room.factory-receiving", 3L);
+            FakeViewReader reader = new FakeViewReader(
                 knownKey,
-                new TestProjection("receiving-ready"));
+                new TestView("receiving-ready"));
 
-            RoomProjectionReadResult<TestProjection> known =
-                reader.Read<TestProjection>(knownKey);
-            RoomProjectionReadResult<TestProjection> unknown =
-                reader.Read<TestProjection>(Key("room.factory-receiving", 4L));
+            RoomViewReadResult<TestView> known =
+                reader.Read<TestView>(knownKey);
+            RoomViewReadResult<TestView> unknown =
+                reader.Read<TestView>(Key("room.factory-receiving", 4L));
 
-            Assert.That(known.Status, Is.EqualTo(RoomProjectionReadStatus.Found));
+            Assert.That(known.Status, Is.EqualTo(RoomViewReadStatus.Found));
             Assert.That(known.HasValue, Is.True);
             Assert.That(known.Value.Name, Is.EqualTo("receiving-ready"));
             Assert.That(
                 unknown.Status,
-                Is.EqualTo(RoomProjectionReadStatus.UnknownKey));
+                Is.EqualTo(RoomViewReadStatus.UnknownKey));
             Assert.That(unknown.HasValue, Is.False);
             Assert.That(unknown.Value, Is.Null);
         }
@@ -195,15 +195,15 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void Services_ReadProjectionAndSubmitMissionMessageWithoutDirectStateMutation()
         {
-            RoomProjectionKey key = Key("room.factory-receiving", 3L);
-            FakeProjectionReader reader = new FakeProjectionReader(
+            RoomViewKey key = Key("room.factory-receiving", 3L);
+            FakeViewReader reader = new FakeViewReader(
                 key,
-                new TestProjection("receiving-ready"));
+                new TestView("receiving-ready"));
             MissionPayloadVersion version = CreateVersion();
             FakeMissionCommandSubmitter submitter = new FakeMissionCommandSubmitter(
                 new MissionSequence(3L),
                 version);
-            RoomProjectionServices services = new RoomProjectionServices(reader, submitter);
+            RoomViewServices services = new RoomViewServices(reader, submitter);
             MissionCommandEnvelope command = new MissionCommandEnvelope(
                 Id("command.clear-room-0001"),
                 Id("run.factory-run-0001"),
@@ -213,8 +213,8 @@ namespace ShooterMover.Tests.EditMode.Contracts
                     Id("room.factory-receiving"),
                     Id("encounter.receiving-wave")));
 
-            RoomProjectionReadResult<TestProjection> projection =
-                services.StateReader.Read<TestProjection>(key);
+            RoomViewReadResult<TestView> projection =
+                services.StateReader.Read<TestView>(key);
             MissionCommandEvaluation evaluation = services.MissionCommands.Submit(command);
 
             Assert.That(projection.HasValue, Is.True);
@@ -226,23 +226,23 @@ namespace ShooterMover.Tests.EditMode.Contracts
         [Test]
         public void TwoAdditiveRooms_MaintainIndependentProjectionLifecycles()
         {
-            RoomProjectionLifecycle first = RoomProjectionLifecycle.Create(
+            RoomViewLifecycle first = RoomViewLifecycle.Create(
                     Identity("room.factory-receiving", "projection.factory-receiving-a"))
                 .Load(Key("room.factory-receiving", 2L))
                 .Next;
-            RoomProjectionLifecycle second = RoomProjectionLifecycle.Create(
+            RoomViewLifecycle second = RoomViewLifecycle.Create(
                     Identity("room.factory-cargo-sort", "projection.factory-cargo-sort-a"))
                 .Load(Key("room.factory-cargo-sort", 2L))
                 .Next;
 
-            RoomProjectionLifecycle firstRefreshed = first
+            RoomViewLifecycle firstRefreshed = first
                 .Refresh(Key("room.factory-receiving", 3L))
                 .Next;
 
             Assert.That(firstRefreshed.Identity.RoomId, Is.Not.EqualTo(second.Identity.RoomId));
             Assert.That(firstRefreshed.ActiveKey.Sequence.Value, Is.EqualTo(3L));
             Assert.That(second.ActiveKey.Sequence.Value, Is.EqualTo(2L));
-            Assert.That(second.Phase, Is.EqualTo(RoomProjectionLifecyclePhase.Loaded));
+            Assert.That(second.Phase, Is.EqualTo(RoomViewLifecyclePhase.Loaded));
         }
 
         [Test]
@@ -250,14 +250,14 @@ namespace ShooterMover.Tests.EditMode.Contracts
         {
             Type[] immutableTypes =
             {
-                typeof(RoomProjectionIdentity),
-                typeof(RoomProjectionKey),
+                typeof(RoomViewIdentity),
+                typeof(RoomViewKey),
                 typeof(RoomSocket),
                 typeof(RoomConnection),
-                typeof(RoomProjectionReadResult<TestProjection>),
-                typeof(RoomProjectionServices),
-                typeof(RoomProjectionLifecycle),
-                typeof(RoomProjectionTransition),
+                typeof(RoomViewReadResult<TestView>),
+                typeof(RoomViewServices),
+                typeof(RoomViewLifecycle),
+                typeof(RoomViewTransition),
             };
 
             foreach (Type type in immutableTypes)
@@ -274,7 +274,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
             }
 
             Assert.That(
-                typeof(IRoomProjectionStateReader).GetMethods()
+                typeof(IRoomViewStateReader).GetMethods()
                     .Select(method => method.Name),
                 Is.EquivalentTo(new[] { "Read" }));
             Assert.That(
@@ -298,7 +298,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
                 "Persist",
                 "Save",
             };
-            string[] serviceMethodNames = typeof(IRoomProjectionStateReader).GetMethods()
+            string[] serviceMethodNames = typeof(IRoomViewStateReader).GetMethods()
                 .Concat(typeof(IRoomMissionCommandSubmitter).GetMethods())
                 .Select(method => method.Name)
                 .ToArray();
@@ -312,19 +312,19 @@ namespace ShooterMover.Tests.EditMode.Contracts
             }
 
             Assert.That(
-                typeof(RoomProjectionIdentity).Assembly.GetReferencedAssemblies()
+                typeof(RoomViewIdentity).Assembly.GetReferencedAssemblies()
                     .Any(name => name.Name.StartsWith("UnityEngine", StringComparison.Ordinal)),
                 Is.False);
         }
 
-        private static RoomProjectionIdentity Identity(string roomId, string projectionId)
+        private static RoomViewIdentity Identity(string roomId, string projectionId)
         {
-            return new RoomProjectionIdentity(Id(roomId), Id(projectionId));
+            return new RoomViewIdentity(Id(roomId), Id(projectionId));
         }
 
-        private static RoomProjectionKey Key(string roomId, long sequence)
+        private static RoomViewKey Key(string roomId, long sequence)
         {
-            return new RoomProjectionKey(
+            return new RoomViewKey(
                 Id("run.factory-run-0001"),
                 Id(roomId),
                 new MissionSequence(sequence));
@@ -342,9 +342,9 @@ namespace ShooterMover.Tests.EditMode.Contracts
             return StableId.Parse(text);
         }
 
-        private sealed class TestProjection
+        private sealed class TestView
         {
-            public TestProjection(string name)
+            public TestView(string name)
             {
                 Name = name;
             }
@@ -352,23 +352,23 @@ namespace ShooterMover.Tests.EditMode.Contracts
             public string Name { get; }
         }
 
-        private sealed class FakeProjectionReader : IRoomProjectionStateReader
+        private sealed class FakeViewReader : IRoomViewStateReader
         {
-            private readonly RoomProjectionKey knownKey;
+            private readonly RoomViewKey knownKey;
             private readonly object value;
 
-            public FakeProjectionReader(RoomProjectionKey knownKey, object value)
+            public FakeViewReader(RoomViewKey knownKey, object value)
             {
                 this.knownKey = knownKey;
                 this.value = value;
             }
 
-            public RoomProjectionReadResult<TProjection> Read<TProjection>(
-                RoomProjectionKey key)
+            public RoomViewReadResult<TProjection> Read<TProjection>(
+                RoomViewKey key)
             {
                 if (!knownKey.Equals(key))
                 {
-                    return RoomProjectionReadResult<TProjection>.Unknown(key);
+                    return RoomViewReadResult<TProjection>.Unknown(key);
                 }
 
                 if (!(value is TProjection))
@@ -377,7 +377,7 @@ namespace ShooterMover.Tests.EditMode.Contracts
                         "The requested projection type does not match the test fixture.");
                 }
 
-                return RoomProjectionReadResult<TProjection>.Found(
+                return RoomViewReadResult<TProjection>.Found(
                     key,
                     (TProjection)value);
             }

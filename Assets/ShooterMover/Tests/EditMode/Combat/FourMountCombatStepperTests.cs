@@ -130,15 +130,15 @@ namespace ShooterMover.Tests.EditMode.Combat
             double[] initialPower,
             bool configuredPower = false)
         {
-            WeaponRuntimeProfile[] profiles = new WeaponRuntimeProfile[FourMountCombatState.MountCount];
+            WeaponLiveProfile[] profiles = new WeaponLiveProfile[FourMountCombatState.MountCount];
             StableId[] weaponIds = new StableId[FourMountCombatState.MountCount];
             StableId[] mountIds = new StableId[FourMountCombatState.MountCount];
             WeaponMountOrigin[] origins = new WeaponMountOrigin[FourMountCombatState.MountCount];
 
             for (int index = 0; index < profiles.Length; index++)
             {
-                profiles[index] = WeaponRuntimeProfile.Create(
-                    WeaponRuntimeProfile.CurrentProfileVersion,
+                profiles[index] = WeaponLiveProfile.Create(
+                    WeaponLiveProfile.CurrentProfileVersion,
                     StableId.Parse("weapon-profile.cb006-slot-" + (index + 1)),
                     cadences[index],
                     1,
@@ -175,7 +175,7 @@ namespace ShooterMover.Tests.EditMode.Combat
         private sealed class Fixture
         {
             public Fixture(
-                WeaponRuntimeProfile[] profiles,
+                WeaponLiveProfile[] profiles,
                 StableId[] weaponIds,
                 StableId[] mountIds,
                 WeaponMountOrigin[] origins,
@@ -190,7 +190,7 @@ namespace ShooterMover.Tests.EditMode.Combat
                 Stepper = stepper;
             }
 
-            public WeaponRuntimeProfile[] Profiles { get; }
+            public WeaponLiveProfile[] Profiles { get; }
             public StableId[] WeaponIds { get; }
             public StableId[] MountIds { get; }
             public WeaponMountOrigin[] Origins { get; }

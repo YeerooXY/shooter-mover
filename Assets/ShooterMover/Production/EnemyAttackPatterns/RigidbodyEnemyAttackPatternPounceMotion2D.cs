@@ -12,7 +12,7 @@ namespace ShooterMover.UnityAdapters.Enemies
     /// frame delta is never accumulated as attack timing authority.
     /// </summary>
     public sealed class RigidbodyEnemyAttackPatternPounceMotion2D :
-        IEnemyAttackPatternPounceMotionV1
+        IEnemyAttackPatternPounceMotion
     {
         private sealed class MotionState
         {
@@ -46,7 +46,7 @@ namespace ShooterMover.UnityAdapters.Enemies
         }
 
         public void Open(
-            EnemyAttackEffectEmissionV1 emission,
+            EnemyAttackEffectEmission emission,
             Vector2 committedOrigin,
             Vector2 committedDirection,
             float lungeDistance)
@@ -85,7 +85,7 @@ namespace ShooterMover.UnityAdapters.Enemies
         }
 
         public void Tick(
-            EnemyAttackEffectEmissionV1 emission,
+            EnemyAttackEffectEmission emission,
             double authoritativeTimeSeconds)
         {
             ValidateEmission(emission);
@@ -115,7 +115,7 @@ namespace ShooterMover.UnityAdapters.Enemies
         }
 
         public void Close(
-            EnemyAttackEffectEmissionV1 emission,
+            EnemyAttackEffectEmission emission,
             bool cancelled)
         {
             if (emission != null)
@@ -130,11 +130,11 @@ namespace ShooterMover.UnityAdapters.Enemies
         }
 
         private static void ValidateEmission(
-            EnemyAttackEffectEmissionV1 emission)
+            EnemyAttackEffectEmission emission)
         {
             if (emission == null
                 || emission.Kind
-                    != EnemyAttackEffectEmissionKindV1.MeleeStrike
+                    != EnemyAttackEffectEmissionKind.MeleeStrike
                 || emission.MeleeStrike == null
                 || emission.MeleeStrike.Pattern.LungeDistance <= 0d)
             {

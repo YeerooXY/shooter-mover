@@ -16,17 +16,17 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
     {
         private CircleCollider2D collectionTrigger;
         private SpriteRenderer spriteRenderer;
-        private RunPickupSnapshotV1 pickup;
-        private RunPickupAuthorityHost2D authorityHost;
+        private RunPickupSnapshot pickup;
+        private RunPickupStateHost2D authorityHost;
         private RunPickupPresenter2D presenter;
-        private IRunRewardPickupAcceptedFeedbackV1 acceptedFeedback;
+        private IRunRewardPickupAcceptedFeedback acceptedFeedback;
         private bool collectionInProgress;
         private bool retired;
         private bool retirementCompleted;
-        private RunPickupCollectionResultV1 lastCollectionResult;
+        private RunPickupCollectionResult lastCollectionResult;
         private string presentationDiagnostic = string.Empty;
 
-        public RunPickupSnapshotV1 Pickup { get { return pickup; } }
+        public RunPickupSnapshot Pickup { get { return pickup; } }
         public StableId PickupStableId
         {
             get { return pickup == null ? null : pickup.PickupStableId; }
@@ -37,19 +37,19 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
             get { return retired && !retirementCompleted; }
         }
         public string PresentationDiagnostic { get { return presentationDiagnostic; } }
-        public RunPickupCollectionResultV1 LastCollectionResult
+        public RunPickupCollectionResult LastCollectionResult
         {
             get { return lastCollectionResult; }
         }
 
         public void Configure(
-            RunPickupSnapshotV1 pickup,
-            RunPickupAuthorityHost2D authorityHost,
+            RunPickupSnapshot pickup,
+            RunPickupStateHost2D authorityHost,
             RunPickupPresenter2D presenter,
-            RunPickupPresentationEntryV1 presentation)
+            RunPickupPresentationEntry presentation)
         {
             if (pickup == null) throw new ArgumentNullException(nameof(pickup));
-            if (pickup.State != RunPickupStateV1.Available)
+            if (pickup.State != RunPickupState.Available)
                 throw new ArgumentException(
                     "Only an available authoritative pickup can be presented.",
                     nameof(pickup));
@@ -89,13 +89,13 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
             BindOptionalPresentation(pickup);
         }
 
-        public RunPickupCollectionResultV1 TryCollect(
+        public RunPickupCollectionResult TryCollect(
             RunPickupCollector2D collector)
         {
             if (pickup == null || authorityHost == null || !authorityHost.IsConfigured)
             {
-                lastCollectionResult = new RunPickupCollectionResultV1(
-                    RunPickupCollectionStatusV1.Rejected,
+                lastCollectionResult = new RunPickupCollectionResult(
+                    RunPickupCollectionStatus.Rejected,
                     null,
                     pickup,
                     null,
@@ -106,8 +106,8 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
                 return lastCollectionResult;
             if (collectionInProgress)
             {
-                return new RunPickupCollectionResultV1(
-                    RunPickupCollectionStatusV1.Rejected,
+                return new RunPickupCollectionResult(
+                    RunPickupCollectionStatus.Rejected,
                     null,
                     pickup,
                     null,
@@ -121,8 +121,8 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
                     out collectorEntity,
                     out collectorParticipant))
             {
-                lastCollectionResult = new RunPickupCollectionResultV1(
-                    RunPickupCollectionStatusV1.UnauthorizedCollector,
+                lastCollectionResult = new RunPickupCollectionResult(
+                    RunPickupCollectionStatus.UnauthorizedCollector,
                     null,
                     pickup,
                     null,
@@ -132,8 +132,8 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
                 return lastCollectionResult;
             }
 
-            var command = new RunPickupCollectionCommandV1(
-                RunPickupIdentityV1.DeriveCollectionOperationStableId(
+            var command = new RunPickupCollectionCommand(
+                RunPickupIdentity.DeriveCollectionOperationStableId(
                     pickup.PickupStableId,
                     collectorEntity,
                     collectorParticipant),
@@ -151,8 +151,8 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
                 try
                 {
                     lastCollectionResult = authorityHost.Authority.Collect(command)
-                        ?? new RunPickupCollectionResultV1(
-                            RunPickupCollectionStatusV1.Rejected,
+                        ?? new RunPickupCollectionResult(
+                            RunPickupCollectionStatus.Rejected,
                             command,
                             pickup,
                             null,
@@ -160,8 +160,8 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
                 }
                 catch (Exception exception)
                 {
-                    lastCollectionResult = new RunPickupCollectionResultV1(
-                        RunPickupCollectionStatusV1.Rejected,
+                    lastCollectionResult = new RunPickupCollectionResult(
+                        RunPickupCollectionStatus.Rejected,
                         command,
                         pickup,
                         null,
@@ -218,16 +218,16 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
                 spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
         }
 
-        private void BindOptionalPresentation(RunPickupSnapshotV1 immutablePickup)
+        private void BindOptionalPresentation(RunPickupSnapshot immutablePickup)
         {
-            IRunRewardPickupProjectionBinderV1 binder = null;
-            IRunRewardPickupAcceptedFeedbackV1 feedback = null;
+            IRunRewardPickupViewBinder binder = null;
+            IRunRewardPickupAcceptedFeedback feedback = null;
             MonoBehaviour[] behaviours = GetComponents<MonoBehaviour>();
             for (int index = 0; index < behaviours.Length; index++)
             {
                 MonoBehaviour behaviour = behaviours[index];
-                IRunRewardPickupProjectionBinderV1 candidateBinder =
-                    behaviour as IRunRewardPickupProjectionBinderV1;
+                IRunRewardPickupViewBinder candidateBinder =
+                    behaviour as IRunRewardPickupViewBinder;
                 if (candidateBinder != null)
                 {
                     if (binder != null && !ReferenceEquals(binder, candidateBinder))
@@ -238,8 +238,8 @@ namespace ShooterMover.UnityAdapters.Rewards.RunPickups
                     binder = candidateBinder;
                 }
 
-                IRunRewardPickupAcceptedFeedbackV1 candidateFeedback =
-                    behaviour as IRunRewardPickupAcceptedFeedbackV1;
+                IRunRewardPickupAcceptedFeedback candidateFeedback =
+                    behaviour as IRunRewardPickupAcceptedFeedback;
                 if (candidateFeedback != null)
                 {
                     if (feedback != null && !ReferenceEquals(feedback, candidateFeedback))

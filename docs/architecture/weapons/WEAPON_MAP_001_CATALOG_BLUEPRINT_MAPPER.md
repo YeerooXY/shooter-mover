@@ -6,7 +6,7 @@ This mapper depends on the immutable modular contracts merged through PR #297. I
 
 ## Authority boundary
 
-`WeaponCatalog` and `WeaponDefinitionData` remain the authored source. The mapper resolves definitions and families through those existing authorities and creates `WeaponBlueprint` without changing the JSON schema, `WeaponRuntimeProfile`, runtime execution, Unity adapters, or production composition.
+`WeaponCatalog` and `WeaponDefinitionData` remain the authored source. The mapper resolves definitions and families through those existing authorities and creates `WeaponBlueprint` without changing the JSON schema, `WeaponLiveProfile`, runtime execution, Unity adapters, or production composition.
 
 The blueprint's `DropMetadataReference` is the exact existing `DefinitionId`. Rarity, weights, appearance/drop levels, acquisition, crafting, planning shares, and other catalog-only metadata therefore remain owned by and resolvable from the current catalog rather than being copied into a second authority.
 
@@ -76,7 +76,7 @@ Mapping returns typed diagnostics instead of substituting defaults. It rejects, 
 
 ## Fractional pierce boundary
 
-Catalog integer pierce maps losslessly through `PierceValue.FromLegacyInteger`. This task does not map blueprints into `WeaponRuntimeProfile`. Any later runtime adapter must use `PierceValue.TryToLegacyInteger` and reject fractional values when the conversion would lose information.
+Catalog integer pierce maps losslessly through `PierceValue.FromLegacyInteger`. This task does not map blueprints into `WeaponLiveProfile`. Any later runtime adapter must use `PierceValue.TryToLegacyInteger` and reject fractional values when the conversion would lose information.
 
 ## Prototype validation policy
 

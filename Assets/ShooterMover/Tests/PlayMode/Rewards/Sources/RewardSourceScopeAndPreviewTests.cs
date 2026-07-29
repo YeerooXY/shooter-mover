@@ -143,13 +143,13 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Sources
         {
             RewardGrantAuthoring money = new RewardGrantAuthoring(
                 "reward-grant.money",
-                RewardGrantKindV1.Money,
+                RewardGrantKind.Money,
                 "currency.money",
                 1L,
                 3L);
             RewardGrantAuthoring scrap = new RewardGrantAuthoring(
                 "reward-grant.scrap",
-                RewardGrantKindV1.Scrap,
+                RewardGrantKind.Scrap,
                 "currency.scrap",
                 2L,
                 4L);

@@ -9,7 +9,7 @@ namespace ShooterMover.Domain.Combat
     /// </summary>
     public sealed class FourMountCombatState
     {
-        public const int MountCount = WeaponRuntimeProfile.SupportedMountCount;
+        public const int MountCount = WeaponLiveProfile.SupportedMountCount;
 
         private readonly WeaponMountState[] mountStates;
         private readonly WeaponPowerBankState[] powerBankStates;
@@ -45,7 +45,7 @@ namespace ShooterMover.Domain.Combat
         }
 
         public static FourMountCombatState Initial(
-            WeaponRuntimeProfile[] profiles,
+            WeaponLiveProfile[] profiles,
             double[] initialPowerUnits)
         {
             ValidateFour(profiles, nameof(profiles));

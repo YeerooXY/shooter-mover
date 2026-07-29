@@ -5,7 +5,7 @@ using UnityEngine;
 namespace ShooterMover.Tests.PlayMode.RunPickups
 {
     public sealed class ThrowingRunPickupAcceptedFeedback2D : MonoBehaviour,
-        IRunRewardPickupAcceptedFeedbackV1
+        IRunRewardPickupAcceptedFeedback
     {
         public bool TryPlayAcceptedCollectionFeedback(
             Transform attractionTarget,

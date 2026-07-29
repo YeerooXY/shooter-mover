@@ -13,9 +13,9 @@
 ## Focused suites
 
 ```text
-Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Missions.Rooms.RoomAccessAuthorityV1Tests -testResults Temp/room-access-001-authority-editmode.xml -logFile Temp/room-access-001-authority-editmode.log
+Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Missions.Rooms.RoomAccessStateTests -testResults Temp/room-access-001-authority-editmode.xml -logFile Temp/room-access-001-authority-editmode.log
 
-Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Missions.Rooms.RoomAccessJsonImporterV1Tests -testResults Temp/room-access-001-json-editmode.xml -logFile Temp/room-access-001-json-editmode.log
+Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Missions.Rooms.RoomAccessJsonImporterTests -testResults Temp/room-access-001-json-editmode.xml -logFile Temp/room-access-001-json-editmode.log
 ```
 
 Do not add `-quit`; Unity test execution exits after `-runTests`.

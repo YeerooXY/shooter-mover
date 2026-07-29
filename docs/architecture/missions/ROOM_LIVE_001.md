@@ -14,7 +14,7 @@ and the handoff boundary for a later controller/scene migration.
 
 ## Authority ownership
 
-`RoomRuntimeAuthorityV1` remains the only authority for:
+`RoomOccupancyState` remains the only authority for:
 
 - authored occupant registration;
 - concrete occupant identities;
@@ -22,24 +22,24 @@ and the handoff boundary for a later controller/scene migration.
 - room-clear state;
 - lifecycle generation and restart reconstruction.
 
-`RoomMissionLayoutV1` remains the room-graph traversal/completion state owner.
+`RoomMissionLayout` remains the room-graph traversal/completion state owner.
 
-`RoomLiveRuntimeAuthorityV1` is the only public mutation boundary coordinating those two
+`RoomFlowState` is the only public mutation boundary coordinating those two
 systems. It does not publicly expose either mutable authority. Consumers receive
-`IRoomLiveRuntimeQueryV1` and immutable projections only.
+`IRoomLiveQuery` and immutable projections only.
 
 The coordinator delegates focused responsibilities to sealed collaborators:
 
-- `RoomOperationJournalV1` — replay and operation-ID conflict handling;
-- `RoomRetainedFactStoreV1` — collected-drop and opened-door facts;
-- `RoomCompletionEvaluatorV1` — configured condition evaluation;
-- `RoomDoorGatePolicyV1` — per-door gate decisions;
-- `RoomTraversalCoordinatorV1` — atomic layout traversal and occupancy activation;
-- `RoomLiveProjectionBuilderV1` — immutable live snapshots.
+- `RoomOperationJournal` — replay and operation-ID conflict handling;
+- `RoomRetainedFactStore` — collected-drop and opened-door facts;
+- `RoomCompletionEvaluator` — configured condition evaluation;
+- `RoomDoorGatePolicy` — per-door gate decisions;
+- `RoomTraversalFlow` — atomic layout traversal and occupancy activation;
+- `RoomLiveViewBuilder` — immutable live snapshots.
 
 ## Authorable definitions
 
-`AuthorableRoomGraphDefinitionV1` is deterministic and engine-independent. Each room
+`AuthorableRoomGraphDefinition` is deterministic and engine-independent. Each room
 contains:
 
 - stable ID and display name;
@@ -57,7 +57,7 @@ prefabs. Unity object references are therefore not persisted as room-state ident
 
 ## Completion, clear, and door semantics
 
-The following facts are intentionally distinct in `RoomLiveRoomProjectionV1`:
+The following facts are intentionally distinct in `RoomLiveRoomView`:
 
 - `IsCleared` — ROOM-RUNTIME-001 reports every blocking occupant terminal;
 - `IsCompleted` — ROOM-001 accepted completion for the current visited room;
@@ -78,14 +78,14 @@ the same room may therefore have different gates.
 
 ## Unity composition and real terminal facts
 
-`RoomRuntimeComposition2D` is a thin command/presentation adapter. It exposes only the
-read-only `IRoomLiveRuntimeQueryV1`, forwards commands through the coordinated authority,
+`RoomLiveSetup2D` is a thin command/presentation adapter. It exposes only the
+read-only `IRoomLiveQuery`, forwards commands through the coordinated authority,
 and delegates object lifecycle to `RoomPresentationScene2D`.
 
 For authored enemy placements, the renderer attaches:
 
 - `EnemyActorTerminalFactSource2D`, which binds generically to a real
-  `IEnemyActor2DAuthority` component or a component exposing one through a public
+  `IEnemyActor2DState` component or a component exposing one through a public
   `Authority` property;
 - `RoomOccupantTerminalRelay2D`, which reads the accepted EN-002 destroyed state,
   verifies that actor identity equals the authored placed-instance identity, and forwards
@@ -101,7 +101,7 @@ rewards, inventory, or pickup truth.
 
 ## Example Level 1 definition
 
-`Level1AuthorableRoomDefinitionV1` demonstrates:
+`Level1AuthorableRoomDefinition` demonstrates:
 
 - Room 1 with one required moving droid and one non-participating prop;
 - a forward door gated by the Room 1 clear condition;
@@ -123,7 +123,7 @@ Exit semantics are authored and are no longer inferred from numeric room order. 
 contract no longer requires a final exit to exist or restricts final exits to one terminal
 room.
 
-The underlying merged `RoomGraphDefinitionV1` currently still requires distinct start
+The underlying merged `RoomGraphDefinition` currently still requires distinct start
 and terminal rooms. That is an inherited ROOM-001 limitation, explicitly documented here
 rather than hidden inside live-room ordering rules. Supporting a true one-room mission
 requires changing ROOM-001 itself and is outside this controller-edit-free task.

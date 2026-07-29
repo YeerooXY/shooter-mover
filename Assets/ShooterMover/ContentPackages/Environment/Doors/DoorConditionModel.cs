@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace ShooterMover.ContentPackages.Environment.Doors
 {
-    public enum DoorConditionComposition
+    public enum DoorConditionSetup
     {
         All = 1,
         Any = 2,
@@ -290,7 +290,7 @@ namespace ShooterMover.ContentPackages.Environment.Doors
         private readonly ReadOnlyCollection<DoorConditionLeafResult> leafResults;
 
         internal DoorConditionEvaluationResult(
-            DoorConditionComposition composition,
+            DoorConditionSetup composition,
             bool isConfigurationValid,
             bool isSatisfied,
             IEnumerable<DoorConditionLeafResult> leafResults,
@@ -305,7 +305,7 @@ namespace ShooterMover.ContentPackages.Environment.Doors
             DiagnosticFingerprint = diagnosticFingerprint ?? string.Empty;
         }
 
-        public DoorConditionComposition Composition { get; }
+        public DoorConditionSetup Composition { get; }
 
         public bool IsConfigurationValid { get; }
 
@@ -324,11 +324,11 @@ namespace ShooterMover.ContentPackages.Environment.Doors
         private readonly ReadOnlyCollection<DoorConditionRequirement> requirements;
 
         public DoorConditionSet(
-            DoorConditionComposition composition,
+            DoorConditionSetup composition,
             IEnumerable<DoorConditionRequirement> requirements)
         {
-            if (composition != DoorConditionComposition.All
-                && composition != DoorConditionComposition.Any)
+            if (composition != DoorConditionSetup.All
+                && composition != DoorConditionSetup.Any)
             {
                 throw new ArgumentOutOfRangeException(nameof(composition));
             }
@@ -355,7 +355,7 @@ namespace ShooterMover.ContentPackages.Environment.Doors
                 new ReadOnlyCollection<DoorConditionRequirement>(copied);
         }
 
-        public DoorConditionComposition Composition { get; }
+        public DoorConditionSetup Composition { get; }
 
         public IReadOnlyList<DoorConditionRequirement> Requirements
         {
@@ -387,7 +387,7 @@ namespace ShooterMover.ContentPackages.Environment.Doors
             }
 
             bool allValid = true;
-            bool aggregate = Composition == DoorConditionComposition.All;
+            bool aggregate = Composition == DoorConditionSetup.All;
             for (int index = 0; index < requirements.Count; index++)
             {
                 DoorConditionLeafResult result = EvaluateLeaf(
@@ -397,7 +397,7 @@ namespace ShooterMover.ContentPackages.Environment.Doors
                 results.Add(result);
                 allValid &= result.IsConfigurationValid;
 
-                if (Composition == DoorConditionComposition.All)
+                if (Composition == DoorConditionSetup.All)
                 {
                     aggregate &= result.IsSatisfied;
                 }

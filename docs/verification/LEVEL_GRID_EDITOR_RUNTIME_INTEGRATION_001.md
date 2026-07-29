@@ -36,16 +36,16 @@ Connect the existing visual Grid V2 editor to the existing playable export, tran
 | Concept | Authority |
 | --- | --- |
 | Topology | `LevelDesignSceneAuthoringRoot2D` hierarchy and room/door/link components |
-| Playable metadata | `LevelGridPlayableMetadataV2` on the selected root |
-| Live authoring validation | `LevelGridAuthoringV2LiveValidation` and existing validators |
-| Playable export | `LevelGridV2PlayableExporter.Export(...)` |
-| V2 compilation | pure `LevelGridV2Compiler` |
-| Runtime compatibility validation | `RoomContentJsonImporterV1` |
-| Generated publication | PR #338 `LevelGridV2AssetCompiler.CompileToAsset(...)` |
+| Playable metadata | `LevelGridPlayableMetadata` on the selected root |
+| Live authoring validation | `LevelGridAuthoringLiveValidation` and existing validators |
+| Playable export | `LevelGridPlayableExporter.Export(...)` |
+| V2 compilation | pure `LevelGridCompiler` |
+| Runtime compatibility validation | `RoomContentJsonImporter` |
+| Generated publication | PR #338 `LevelGridAssetCompiler.CompileToAsset(...)` |
 | Runtime room content | compiled `JsonRoomContentDefinition2D` |
-| Production registration | `ProductionPlayableLevelCatalogV1` |
-| Selected level route | `LevelSelectionRouteContextV1` captured by real Level Selection |
-| Gameplay entry | existing shared `PlayableLevel` scene and `ProductionPlayableLevelControllerV1` |
+| Production registration | `PlayableLevelCatalog` |
+| Selected level route | `LevelSelectionRouteContext` captured by real Level Selection |
+| Gameplay entry | existing shared `PlayableLevel` scene and `PlayableLevelController` |
 
 ### Systems changed
 
@@ -84,7 +84,7 @@ Connect the existing visual Grid V2 editor to the existing playable export, tran
 ### Export
 
 ```csharp
-LevelGridV2PlayableExporter.Export(root, outputRoot)
+LevelGridPlayableExporter.Export(root, outputRoot)
 ```
 
 The menu item and editor workflow both route to this public exporter.
@@ -92,7 +92,7 @@ The menu item and editor workflow both route to this public exporter.
 ### Compilation and publication
 
 ```csharp
-LevelGridV2AssetCompiler.CompileToAsset(
+LevelGridAssetCompiler.CompileToAsset(
     sourceRoot,
     generatedAssetFolder,
     roomContentAssetPath)
@@ -102,7 +102,7 @@ The window owns no TextAsset or ScriptableObject publication writes.
 
 ### Editor extension points
 
-The existing `LevelGridEditorWindowV2` partial-class structure is extended with `LevelGridEditorWindowV2.Playable.cs`. Existing selection, projection, topology operations, live validation, Problems diagnostics, and Undo conventions remain in use.
+The existing `LevelGridEditorWindow` partial-class structure is extended with `LevelGridEditorWindow.Playable.cs`. Existing selection, projection, topology operations, live validation, Problems diagnostics, and Undo conventions remain in use.
 
 ## Transaction boundaries
 
@@ -241,9 +241,9 @@ selected character graph
 + route payload
 + selected mode
 + exact selected level stable ID
-→ LevelSelectionRouteContextV1
+→ LevelSelectionRouteContext
 → shared PlayableLevel scene
-→ ProductionPlayableLevelCatalogV1.TryResolve(exact ID)
+→ PlayableLevelCatalog.TryResolve(exact ID)
 → exact Resource path
 → Resources.Load<JsonRoomContentDefinition2D>
 ```
@@ -256,7 +256,7 @@ No first-entry, Combat Loop, or generic fallback is used.
 
 ### Inherited from selected PR #338
 
-`LevelGridV2AssetCompilerPublicationTests` covers real AssetDatabase and filesystem publication boundaries:
+`LevelGridAssetCompilerPublicationTests` covers real AssetDatabase and filesystem publication boundaries:
 
 - failure before authoritative switch preserves previous bytes/references;
 - failure after replacement rolls back previous bytes/runtime validity;
@@ -267,7 +267,7 @@ No first-entry, Combat Loop, or generic fallback is used.
 
 ### Added by this integration
 
-`LevelGridEditorRuntimeIntegrationV2Tests` covers:
+`LevelGridEditorLiveIntegrationTests` covers:
 
 - undoable metadata addition without fallback selection;
 - exact start-room assignment;

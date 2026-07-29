@@ -246,11 +246,11 @@ namespace ShooterMover.Application.Weapons.Execution
     /// Downstream projectile-emission adapter. Canonical Rockets use only the profile retained by
     /// the emission; transitional area-damage content keeps the legacy unlimited-target request.
     /// </summary>
-    public sealed class ProjectileExplosionResolutionAdapter
+    public sealed class ProjectileExplosionResolutionBridge
     {
         private readonly WeaponExplosionResolver resolver;
 
-        public ProjectileExplosionResolutionAdapter(WeaponExplosionResolver resolver)
+        public ProjectileExplosionResolutionBridge(WeaponExplosionResolver resolver)
         {
             this.resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
         }

@@ -11,7 +11,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
     {
         public DestructiblePropTerminalEvent2D(
             DestructiblePropDestructionResult destruction,
-            DestructiblePropTerminalProvenanceV1 provenance,
+            DestructiblePropTerminalProvenance provenance,
             Vector2 terminalPosition,
             string positionFingerprint)
         {
@@ -29,7 +29,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
         }
 
         public DestructiblePropDestructionResult Destruction { get; }
-        public DestructiblePropTerminalProvenanceV1 Provenance { get; }
+        public DestructiblePropTerminalProvenance Provenance { get; }
         public Vector2 TerminalPosition { get; }
         public string PositionFingerprint { get; }
     }
@@ -48,8 +48,8 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
         private bool initialColliderEnabled;
         private bool initialColliderIsTrigger;
         private DestructiblePropDestroyedCollisionPolicy destroyedCollisionPolicy;
-        private DestructiblePropAuthority authority;
-        private DestructiblePropTerminalProvenanceV1 terminalProvenance;
+        private DestructiblePropDamage authority;
+        private DestructiblePropTerminalProvenance terminalProvenance;
         private bool configured;
         private bool destructionNotificationPublished;
         private int destructionNotificationCount;
@@ -69,7 +69,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             ? null
             : authority.CurrentState;
         public Collider2D BlockingCollider => blockingCollider;
-        public DestructiblePropTerminalProvenanceV1 TerminalProvenance => terminalProvenance;
+        public DestructiblePropTerminalProvenance TerminalProvenance => terminalProvenance;
         public int DestructionNotificationCount => destructionNotificationCount;
         public DestructiblePropDestroyedCollisionPolicy DestroyedCollisionPolicy => destroyedCollisionPolicy;
 
@@ -119,7 +119,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             Collider2D configuredBlockingCollider,
             Renderer[] configuredPresentationRenderers,
             DestructiblePropDestroyedCollisionPolicy configuredDestroyedCollisionPolicy,
-            DestructiblePropTerminalProvenanceV1 configuredTerminalProvenance)
+            DestructiblePropTerminalProvenance configuredTerminalProvenance)
         {
             if (configured)
                 throw new InvalidOperationException("Destructible prop is already configured.");
@@ -143,7 +143,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                 initialRendererEnabled[index] = renderer.enabled;
             }
 
-            authority = new DestructiblePropAuthority(configuredPropId, configuredMaximumHealth);
+            authority = new DestructiblePropDamage(configuredPropId, configuredMaximumHealth);
             blockingCollider = configuredBlockingCollider;
             initialColliderEnabled = blockingCollider.enabled;
             initialColliderIsTrigger = blockingCollider.isTrigger;

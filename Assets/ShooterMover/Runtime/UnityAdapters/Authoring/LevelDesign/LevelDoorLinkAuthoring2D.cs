@@ -50,9 +50,9 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
             get { return travelPolicy; }
         }
 
-        public LevelGridConnectionRecordV2 BuildRecord()
+        public LevelGridConnectionRecord BuildRecord()
         {
-            return new LevelGridConnectionRecordV2(
+            return new LevelGridConnectionRecord(
                 connectionId,
                 sourceRoom == null ? null : sourceRoom.RoomIdText,
                 sourceDoor == null ? null : sourceDoor.DoorIdText,

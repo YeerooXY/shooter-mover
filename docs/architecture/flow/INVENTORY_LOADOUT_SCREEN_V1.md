@@ -19,13 +19,13 @@ SHA because HUB-001 had to merge before INV-002 could start.
 
 ## Read-only holdings projection
 
-`InventoryLoadoutScreenServiceV1` calls
-`IPlayerHoldingsAuthorityV1.ExportSnapshot()` whenever the screen is created or
+`InventoryLoadoutScreenActions` calls
+`IPlayerHoldingsState.ExportSnapshot()` whenever the screen is created or
 refreshed. It projects only unique `EquipmentReference` holdings using the
 holding's concrete instance identity, definition identity, immutable
 `EquipmentInstance`, read-only catalog definition, and catalog validation.
 
-The screen never calls `IPlayerHoldingsAuthorityV1.Apply`. Selection changes only
+The screen never calls `IPlayerHoldingsState.Apply`. Selection changes only
 update a transient draft keyed by concrete instance identity. That draft is not
 inventory truth and cannot create, remove, replace, or transfer holdings.
 
@@ -60,7 +60,7 @@ slots when the selected instances differ.
 
 Current `main` contains INV-001 holdings and immutable equipment instances, but no
 merged persistent loadout-slot authority implementation. INV-002 therefore defines
-`IInventoryLoadoutAuthorityPortV1` as a narrow composition boundary and deliberately
+`IInventoryLoadoutStatePort` as a narrow composition boundary and deliberately
 provides no production in-memory implementation.
 
 The composing authority exposes an immutable complete slot snapshot and atomically
@@ -92,19 +92,19 @@ catalog-valid weapon instances. Armor slots may be empty; non-empty armor slots
 must contain distinct, currently owned, catalog-valid armor instances.
 
 After authority acceptance, the screen creates a new
-`PlayerRouteProfilePayloadV1` with the same character and loadout-profile IDs and
+`PlayerRouteProfilePayload` with the same character and loadout-profile IDs and
 the four ordered confirmed weapon instance IDs. Armor remains in the loadout
 authority projection because HUB payload V1 contains only weapon bindings.
 
 Back/Cancel never calls the loadout authority. It returns the exact incoming
-`PlayerRouteProfilePayloadV1` reference, preserving its fingerprint and ignoring
+`PlayerRouteProfilePayload` reference, preserving its fingerprint and ignoring
 transient draft changes. Terminal input is guarded so repeated Confirm or Back
 cannot dispatch a second mutation or route return.
 
 ## Unity projection
 
-`InventoryLoadoutScreenControllerV1` implements
-`IHubRouteDestinationAdapterV1` for `HubRouteV1.Inventory`. It provides functional
+`InventoryLoadoutScreenController` implements
+`IHubRouteDestinationBridge` for `HubRoute.Inventory`. It provides functional
 code-owned panels and buttons for slots, inventory instances, refresh, unequip,
 confirm, and back. Escape/Backspace and controller East map to Back; Enter and
 controller South map to Confirm.

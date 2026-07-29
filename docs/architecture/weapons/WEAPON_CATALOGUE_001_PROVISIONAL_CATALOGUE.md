@@ -5,12 +5,12 @@
 The production weapon source is:
 
 ```text
-ProductionWeaponCatalogueV1
+WeaponCatalogue
     -> WeaponCatalog
     -> EquipmentCatalog
 ```
 
-`ProductionWeaponCatalogProvider` is a short access point for those two projections. It owns no content and does not seed inventory.
+`WeaponCatalogProvider` is a short access point for those two projections. It owns no content and does not seed inventory.
 
 The deleted starter catalogue is not retained as an alias, fallback, hidden catalogue, or compatibility authority.
 
@@ -32,8 +32,8 @@ The non-Rattler family names and combat values remain provisional.
 Each Mark is authored once as:
 
 ```text
-ProductionWeaponFamilyV1
-    -> ProductionWeaponMarkV1
+WeaponFamily
+    -> WeaponMark
     -> WeaponBlueprint
 ```
 
@@ -61,7 +61,7 @@ Every projected definition is validated for:
 
 ## Character onboarding
 
-New characters enter through `ProductionWeaponOnboardingV1`.
+New characters enter through `LegacyWeaponSetup`.
 
 The policy:
 
@@ -87,7 +87,7 @@ Generated instance IDs are character-local and distinct. Route payloads may carr
 
 The pre-authored weapon set is deleted game content. It is not registered in either production catalogue and is not translated into a current weapon.
 
-`RetiredWeaponSaveMigrationV1` is the isolated decode-and-delete boundary for old save IDs. For each affected character it:
+`RetiredWeaponSaveMigration` is the isolated decode-and-delete boundary for old save IDs. For each affected character it:
 
 - removes retired equipment holdings;
 - clears bindings that no longer point to owned current equipment;

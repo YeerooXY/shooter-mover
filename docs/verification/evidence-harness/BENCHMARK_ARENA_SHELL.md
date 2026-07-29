@@ -24,7 +24,7 @@ reinterpret the evidence marker IDs.
 The fixture consumes, without modifying:
 
 - the UF-006 explicit composition-root lifecycle;
-- the UF-007 `Bootstrap` scene and its one running `BootstrapSceneAdapter`;
+- the UF-007 `Bootstrap` scene and its one running `BootstrapSceneBridge`;
 - the UF-008 additive scene-loading convention; and
 - the EH-002 canonical evidence configuration and strict loader.
 

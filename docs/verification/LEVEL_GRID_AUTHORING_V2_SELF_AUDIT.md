@@ -12,7 +12,7 @@ Track A Phase 1
 ```
 
 It does **not** claim the complete Track A playable milestone. The current
-`RoomContentJsonImporterV1 -> RoomContentBundleV1 -> playable runtime` cutover is
+`RoomContentJsonImporter -> RoomContentBundle -> playable runtime` cutover is
 not part of this PR and remains a required follow-up.
 
 ## Second validation-loop findings and repairs
@@ -60,7 +60,7 @@ Malformed identity files created a similar ambiguity.
 **Original problem:** the first PR description implied Track A completion while
 its `level.json` and generic sidecars were not the current playable importer
 contract. It lacked start/terminal room data, runtime spawn anchors, door object
-and link semantics, and a proven route into `RoomContentBundleV1`.
+and link semantics, and a proven route into `RoomContentBundle`.
 
 **Repair:** the PR was renamed and re-documented as **Phase 1 editor foundation**.
 Exported `level.json` contains:
@@ -81,8 +81,8 @@ The follow-up runtime/compiler PR must prove:
 ```text
 V2 authoring package
 -> existing manifest/layout/enemies/props/decor/encounter contract
--> RoomContentJsonImporterV1
--> RoomContentBundleV1
+-> RoomContentJsonImporter
+-> RoomContentBundle
 -> existing playable room runtime
 ```
 

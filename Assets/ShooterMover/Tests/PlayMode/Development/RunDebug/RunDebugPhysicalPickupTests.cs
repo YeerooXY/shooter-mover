@@ -45,29 +45,29 @@ namespace ShooterMover.Tests.PlayMode.Development.RunDebug
         public IEnumerator PhysicalPickupFlowsThroughRapHoldingsRunAndResults()
         {
             StableId runId = Id("run", "dev-physical");
-            PlayerRouteProfilePayloadV1 route = Route("dev-physical");
+            PlayerRouteProfilePayload route = Route("dev-physical");
             GameplaySceneScope2D scope = CreateScope(runId);
-            PlayerHoldingsService holdings = new PlayerHoldingsService(
+            PlayerHoldingsActions holdings = new PlayerHoldingsActions(
                 Id("authority", "holdings"),
                 9999L,
                 new AcceptingEquipmentValidator());
-            RecordingChildAuthority money =
-                new RecordingChildAuthority(Id("authority", "money"));
-            RecordingChildAuthority scrap =
-                new RecordingChildAuthority(Id("authority", "scrap"));
+            RecordingChildState money =
+                new RecordingChildState(Id("authority", "money"));
+            RecordingChildState scrap =
+                new RecordingChildState(Id("authority", "scrap"));
             var holdingsChild =
-                new PlayerHoldingsRewardChildAuthorityV1(
+                new PlayerHoldingsRewardChildState(
                     holdings,
                     new AcceptingEquipmentValidator());
-            RewardApplicationServiceV1 rap = new RewardApplicationServiceV1(
+            RewardApplicationActions rap = new RewardApplicationActions(
                 Id("authority", "rap"),
                 money,
                 scrap,
                 holdingsChild);
 
             GameObject authorityObject = Track(new GameObject("RAP"));
-            RewardPickupApplicationAuthority2D pickupAuthority =
-                authorityObject.AddComponent<RewardPickupApplicationAuthority2D>();
+            RewardPickupApplicationState2D pickupAuthority =
+                authorityObject.AddComponent<RewardPickupApplicationState2D>();
             pickupAuthority.ConfigureRuntime(
                 rap,
                 money.AuthorityStableId,
@@ -79,7 +79,7 @@ namespace ShooterMover.Tests.PlayMode.Development.RunDebug
             RewardPickupDropFactory2D factory =
                 factoryObject.AddComponent<RewardPickupDropFactory2D>();
             factory.ConfigureRuntime(
-                new RewardGenerationServiceV1(),
+                new RewardGenerationActions(),
                 ProgressionContext.Create(
                     10,
                     10,
@@ -90,23 +90,23 @@ namespace ShooterMover.Tests.PlayMode.Development.RunDebug
                 pickupAuthority,
                 scope);
 
-            StrongboxOpeningSnapshotV1 openings =
-                StrongboxOpeningSnapshotV1.CreateCanonical(
-                    ShooterMover.Domain.Rewards.Strongboxes.StrongboxCanonicalV1.Fingerprint(
+            StrongboxOpeningSnapshot openings =
+                StrongboxOpeningSnapshot.CreateCanonical(
+                    ShooterMover.Domain.Rewards.Strongboxes.Strongbox.Fingerprint(
                         "debug-empty-catalog"),
                     0L,
-                    Array.Empty<ShooterMover.Domain.Rewards.Strongboxes.StrongboxInstanceContextV1>(),
-                    Array.Empty<StrongboxOpeningRecordSnapshotV1>());
-            MissionRunResultAuthorityV1 runAuthority =
-                new MissionRunResultAuthorityV1(
-                    new MissionRunExistingAuthorityPortV1(
+                    Array.Empty<ShooterMover.Domain.Rewards.Strongboxes.StrongboxInstanceContext>(),
+                    Array.Empty<StrongboxOpeningRecordSnapshot>());
+            MissionRunResultState runAuthority =
+                new MissionRunResultState(
+                    new MissionRunExistingStatePort(
                         holdings,
                         delegate { return openings; }));
 
             GameObject bridgeObject = Track(new GameObject("Bridge"));
             RunDebugRewardBridge2D bridge =
                 bridgeObject.AddComponent<RunDebugRewardBridge2D>();
-            MissionResultsSessionV1 routed = null;
+            MissionResultsSession routed = null;
             bridge.ConfigureRuntime(
                 runId,
                 route,
@@ -114,9 +114,9 @@ namespace ShooterMover.Tests.PlayMode.Development.RunDebug
                 delegate { return openings; },
                 runAuthority,
                 factory,
-                delegate(MissionResultsSessionV1 value) { routed = value; });
+                delegate(MissionResultsSession value) { routed = value; });
 
-            RunDebugSpawnBatchResultV1 spawned = bridge.Spawn(
+            RunDebugSpawnBatchResult spawned = bridge.Spawn(
                 bridge.CreateRequest(2, Id("strongbox", "common"), 77UL));
             Assert.That(spawned.Succeeded, Is.True);
             Assert.That(spawned.Snapshot.RequestedCount, Is.EqualTo(2));
@@ -125,17 +125,17 @@ namespace ShooterMover.Tests.PlayMode.Development.RunDebug
             Assert.That(spawned.Snapshot.Boxes[0].InstanceStableId,
                 Is.Not.EqualTo(spawned.Snapshot.Boxes[1].InstanceStableId));
 
-            RunDebugSpawnBatchResultV1 deterministicReplay = bridge.Spawn(
+            RunDebugSpawnBatchResult deterministicReplay = bridge.Spawn(
                 bridge.CreateRequest(2, Id("strongbox", "common"), 77UL));
             Assert.That(
                 deterministicReplay.Status,
-                Is.EqualTo(RunDebugSpawnBatchStatusV1.ExactDuplicateNoChange));
+                Is.EqualTo(RunDebugSpawnBatchStatus.ExactDuplicateNoChange));
             Assert.That(
                 deterministicReplay.Snapshot.Boxes[0].InstanceStableId,
                 Is.EqualTo(spawned.Snapshot.Boxes[0].InstanceStableId));
 
-            RunDebugSpawnRequestV1 conflictingRequest =
-                RunDebugSpawnRequestV1.CreateWithOperation(
+            RunDebugSpawnRequest conflictingRequest =
+                RunDebugSpawnRequest.CreateWithOperation(
                     spawned.Snapshot.Request.OperationStableId,
                     runId,
                     route,
@@ -144,14 +144,14 @@ namespace ShooterMover.Tests.PlayMode.Development.RunDebug
                     78UL);
             Assert.That(
                 bridge.Spawn(conflictingRequest).Status,
-                Is.EqualTo(RunDebugSpawnBatchStatusV1.ConflictingDuplicate));
+                Is.EqualTo(RunDebugSpawnBatchStatus.ConflictingDuplicate));
 
             RewardPickup2D first = FindPickup(
                 factory,
                 spawned.Snapshot.Boxes[0].PickupStableId);
             Assert.That(first, Is.Not.Null);
             first.TryCollect(Id("claimant", "player"));
-            RunDebugSnapshotV1 collected = bridge.RefreshSnapshot();
+            RunDebugSnapshot collected = bridge.RefreshSnapshot();
 
             Assert.That(first.IsCollected, Is.True);
             Assert.That(collected.CollectedCount, Is.EqualTo(1));
@@ -160,10 +160,10 @@ namespace ShooterMover.Tests.PlayMode.Development.RunDebug
                 collected.Boxes[0].InstanceStableId,
                 Is.EqualTo(spawned.Snapshot.Boxes[0].InstanceStableId));
 
-            RunDebugEndResultV1 ended =
-                bridge.EndRun(MissionRunCompletionStateV1.Completed);
-            RunDebugEndResultV1 replay =
-                bridge.EndRun(MissionRunCompletionStateV1.Completed);
+            RunDebugEndResult ended =
+                bridge.EndRun(MissionRunCompletionState.Completed);
+            RunDebugEndResult replay =
+                bridge.EndRun(MissionRunCompletionState.Completed);
 
             Assert.That(ended.Succeeded, Is.True);
             Assert.That(replay, Is.SameAs(ended));
@@ -203,9 +203,9 @@ namespace ShooterMover.Tests.PlayMode.Development.RunDebug
             return value;
         }
 
-        private static PlayerRouteProfilePayloadV1 Route(string suffix)
+        private static PlayerRouteProfilePayload Route(string suffix)
         {
-            return PlayerRouteProfilePayloadV1.Create(
+            return PlayerRouteProfilePayload.Create(
                 Id("character", suffix),
                 Id("loadout", suffix),
                 new[]
@@ -238,12 +238,12 @@ namespace ShooterMover.Tests.PlayMode.Development.RunDebug
             }
         }
 
-        private sealed class RecordingChildAuthority : IRewardChildAuthorityV1
+        private sealed class RecordingChildState : IRewardChildState
         {
-            private readonly Dictionary<StableId, RewardChildGrantCommandV1> applied =
-                new Dictionary<StableId, RewardChildGrantCommandV1>();
+            private readonly Dictionary<StableId, RewardChildGrantCommand> applied =
+                new Dictionary<StableId, RewardChildGrantCommand>();
 
-            public RecordingChildAuthority(StableId authorityStableId)
+            public RecordingChildState(StableId authorityStableId)
             {
                 AuthorityStableId = authorityStableId;
             }
@@ -251,44 +251,44 @@ namespace ShooterMover.Tests.PlayMode.Development.RunDebug
             public StableId AuthorityStableId { get; }
             public long Sequence { get; private set; }
 
-            public RewardAuthorityPreflightResultV1 Preflight(
-                IReadOnlyList<RewardChildGrantCommandV1> commands)
+            public RewardStatePreflightResult Preflight(
+                IReadOnlyList<RewardChildGrantCommand> commands)
             {
-                var facts = new List<RewardAuthorityPreflightFactV1>();
+                var facts = new List<RewardStatePreflightFact>();
                 for (int index = 0; index < commands.Count; index++)
                 {
-                    facts.Add(new RewardAuthorityPreflightFactV1(
+                    facts.Add(new RewardStatePreflightFact(
                         commands[index].TransactionStableId,
                         applied.ContainsKey(commands[index].TransactionStableId)
-                            ? RewardAuthorityAdmissionStatusV1.AlreadyApplied
-                            : RewardAuthorityAdmissionStatusV1.Accepted,
+                            ? RewardStateAdmissionStatus.AlreadyApplied
+                            : RewardStateAdmissionStatus.Accepted,
                         null));
                 }
 
-                return new RewardAuthorityPreflightResultV1(facts);
+                return new RewardStatePreflightResult(facts);
             }
 
-            public RewardChildApplyResultV1 Apply(
-                RewardChildGrantCommandV1 command)
+            public RewardChildApplyResult Apply(
+                RewardChildGrantCommand command)
             {
-                RewardChildGrantCommandV1 prior;
+                RewardChildGrantCommand prior;
                 if (applied.TryGetValue(command.TransactionStableId, out prior))
                 {
                     bool exact = prior.Equals(command);
-                    return new RewardChildApplyResultV1(
+                    return new RewardChildApplyResult(
                         command.TransactionStableId,
                         exact
-                            ? RewardChildApplyStatusV1.ExactDuplicateNoChange
-                            : RewardChildApplyStatusV1.ConflictingDuplicate,
+                            ? RewardChildApplyStatus.ExactDuplicateNoChange
+                            : RewardChildApplyStatus.ConflictingDuplicate,
                         exact,
                         exact ? null : "test-conflict");
                 }
 
                 applied.Add(command.TransactionStableId, command);
                 Sequence++;
-                return new RewardChildApplyResultV1(
+                return new RewardChildApplyResult(
                     command.TransactionStableId,
-                    RewardChildApplyStatusV1.Applied,
+                    RewardChildApplyStatus.Applied,
                     true,
                     null);
             }

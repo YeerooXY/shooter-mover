@@ -8,11 +8,11 @@ The supplied `crafting_screen.png` is copied into the UI subtree as `crafting_sc
 
 ## Authority boundary
 
-The screen consumes `ICraftingPresentationAuthorityPortV1`:
+The screen consumes `ICraftingPresentationStatePort`:
 
 - `ExportSnapshot()` projects the current SCR balance/sequence, INV holdings sequence, CRA recipe catalog, and equipment catalog.
 - `Preview(command)` is read-only and returns the exact immutable `EquipmentInstance` expected for that deterministic command.
-- `Craft(command)` delegates the operation to CRA-001. The provided `CraftingServicePresentationAuthorityPortV1` maps the accepted `CraftingServiceV1` result without spending scrap or granting equipment itself.
+- `Craft(command)` delegates the operation to CRA-001. The provided `CraftingActionsPresentationStatePort` maps the accepted `CraftingActions` result without spending scrap or granting equipment itself.
 
 Production composition must implement preview by running the existing CRA/GEN path against cloned SCR/INV/RAP snapshots, or by another read-only adapter that uses the same accepted generator inputs. Do not reimplement the generation policy in UI code.
 
@@ -34,7 +34,7 @@ Duplicate equipment definitions are not collapsed. Two successful operations may
 
 ## Operation lifecycle
 
-A recipe attempt derives one stable `CraftEquipmentCommandV1` from:
+A recipe attempt derives one stable `CraftEquipmentCommand` from:
 
 - the screen-session identity;
 - recipe identity;
@@ -56,9 +56,9 @@ The authoritative CRA/RAP/SCR/INV composition remains responsible for exactly-on
 
 ## Navigation
 
-`CraftingScreenControllerV1` implements `IHubRouteDestinationAdapterV1` and accepts only `HubRouteV1.Crafting`.
+`CraftingScreenController` implements `IHubRouteDestinationBridge` and accepts only `HubRoute.Crafting`.
 
-Back returns the exact incoming `PlayerRouteProfilePayloadV1` object. It does not rebuild, replace, or mutate the payload. A controller dispatch guard prevents repeated keyboard, gamepad, GUI, or callback input from returning twice.
+Back returns the exact incoming `PlayerRouteProfilePayload` object. It does not rebuild, replace, or mutate the payload. A controller dispatch guard prevents repeated keyboard, gamepad, GUI, or callback input from returning twice.
 
 Revisit creates a fresh presentation service and reads current authority snapshots. No recipe, scrap, or inventory truth is retained locally between visits.
 
@@ -69,7 +69,7 @@ Revisit creates a fresh presentation service and reads current authority snapsho
 A Hub composition root should call:
 
 1. `Configure(...)` with the crafting presentation port, immutable progression context, deterministic identities/seed, and return callback.
-2. `Present(HubRouteV1.Crafting, routePayload)` with the exact current Hub payload.
+2. `Present(HubRoute.Crafting, routePayload)` with the exact current Hub payload.
 
 ## Focused verification
 

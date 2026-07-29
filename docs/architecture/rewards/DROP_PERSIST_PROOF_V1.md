@@ -20,18 +20,18 @@ Tests and Unity execution proof are intentionally deferred to the next iteration
 
 ## Ownership
 
-The shared `RunSessionAggregateV1` remains authoritative for transient mission truth:
+The shared `RunSessionAggregate` remains authoritative for transient mission truth:
 
 > this exact generated child was physically collected in this exact run lifecycle by this exact participant.
 
 Permanent state remains owned by the existing selected-character authorities:
 
-- `MoneyWalletService`;
-- `ScrapWalletServiceV1`;
-- `PlayerHoldingsService`;
-- the character-scoped `RewardApplicationServiceV1`;
-- `StrongboxOpeningServiceV1`;
-- `CharacterCompositionCoordinatorV1` and the existing atomic account store.
+- `MoneyWalletActions`;
+- `ScrapWalletActions`;
+- `PlayerHoldingsActions`;
+- the character-scoped `RewardApplicationActions`;
+- `StrongboxOpeningActions`;
+- `CharacterSetupFlow` and the existing atomic account store.
 
 The transfer layer introduces no replacement wallet, inventory, RAP, BOX, mission-result, Run Session, character, or account-save authority.
 
@@ -45,7 +45,7 @@ Its durable state owns only:
 The only reward source is:
 
 ```text
-RunSessionAggregateV1.ExportCollectedRunRewards()
+RunSessionAggregate.ExportCollectedRunRewards()
 ```
 
 Collision callbacks and UI cannot grant permanent rewards.
@@ -69,7 +69,7 @@ Before invoking the mission-result authority, the final-exit route freezes:
 
 - the complete collected journal;
 - exact concrete `EquipmentInstance` payloads, including level, quality, and augments;
-- exact unopened `StrongboxInstanceContextV1` records;
+- exact unopened `StrongboxInstanceContext` records;
 - generation seed, algorithm, progression context, and event/modifier fingerprint;
 - selected character ID, revision, and fingerprint;
 - current money, scrap, holdings, RAP, BOX, and receipt fingerprints;
@@ -112,7 +112,7 @@ The component uses an explicit deterministic binary/Base64 codec. It stores no r
 
 ## Explicit persistence certainty
 
-`CollectedRunRewardTransferPersistenceStatusV1` distinguishes:
+`CollectedRunRewardTransferPersistenceStatus` distinguishes:
 
 ```text
 RejectedBeforeReplacement
@@ -120,7 +120,7 @@ PreparedAndVerified / PersistedAndVerified / AlreadyPersisted
 DurableStateUncertain
 ```
 
-`RejectedBeforeReplacement` is produced only before `CharacterCompositionCoordinatorV1.PersistActive(...)` is invoked, such as an invalid context, invalid custody transition, or authority conflict.
+`RejectedBeforeReplacement` is produced only before `CharacterSetupFlow.PersistActive(...)` is invoked, such as an invalid context, invalid custody transition, or authority conflict.
 
 Once `PersistActive(...)` has been invoked, the transfer layer never infers certainty from diagnostic text. A thrown callback, null result, rejected result, or exact component mismatch is classified as `DurableStateUncertain` unless the save protocol explicitly proves replacement did not occur.
 
@@ -146,7 +146,7 @@ write temporary candidate
 -> read and validate active file
 ```
 
-`CollectedRunRewardPersistenceExpectationV1` installs exact selected-character component fingerprints into the normal account validator for the duration of `PersistActive(...)`.
+`CollectedRunRewardPersistenceExpectation` installs exact selected-character component fingerprints into the normal account validator for the duration of `PersistActive(...)`.
 
 Prepared custody and final receipt verification therefore occurs:
 
@@ -177,7 +177,7 @@ Rolling live authorities back in this state could create disk-with-rewards / mem
 
 ## Durable Run End classification
 
-`RunSessionAggregateV1.EndWithDurableAcceptance(...)` has four typed outcomes:
+`RunSessionAggregate.EndWithDurableAcceptance(...)` has four typed outcomes:
 
 ```text
 Accepted
@@ -264,7 +264,7 @@ While any terminal transaction is unresolved, player movement, room progression,
 
 ## Flow-level terminal notice
 
-`ProductionCollectedRunRewardTerminalNoticeV1` is attached to the persistent production flow object.
+`CollectedRunRewardTerminalNotice` is attached to the persistent production flow object.
 
 It renders independently of the active scene and contains:
 
@@ -345,7 +345,7 @@ Replay rules:
 
 ## Restart recovery
 
-`ProductionCollectedRunRewardRecoveryV2` scans only durable `Prepared` custody. `AwaitingAcceptedEnd` is never eligible for permanent grants.
+`CollectedRunRewardRecovery` scans only durable `Prepared` custody. `AwaitingAcceptedEnd` is never eligible for permanent grants.
 
 For each recoverable custody record it rebuilds the exact plan, verifies its fingerprint, invokes the normal coordinator, and classifies success, recoverable failure, or fatal uncertainty.
 
@@ -378,7 +378,7 @@ Terminal preparation and durability-uncertain projections set retry eligibility 
 
 ```mermaid
 sequenceDiagram
-    participant Run as RunSessionAggregateV1
+    participant Run as RunSessionAggregate
     participant Result as Mission result authority
     participant Custody as Prepared custody
     participant Notice as Flow-level notice

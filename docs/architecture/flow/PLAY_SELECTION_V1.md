@@ -3,7 +3,7 @@
 ## Purpose
 
 PLAY-001 owns the decision screen between the Hub and Level Selection. It
-preserves the exact immutable `PlayerRouteProfilePayloadV1` supplied by HUB-001
+preserves the exact immutable `PlayerRouteProfilePayload` supplied by HUB-001
 and emits one route intent only after a valid selection.
 
 The screen does not own gameplay startup, level selection, inventory truth,
@@ -18,7 +18,7 @@ V1 defines two content records:
 | `play-mode.solo` | available | Level Selection |
 | `play-mode.multiplayer` | prototype unavailable | none |
 
-Mode metadata is supplied by `PlayModeCatalogDefinitionV1`. The UI iterates the
+Mode metadata is supplied by `PlayModeCatalogDefinition`. The UI iterates the
 catalog rather than embedding mode behavior only in button callbacks. Catalog
 construction rejects null entries, duplicate mode identities, malformed
 identities, available modes without a destination, and unavailable modes with a
@@ -32,11 +32,11 @@ Selecting the available Solo record emits:
 
 - route: `LevelSelection`;
 - selected mode identity: `play-mode.solo`;
-- payload: the exact incoming `PlayerRouteProfilePayloadV1` object;
+- payload: the exact incoming `PlayerRouteProfilePayload` object;
 - payload fingerprint: unchanged.
 
 PLAY-001 does not load a scene or begin gameplay. The LEVELSEL-002 owner consumes
-the emitted route through `IPlaySelectionRouteAdapterV1`.
+the emitted route through `IPlaySelectionRouteBridge`.
 
 ### Multiplayer / co-op placeholder
 

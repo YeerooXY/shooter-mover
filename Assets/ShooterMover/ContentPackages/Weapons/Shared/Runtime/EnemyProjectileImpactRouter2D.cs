@@ -15,8 +15,8 @@ namespace ShooterMover.ContentPackages.Weapons.Shared.Runtime
     {
         public EnemyProjectileDamageBinding2D(
             StableId sourceActorId,
-            CombatHit2DAdapter hitAdapter,
-            ProjectileExecutionPlanAdapter projectileAdapter,
+            CombatHit2DBridge hitAdapter,
+            ProjectileExecutionPlanBridge projectileAdapter,
             double damage)
         {
             if (sourceActorId == null)
@@ -50,9 +50,9 @@ namespace ShooterMover.ContentPackages.Weapons.Shared.Runtime
 
         public StableId SourceActorId { get; }
 
-        public CombatHit2DAdapter HitAdapter { get; }
+        public CombatHit2DBridge HitAdapter { get; }
 
-        public ProjectileExecutionPlanAdapter ProjectileAdapter { get; }
+        public ProjectileExecutionPlanBridge ProjectileAdapter { get; }
 
         public double Damage { get; }
 

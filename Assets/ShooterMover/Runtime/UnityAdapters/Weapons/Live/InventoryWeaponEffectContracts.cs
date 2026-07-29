@@ -80,7 +80,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
         internal static InventoryWeaponEffectProfile From(
             EffectiveWeapon weapon,
-            WeaponRuntimeFiringProfile runtimeProfile)
+            WeaponLiveFiringProfile runtimeProfile)
         {
             if (weapon == null)
             {

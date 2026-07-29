@@ -94,7 +94,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4d1e1de69eb849d6a86b8490af096fa1, type: 3}
   m_Name:
-  m_EditorClassIdentifier: ShooterMover.UI.InventoryLoadout::ShooterMover.UI.InventoryLoadout.InventoryLoadoutScreenControllerV1
+  m_EditorClassIdentifier: ShooterMover.UI.InventoryLoadout::ShooterMover.UI.InventoryLoadout.InventoryLoadoutScreenController
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

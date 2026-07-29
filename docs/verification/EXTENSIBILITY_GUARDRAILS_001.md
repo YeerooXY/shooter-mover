@@ -35,7 +35,7 @@ The Python changed-path audit is stricter: relative to the exact launch SHA it p
 
 ```text
 Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode \
-  -testFilter ShooterMover.Tests.EditMode.Architecture.ExtensibilityGuardrailsV1Tests \
+  -testFilter ShooterMover.Tests.EditMode.Architecture.ExtensibilityGuardrailsTests \
   -testResults artifacts/extensibility-guardrails-001-editmode.xml \
   -logFile artifacts/extensibility-guardrails-001-editmode.log -quit
 ```

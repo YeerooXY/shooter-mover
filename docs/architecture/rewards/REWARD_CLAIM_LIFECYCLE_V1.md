@@ -1,7 +1,7 @@
 # Reward Claim Lifecycle V1
 
 Status: RAP-001 contract and implementation baseline
-Owner: `ShooterMover.Application.Rewards.Application.RewardApplicationServiceV1`
+Owner: `ShooterMover.Application.Rewards.Application.RewardApplicationActions`
 
 ## Authority ownership
 
@@ -15,7 +15,7 @@ RAP-001 is the only authority that owns durable truth between an immutable gener
 - child-resolution facts, terminal application, cancellation, and replay;
 - deterministic export/import of all coordinator facts.
 
-RAP does **not** own balances or inventory. MON-001 remains the money authority, SCR-001 remains the scrap authority, and INV-001 remains the holdings authority. RAP composes them through `IRewardChildAuthorityV1` ports and the real adapters in `RewardApplicationAuthorityAdaptersV1.cs`. Presentation, scenes, pickups, shops, crafting and strongbox-opening surfaces never grant value directly.
+RAP does **not** own balances or inventory. MON-001 remains the money authority, SCR-001 remains the scrap authority, and INV-001 remains the holdings authority. RAP composes them through `IRewardChildState` ports and the real adapters in `RewardApplicationAuthorityAdaptersV1.cs`. Presentation, scenes, pickups, shops, crafting and strongbox-opening surfaces never grant value directly.
 
 ## Lifecycle
 
@@ -59,13 +59,13 @@ RAP's V1 cancellation policy intentionally permits cancellation only before clai
 
 The public command contracts are:
 
-- `RewardCommitCommandV1`
-- `RewardProjectCommandV1`
-- `RewardClaimCommandV1`
-- `RewardRetryClaimCommandV1`
-- `RewardCancelCommandV1`
+- `RewardCommitCommand`
+- `RewardProjectCommand`
+- `RewardClaimCommand`
+- `RewardRetryClaimCommand`
+- `RewardCancelCommand`
 
-Normal domain control flow uses `RewardApplicationResultStatusV1`, including:
+Normal domain control flow uses `RewardApplicationResultStatus`, including:
 
 - `Generated`
 - `Applied`
@@ -91,8 +91,8 @@ Exception text is not used as ordinary domain control flow. An unexpected author
 
 A commitment retains:
 
-- the canonical `RewardOperationRequestV1`;
-- the immutable `RewardResultV1`;
+- the canonical `RewardOperationRequest`;
+- the immutable `RewardResult`;
 - the generator's canonical generation fingerprint;
 - a one-to-one canonical payload for every generated grant;
 - exact strongbox instance identities;
@@ -132,7 +132,7 @@ The derivation inputs include commitment, claim, grant, unit ordinal and destina
 - Reusing a projection identity with different content is a conflict.
 - Repeating the bound claim command is a no-change replay. It does not secretly perform retry work.
 - Reusing a claim identity with different content is a conflict.
-- Retry is explicit through `RewardRetryClaimCommandV1`.
+- Retry is explicit through `RewardRetryClaimCommand`.
 - Claiming an Applied commitment returns the existing terminal fact and never creates child work.
 - Child authority exact duplicates are considered resolved only when the authority's original fact was Applied.
 
@@ -180,7 +180,7 @@ No MonoBehaviour owns commitment state, and RAP performs no scene lookup or sing
 
 ## Snapshot and import
 
-`RewardApplicationSnapshotV1` contains:
+`RewardApplicationSnapshot` contains:
 
 - schema version;
 - RAP authority StableId;

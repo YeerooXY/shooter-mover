@@ -19,31 +19,31 @@ namespace ShooterMover.UI.StrongboxOpening
 
         private readonly List<LootPickupVisual2D> galleryViews =
             new List<LootPickupVisual2D>();
-        private readonly RunLootTotalsPresentationV1 runTotals =
-            new RunLootTotalsPresentationV1(1250L, 84L, 0L);
-        private IReadOnlyList<LootPickupPresentationV1> gallery;
-        private LootRunHudViewV1 runHudView;
-        private OwnedStrongboxGroupsViewV1 ownedGroupsView;
-        private StrongboxRewardCardsViewV1 rewardCardsView;
-        private StrongboxOpeningPresentationViewV1 openingPresentationView;
-        private StrongboxOpeningPresentationResultV1 immutableFixtureResult;
-        private StrongboxOpeningSceneSessionV1 openingSession;
+        private readonly RunLootTotalsPresentation runTotals =
+            new RunLootTotalsPresentation(1250L, 84L, 0L);
+        private IReadOnlyList<LootPickupPresentation> gallery;
+        private LootRunHudView runHudView;
+        private OwnedStrongboxGroupsView ownedGroupsView;
+        private StrongboxRewardCardsView rewardCardsView;
+        private StrongboxOpeningPresentationView openingPresentationView;
+        private StrongboxOpeningPresentationResult immutableFixtureResult;
+        private StrongboxOpeningSceneSession openingSession;
         private IReadOnlyList<StableId> lastOpeningBatch = Array.Empty<StableId>();
         private string lastOpeningTierId = "strongbox-tier.steel";
         private string lastOpeningTierLabel = "Steel";
         private int openCount = 1;
         private bool fastForward;
         private string diagnostic = string.Empty;
-        private DevelopmentPickupAuthorityFixtureV1 pickupFixture;
+        private DevelopmentPickupStateFixture pickupFixture;
         private LootPickupVisual2D pickupFixtureView;
-        private DevelopmentPickupCollectionResultV1 lastPickupResult;
+        private DevelopmentPickupCollectionResult lastPickupResult;
         private GUIStyle titleStyle;
         private GUIStyle headingStyle;
         private GUIStyle bodyStyle;
         private GUIStyle warningStyle;
         private bool initialized;
 
-        public IReadOnlyList<OwnedStrongboxGroupPresentationV1> Groups
+        public IReadOnlyList<OwnedStrongboxGroupPresentation> Groups
         {
             get
             {
@@ -52,7 +52,7 @@ namespace ShooterMover.UI.StrongboxOpening
             }
         }
 
-        public ExactStrongboxSelectionV1 Selection
+        public ExactStrongboxSelection Selection
         {
             get
             {
@@ -61,7 +61,7 @@ namespace ShooterMover.UI.StrongboxOpening
             }
         }
 
-        public StrongboxOpeningPresentationResultV1 ImmutableFixtureResult
+        public StrongboxOpeningPresentationResult ImmutableFixtureResult
         {
             get
             {
@@ -70,7 +70,7 @@ namespace ShooterMover.UI.StrongboxOpening
             }
         }
 
-        public StrongboxOpeningSceneSessionV1 OpeningSession
+        public StrongboxOpeningSceneSession OpeningSession
         {
             get
             {
@@ -80,9 +80,9 @@ namespace ShooterMover.UI.StrongboxOpening
         }
 
         public IReadOnlyList<StableId> LastOpeningBatch { get { return lastOpeningBatch; } }
-        public RunLootTotalsPresentationV1 RunTotals { get { return runTotals; } }
-        public LootRunHudViewV1 RunHudView { get { EnsureInitialized(); return runHudView; } }
-        public OwnedStrongboxGroupsViewV1 OwnedGroupsView
+        public RunLootTotalsPresentation RunTotals { get { return runTotals; } }
+        public LootRunHudView RunHudView { get { EnsureInitialized(); return runHudView; } }
+        public OwnedStrongboxGroupsView OwnedGroupsView
         {
             get
             {
@@ -91,7 +91,7 @@ namespace ShooterMover.UI.StrongboxOpening
             }
         }
 
-        public StrongboxOpeningPresentationViewV1 OpeningPresentationView
+        public StrongboxOpeningPresentationView OpeningPresentationView
         {
             get
             {
@@ -168,7 +168,7 @@ namespace ShooterMover.UI.StrongboxOpening
                 return false;
             }
 
-            OwnedStrongboxGroupPresentationV1 selectedGroup =
+            OwnedStrongboxGroupPresentation selectedGroup =
                 ownedGroupsView.SelectedGroup;
             if (selectedGroup == null)
             {
@@ -209,7 +209,7 @@ namespace ShooterMover.UI.StrongboxOpening
         {
             EnsureInitialized();
             bool skipped =
-                StrongboxPresentationPlaybackV1.SkipToComplete(openingSession);
+                StrongboxPresentationPlayback.SkipToComplete(openingSession);
             if (!skipped)
             {
                 diagnostic = "loot-presentation-skip-not-available";
@@ -234,7 +234,7 @@ namespace ShooterMover.UI.StrongboxOpening
         {
             EnsureInitialized();
             DestroyPickupFixtureView();
-            LootPickupPresentationV1 available = pickupFixture.ExportAvailable();
+            LootPickupPresentation available = pickupFixture.ExportAvailable();
             if (available == null)
             {
                 diagnostic = "development-pickup-fixture-no-available-pickup";
@@ -249,7 +249,7 @@ namespace ShooterMover.UI.StrongboxOpening
             return true;
         }
 
-        public DevelopmentPickupCollectionResultV1 CollectPickupFixture()
+        public DevelopmentPickupCollectionResult CollectPickupFixture()
         {
             EnsureInitialized();
             lastPickupResult = pickupFixture.Collect();

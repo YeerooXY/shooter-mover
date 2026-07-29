@@ -29,16 +29,16 @@ roll in isolation.
 
 | Area | Runtime path exercised | Sample | Assertion |
 |---|---|---:|---|
-| Strongbox levels | `StrongboxPowerBudgetPolicyV1` through `StrongboxEquipmentGenerationResolverV1` | 1,000 opens / 2,000 items | Both below-mean and above-mean results occur inside broad bands; average offset remains near the configured mean. |
+| Strongbox levels | `StrongboxPowerBudgetPolicy` through `StrongboxEquipmentGenerationResolver` | 1,000 opens / 2,000 items | Both below-mean and above-mean results occur inside broad bands; average offset remains near the configured mean. |
 | Strongbox quality | Existing GEN quality selection through the strongbox resolver | 2,000 items | Authored 3:1 common/rare fixture remains inside a 15%–35% rare band. |
 | Duplicate definitions | Independent strongbox equipment slots sampled with replacement | 1,000 two-item opens | Same-definition pairs occur inside a 35%–65% band and are accepted. |
 | Unique instances | Runtime-derived equipment instance IDs | 2,000 items | Every instance ID is unique even when definition IDs repeat. |
 | Augment compensation | `RollItemLevel` plus `RollAugmentSlots` | 2,000 seeded rolls | Below-mean items receive a materially higher mean slot count than above-mean items. |
 | Soft requirements | GEN candidate soft activation with a nominal level of 50 | 100 lower + 100 higher contexts | Generation succeeds at character levels 45 and 55 while respecting the authored item-level range. |
-| Shop rolls | `ShopRuntimeServiceV1.Open` with real GEN inventory generation | 1,000 inventories / 4,000 entries | Two equal-weight definitions remain inside 35%–65%; 3:1 quality weights remain inside 15%–35%; all prices are positive; replay fingerprint is exact. |
-| Crafting gates | `CraftingRecipeV1.ResolveUnlockLevel` and `CraftingServiceV1.Craft` | 1,000 seeds + boundary integration | Unlocks remain reproducible in levels 55–57; each bucket remains inside 20%–46%; one level below is rejected and the exact resolved level crafts successfully. |
-| Augment upgrade costs | `AugmentUpgradeCostPolicyV1.TryCalculateCost` | tiers 1–3, levels 2–10 | Repeated calculations match exactly, costs increase by level, and higher tiers remain more expensive. |
-| Money and scrap | Full `StrongboxOpeningServiceV1` → RAP → wallet authorities | 100 and 1,000 opens | Ordered results and deltas replay exactly; money and scrap means remain inside broad configured-range bands. |
+| Shop rolls | `ShopLiveActions.Open` with real GEN inventory generation | 1,000 inventories / 4,000 entries | Two equal-weight definitions remain inside 35%–65%; 3:1 quality weights remain inside 15%–35%; all prices are positive; replay fingerprint is exact. |
+| Crafting gates | `CraftingRecipe.ResolveUnlockLevel` and `CraftingActions.Craft` | 1,000 seeds + boundary integration | Unlocks remain reproducible in levels 55–57; each bucket remains inside 20%–46%; one level below is rejected and the exact resolved level crafts successfully. |
+| Augment upgrade costs | `AugmentUpgradeCostPolicy.TryCalculateCost` | tiers 1–3, levels 2–10 | Repeated calculations match exactly, costs increase by level, and higher tiers remain more expensive. |
+| Money and scrap | Full `StrongboxOpeningActions` → RAP → wallet authorities | 100 and 1,000 opens | Ordered results and deltas replay exactly; money and scrap means remain inside broad configured-range bands. |
 | Exact replay | Full strongbox opening transaction | one applied open + exact replay | Replay returns `ExactDuplicateNoChange` and changes no wallet, holdings, opening-service, or RAP sequence or balance. |
 
 ## Fixed seeds and tolerance policy

@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Enemies
 {
-    public interface IEnemyAttackPatternMeleeContactReporterV1
+    public interface IEnemyAttackPatternMeleeContactReporter
     {
         void ReportMeleeContact(
             StableId sourceEntityStableId,
@@ -19,7 +19,7 @@ namespace ShooterMover.UnityAdapters.Enemies
     public sealed class EnemyAttackPatternMeleeContact2D : MonoBehaviour
     {
         private StableId sourceEntityStableId;
-        private IEnemyAttackPatternMeleeContactReporterV1 reporter;
+        private IEnemyAttackPatternMeleeContactReporter reporter;
 
         public bool IsConfigured
         {
@@ -32,7 +32,7 @@ namespace ShooterMover.UnityAdapters.Enemies
 
         public void Configure(
             StableId sourceEntityStableId,
-            IEnemyAttackPatternMeleeContactReporterV1 reporter)
+            IEnemyAttackPatternMeleeContactReporter reporter)
         {
             if (sourceEntityStableId == null)
             {
@@ -53,7 +53,7 @@ namespace ShooterMover.UnityAdapters.Enemies
             this.reporter = reporter;
         }
 
-        public void Unconfigure(IEnemyAttackPatternMeleeContactReporterV1 owner)
+        public void Unconfigure(IEnemyAttackPatternMeleeContactReporter owner)
         {
             if (ReferenceEquals(reporter, owner))
             {

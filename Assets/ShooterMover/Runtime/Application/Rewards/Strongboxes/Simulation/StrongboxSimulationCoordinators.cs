@@ -112,11 +112,11 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
     /// Multi-scenario analysis only. Every underlying sample is still produced by the
     /// supplied production gateway; this coordinator owns no loot formulas.
     /// </summary>
-    public sealed class StrongboxSimulationCoordinator
+    public sealed class StrongboxSimulationFlow
     {
         private readonly StrongboxBatchSimulator simulator;
 
-        public StrongboxSimulationCoordinator(StrongboxBatchSimulator simulator = null)
+        public StrongboxSimulationFlow(StrongboxBatchSimulator simulator = null)
         {
             this.simulator = simulator ?? new StrongboxBatchSimulator();
         }
@@ -124,7 +124,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
         public StrongboxSimulationComparison Compare(
             StrongboxSimulationScenario primary,
             StrongboxSimulationScenario comparison,
-            IStrongboxSimulationProductionGateway production)
+            IStrongboxSimulationGateway production)
         {
             ValidateUnconditioned(primary);
             ValidateUnconditioned(comparison);
@@ -161,7 +161,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             StableId strongboxTierId,
             int openingsPerLevel,
             ulong rootSeed,
-            IStrongboxSimulationProductionGateway production,
+            IStrongboxSimulationGateway production,
             StableId equipmentDefinitionId = null,
             StrongboxDiagnosticThresholds thresholds = null)
         {
@@ -198,7 +198,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             IReadOnlyList<StableId> strongboxTierIds,
             int openingsPerTier,
             ulong rootSeed,
-            IStrongboxSimulationProductionGateway production,
+            IStrongboxSimulationGateway production,
             StableId equipmentDefinitionId = null,
             StrongboxDiagnosticThresholds thresholds = null)
         {
@@ -391,18 +391,18 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             IReadOnlyList<StrongboxMetricDifference> metrics)
         {
             var builder = new StringBuilder();
-            StrongboxCanonicalV1.AppendToken(builder, "schema", "strongbox-simulation-comparison-v1");
-            StrongboxCanonicalV1.AppendToken(builder, "primary_report", left.Fingerprint);
-            StrongboxCanonicalV1.AppendToken(builder, "comparison_report", right.Fingerprint);
+            Strongbox.AppendToken(builder, "schema", "strongbox-simulation-comparison-v1");
+            Strongbox.AppendToken(builder, "primary_report", left.Fingerprint);
+            Strongbox.AppendToken(builder, "comparison_report", right.Fingerprint);
             AppendScenario(builder, "primary", primary);
             AppendScenario(builder, "comparison", comparison);
             for (int index = 0; index < metrics.Count; index++)
             {
-                StrongboxCanonicalV1.AppendToken(builder, "metric", metrics[index].MetricId);
-                StrongboxCanonicalV1.AppendToken(builder, "primary_bits", Bits(metrics[index].PrimaryValue));
-                StrongboxCanonicalV1.AppendToken(builder, "comparison_bits", Bits(metrics[index].ComparisonValue));
+                Strongbox.AppendToken(builder, "metric", metrics[index].MetricId);
+                Strongbox.AppendToken(builder, "primary_bits", Bits(metrics[index].PrimaryValue));
+                Strongbox.AppendToken(builder, "comparison_bits", Bits(metrics[index].ComparisonValue));
             }
-            return StrongboxCanonicalV1.Fingerprint(builder.ToString());
+            return Strongbox.Fingerprint(builder.ToString());
         }
 
         private static string BuildSweepFingerprint(
@@ -410,28 +410,28 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             IReadOnlyList<StrongboxSweepEntry> entries)
         {
             var builder = new StringBuilder();
-            StrongboxCanonicalV1.AppendToken(builder, "schema", "strongbox-simulation-sweep-v1");
-            StrongboxCanonicalV1.AppendToken(builder, "mode", mode.ToString());
+            Strongbox.AppendToken(builder, "schema", "strongbox-simulation-sweep-v1");
+            Strongbox.AppendToken(builder, "mode", mode.ToString());
             for (int index = 0; index < entries.Count; index++)
             {
-                StrongboxCanonicalV1.AppendToken(builder, "entry_index", index.ToString(CultureInfo.InvariantCulture));
-                StrongboxCanonicalV1.AppendToken(builder, "entry_level", entries[index].PlayerLevel.ToString(CultureInfo.InvariantCulture));
-                StrongboxCanonicalV1.AppendToken(builder, "entry_tier", entries[index].StrongboxTierId.ToString());
-                StrongboxCanonicalV1.AppendToken(builder, "entry_report", entries[index].Report.Fingerprint);
+                Strongbox.AppendToken(builder, "entry_index", index.ToString(CultureInfo.InvariantCulture));
+                Strongbox.AppendToken(builder, "entry_level", entries[index].PlayerLevel.ToString(CultureInfo.InvariantCulture));
+                Strongbox.AppendToken(builder, "entry_tier", entries[index].StrongboxTierId.ToString());
+                Strongbox.AppendToken(builder, "entry_report", entries[index].Report.Fingerprint);
                 for (int warning = 0; warning < entries[index].Warnings.Count; warning++)
-                    StrongboxCanonicalV1.AppendToken(builder, "entry_warning", entries[index].Warnings[warning]);
+                    Strongbox.AppendToken(builder, "entry_warning", entries[index].Warnings[warning]);
             }
-            return StrongboxCanonicalV1.Fingerprint(builder.ToString());
+            return Strongbox.Fingerprint(builder.ToString());
         }
 
         private static void AppendScenario(StringBuilder builder, string prefix, StrongboxSimulationScenario value)
         {
-            StrongboxCanonicalV1.AppendToken(builder, prefix + "_level", value.PlayerLevel.ToString(CultureInfo.InvariantCulture));
-            StrongboxCanonicalV1.AppendToken(builder, prefix + "_tier", value.StrongboxTierId.ToString());
-            StrongboxCanonicalV1.AppendToken(builder, prefix + "_samples", value.SampleCount.ToString(CultureInfo.InvariantCulture));
-            StrongboxCanonicalV1.AppendToken(builder, prefix + "_seed", value.RootSeed.ToString("x16", CultureInfo.InvariantCulture));
-            StrongboxCanonicalV1.AppendToken(builder, prefix + "_definition", value.EquipmentDefinitionId == null ? string.Empty : value.EquipmentDefinitionId.ToString());
-            StrongboxCanonicalV1.AppendToken(builder, prefix + "_override", value.DiagnosticEligibilityOverride ? "1" : "0");
+            Strongbox.AppendToken(builder, prefix + "_level", value.PlayerLevel.ToString(CultureInfo.InvariantCulture));
+            Strongbox.AppendToken(builder, prefix + "_tier", value.StrongboxTierId.ToString());
+            Strongbox.AppendToken(builder, prefix + "_samples", value.SampleCount.ToString(CultureInfo.InvariantCulture));
+            Strongbox.AppendToken(builder, prefix + "_seed", value.RootSeed.ToString("x16", CultureInfo.InvariantCulture));
+            Strongbox.AppendToken(builder, prefix + "_definition", value.EquipmentDefinitionId == null ? string.Empty : value.EquipmentDefinitionId.ToString());
+            Strongbox.AppendToken(builder, prefix + "_override", value.DiagnosticEligibilityOverride ? "1" : "0");
         }
 
         private static string Bits(double value)

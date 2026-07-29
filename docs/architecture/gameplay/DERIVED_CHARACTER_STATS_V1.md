@@ -4,18 +4,18 @@
 
 `DERIVED-STATS-001` adds one engine-neutral, stateless composition service for permanent character statistics and immutable run-start combat profiles.
 
-The service does not own equipment, augments, skills, account progression, events, or mutable combat state. Existing authorities project their accepted effects into `RuntimeModifierSnapshotV1` and provide their own immutable input fingerprint. The derived layer consumes those projections and never reinterprets subsystem state.
+The service does not own equipment, augments, skills, account progression, events, or mutable combat state. Existing authorities project their accepted effects into `LiveModifierSnapshot` and provide their own immutable input fingerprint. The derived layer consumes those projections and never reinterprets subsystem state.
 
 ## Contracts
 
-- `CharacterBaseStatProfileV1` carries the data-defined class identity, level, authoritative class/level base values, and the source definition fingerprint.
-- `DerivedStatModifierSourceV1` carries one upstream authority fingerprint and its existing `RuntimeModifierSnapshotV1` projection.
-- `DerivedStatPolicyV1` declares defaults, required explicit bases, clamps, and whole-number constraints.
-- `DerivedCharacterStatInputV1` contains permanent character inputs only.
-- `DerivedCharacterStatsSnapshotV1` is the immutable permanent derived snapshot.
-- `RunCombatProfileInputV1` adds run context, event/run modifier sources, and active condition IDs.
-- `RunCombatProfileV1` is the immutable run-start profile.
-- `IDerivedCharacterStatComposerV1` / `DefaultDerivedCharacterStatComposerV1` perform full deterministic recomputation.
+- `CharacterBaseStatProfile` carries the data-defined class identity, level, authoritative class/level base values, and the source definition fingerprint.
+- `DerivedStatModifierSource` carries one upstream authority fingerprint and its existing `LiveModifierSnapshot` projection.
+- `DerivedStatPolicy` declares defaults, required explicit bases, clamps, and whole-number constraints.
+- `DerivedCharacterStatInput` contains permanent character inputs only.
+- `DerivedCharacterStatsSnapshot` is the immutable permanent derived snapshot.
+- `RunCombatProfileInput` adds run context, event/run modifier sources, and active condition IDs.
+- `RunCombatProfile` is the immutable run-start profile.
+- `IDerivedCharacterStatComposer` / `DefaultDerivedCharacterStatComposer` perform full deterministic recomputation.
 
 Derived output is a projection. It must not be persisted as primary character truth.
 
@@ -59,7 +59,7 @@ Dictionary and input enumeration order do not affect fingerprints or values. Eve
 
 ## Policy and failure behavior
 
-`DerivedStatPolicyV1` owns all clamps. The default policy requires explicit class/level bases for maximum health and movement speed, clamps critical chance to `0..1`, resistance channels to `-1..0.95`, capacities to `0..64`, and other quantities to documented broad safety bounds.
+`DerivedStatPolicy` owns all clamps. The default policy requires explicit class/level bases for maximum health and movement speed, clamps critical chance to `0..1`, resistance channels to `-1..0.95`, capacities to `0..64`, and other quantities to documented broad safety bounds.
 
 The calculator fails closed when:
 
@@ -69,7 +69,7 @@ The calculator fails closed when:
 - a permanent character source contains a conditional modifier;
 - a run profile uses a policy different from the policy that produced its character snapshot.
 
-Class-specific skill caps, rank curves, prerequisites, installation rules, and respec authority remain upstream. The derived service consumes the resulting `SkillEffectSnapshotV2` adapter projection and does not recalculate or bypass those rules.
+Class-specific skill caps, rank curves, prerequisites, installation rules, and respec authority remain upstream. The derived service consumes the resulting `SkillEffectSnapshot` adapter projection and does not recalculate or bypass those rules.
 
 ## Lifecycle and caching
 
@@ -90,7 +90,7 @@ Do not poll or recompute these values per frame. Runtime proc evaluation, active
 Focused EditMode filter:
 
 ```text
-ShooterMover.Tests.EditMode.Characters.Stats.DerivedCharacterStatsV1Tests
+ShooterMover.Tests.EditMode.Characters.Stats.DerivedCharacterStatsTests
 ```
 
 Coverage includes deterministic fingerprints, source/input ordering, core stat stacking, event-condition separation, explicit clamping, whole-number capacities, exact equipment fingerprint sensitivity, skill projection consumption, respec rebuilding, conditional-source rejection, and unknown-target failure.

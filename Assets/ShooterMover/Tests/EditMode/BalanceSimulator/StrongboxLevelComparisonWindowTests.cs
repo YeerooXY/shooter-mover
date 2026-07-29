@@ -9,8 +9,8 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
         [Test]
         public void SameTierAndLevelProduceSameQueueFingerprint()
         {
-            var first = new StrongboxLevelQueueEntryV1(1, 1);
-            var replay = new StrongboxLevelQueueEntryV1(1, 1);
+            var first = new StrongboxLevelQueueEntry(1, 1);
+            var replay = new StrongboxLevelQueueEntry(1, 1);
 
             Assert.That(replay.Fingerprint, Is.EqualTo(first.Fingerprint));
             Assert.That(replay.ToCanonicalString(), Is.EqualTo(first.ToCanonicalString()));
@@ -19,8 +19,8 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
         [Test]
         public void SameTierAtDifferentPlayerLevelsProducesDifferentInputIdentity()
         {
-            var levelOne = new StrongboxLevelQueueEntryV1(1, 1);
-            var levelTwo = new StrongboxLevelQueueEntryV1(1, 2);
+            var levelOne = new StrongboxLevelQueueEntry(1, 1);
+            var levelTwo = new StrongboxLevelQueueEntry(1, 2);
 
             Assert.That(levelOne.Tier.TierStableId, Is.EqualTo(levelTwo.Tier.TierStableId));
             Assert.That(levelOne.PlayerLevel, Is.EqualTo(1));
@@ -32,11 +32,11 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
         [Test]
         public void MixedLevelQueuePreservesInsertionOrder()
         {
-            var queue = new List<StrongboxLevelQueueEntryV1>
+            var queue = new List<StrongboxLevelQueueEntry>
             {
-                new StrongboxLevelQueueEntryV1(1, 1),
-                new StrongboxLevelQueueEntryV1(1, 2),
-                new StrongboxLevelQueueEntryV1(11, 50),
+                new StrongboxLevelQueueEntry(1, 1),
+                new StrongboxLevelQueueEntry(1, 2),
+                new StrongboxLevelQueueEntry(11, 50),
             };
 
             Assert.That(queue[0].Tier.TierNumber, Is.EqualTo(1));
@@ -52,7 +52,7 @@ namespace ShooterMover.Editor.BalanceSimulator.Tests
         {
             Assert.Throws<ArgumentOutOfRangeException>(delegate
             {
-                new StrongboxLevelQueueEntryV1(1, -1);
+                new StrongboxLevelQueueEntry(1, -1);
             });
         }
     }

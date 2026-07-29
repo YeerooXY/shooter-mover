@@ -11,7 +11,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
         [Test]
         public void ExportedSnapshotUsesDistinctCommandAndLedgerFingerprintFormats()
         {
-            var wallet = new MoneyWalletService();
+            var wallet = new MoneyWalletActions();
             wallet.Grant(
                 Id("transaction.fingerprint-grant"),
                 Id("operation.fingerprint-grant"),
@@ -37,7 +37,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
         [Test]
         public void ExportedSnapshotRoundTripsAndRetainsAppliedAndRejectedReplayFacts()
         {
-            var source = new MoneyWalletService();
+            var source = new MoneyWalletActions();
             MoneyTransactionCommand grant = MoneyTransactionCommand.CreateGrant(
                 Id("transaction.regression-grant"),
                 Id("operation.regression-grant"),
@@ -55,7 +55,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
                 5L,
                 1L);
             MoneyWalletSnapshot exported = source.CurrentSnapshot;
-            var restored = new MoneyWalletService();
+            var restored = new MoneyWalletActions();
 
             MoneyWalletImportResult imported = restored.ImportSnapshot(exported);
 
@@ -140,7 +140,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
 
         private static MoneyWalletSnapshot CreateSourceSnapshot()
         {
-            var source = new MoneyWalletService();
+            var source = new MoneyWalletActions();
             source.Grant(
                 Id("transaction.regression-source"),
                 Id("operation.regression-source"),
@@ -148,9 +148,9 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
             return source.CurrentSnapshot;
         }
 
-        private static MoneyWalletService CreateTargetWallet()
+        private static MoneyWalletActions CreateTargetWallet()
         {
-            var target = new MoneyWalletService();
+            var target = new MoneyWalletActions();
             target.Grant(
                 Id("transaction.regression-existing"),
                 Id("operation.regression-existing"),
@@ -159,7 +159,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
         }
 
         private static void AssertUnchanged(
-            MoneyWalletService target,
+            MoneyWalletActions target,
             MoneyWalletSnapshot before)
         {
             Assert.That(target.Balance, Is.EqualTo(7L));

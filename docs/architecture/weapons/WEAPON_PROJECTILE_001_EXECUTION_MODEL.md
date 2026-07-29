@@ -88,7 +88,7 @@ effect identity, event/impact ordinal, contact reason, and projectile-specific e
 stream. Canonical Rocket enemy contact suppresses the separate direct-impact emission only when the
 validated Rocket profile produces an executable explosion emission.
 
-`ProjectileExplosionResolutionAdapter` converts canonical Rocket explosion emissions into
+`ProjectileExplosionResolutionBridge` converts canonical Rocket explosion emissions into
 `WeaponExplosionResolutionRequest.ForCanonicalRocket(emission.Profile, ...)`. Transitional positive
 `AreaDamage` emissions retain the old unlimited-target request. Canonical non-Rocket explosion damage
 is not guessed.
@@ -141,17 +141,17 @@ canonical authoring path.
 The live post-scheduler call remains:
 
 ```text
-InventoryBackedWeaponExecutionAdapter.ProjectAcceptedSchedule
-    -> AcceptedEmissionRuntimeAdapter.Adapt(effectiveWeapon, emission)
+InventoryBackedWeaponExecutionBridge.ProjectAcceptedSchedule
+    -> AcceptedEmissionLiveBridge.Adapt(effectiveWeapon, emission)
 ```
 
 For canonical travelling delivery, the adapter calls `ProjectileExecutionProfile.From(effectiveWeapon)`,
 constructs ordered `ProjectileLaunchRequest` values, creates their initial
-`ProjectileLifecycleState`, and carries them as `CanonicalProjectileLaunchEffect` descriptions
+`ProjectileLifecycleState`, and carries them as `ProjectileLaunchEffect` descriptions
 through the existing inventory pending-delivery envelope. The legacy behaviour registry remains
 transitional-only.
 
-The Unity-side sink that turns `CanonicalProjectileLaunchEffect.InitialState` into an instantiated
+The Unity-side sink that turns `ProjectileLaunchEffect.InitialState` into an instantiated
 Unity projectile presentation remains unimplemented in this PR.
 
 ## Projectile kinds

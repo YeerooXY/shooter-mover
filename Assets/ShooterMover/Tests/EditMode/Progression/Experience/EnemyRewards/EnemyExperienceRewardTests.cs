@@ -19,18 +19,18 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
         [Test]
         public void DefaultAuthoring_ResolvesAllKnownEnemiesByLevel()
         {
-            EnemyExperienceRewardCatalogAssetV1 asset =
-                EnemyExperienceRewardCatalogAssetV1.CreateStage1DefaultsRuntime();
+            EnemyExperienceRewardCatalogAsset asset =
+                EnemyExperienceRewardCatalogAsset.CreateStage1DefaultsRuntime();
             try
             {
-                EnemyExperienceRewardCatalogV1 catalog = asset.BuildCatalogOrThrow();
+                EnemyExperienceRewardCatalog catalog = asset.BuildCatalogOrThrow();
 
                 Assert.That(catalog.DefinitionCount, Is.EqualTo(4));
                 for (int index = 0;
-                    index < EnemyExperienceRewardIdsV1.KnownEnemies.Count;
+                    index < EnemyExperienceRewardIds.KnownEnemies.Count;
                     index++)
                 {
-                    StableId enemyId = EnemyExperienceRewardIdsV1.KnownEnemies[index];
+                    StableId enemyId = EnemyExperienceRewardIds.KnownEnemies[index];
                     long levelOne;
                     long levelFifty;
                     long levelOneHundred;
@@ -52,29 +52,29 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
         public void Validation_RejectsNegativeAndPermitsZeroReward()
         {
             Assert.Throws<ArgumentOutOfRangeException>(() =>
-                new EnemyExperienceRewardBandV1(1, 100, -1L));
+                new EnemyExperienceRewardBand(1, 100, -1L));
 
-            PlayerExperienceAuthorityV1 authority = CreateAuthority();
-            var catalog = new EnemyExperienceRewardCatalogV1(
+            PlayerExperienceState authority = CreateAuthority();
+            var catalog = new EnemyExperienceRewardCatalog(
                 new[]
                 {
-                    CreateDefinition(EnemyExperienceRewardIdsV1.PursuerDrone, 0L),
+                    CreateDefinition(EnemyExperienceRewardIds.PursuerDrone, 0L),
                 });
-            var service = new EnemyExperienceRewardServiceV1(authority, catalog);
+            var service = new EnemyExperienceRewardActions(authority, catalog);
             EnemyDestroyedNotification destruction = CreateDestruction(
                 StableId.Parse("enemy-instance.zero-reward"),
-                EnemyExperienceRewardIdsV1.PursuerDrone,
+                EnemyExperienceRewardIds.PursuerDrone,
                 StableId.Parse("enemy-death.zero-reward"));
 
-            EnemyExperienceRewardFactV1 result = service.ProcessDestruction(
+            EnemyExperienceRewardFact result = service.ProcessDestruction(
                 StableId.Parse("run.zero-reward"),
-                EnemyExperienceRewardIdsV1.PursuerDrone,
+                EnemyExperienceRewardIds.PursuerDrone,
                 1,
                 destruction);
 
             Assert.That(
                 result.Status,
-                Is.EqualTo(EnemyExperienceRewardStatusV1.ZeroRewardNoChange));
+                Is.EqualTo(EnemyExperienceRewardStatus.ZeroRewardNoChange));
             Assert.That(result.SourceOperationStableId, Is.Not.Null);
             Assert.That(authority.CurrentState.CumulativeExperience, Is.Zero);
             Assert.That(authority.CurrentSnapshot.Sequence, Is.Zero);
@@ -83,42 +83,42 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
         [Test]
         public void DuplicateAndConflictingDeath_AwardExactlyOnce()
         {
-            PlayerExperienceAuthorityV1 authority = CreateAuthority();
-            var firstService = new EnemyExperienceRewardServiceV1(
+            PlayerExperienceState authority = CreateAuthority();
+            var firstService = new EnemyExperienceRewardActions(
                 authority,
-                CreateCatalog(EnemyExperienceRewardIdsV1.BlasterTurret, 100L));
+                CreateCatalog(EnemyExperienceRewardIds.BlasterTurret, 100L));
             EnemyDestroyedNotification destruction = CreateDestruction(
                 StableId.Parse("enemy-instance.turret-one"),
-                EnemyExperienceRewardIdsV1.BlasterTurret,
+                EnemyExperienceRewardIds.BlasterTurret,
                 StableId.Parse("enemy-death.turret-one"));
             StableId runId = StableId.Parse("run.duplicate-death");
 
-            EnemyExperienceRewardFactV1 applied = firstService.ProcessDestruction(
+            EnemyExperienceRewardFact applied = firstService.ProcessDestruction(
                 runId,
-                EnemyExperienceRewardIdsV1.BlasterTurret,
+                EnemyExperienceRewardIds.BlasterTurret,
                 1,
                 destruction);
-            EnemyExperienceRewardFactV1 duplicate = firstService.ProcessDestruction(
+            EnemyExperienceRewardFact duplicate = firstService.ProcessDestruction(
                 runId,
-                EnemyExperienceRewardIdsV1.BlasterTurret,
+                EnemyExperienceRewardIds.BlasterTurret,
                 1,
                 destruction);
-            var changedService = new EnemyExperienceRewardServiceV1(
+            var changedService = new EnemyExperienceRewardActions(
                 authority,
-                CreateCatalog(EnemyExperienceRewardIdsV1.BlasterTurret, 101L));
-            EnemyExperienceRewardFactV1 conflict = changedService.ProcessDestruction(
+                CreateCatalog(EnemyExperienceRewardIds.BlasterTurret, 101L));
+            EnemyExperienceRewardFact conflict = changedService.ProcessDestruction(
                 runId,
-                EnemyExperienceRewardIdsV1.BlasterTurret,
+                EnemyExperienceRewardIds.BlasterTurret,
                 1,
                 destruction);
 
-            Assert.That(applied.Status, Is.EqualTo(EnemyExperienceRewardStatusV1.Applied));
+            Assert.That(applied.Status, Is.EqualTo(EnemyExperienceRewardStatus.Applied));
             Assert.That(
                 duplicate.Status,
-                Is.EqualTo(EnemyExperienceRewardStatusV1.DuplicateNoChange));
+                Is.EqualTo(EnemyExperienceRewardStatus.DuplicateNoChange));
             Assert.That(
                 conflict.Status,
-                Is.EqualTo(EnemyExperienceRewardStatusV1.ConflictingDuplicate));
+                Is.EqualTo(EnemyExperienceRewardStatus.ConflictingDuplicate));
             Assert.That(applied.SourceOperationStableId, Is.EqualTo(
                 duplicate.SourceOperationStableId));
             Assert.That(applied.SourceOperationStableId, Is.EqualTo(
@@ -130,32 +130,32 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
         [Test]
         public void DistinctEnemyInstances_GrantIndependentlyForSameDefinition()
         {
-            PlayerExperienceAuthorityV1 authority = CreateAuthority();
-            var service = new EnemyExperienceRewardServiceV1(
+            PlayerExperienceState authority = CreateAuthority();
+            var service = new EnemyExperienceRewardActions(
                 authority,
-                CreateCatalog(EnemyExperienceRewardIdsV1.MobileBlasterDroid, 40L));
+                CreateCatalog(EnemyExperienceRewardIds.MobileBlasterDroid, 40L));
             StableId runId = StableId.Parse("run.distinct-enemies");
             StableId sharedDeathId = StableId.Parse("enemy-death.shared-template-operation");
 
-            EnemyExperienceRewardFactV1 first = service.ProcessDestruction(
+            EnemyExperienceRewardFact first = service.ProcessDestruction(
                 runId,
-                EnemyExperienceRewardIdsV1.MobileBlasterDroid,
+                EnemyExperienceRewardIds.MobileBlasterDroid,
                 10,
                 CreateDestruction(
                     StableId.Parse("enemy-instance.mobile-one"),
-                    EnemyExperienceRewardIdsV1.MobileBlasterDroid,
+                    EnemyExperienceRewardIds.MobileBlasterDroid,
                     sharedDeathId));
-            EnemyExperienceRewardFactV1 second = service.ProcessDestruction(
+            EnemyExperienceRewardFact second = service.ProcessDestruction(
                 runId,
-                EnemyExperienceRewardIdsV1.MobileBlasterDroid,
+                EnemyExperienceRewardIds.MobileBlasterDroid,
                 10,
                 CreateDestruction(
                     StableId.Parse("enemy-instance.mobile-two"),
-                    EnemyExperienceRewardIdsV1.MobileBlasterDroid,
+                    EnemyExperienceRewardIds.MobileBlasterDroid,
                     sharedDeathId));
 
-            Assert.That(first.Status, Is.EqualTo(EnemyExperienceRewardStatusV1.Applied));
-            Assert.That(second.Status, Is.EqualTo(EnemyExperienceRewardStatusV1.Applied));
+            Assert.That(first.Status, Is.EqualTo(EnemyExperienceRewardStatus.Applied));
+            Assert.That(second.Status, Is.EqualTo(EnemyExperienceRewardStatus.Applied));
             Assert.That(first.SourceOperationStableId, Is.Not.EqualTo(
                 second.SourceOperationStableId));
             Assert.That(authority.CurrentState.CumulativeExperience, Is.EqualTo(80L));
@@ -165,21 +165,21 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
         [Test]
         public void AppliedReward_PreservesXpLevelUpFacts()
         {
-            PlayerExperienceAuthorityV1 authority = CreateAuthority();
-            var service = new EnemyExperienceRewardServiceV1(
+            PlayerExperienceState authority = CreateAuthority();
+            var service = new EnemyExperienceRewardActions(
                 authority,
-                CreateCatalog(EnemyExperienceRewardIdsV1.RamDroid, 100L));
+                CreateCatalog(EnemyExperienceRewardIds.RamDroid, 100L));
 
-            EnemyExperienceRewardFactV1 result = service.ProcessDestruction(
+            EnemyExperienceRewardFact result = service.ProcessDestruction(
                 StableId.Parse("run.level-up"),
-                EnemyExperienceRewardIdsV1.RamDroid,
+                EnemyExperienceRewardIds.RamDroid,
                 1,
                 CreateDestruction(
                     StableId.Parse("enemy-instance.ram-level-up"),
-                    EnemyExperienceRewardIdsV1.RamDroid,
+                    EnemyExperienceRewardIds.RamDroid,
                     StableId.Parse("enemy-death.ram-level-up")));
 
-            Assert.That(result.Status, Is.EqualTo(EnemyExperienceRewardStatusV1.Applied));
+            Assert.That(result.Status, Is.EqualTo(EnemyExperienceRewardStatus.Applied));
             Assert.That(result.GrantFact, Is.Not.Null);
             Assert.That(result.LevelUpFacts.Count, Is.EqualTo(1));
             Assert.That(result.LevelUpFacts[0].PreviousLevel, Is.EqualTo(1));
@@ -191,39 +191,39 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
         [Test]
         public void SnapshotImport_ReplayedDeathProducesNoAdditionalXp()
         {
-            PlayerExperienceCurveV1 curve = CreateConstantCurve();
-            PlayerExperienceAuthorityV1 original = CreateAuthority(curve);
-            EnemyExperienceRewardCatalogV1 catalog = CreateCatalog(
-                EnemyExperienceRewardIdsV1.PursuerDrone,
+            PlayerExperienceCurve curve = CreateConstantCurve();
+            PlayerExperienceState original = CreateAuthority(curve);
+            EnemyExperienceRewardCatalog catalog = CreateCatalog(
+                EnemyExperienceRewardIds.PursuerDrone,
                 45L);
-            var originalService = new EnemyExperienceRewardServiceV1(original, catalog);
+            var originalService = new EnemyExperienceRewardActions(original, catalog);
             StableId runId = StableId.Parse("run.import-replay");
             EnemyDestroyedNotification destruction = CreateDestruction(
                 StableId.Parse("enemy-instance.import-replay"),
-                EnemyExperienceRewardIdsV1.PursuerDrone,
+                EnemyExperienceRewardIds.PursuerDrone,
                 StableId.Parse("enemy-death.import-replay"));
 
             originalService.ProcessDestruction(
                 runId,
-                EnemyExperienceRewardIdsV1.PursuerDrone,
+                EnemyExperienceRewardIds.PursuerDrone,
                 55,
                 destruction);
-            PlayerExperienceSnapshotV1 snapshot = original.ExportSnapshot();
+            PlayerExperienceSnapshot snapshot = original.ExportSnapshot();
 
-            PlayerExperienceAuthorityV1 restored = CreateAuthority(curve);
+            PlayerExperienceState restored = CreateAuthority(curve);
             Assert.That(
                 restored.TryImport(snapshot).Status,
-                Is.EqualTo(PlayerExperienceImportStatusV1.Imported));
-            var restoredService = new EnemyExperienceRewardServiceV1(restored, catalog);
-            EnemyExperienceRewardFactV1 replay = restoredService.ProcessDestruction(
+                Is.EqualTo(PlayerExperienceImportStatus.Imported));
+            var restoredService = new EnemyExperienceRewardActions(restored, catalog);
+            EnemyExperienceRewardFact replay = restoredService.ProcessDestruction(
                 runId,
-                EnemyExperienceRewardIdsV1.PursuerDrone,
+                EnemyExperienceRewardIds.PursuerDrone,
                 55,
                 destruction);
 
             Assert.That(
                 replay.Status,
-                Is.EqualTo(EnemyExperienceRewardStatusV1.DuplicateNoChange));
+                Is.EqualTo(EnemyExperienceRewardStatus.DuplicateNoChange));
             Assert.That(restored.CurrentState.CumulativeExperience, Is.EqualTo(45L));
             Assert.That(restored.CurrentSnapshot.Sequence, Is.EqualTo(1L));
         }
@@ -231,34 +231,34 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
         [Test]
         public void RetryWithDifferentDeathEvent_ForSameRunAndActorIsDuplicate()
         {
-            PlayerExperienceAuthorityV1 authority = CreateAuthority();
-            var service = new EnemyExperienceRewardServiceV1(
+            PlayerExperienceState authority = CreateAuthority();
+            var service = new EnemyExperienceRewardActions(
                 authority,
-                CreateCatalog(EnemyExperienceRewardIdsV1.PursuerDrone, 30L));
+                CreateCatalog(EnemyExperienceRewardIds.PursuerDrone, 30L));
             StableId runId = StableId.Parse("run.retry-event-change");
             StableId actorId = StableId.Parse("enemy-instance.retry-event-change");
 
-            EnemyExperienceRewardFactV1 first = service.ProcessDestruction(
+            EnemyExperienceRewardFact first = service.ProcessDestruction(
                 runId,
-                EnemyExperienceRewardIdsV1.PursuerDrone,
+                EnemyExperienceRewardIds.PursuerDrone,
                 30,
                 CreateDestruction(
                     actorId,
-                    EnemyExperienceRewardIdsV1.PursuerDrone,
+                    EnemyExperienceRewardIds.PursuerDrone,
                     StableId.Parse("enemy-death.retry-first")));
-            EnemyExperienceRewardFactV1 retry = service.ProcessDestruction(
+            EnemyExperienceRewardFact retry = service.ProcessDestruction(
                 runId,
-                EnemyExperienceRewardIdsV1.PursuerDrone,
+                EnemyExperienceRewardIds.PursuerDrone,
                 30,
                 CreateDestruction(
                     actorId,
-                    EnemyExperienceRewardIdsV1.PursuerDrone,
+                    EnemyExperienceRewardIds.PursuerDrone,
                     StableId.Parse("enemy-death.retry-second")));
 
-            Assert.That(first.Status, Is.EqualTo(EnemyExperienceRewardStatusV1.Applied));
+            Assert.That(first.Status, Is.EqualTo(EnemyExperienceRewardStatus.Applied));
             Assert.That(
                 retry.Status,
-                Is.EqualTo(EnemyExperienceRewardStatusV1.DuplicateNoChange));
+                Is.EqualTo(EnemyExperienceRewardStatus.DuplicateNoChange));
             Assert.That(first.SourceOperationStableId, Is.EqualTo(
                 retry.SourceOperationStableId));
             Assert.That(authority.CurrentState.CumulativeExperience, Is.EqualTo(30L));
@@ -270,16 +270,16 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
         {
             StableId run = StableId.Parse("run.identity-one");
             StableId actor = StableId.Parse("enemy-instance.identity-one");
-            EnemyExperienceRewardOperationIdentityV1 first =
-                EnemyExperienceRewardOperationIdentityV1.Create(run, actor);
-            EnemyExperienceRewardOperationIdentityV1 repeat =
-                EnemyExperienceRewardOperationIdentityV1.Create(run, actor);
-            EnemyExperienceRewardOperationIdentityV1 otherRun =
-                EnemyExperienceRewardOperationIdentityV1.Create(
+            EnemyExperienceRewardOperationIdentity first =
+                EnemyExperienceRewardOperationIdentity.Create(run, actor);
+            EnemyExperienceRewardOperationIdentity repeat =
+                EnemyExperienceRewardOperationIdentity.Create(run, actor);
+            EnemyExperienceRewardOperationIdentity otherRun =
+                EnemyExperienceRewardOperationIdentity.Create(
                     StableId.Parse("run.identity-two"),
                     actor);
-            EnemyExperienceRewardOperationIdentityV1 otherActor =
-                EnemyExperienceRewardOperationIdentityV1.Create(
+            EnemyExperienceRewardOperationIdentity otherActor =
+                EnemyExperienceRewardOperationIdentity.Create(
                     run,
                     StableId.Parse("enemy-instance.identity-two"));
 
@@ -298,38 +298,38 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
             StableId enemyId = StableId.Parse("enemy.future-test");
 
             Assert.Throws<ArgumentException>(() =>
-                new EnemyExperienceRewardDefinitionV1(
+                new EnemyExperienceRewardDefinition(
                     enemyId,
                     new[]
                     {
-                        new EnemyExperienceRewardBandV1(1, 49, 10L),
-                        new EnemyExperienceRewardBandV1(51, 100, 20L),
+                        new EnemyExperienceRewardBand(1, 49, 10L),
+                        new EnemyExperienceRewardBand(51, 100, 20L),
                     }));
             Assert.Throws<ArgumentException>(() =>
-                new EnemyExperienceRewardDefinitionV1(
+                new EnemyExperienceRewardDefinition(
                     enemyId,
                     new[]
                     {
-                        new EnemyExperienceRewardBandV1(1, 50, 10L),
-                        new EnemyExperienceRewardBandV1(50, 100, 20L),
+                        new EnemyExperienceRewardBand(1, 50, 10L),
+                        new EnemyExperienceRewardBand(50, 100, 20L),
                     }));
         }
 
-        private static EnemyExperienceRewardCatalogV1 CreateCatalog(
+        private static EnemyExperienceRewardCatalog CreateCatalog(
             StableId enemyDefinitionStableId,
             long amount)
         {
-            return new EnemyExperienceRewardCatalogV1(
+            return new EnemyExperienceRewardCatalog(
                 new[] { CreateDefinition(enemyDefinitionStableId, amount) });
         }
 
-        private static EnemyExperienceRewardDefinitionV1 CreateDefinition(
+        private static EnemyExperienceRewardDefinition CreateDefinition(
             StableId enemyDefinitionStableId,
             long amount)
         {
-            return new EnemyExperienceRewardDefinitionV1(
+            return new EnemyExperienceRewardDefinition(
                 enemyDefinitionStableId,
-                new[] { new EnemyExperienceRewardBandV1(1, 100, amount) });
+                new[] { new EnemyExperienceRewardBand(1, 100, amount) });
         }
 
         private static EnemyDestroyedNotification CreateDestruction(
@@ -373,15 +373,15 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
             throw new InvalidOperationException("Expected one enemy destruction fact.");
         }
 
-        private static PlayerExperienceAuthorityV1 CreateAuthority()
+        private static PlayerExperienceState CreateAuthority()
         {
             return CreateAuthority(CreateConstantCurve());
         }
 
-        private static PlayerExperienceAuthorityV1 CreateAuthority(
-            PlayerExperienceCurveV1 curve)
+        private static PlayerExperienceState CreateAuthority(
+            PlayerExperienceCurve curve)
         {
-            return new PlayerExperienceAuthorityV1(
+            return new PlayerExperienceState(
                 curve,
                 ProgressionContext.Create(
                     1,
@@ -391,9 +391,9 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience.EnemyRewards
                     new[] { StableId.Parse("progression-tag.campaign") }));
         }
 
-        private static PlayerExperienceCurveV1 CreateConstantCurve()
+        private static PlayerExperienceCurve CreateConstantCurve()
         {
-            return new PlayerExperienceCurveV1(
+            return new PlayerExperienceCurve(
                 100L,
                 100L,
                 50,

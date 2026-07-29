@@ -10,17 +10,17 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
     public sealed class RoomSpawnPointAuthoring2D
     {
         [SerializeField] private string stableId = "entry.unassigned";
-        [SerializeField] private RoomSpawnPointKindV1 kind =
-            RoomSpawnPointKindV1.ForwardEntry;
+        [SerializeField] private RoomSpawnPointKind kind =
+            RoomSpawnPointKind.ForwardEntry;
         [SerializeField] private Vector2 localPosition;
         [SerializeField] private float localRotationDegrees;
 
-        public RoomSpawnPointDefinitionV1 Build()
+        public RoomSpawnPointDefinition Build()
         {
-            return new RoomSpawnPointDefinitionV1(
+            return new RoomSpawnPointDefinition(
                 StableId.Parse(stableId),
                 kind,
-                new RoomVector2V1(localPosition.x, localPosition.y),
+                new RoomVector2(localPosition.x, localPosition.y),
                 localRotationDegrees);
         }
     }
@@ -29,24 +29,24 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
     public sealed class RoomPlacedEntityAuthoring2D
     {
         [SerializeField] private string instanceStableId = "entity-instance.unassigned";
-        [SerializeField] private RoomLivePlacementKindV1 placementKind =
-            RoomLivePlacementKindV1.Enemy;
+        [SerializeField] private RoomLivePlacementKind placementKind =
+            RoomLivePlacementKind.Enemy;
         [SerializeField] private string definitionStableId = "entity.unassigned";
         [SerializeField] private string presentationStableId = "presentation.unassigned";
-        [SerializeField] private RoomOccupantClearRoleV1 clearRole =
-            RoomOccupantClearRoleV1.RequiredEnemy;
+        [SerializeField] private RoomOccupantClearRole clearRole =
+            RoomOccupantClearRole.RequiredEnemy;
         [SerializeField] private Vector2 localPosition;
         [SerializeField] private float localRotationDegrees;
 
-        public RoomPlacedEntityDefinitionV1 Build()
+        public RoomPlacedEntityDefinition Build()
         {
-            return new RoomPlacedEntityDefinitionV1(
+            return new RoomPlacedEntityDefinition(
                 StableId.Parse(instanceStableId),
                 placementKind,
                 StableId.Parse(definitionStableId),
                 StableId.Parse(presentationStableId),
                 clearRole,
-                new RoomVector2V1(localPosition.x, localPosition.y),
+                new RoomVector2(localPosition.x, localPosition.y),
                 localRotationDegrees);
         }
     }
@@ -63,7 +63,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         [SerializeField] private Vector2 localPosition;
         [SerializeField] private float localRotationDegrees;
 
-        public RoomDoorDefinitionV1 Build()
+        public RoomDoorDefinition Build()
         {
             string[] authoredConditions = requiredConditionStableIds
                 ?? Array.Empty<string>();
@@ -73,12 +73,12 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 conditionIds[index] = StableId.Parse(authoredConditions[index]);
             }
 
-            return new RoomDoorDefinitionV1(
+            return new RoomDoorDefinition(
                 StableId.Parse(doorInstanceStableId),
                 StableId.Parse(presentationStableId),
                 StableId.Parse(exitStableId),
                 conditionIds,
-                new RoomVector2V1(localPosition.x, localPosition.y),
+                new RoomVector2(localPosition.x, localPosition.y),
                 localRotationDegrees);
         }
     }
@@ -88,22 +88,22 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
     {
         [SerializeField] private string exitStableId = "exit.unassigned";
         [SerializeField] private string doorInstanceStableId = "door-instance.unassigned";
-        [SerializeField] private RoomLiveLinkKindV1 linkKind = RoomLiveLinkKindV1.Room;
-        [SerializeField] private RoomExitTypeV1 exitType = RoomExitTypeV1.Progression;
+        [SerializeField] private RoomLiveLinkKind linkKind = RoomLiveLinkKind.Room;
+        [SerializeField] private RoomExitType exitType = RoomExitType.Progression;
         [SerializeField] private string targetRoomStableId = "room.unassigned";
         [SerializeField] private string targetSpawnPointStableId = "entry.unassigned";
 
-        public RoomExitLinkDefinitionV1 Build()
+        public RoomExitLinkDefinition Build()
         {
-            return new RoomExitLinkDefinitionV1(
+            return new RoomExitLinkDefinition(
                 StableId.Parse(exitStableId),
                 StableId.Parse(doorInstanceStableId),
                 linkKind,
                 exitType,
-                linkKind == RoomLiveLinkKindV1.Room
+                linkKind == RoomLiveLinkKind.Room
                     ? StableId.Parse(targetRoomStableId)
                     : null,
-                linkKind == RoomLiveLinkKindV1.Room
+                linkKind == RoomLiveLinkKind.Room
                     ? StableId.Parse(targetSpawnPointStableId)
                     : null);
         }
@@ -113,17 +113,17 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
     public sealed class RoomCompletionConditionAuthoring2D
     {
         [SerializeField] private string stableId = "completion.unassigned";
-        [SerializeField] private RoomCompletionConditionKindV1 kind =
-            RoomCompletionConditionKindV1.AllBlockingOccupantsTerminal;
+        [SerializeField] private RoomCompletionConditionKind kind =
+            RoomCompletionConditionKind.AllBlockingOccupantsTerminal;
         [SerializeField] private string subjectStableId = string.Empty;
         [SerializeField] private bool requiredForRoomCompletion = true;
 
-        public RoomCompletionConditionDefinitionV1 Build()
+        public RoomCompletionConditionDefinition Build()
         {
             StableId subject = string.IsNullOrWhiteSpace(subjectStableId)
                 ? null
                 : StableId.Parse(subjectStableId);
-            return new RoomCompletionConditionDefinitionV1(
+            return new RoomCompletionConditionDefinition(
                 StableId.Parse(stableId),
                 kind,
                 subject,
@@ -152,34 +152,34 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         [SerializeField] private RoomCompletionConditionAuthoring2D[] completionConditions =
             Array.Empty<RoomCompletionConditionAuthoring2D>();
 
-        public AuthorableRoomDefinitionV1 Build()
+        public AuthorableRoomDefinition Build()
         {
-            RoomPlacedEntityDefinitionV1[] enemies = BuildArray(
+            RoomPlacedEntityDefinition[] enemies = BuildArray(
                 enemyPlacements,
                 item => item.Build());
-            RoomPlacedEntityDefinitionV1[] props = BuildArray(
+            RoomPlacedEntityDefinition[] props = BuildArray(
                 propPlacements,
                 item => item.Build());
             RequirePlacementKind(
                 enemies,
-                RoomLivePlacementKindV1.Enemy,
+                RoomLivePlacementKind.Enemy,
                 "room-live-enemy-placement-kind-mismatch");
             RequirePlacementKind(
                 props,
-                RoomLivePlacementKindV1.Prop,
+                RoomLivePlacementKind.Prop,
                 "room-live-prop-placement-kind-mismatch");
-            var placements = new RoomPlacedEntityDefinitionV1[
+            var placements = new RoomPlacedEntityDefinition[
                 enemies.Length + props.Length];
             Array.Copy(enemies, 0, placements, 0, enemies.Length);
             Array.Copy(props, 0, placements, enemies.Length, props.Length);
 
-            return new AuthorableRoomDefinitionV1(
+            return new AuthorableRoomDefinition(
                 StableId.Parse(roomStableId),
                 order,
                 displayName,
-                new RoomBoundsV1(
-                    new RoomVector2V1(boundsCenter.x, boundsCenter.y),
-                    new RoomVector2V1(boundsSize.x, boundsSize.y)),
+                new RoomBounds(
+                    new RoomVector2(boundsCenter.x, boundsCenter.y),
+                    new RoomVector2(boundsSize.x, boundsSize.y)),
                 BuildArray(spawnPoints, item => item.Build()),
                 placements,
                 BuildArray(doors, item => item.Build()),
@@ -188,8 +188,8 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         }
 
         private static void RequirePlacementKind(
-            RoomPlacedEntityDefinitionV1[] placements,
-            RoomLivePlacementKindV1 expectedKind,
+            RoomPlacedEntityDefinition[] placements,
+            RoomLivePlacementKind expectedKind,
             string rejectionCode)
         {
             for (int index = 0; index < placements.Length; index++)
@@ -235,11 +235,11 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         [SerializeField] private AuthorableRoomRecord2D[] rooms =
             Array.Empty<AuthorableRoomRecord2D>();
 
-        public AuthorableRoomGraphDefinitionV1 BuildDefinition()
+        public AuthorableRoomGraphDefinition BuildDefinition()
         {
             AuthorableRoomRecord2D[] authoredRooms = rooms
                 ?? Array.Empty<AuthorableRoomRecord2D>();
-            var builtRooms = new AuthorableRoomDefinitionV1[authoredRooms.Length];
+            var builtRooms = new AuthorableRoomDefinition[authoredRooms.Length];
             for (int index = 0; index < authoredRooms.Length; index++)
             {
                 if (authoredRooms[index] == null)
@@ -251,7 +251,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 builtRooms[index] = authoredRooms[index].Build();
             }
 
-            return new AuthorableRoomGraphDefinitionV1(
+            return new AuthorableRoomGraphDefinition(
                 StableId.Parse(layoutStableId),
                 StableId.Parse(startRoomStableId),
                 StableId.Parse(terminalRoomStableId),
@@ -259,7 +259,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         }
 
         public bool TryBuildDefinition(
-            out AuthorableRoomGraphDefinitionV1 definition,
+            out AuthorableRoomGraphDefinition definition,
             out string error)
         {
             try

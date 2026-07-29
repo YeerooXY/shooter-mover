@@ -9,7 +9,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
 {
     /// <summary>
     /// Optional bounded bridge for WP-002 projectiles. It waits for the projectile's
-    /// existing CombatHit2DAdapter translation and forwards only confirmed HitMessage values.
+    /// existing CombatHit2DBridge translation and forwards only confirmed HitMessage values.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Collider2D))]

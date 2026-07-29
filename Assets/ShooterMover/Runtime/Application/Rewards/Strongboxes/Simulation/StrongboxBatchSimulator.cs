@@ -113,7 +113,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
     {
         internal StrongboxSimulationReport(
             StrongboxSimulationRequest request,
-            StrongboxProductionFingerprints production,
+            StrongboxFingerprints production,
             long generatedCount,
             long rejectedCount,
             IReadOnlyList<StrongboxDistributionEntry> targetLevels,
@@ -150,7 +150,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
         }
 
         public StrongboxSimulationRequest Request { get; }
-        public StrongboxProductionFingerprints Production { get; }
+        public StrongboxFingerprints Production { get; }
         public long GeneratedCount { get; }
         public long RejectedCount { get; }
         public IReadOnlyList<StrongboxDistributionEntry> TargetLevels { get; }
@@ -192,7 +192,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
         {
             if (report == null) throw new ArgumentNullException(nameof(report));
             var builder = new StringBuilder();
-            StrongboxCanonicalV1.AppendToken(builder, "schema", "strongbox-simulation-report-v4");
+            Strongbox.AppendToken(builder, "schema", "strongbox-simulation-report-v4");
             AppendRequest(builder, report.Request);
             AppendProduction(builder, report.Production);
             Token(builder, "generated", report.GeneratedCount);
@@ -250,7 +250,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
                 Token(builder, "diagnostic_code", report.Diagnostics[index].Code);
                 Token(builder, "diagnostic_count", report.Diagnostics[index].Count);
             }
-            return StrongboxCanonicalV1.Fingerprint(builder.ToString());
+            return Strongbox.Fingerprint(builder.ToString());
         }
 
         public static string BiasKey(double value)
@@ -276,7 +276,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
             Token(builder, prefix + "_diagnostic_override", value.DiagnosticEligibilityOverride ? "1" : "0");
         }
 
-        private static void AppendProduction(StringBuilder builder, StrongboxProductionFingerprints value)
+        private static void AppendProduction(StringBuilder builder, StrongboxFingerprints value)
         {
             Token(builder, "production_equipment_catalog", value.EquipmentCatalog);
             Token(builder, "production_equipment_projection", value.EquipmentProjection);
@@ -319,7 +319,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
 
         private static void Token(StringBuilder builder, string name, string value)
         {
-            StrongboxCanonicalV1.AppendToken(builder, name, value ?? string.Empty);
+            Strongbox.AppendToken(builder, name, value ?? string.Empty);
         }
     }
 
@@ -346,7 +346,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Simulation
 
         public StrongboxSimulationReport Run(
             StrongboxSimulationRequest request,
-            IStrongboxSimulationProductionGateway production)
+            IStrongboxSimulationGateway production)
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
             if (production == null) throw new ArgumentNullException(nameof(production));

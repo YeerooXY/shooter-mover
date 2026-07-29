@@ -16,7 +16,7 @@ The implementation lives only below:
 - `Assets/ShooterMover/Runtime/Application/Holdings/`; and
 - `Assets/ShooterMover/Tests/EditMode/Holdings/`.
 
-It composes the `LED-001` `IdempotentLedger<HoldingsLedgerVocabularyV1>` and
+It composes the `LED-001` `IdempotentLedger<HoldingsLedgerVocabulary>` and
 consumes the immutable `REW-001` economy/reward vocabulary plus the `EQP-001`
 equipment validation port. It has no Unity, scene, UI, random, clock, filesystem,
 save-backend, shop, crafting, pickup, strongbox-opening, wallet, or loadout
@@ -24,8 +24,8 @@ dependency.
 
 ## Authority boundary
 
-`PlayerHoldingsService` is the only mutable ownership authority. Product systems
-submit immutable typed commands through `IPlayerHoldingsAuthorityV1`; they do not
+`PlayerHoldingsActions` is the only mutable ownership authority. Product systems
+submit immutable typed commands through `IPlayerHoldingsState`; they do not
 keep private box lists, equipment lists, ammunition counts, or miscellaneous item
 maps.
 
@@ -35,11 +35,11 @@ closed. Equipping and loadout slots are deliberately outside this contract.
 
 ## Typed command model
 
-`PlayerHoldingsCommandV1` contains:
+`PlayerHoldingsCommand` contains:
 
-- one immutable `EconomyTransactionCommandV1`;
-- one `RewardGrantKindV1`;
-- immutable `HoldingProvenanceV1`; and
+- one immutable `EconomyTransactionCommand`;
+- one `RewardGrantKind`;
+- immutable `HoldingProvenance`; and
 - an immutable `EquipmentInstance` only for equipment additions.
 
 The economy command carries transaction, operation, authority, resource,
@@ -120,7 +120,7 @@ unchanged.
 
 ## Public results
 
-`PlayerHoldingsMutationResultV1` exposes:
+`PlayerHoldingsMutationResult` exposes:
 
 - transaction identity;
 - current and original status;
@@ -137,7 +137,7 @@ validation rejection, expected-sequence conflict, and arithmetic overflow.
 
 ## Snapshot v1
 
-`PlayerHoldingsSnapshotV1.CurrentSchemaVersion` is `1`. A snapshot contains:
+`PlayerHoldingsSnapshot.CurrentSchemaVersion` is `1`. A snapshot contains:
 
 - schema version;
 - authority ID;

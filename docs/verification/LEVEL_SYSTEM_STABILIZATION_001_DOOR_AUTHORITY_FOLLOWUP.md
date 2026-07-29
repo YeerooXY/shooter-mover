@@ -8,7 +8,7 @@
 
 A third hostile audit found that the intended single level-authoring workflow was still incomplete:
 
-- `LevelGridDoorOperationsV2` exposed separate top-level and component-context commands for deleting, reflowing, keeping and capturing doors;
+- `LevelGridDoorOperations` exposed separate top-level and component-context commands for deleting, reflowing, keeping and capturing doors;
 - playable export called a bulk reflow helper before taking its source fingerprint;
 - live validation could bulk-reflow edge-managed doors and migrate legacy fixed-door storage after unrelated scene, hierarchy or Undo changes.
 
@@ -32,17 +32,17 @@ Validation and Build are diagnostic/publication actions. They are not authoring 
 ## Authority map
 
 - Scene objects below the exact `LevelDesignSceneAuthoringRoot2D` remain authored topology authority.
-- `LevelGridEditorOperationsV2` remains the sole explicit door command façade.
-- `LevelGridEditorWindowV2` exposes the supported Reflow, Keep Placement and Delete Door controls.
-- `LevelGridDoorOperationsV2` is now an internal mechanism with no `MenuItem` or Context command surface.
-- `LevelGridAuthoringV2LiveValidation` is a read-only diagnostic observer for topology and edge-managed placement.
-- `LevelGridV2PlayableExporter` publishes only state that already passes production validation.
+- `LevelGridEditorOperations` remains the sole explicit door command façade.
+- `LevelGridEditorWindow` exposes the supported Reflow, Keep Placement and Delete Door controls.
+- `LevelGridDoorOperations` is now an internal mechanism with no `MenuItem` or Context command surface.
+- `LevelGridAuthoringLiveValidation` is a read-only diagnostic observer for topology and edge-managed placement.
+- `LevelGridPlayableExporter` publishes only state that already passes production validation.
 
 ## Changes made
 
 ### Alternate door commands removed
 
-`LevelGridDoorOperationsV2` no longer registers any Unity menu or component-context commands. The old independent entry points for:
+`LevelGridDoorOperations` no longer registers any Unity menu or component-context commands. The old independent entry points for:
 
 - Delete Selected Door;
 - right-click Delete Door;
@@ -58,7 +58,7 @@ Physical helper methods remain internal so the canonical façade can reuse the e
 
 The retained `ReflowAll` compatibility entry no longer changes any door. It delegates to `CountDoorsNeedingReflow`, which only counts exact edge-managed doors whose side or resolved position disagrees with their connection direction.
 
-This keeps existing compiled callers source-compatible during the stabilization branch while removing bulk mutation authority. Exact movement occurs only through `LevelGridEditorOperationsV2.ReflowDoor`.
+This keeps existing compiled callers source-compatible during the stabilization branch while removing bulk mutation authority. Exact movement occurs only through `LevelGridEditorOperations.ReflowDoor`.
 
 ### Live validation made read-only
 
@@ -86,7 +86,7 @@ The designer can then use the canonical problem action or door inspector:
 | Condition | Result |
 |---|---|
 | Connected automatic-facing door is misaligned | Validation reports `EdgeManagedDoorFacingMismatch`; door is not moved. |
-| Designer clicks Reflow | Exact door aligns through `LevelGridEditorOperationsV2`; Unity Undo can restore the prior authored mismatch. |
+| Designer clicks Reflow | Exact door aligns through `LevelGridEditorOperations`; Unity Undo can restore the prior authored mismatch. |
 | Designer clicks Keep Placement | Exact door stays authored and automatic facing is disabled through the canonical operation. |
 | Designer clicks Delete Door | Exact door and attached connections are removed as one undoable canonical action. |
 | Draft or Production validation runs | Diagnostics refresh; topology and edge-managed door transforms remain unchanged. |
@@ -97,7 +97,7 @@ The designer can then use the canonical problem action or door inspector:
 
 ## Focused tests authored
 
-`LevelDoorAuthorityV2Tests` adds behavioral and source-surface coverage for:
+`LevelDoorStateTests` adds behavioral and source-surface coverage for:
 
 - read-only mismatch counting;
 - Production validation called with the legacy `reflow=true` argument without moving the door;
@@ -120,7 +120,7 @@ These tests are authored only. They are not claimed as passing until executed in
 - New Unity `.meta` coverage: **added**.
 - Unity import/domain reload: **not executed**.
 - Unity compilation: **not executed**.
-- `LevelDoorAuthorityV2Tests`: **authored, not executed**.
+- `LevelDoorStateTests`: **authored, not executed**.
 - Existing stabilization EditorTooling tests: **not executed**.
 - Manual editor/gameplay acceptance: **not executed**.
 - GitHub Actions evidence: **not available at time of source remediation**.
@@ -128,8 +128,8 @@ These tests are authored only. They are not claimed as passing until executed in
 ## Exact Unity acceptance route
 
 - [ ] Import the branch and complete domain reload with no compile errors.
-- [ ] Run `ShooterMover.Tests.EditorTooling.LevelDesign.Foundation.LevelDoorAuthorityV2Tests`.
-- [ ] Run `ShooterMover.Tests.EditorTooling.LevelDesign.Foundation.LevelSystemStabilizationV2Tests`.
+- [ ] Run `ShooterMover.Tests.EditorTooling.LevelDesign.Foundation.LevelDoorStateTests`.
+- [ ] Run `ShooterMover.Tests.EditorTooling.LevelDesign.Foundation.LevelSystemStabilizationTests`.
 - [ ] Open the canonical Level Grid editor and confirm a selected door exposes Reflow, Keep Placement and Delete Door.
 - [ ] Confirm the old standalone Delete/Reflow/Keep/Capture commands are absent from Tools and the door component context menu.
 - [ ] Connect two rooms, manually create an automatic-facing mismatch and run Draft validation; confirm the door does not move.

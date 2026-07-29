@@ -67,7 +67,7 @@ The next pass focused on the code paths most likely to fail only after Unity gen
 - transaction stage/backup `.meta` files are cleaned up;
 - post-commit cleanup is best-effort so a failed backup deletion cannot report failure after the new package is already authoritative.
 
-The remaining assembly-level uncertainty is the actual Editor compilation produced by Unity. The existing EditMode test assembly does not directly execute `LevelGridV2PlayableExporter` or `LevelGridV2AssetCompiler`; it exercises the pure compiler and the migration helper. A dedicated Editor tooling assembly plus Editor test assembly would make those classes compile-testable and fault-testable without relying on manual inspection.
+The remaining assembly-level uncertainty is the actual Editor compilation produced by Unity. The existing EditMode test assembly does not directly execute `LevelGridPlayableExporter` or `LevelGridAssetCompiler`; it exercises the pure compiler and the migration helper. A dedicated Editor tooling assembly plus Editor test assembly would make those classes compile-testable and fault-testable without relying on manual inspection.
 
 ## Why the pull request is large
 
@@ -107,8 +107,8 @@ The strongest preventive gates would have been:
 ## Static verification performed in the connected environment
 
 - inspected merged PR #333 and current `main` authoring/runtime boundaries;
-- inspected `RoomContentJsonImporterV1`, including exact door-rule matching and ambiguity behavior;
-- confirmed the compiler output remains a `RoomContentJsonPackageV1` and is validated through the existing importer before Unity assets are written;
+- inspected `RoomContentJsonImporter`, including exact door-rule matching and ambiguity behavior;
+- confirmed the compiler output remains a `RoomContentJsonPackage` and is validated through the existing importer before Unity assets are written;
 - checked the new EditMode and PlayMode code against the referenced assembly definitions and established room-runtime test APIs;
 - generated and parsed every tracked V2 and generated V1 JSON document;
 - verified the V2 room index is `room ID → coordinate+slot folder`, while runtime links use only stable room ID + door ID;
@@ -125,7 +125,7 @@ The strongest preventive gates would have been:
 
 ## EditMode coverage authored
 
-`LevelGridV2CompilerTests` covers:
+`LevelGridCompilerTests` covers:
 
 - valid three-room V2 compile through the existing V1 importer;
 - deterministic destination arrival generation;
@@ -145,7 +145,7 @@ The strongest preventive gates would have been:
 - stable-ID folder migration with sidecar preservation;
 - nested endpoint hierarchy resolving relative to the owning room.
 
-`LevelGridV2SecondAuditRegressionTests` adds focused coverage for:
+`LevelGridSecondAuditRegressionTests` adds focused coverage for:
 
 - broad authored rules replacing defaults without V1 ambiguity;
 - unmatched authored rules being rejected;
@@ -155,17 +155,17 @@ The strongest preventive gates would have been:
 - export destination level-ownership rejection;
 - a surviving room reusing a coordinate vacated by a deleted room while retaining only its own sidecars.
 
-`LevelGridV2UnityMetadataRegressionTests` adds focused coverage for:
+`LevelGridUnityMetadataRegressionTests` adds focused coverage for:
 
 - moving a room folder while preserving its Unity folder GUID metadata;
 - reusing a deleted room’s coordinate without adopting its deleted folder GUID.
 
 ## PlayMode coverage authored
 
-`LevelGridV2CompiledAssetPlayModeTests` performs two checks against the tracked build-included resource:
+`LevelGridCompiledAssetPlayModeTests` performs two checks against the tracked build-included resource:
 
 1. imports the package after a runtime frame and verifies the exact three-room, three-Droid graph;
-2. constructs the existing `RoomLiveRuntimeAuthorityV1` and exercises the compiled route:
+2. constructs the existing `RoomFlowState` and exercises the compiled route:
    - zero-enemy starter completion and first door availability;
    - exact destination arrivals;
    - always-open return doors;

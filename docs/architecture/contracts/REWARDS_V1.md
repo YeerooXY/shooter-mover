@@ -22,7 +22,7 @@ apply, claim, persist, display, or balance rewards.
 
 ## Reward grant vocabulary
 
-`RewardGrantKindV1` is the closed cross-product grant vocabulary:
+`RewardGrantKind` is the closed cross-product grant vocabulary:
 
 | Kind | Meaning of `ContentStableId` |
 |---|---|
@@ -37,13 +37,13 @@ The enum is product-independent. Adding a new enemy, prop, shop, or box does not
 add a private DTO or switch branch. A new fundamentally different durable grant
 kind requires a reviewed versioned contract change.
 
-`RewardGrantSpecificationV1` contains:
+`RewardGrantSpecification` contains:
 
 - `GrantStableId`;
-- `RewardGrantKindV1`;
+- `RewardGrantKind`;
 - `ContentStableId`;
-- one positive inclusive `RewardQuantityRangeV1`; and
-- zero or more sorted `RewardScalingInputDescriptorV1` values.
+- one positive inclusive `RewardQuantityRange`; and
+- zero or more sorted `RewardScalingInputDescriptor` values.
 
 A scaling descriptor identifies an explicit character-level, region-level,
 difficulty, source-tier, or custom input. It contains no curve and performs no
@@ -51,7 +51,7 @@ calculation. PRG-001 and GEN-001 own the meaning and application of those inputs
 
 ## Profile composition
 
-`RewardProfileV1` has one profile StableId and exactly one disposition:
+`RewardProfile` has one profile StableId and exactly one disposition:
 
 - `Configured`; or
 - `ExplicitNoDrop`.
@@ -60,12 +60,12 @@ A configured profile may contain all three sections at once:
 
 1. `GuaranteedEntries`: every grant specification is included by a later
    generator.
-2. `IndependentRolls`: each `IndependentRewardRollV1` carries a unique roll ID,
+2. `IndependentRolls`: each `IndependentRewardRoll` carries a unique roll ID,
    an integer probability in millionths, and one grant specification.
-3. `ExclusiveGroups`: each `ExclusiveRewardGroupV1` carries positive weighted
+3. `ExclusiveGroups`: each `ExclusiveRewardGroup` carries positive weighted
    outcomes. A later generator selects exactly one outcome from the group.
 
-`WeightedRewardOutcomeV1` is either:
+`WeightedRewardOutcome` is either:
 
 - a grant outcome; or
 - `ExplicitNoDrop` with its own outcome StableId and positive weight.
@@ -75,7 +75,7 @@ quantity values are positive integers. Floating-point probability text is not a
 contract input.
 
 An empty configured profile is rejected. Intentional absence must use
-`RewardProfileV1.CreateExplicitNoDrop`, so no-drop cannot be confused with a
+`RewardProfile.CreateExplicitNoDrop`, so no-drop cannot be confused with a
 missing list, failed import, or accidental authoring omission.
 
 ## Duplicate identities
@@ -95,7 +95,7 @@ through projection, claim, and application.
 
 ## Source overrides
 
-`RewardSourceOverrideV1` defines four explicit modes:
+`RewardSourceOverride` defines four explicit modes:
 
 | Mode | Resolution |
 |---|---|
@@ -110,7 +110,7 @@ each factory validates the exact data shape allowed by its mode.
 
 ## Reward operation identity
 
-`RewardOperationRequestV1` carries:
+`RewardOperationRequest` carries:
 
 - run ID;
 - source instance ID;
@@ -120,7 +120,7 @@ each factory validates the exact data shape allowed by its mode.
 - accepted content-definition fingerprint.
 
 Its fingerprint covers every field. Retrying one logical source resolution must
-reuse the original request. `RewardOperationIdentityV1.Classify` returns:
+reuse the original request. `RewardOperationIdentity.Classify` returns:
 
 - `DistinctOperation` when operation IDs differ;
 - `ExactDuplicateNoChange` when the operation ID and complete request fingerprint
@@ -132,10 +132,10 @@ stores prior requests belongs to later tasks.
 
 ## Generated results
 
-`RewardGrantV1` contains one grant ID, grant kind, content ID, and positive fixed
+`RewardGrant` contains one grant ID, grant kind, content ID, and positive fixed
 quantity.
 
-`RewardResultV1` contains commitment ID, source operation ID, and either:
+`RewardResult` contains commitment ID, source operation ID, and either:
 
 - one or more canonically ordered generated grants; or
 - explicit no-drop.
@@ -146,7 +146,7 @@ grant identity, kind, content, or quantity changes.
 
 ## Explainable traces
 
-`RewardTraceEntryV1` records:
+`RewardTraceEntry` records:
 
 - trace-entry ID;
 - explicit non-negative ordinal;
@@ -159,14 +159,14 @@ grant identity, kind, content, or quantity changes.
 Decision kinds cover guaranteed admission, independent chance, exclusive
 selection, quantity, scaling input, explicit no-drop, and grant production.
 
-`RewardTraceV1` carries the source operation ID and unique entries. Entries are
+`RewardTrace` carries the source operation ID and unique entries. Entries are
 canonically ordered by ordinal and then identity. Duplicate entry IDs and
 duplicate ordinals are rejected. Constructing a trace does not consume random
 state.
 
 ## Strongbox opening envelopes
 
-`StrongboxOpeningRequestV1` represents an opening intent without implementing it.
+`StrongboxOpeningRequest` represents an opening intent without implementing it.
 It carries:
 
 - run ID;
@@ -179,7 +179,7 @@ It carries:
 - content-definition fingerprint; and
 - optional expected sequence.
 
-`StrongboxOpeningResultV1` represents these future outcomes:
+`StrongboxOpeningResult` represents these future outcomes:
 
 - `Opened`;
 - `ExactDuplicateNoChange`;

@@ -37,15 +37,15 @@ Definition frequency and instance identity are intentionally separate. Two stron
 
 ## Runtime reuse boundary
 
-`BalanceSimulationServiceV1` only derives iteration substreams and aggregates observations. `RuntimeBalanceScenarioV1` is the reference editor composition and calls:
+`BalanceSimulationActions` only derives iteration substreams and aggregates observations. `LiveBalanceScenario` is the reference editor composition and calls:
 
-- `RewardGenerationServiceV1.GenerateEquipment` for generated equipment;
-- `StrongboxEquipmentGenerationResolverV1` and `StrongboxPowerBudgetPolicyV1` for strongbox equipment;
-- `ShopPricingPolicyV1` for shop prices;
-- `CraftingRecipeV1.ResolveUnlockLevel` and the recipe's generator policy for crafting;
-- `AugmentUpgradeCostPolicyV1.TryCalculateCost` for upgrade affordability.
+- `RewardGenerationActions.GenerateEquipment` for generated equipment;
+- `StrongboxEquipmentGenerationResolver` and `StrongboxPowerBudgetPolicy` for strongbox equipment;
+- `ShopPricingPolicy` for shop prices;
+- `CraftingRecipe.ResolveUnlockLevel` and the recipe's generator policy for crafting;
+- `AugmentUpgradeCostPolicy.TryCalculateCost` for upgrade affordability.
 
-A project-specific composition can implement `IBalanceSimulationRuntimeV1` and feed authored catalogs and policies into the same aggregation/report layer. This keeps production definitions outside editor code and prevents simulator-only probability behavior.
+A project-specific composition can implement `IBalanceSimulationLive` and feed authored catalogs and policies into the same aggregation/report layer. This keeps production definitions outside editor code and prevents simulator-only probability behavior.
 
 ## Determinism and tests
 

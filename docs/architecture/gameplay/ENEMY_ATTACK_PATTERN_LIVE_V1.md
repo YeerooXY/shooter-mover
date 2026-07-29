@@ -2,11 +2,11 @@
 
 ## Ownership boundary
 
-`EnemyAttackPatternAuthorityV1` remains the engine-neutral authority for deterministic schema-v2
+`EnemyAttackPatternState` remains the engine-neutral authority for deterministic schema-v2
 sequence construction, immutable committed aim, sequence/emission identity, fingerprints, replay and
 lifecycle cancellation facts.
 
-`EnemyAttackPatternLiveSchedulerV1` implements `IEnemyAttackPatternEffectPortV1` and owns only downstream
+`EnemyAttackPatternLiveScheduler` implements `IEnemyAttackPatternEffectPort` and owns only downstream
 delivery state:
 
 - atomic acceptance of one immutable sequence;
@@ -20,12 +20,12 @@ mission results, pickup collection, conditions, status effects, XP, drops or per
 
 ## One shared production Run Session
 
-Stage 1 composes exactly one `RunSessionAuthorityV1` and one `RunSessionAggregateV1` in
+Stage 1 composes exactly one `RunSessionState` and one `RunSessionAggregate` in
 `Stage1PlayableLoopCompositionV1.RunSession.cs`.
 
 ```text
 Stage1PlayableLoopCompositionV1
-└── shared RunSessionAggregateV1
+└── shared RunSessionAggregate
     ├── accepted player runtime port
     ├── frozen inventory/weapon runtime port
     ├── canonical condition runtime
@@ -39,7 +39,7 @@ Stage1PlayableLoopCompositionV1
         └── future physical pickup collection / run-local journals
 ```
 
-The shared aggregate is started through `ProductionConditionBoundRunSessionStartSourceV1`, so the
+The shared aggregate is started through `ConditionBoundRunSessionStartSource`, so the
 condition and status-effect ports are the merged production authorities. The former feature-local
 `Stage1StatusRunProjectionV1` and `Stage1ConditionRunProjectionV1` placeholders were deleted.
 
@@ -49,9 +49,9 @@ They are not reconstructed by the enemy-attack partial.
 `Stage1PlayableLoopCompositionV1.EnemyAttackPatterns.cs` is now a consumer only. It:
 
 - calls `TryResolveSharedRunSession`;
-- receives the existing aggregate through `RunSessionEnemyAttackPatternTimeV1`;
+- receives the existing aggregate through `RunSessionEnemyAttackPatternTime`;
 - validates the shared run ID and player lifecycle;
-- never constructs `RunSessionAuthorityV1`;
+- never constructs `RunSessionState`;
 - never calls `Start`;
 - never builds runtime ports;
 - never owns a simulation tick.
@@ -62,10 +62,10 @@ A pickup/collection branch must consume this aggregate after rebase rather than 
 ## Authoritative in-run restart
 
 An in-mission restart does not replace the authority or aggregate. The production input path calls
-`RunSessionAggregateV1.Restart` through `RestartSharedRunSession`.
+`RunSessionAggregate.Restart` through `RestartSharedRunSession`.
 
 The restart command uses the existing run identity, current lifecycle generation, next generation,
-current authoritative tick and `RunRestartPolicyV1.FullTransientReset()`. The aggregate then:
+current authoritative tick and `RunRestartPolicy.FullTransientReset()`. The aggregate then:
 
 1. checks restart replay/conflict history;
 2. validates run identity, active state, lifecycle and tick;
@@ -84,7 +84,7 @@ lifecycle generation. Their disposable scheduler, collision and physical-effect 
 Session itself.
 
 A completely new authority and aggregate are created only when Stage 1 enters a genuinely different run
-identity or the composition is destroyed. A player lifecycle change outside `RunSessionAggregateV1.Restart`
+identity or the composition is destroyed. A player lifecycle change outside `RunSessionAggregate.Restart`
 fails closed rather than silently reconstructing mission truth.
 
 This preserves:
@@ -100,10 +100,10 @@ This preserves:
 
 Unity `FixedUpdate` wakes the shared Stage 1 host but does not contribute combat time directly.
 
-Each accepted simulation step calls `RunSessionAggregateV1.AdvanceConditionRuntime` with one explicit
+Each accepted simulation step calls `RunSessionAggregate.AdvanceConditionRuntime` with one explicit
 monotonic tick. That operation advances the aggregate and its bound condition/status owner together.
 Enemy attacks then read the already committed aggregate tick through
-`RunSessionEnemyAttackPatternTimeV1`.
+`RunSessionEnemyAttackPatternTime`.
 
 Consequently, enemy attacks, condition expiry, physical pickup collection and future run-local systems
 observe the same:
@@ -121,7 +121,7 @@ No per-enemy or feature-local clock exists. Due emissions order by:
 ## Atomic sequence acceptance
 
 Before queue mutation, every immutable emission is passed to
-`IEnemyAttackPatternEmissionRealizerV1.CanRealize`. One rejection rejects the whole dispatch and queues
+`IEnemyAttackPatternEmissionRealizer.CanRealize`. One rejection rejects the whole dispatch and queues
 nothing. Accepted dispatch identities preserve their canonical fingerprint:
 
 - first equivalent delivery: `Applied`;
@@ -133,7 +133,7 @@ No caller-owned mutable collection is retained.
 
 ## Transactional downstream acknowledgement
 
-`EnemyAttackPatternTransactionalRealizerV1` adapts the physical Unity realizer to immutable results:
+`EnemyAttackPatternTransactionalRealizer` adapts the physical Unity realizer to immutable results:
 
 - `Applied`;
 - `ExactReplay`;
@@ -167,9 +167,9 @@ Delayed attacks never retarget and spread is never rerolled in Unity.
 
 ### Projectiles and area effects
 
-`EnemyAttackPatternUnityEmissionRealizerV1` reuses `BoundedProjectile2D` and
-`CombatHit2DAdapter`. Projectile profiles resolve through the typed
-`EnemyAttackPatternProjectilePrefabRegistryV1`; no enemy-name or weapon-name switch is used.
+`EnemyAttackPatternUnityEmissionRealizer` reuses `BoundedProjectile2D` and
+`CombatHit2DBridge`. Projectile profiles resolve through the typed
+`EnemyAttackPatternProjectilePrefabRegistry`; no enemy-name or weapon-name switch is used.
 
 Instant area payloads evaluate explicitly registered targets in stable identity order. Unsupported
 physical projectile pierce and persistent area durations fail closed.
@@ -185,8 +185,8 @@ origin, direction, lunge distance and shared authoritative time rather than accu
 
 ## Combat Hit Policy and player damage
 
-`EnemyAttackPatternHitRouterV1` delegates final eligibility to the existing `CombatHitPolicyV1`. Only an
-accepted policy result becomes an existing `PlayerDamageRequest`; `PlayerActorAuthority` remains the
+`EnemyAttackPatternHitRouter` delegates final eligibility to the existing `CombatHitPolicy`. Only an
+accepted policy result becomes an existing `PlayerDamageRequest`; `PlayerActorState` remains the
 only player health/death authority.
 
 Hit replay preserves semantic outcome:

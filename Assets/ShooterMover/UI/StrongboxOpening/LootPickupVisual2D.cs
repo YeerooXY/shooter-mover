@@ -13,14 +13,14 @@ namespace ShooterMover.UI.StrongboxOpening
     [DisallowMultipleComponent]
     public sealed class LootPickupVisual2D : MonoBehaviour
     {
-        private static readonly Dictionary<LootPickupPresentationKindV1, Sprite> SpriteCache =
-            new Dictionary<LootPickupPresentationKindV1, Sprite>();
+        private static readonly Dictionary<LootPickupPresentationKind, Sprite> SpriteCache =
+            new Dictionary<LootPickupPresentationKind, Sprite>();
         private static Sprite haloSprite;
 
         private SpriteRenderer haloRenderer;
         private SpriteRenderer bodyRenderer;
         private TextMesh label;
-        private LootPickupPresentationV1 projection;
+        private LootPickupPresentation projection;
         private string boundFingerprint;
         private Vector3 baseLocalPosition;
         private Vector3 baseLocalScale;
@@ -32,7 +32,7 @@ namespace ShooterMover.UI.StrongboxOpening
 
         public event Action AcceptedCollectionFeedbackCompleted;
 
-        public LootPickupPresentationV1 Projection { get { return projection; } }
+        public LootPickupPresentation Projection { get { return projection; } }
         public bool IsBound { get { return projection != null; } }
         public bool IsVisible { get { return bodyRenderer != null && bodyRenderer.enabled; } }
         public bool IsPlayingAcceptedCollectionFeedback { get { return acceptedFeedback; } }
@@ -44,7 +44,7 @@ namespace ShooterMover.UI.StrongboxOpening
             haloSprite = null;
         }
 
-        public void Bind(LootPickupPresentationV1 immutableProjection)
+        public void Bind(LootPickupPresentation immutableProjection)
         {
             if (immutableProjection == null)
             {
@@ -252,7 +252,7 @@ namespace ShooterMover.UI.StrongboxOpening
         }
 
         private static string BuildFingerprint(
-            LootPickupPresentationV1 value)
+            LootPickupPresentation value)
         {
             return value.PickupStableId
                 + "|" + value.RewardInstanceStableId
@@ -262,15 +262,15 @@ namespace ShooterMover.UI.StrongboxOpening
                     CultureInfo.InvariantCulture);
         }
 
-        private static Color ResolveAccent(LootPickupPresentationV1 value)
+        private static Color ResolveAccent(LootPickupPresentation value)
         {
             switch (value.PresentationKind)
             {
-                case LootPickupPresentationKindV1.Credits:
+                case LootPickupPresentationKind.Credits:
                     return new Color(1f, 0.78f, 0.12f, 1f);
-                case LootPickupPresentationKindV1.Scrap:
+                case LootPickupPresentationKind.Scrap:
                     return new Color(0.62f, 0.69f, 0.75f, 1f);
-                case LootPickupPresentationKindV1.Strongbox:
+                case LootPickupPresentationKind.Strongbox:
                     return ResolveStrongboxAccent(value.TierNumber);
                 default:
                     throw new ArgumentOutOfRangeException(
@@ -301,7 +301,7 @@ namespace ShooterMover.UI.StrongboxOpening
         }
 
         private static Sprite GetBodySprite(
-            LootPickupPresentationKindV1 kind)
+            LootPickupPresentationKind kind)
         {
             Sprite sprite;
             if (SpriteCache.TryGetValue(kind, out sprite))
@@ -349,7 +349,7 @@ namespace ShooterMover.UI.StrongboxOpening
         }
 
         private static bool IsFilled(
-            LootPickupPresentationKindV1 kind,
+            LootPickupPresentationKind kind,
             int x,
             int y,
             int size)
@@ -357,20 +357,20 @@ namespace ShooterMover.UI.StrongboxOpening
             int center = size / 2;
             switch (kind)
             {
-                case LootPickupPresentationKindV1.Credits:
+                case LootPickupPresentationKind.Credits:
                     int dx = x - center;
                     int dy = y - center;
                     int radiusSquared = dx * dx + dy * dy;
                     return radiusSquared <= 18 * 18
                         && radiusSquared >= 9 * 9;
-                case LootPickupPresentationKindV1.Scrap:
+                case LootPickupPresentationKind.Scrap:
                     return (x >= 11 && x <= 36 && y >= 14 && y <= 33)
                         || (x >= 18 && x <= 29 && y >= 7 && y <= 40)
                         || (x + y >= 31
                             && x + y <= 61
                             && x - y >= -16
                             && x - y <= 16);
-                case LootPickupPresentationKindV1.Strongbox:
+                case LootPickupPresentationKind.Strongbox:
                     bool shell = x >= 6 && x <= 41
                         && y >= 10 && y <= 37;
                     bool seam = y >= 25 && y <= 28;

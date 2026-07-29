@@ -84,7 +84,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             new RewardSourceOverrideAuthoring();
         [SerializeField] private MonoBehaviour rewardOperationSink;
 
-        private CombatHit2DAdapter hitAdapter;
+        private CombatHit2DBridge hitAdapter;
         private GameplaySceneScope2D registeredRestartScope;
         private DestructibleProp2D runtimeProp;
         private DestructiblePropRewardBridge2D rewardBridge;
@@ -92,7 +92,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
         private DestructiblePropConfigurationResult lastConfiguration;
         private RestartParticipantRegistrationResult restartRegistration;
         private StableId restartParticipantId;
-        private DestructiblePropTerminalProvenanceV1 generatedTerminalProvenance;
+        private DestructiblePropTerminalProvenance generatedTerminalProvenance;
         private bool targetRegistered;
 
         public double MaximumHealth => resolvedPreview == null
@@ -114,7 +114,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
         public RestartParticipantRegistrationResult LastRestartRegistration =>
             restartRegistration;
         public DestructiblePropRewardBridge2D RewardBridge => rewardBridge;
-        public DestructiblePropTerminalProvenanceV1 GeneratedTerminalProvenance =>
+        public DestructiblePropTerminalProvenance GeneratedTerminalProvenance =>
             generatedTerminalProvenance;
 
         public StableId RestartParticipantId
@@ -149,7 +149,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             Vector2 configuredColliderSize,
             Vector2 configuredColliderOffset,
             DestructiblePropDestructionAnimation configuredAnimation,
-            DestructiblePropTerminalProvenanceV1 configuredTerminalProvenance)
+            DestructiblePropTerminalProvenance configuredTerminalProvenance)
         {
             ValidatePositive(configuredMaximumHealth, nameof(configuredMaximumHealth));
             DestructiblePropDefinitionValues.RequirePositiveVector(
@@ -166,7 +166,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
         }
 
         public DestructiblePropConfigurationResult TryConfigure(
-            CombatHit2DAdapter configuredHitAdapter)
+            CombatHit2DBridge configuredHitAdapter)
         {
             if (runtimeProp != null && runtimeProp.IsConfigured)
             {
@@ -180,7 +180,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             {
                 return Failure(
                     DestructiblePropConfigurationStatus.TargetRegistrationFailed,
-                    "An explicit CombatHit2DAdapter is required.");
+                    "An explicit CombatHit2DBridge is required.");
             }
             if (!IsPositiveFinite(confirmedHitDamage))
             {
@@ -422,7 +422,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
             this.rewardOperationSink = rewardOperationSink;
         }
 
-        private DestructiblePropTerminalProvenanceV1
+        private DestructiblePropTerminalProvenance
             BuildDefinitionTerminalProvenance(
                 DestructiblePropResolvedPreview preview)
         {
@@ -444,7 +444,7 @@ namespace ShooterMover.ContentPackages.Props.DestructibleProps
                     + preview.VariantId
                     + "|"
                     + preview.ResolvedFingerprint));
-            return new DestructiblePropTerminalProvenanceV1(
+            return new DestructiblePropTerminalProvenance(
                 definitionStableId,
                 preview.Values.InheritedRewardProfileId,
                 preview.ResolvedFingerprint);

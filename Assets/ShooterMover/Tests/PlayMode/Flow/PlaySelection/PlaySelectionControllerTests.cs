@@ -16,28 +16,28 @@ namespace ShooterMover.Tests.PlayMode.Flow.PlaySelection
         [UnityTest]
         public IEnumerator SoloEmitsOneLevelSelectionRouteWithSamePayload()
         {
-            PlayerRouteProfilePayloadV1 payload = CreatePayload();
-            var adapter = new RecordingPlaySelectionRouteAdapterV1();
-            PlaySelectionControllerV1 controller = CreateController(
+            PlayerRouteProfilePayload payload = CreatePayload();
+            var adapter = new RecordingPlaySelectionRouteBridge();
+            PlaySelectionController controller = CreateController(
                 payload,
                 adapter);
 
-            PlaySelectionResultV1 first = controller.SelectSolo();
-            PlaySelectionResultV1 repeated = controller.SelectSolo();
+            PlaySelectionResult first = controller.SelectSolo();
+            PlaySelectionResult repeated = controller.SelectSolo();
             yield return null;
 
             Assert.That(first.RouteEmitted, Is.True);
             Assert.That(
                 first.Route,
-                Is.EqualTo(PlaySelectionRouteV1.LevelSelection));
+                Is.EqualTo(PlaySelectionRoute.LevelSelection));
             Assert.That(first.Payload, Is.SameAs(payload));
             Assert.That(
                 repeated.Status,
-                Is.EqualTo(PlaySelectionStatusV1.InputLocked));
+                Is.EqualTo(PlaySelectionStatus.InputLocked));
             Assert.That(adapter.PresentCount, Is.EqualTo(1));
             Assert.That(
                 adapter.LastRoute,
-                Is.EqualTo(PlaySelectionRouteV1.LevelSelection));
+                Is.EqualTo(PlaySelectionRoute.LevelSelection));
             Assert.That(adapter.LastPayload, Is.SameAs(payload));
             Assert.That(
                 adapter.LastPayload.Fingerprint,
@@ -49,19 +49,19 @@ namespace ShooterMover.Tests.PlayMode.Flow.PlaySelection
         [UnityTest]
         public IEnumerator MultiplayerShowsUnavailableWithoutAnyRoute()
         {
-            PlayerRouteProfilePayloadV1 payload = CreatePayload();
-            var adapter = new RecordingPlaySelectionRouteAdapterV1();
-            PlaySelectionControllerV1 controller = CreateController(
+            PlayerRouteProfilePayload payload = CreatePayload();
+            var adapter = new RecordingPlaySelectionRouteBridge();
+            PlaySelectionController controller = CreateController(
                 payload,
                 adapter);
 
-            PlaySelectionResultV1 result = controller.SelectMultiplayer();
+            PlaySelectionResult result = controller.SelectMultiplayer();
             yield return null;
 
             Assert.That(
                 result.Status,
-                Is.EqualTo(PlaySelectionStatusV1.ModeUnavailable));
-            Assert.That(result.Route, Is.EqualTo(PlaySelectionRouteV1.None));
+                Is.EqualTo(PlaySelectionStatus.ModeUnavailable));
+            Assert.That(result.Route, Is.EqualTo(PlaySelectionRoute.None));
             Assert.That(adapter.PresentCount, Is.Zero);
             Assert.That(controller.IsInputLocked, Is.False);
             Assert.That(controller.Payload, Is.SameAs(payload));
@@ -72,25 +72,25 @@ namespace ShooterMover.Tests.PlayMode.Flow.PlaySelection
         [UnityTest]
         public IEnumerator UnavailableMultiplayerCanBeFollowedBySolo()
         {
-            PlayerRouteProfilePayloadV1 payload = CreatePayload();
-            var adapter = new RecordingPlaySelectionRouteAdapterV1();
-            PlaySelectionControllerV1 controller = CreateController(
+            PlayerRouteProfilePayload payload = CreatePayload();
+            var adapter = new RecordingPlaySelectionRouteBridge();
+            PlaySelectionController controller = CreateController(
                 payload,
                 adapter);
 
-            PlaySelectionResultV1 unavailable =
+            PlaySelectionResult unavailable =
                 controller.SelectMultiplayer();
-            PlaySelectionResultV1 solo = controller.SelectSolo();
+            PlaySelectionResult solo = controller.SelectSolo();
             yield return null;
 
             Assert.That(
                 unavailable.Status,
-                Is.EqualTo(PlaySelectionStatusV1.ModeUnavailable));
+                Is.EqualTo(PlaySelectionStatus.ModeUnavailable));
             Assert.That(solo.RouteEmitted, Is.True);
             Assert.That(adapter.PresentCount, Is.EqualTo(1));
             Assert.That(
                 adapter.LastRoute,
-                Is.EqualTo(PlaySelectionRouteV1.LevelSelection));
+                Is.EqualTo(PlaySelectionRoute.LevelSelection));
             Assert.That(adapter.LastPayload, Is.SameAs(payload));
 
             Object.Destroy(controller.gameObject);
@@ -99,26 +99,26 @@ namespace ShooterMover.Tests.PlayMode.Flow.PlaySelection
         [UnityTest]
         public IEnumerator BackEmitsOneHubRouteWithSamePayload()
         {
-            PlayerRouteProfilePayloadV1 payload = CreatePayload();
-            var adapter = new RecordingPlaySelectionRouteAdapterV1();
-            PlaySelectionControllerV1 controller = CreateController(
+            PlayerRouteProfilePayload payload = CreatePayload();
+            var adapter = new RecordingPlaySelectionRouteBridge();
+            PlaySelectionController controller = CreateController(
                 payload,
                 adapter);
 
-            PlaySelectionResultV1 first = controller.NavigateBack();
-            PlaySelectionResultV1 repeated = controller.NavigateBack();
+            PlaySelectionResult first = controller.NavigateBack();
+            PlaySelectionResult repeated = controller.NavigateBack();
             yield return null;
 
             Assert.That(first.RouteEmitted, Is.True);
-            Assert.That(first.Route, Is.EqualTo(PlaySelectionRouteV1.Hub));
+            Assert.That(first.Route, Is.EqualTo(PlaySelectionRoute.Hub));
             Assert.That(first.Payload, Is.SameAs(payload));
             Assert.That(
                 repeated.Status,
-                Is.EqualTo(PlaySelectionStatusV1.InputLocked));
+                Is.EqualTo(PlaySelectionStatus.InputLocked));
             Assert.That(adapter.PresentCount, Is.EqualTo(1));
             Assert.That(
                 adapter.LastRoute,
-                Is.EqualTo(PlaySelectionRouteV1.Hub));
+                Is.EqualTo(PlaySelectionRoute.Hub));
             Assert.That(adapter.LastPayload, Is.SameAs(payload));
 
             Object.Destroy(controller.gameObject);
@@ -127,21 +127,21 @@ namespace ShooterMover.Tests.PlayMode.Flow.PlaySelection
         [UnityTest]
         public IEnumerator MissingPayloadCannotEmitAnyRoute()
         {
-            var adapter = new RecordingPlaySelectionRouteAdapterV1();
-            PlaySelectionControllerV1 controller = CreateController(
+            var adapter = new RecordingPlaySelectionRouteBridge();
+            PlaySelectionController controller = CreateController(
                 null,
                 adapter);
 
-            PlaySelectionResultV1 solo = controller.SelectSolo();
-            PlaySelectionResultV1 back = controller.NavigateBack();
+            PlaySelectionResult solo = controller.SelectSolo();
+            PlaySelectionResult back = controller.NavigateBack();
             yield return null;
 
             Assert.That(
                 solo.Status,
-                Is.EqualTo(PlaySelectionStatusV1.InvalidPayload));
+                Is.EqualTo(PlaySelectionStatus.InvalidPayload));
             Assert.That(
                 back.Status,
-                Is.EqualTo(PlaySelectionStatusV1.InvalidPayload));
+                Is.EqualTo(PlaySelectionStatus.InvalidPayload));
             Assert.That(adapter.PresentCount, Is.Zero);
             Assert.That(controller.IsInputLocked, Is.False);
 
@@ -151,9 +151,9 @@ namespace ShooterMover.Tests.PlayMode.Flow.PlaySelection
         [UnityTest]
         public IEnumerator CatalogMetadataDrivesControllerModeList()
         {
-            PlayerRouteProfilePayloadV1 payload = CreatePayload();
-            var adapter = new RecordingPlaySelectionRouteAdapterV1();
-            PlaySelectionControllerV1 controller = CreateController(
+            PlayerRouteProfilePayload payload = CreatePayload();
+            var adapter = new RecordingPlaySelectionRouteBridge();
+            PlaySelectionController controller = CreateController(
                 payload,
                 adapter);
             yield return null;
@@ -161,33 +161,33 @@ namespace ShooterMover.Tests.PlayMode.Flow.PlaySelection
             Assert.That(controller.Catalog.Modes.Count, Is.EqualTo(2));
             Assert.That(
                 controller.Catalog.Modes[0].ModeStableId.ToString(),
-                Is.EqualTo(PlaySelectionServiceV1.SoloModeStableIdText));
+                Is.EqualTo(PlaySelectionActions.SoloModeStableIdText));
             Assert.That(
                 controller.Catalog.Modes[1].ModeStableId.ToString(),
                 Is.EqualTo(
-                    PlaySelectionServiceV1.MultiplayerModeStableIdText));
+                    PlaySelectionActions.MultiplayerModeStableIdText));
             Assert.That(adapter.PresentCount, Is.Zero);
 
             Object.Destroy(controller.gameObject);
         }
 
-        private static PlaySelectionControllerV1 CreateController(
-            PlayerRouteProfilePayloadV1 payload,
-            IPlaySelectionRouteAdapterV1 adapter)
+        private static PlaySelectionController CreateController(
+            PlayerRouteProfilePayload payload,
+            IPlaySelectionRouteBridge adapter)
         {
             var gameObject = new GameObject("PlaySelectionControllerTests");
-            PlaySelectionControllerV1 controller =
-                gameObject.AddComponent<PlaySelectionControllerV1>();
+            PlaySelectionController controller =
+                gameObject.AddComponent<PlaySelectionController>();
             controller.Configure(
                 payload,
-                PlayModeCatalogDefinitionV1.CreateDefaultCatalog(),
+                PlayModeCatalogDefinition.CreateDefaultCatalog(),
                 adapter);
             return controller;
         }
 
-        private static PlayerRouteProfilePayloadV1 CreatePayload()
+        private static PlayerRouteProfilePayload CreatePayload()
         {
-            return PlayerRouteProfilePayloadV1.Create(
+            return PlayerRouteProfilePayload.Create(
                 StableId.Parse("character.play-selection-playmode"),
                 StableId.Parse("loadout-profile.play-selection-playmode"),
                 new List<StableId>

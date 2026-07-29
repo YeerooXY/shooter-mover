@@ -6,9 +6,9 @@ XP-002 converts accepted enemy-destruction facts into exactly-once XP-001 grants
 
 The implementation has three boundaries:
 
-1. **Authoring catalog** — `EnemyExperienceRewardCatalogAssetV1` stores level bands keyed by an enemy definition `StableId`.
-2. **Application service** — `EnemyExperienceRewardServiceV1` resolves the configured amount and converts one `EnemyDestroyedNotification` into one XP-001 request.
-3. **Unity composition decorator** — `EnemyExperienceRewardingAuthorityV1` wraps an existing `IEnemyActor2DAuthority`, returns the original combat result unchanged, and forwards only accepted EN-002 destruction notifications.
+1. **Authoring catalog** — `EnemyExperienceRewardCatalogAsset` stores level bands keyed by an enemy definition `StableId`.
+2. **Application service** — `EnemyExperienceRewardActions` resolves the configured amount and converts one `EnemyDestroyedNotification` into one XP-001 request.
+3. **Unity composition decorator** — `EnemyExperienceRewardingState` wraps an existing `IEnemyActor2DState`, returns the original combat result unchanged, and forwards only accepted EN-002 destruction notifications.
 
 XP-001 remains the sole mutable player-XP authority.
 
@@ -72,11 +72,11 @@ No GameObject name, Unity instance ID, runtime GUID, wall-clock time, callback c
 
 EN-002 is authoritative for enemy health and lifecycle. XP-002 consumes only `EnemyDestroyedNotification` facts already emitted by `EnemyActorStepper`.
 
-`EnemyExperienceRewardingAuthorityV1` is a decorator around the existing EN-003 authority port:
+`EnemyExperienceRewardingState` is a decorator around the existing EN-003 authority port:
 
 ```text
 EnemyActorCommand
-  -> existing IEnemyActor2DAuthority.Apply
+  -> existing IEnemyActor2DState.Apply
   -> original EnemyActorStepResult returned unchanged
   -> each EnemyDestroyedNotification forwarded to XP-002
   -> XP-001 Grant
@@ -94,7 +94,7 @@ As a result:
 - a quick restart in the same run cannot grant the same operation twice;
 - importing an XP-001 snapshot restores the accepted operation identities;
 - replaying a restored destruction fact produces no additional XP;
-- level-up facts produced by XP-001 remain available through `EnemyExperienceRewardFactV1.LevelUpFacts`.
+- level-up facts produced by XP-001 remain available through `EnemyExperienceRewardFact.LevelUpFacts`.
 
 A new run must provide a new stable run identity. Reusing a run identity intentionally reuses the same exactly-once scope.
 
@@ -102,14 +102,14 @@ A new run must provide a new stable run identity. Reusing a run identity intenti
 
 Production composition provides:
 
-- the existing `IEnemyActor2DAuthority` instance;
-- the shared `IPlayerExperienceAuthorityV1` instance;
+- the existing `IEnemyActor2DState` instance;
+- the shared `IPlayerExperienceState` instance;
 - a validated enemy XP catalog;
 - the permanent run identity;
 - the enemy definition identity;
 - the authored enemy level.
 
-The wrapper is then supplied wherever the original `IEnemyActor2DAuthority` would have been supplied. No enemy prefab, combat package, or XP-001 implementation change is required.
+The wrapper is then supplied wherever the original `IEnemyActor2DState` would have been supplied. No enemy prefab, combat package, or XP-001 implementation change is required.
 
 ## Validation
 

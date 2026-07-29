@@ -14,7 +14,7 @@ namespace ShooterMover.Domain.Combat
         private const double BoundaryEpsilon = 0.000000000001d;
 
         public static WeaponMountStepResult Step(
-            WeaponRuntimeProfile profile,
+            WeaponLiveProfile profile,
             WeaponMountState state,
             double elapsedSeconds,
             bool fireRequested)
@@ -27,7 +27,7 @@ namespace ShooterMover.Domain.Combat
         }
 
         public static WeaponMountStepResult Step(
-            WeaponRuntimeProfile profile,
+            WeaponLiveProfile profile,
             WeaponMountState state,
             double elapsedSeconds,
             WeaponMountStepInput input)
@@ -323,7 +323,7 @@ namespace ShooterMover.Domain.Combat
         }
 
         private static void EmitShot(
-            WeaponRuntimeProfile profile,
+            WeaponLiveProfile profile,
             ref double heatUnits,
             ref bool heatRecoveryLocked,
             ref double chargeProgress)
@@ -348,7 +348,7 @@ namespace ShooterMover.Domain.Combat
         }
 
         private static double FindNextAdvance(
-            WeaponRuntimeProfile profile,
+            WeaponLiveProfile profile,
             double elapsedRemaining,
             double cadenceRemaining,
             int burstShotsRemaining,
@@ -398,7 +398,7 @@ namespace ShooterMover.Domain.Combat
         }
 
         private static void AdvanceContinuousState(
-            WeaponRuntimeProfile profile,
+            WeaponLiveProfile profile,
             double elapsedSeconds,
             ref double cadenceRemaining,
             ref double burstIntervalRemaining,
@@ -446,7 +446,7 @@ namespace ShooterMover.Domain.Combat
         }
 
         private static void NormalizeRuntimeValues(
-            WeaponRuntimeProfile profile,
+            WeaponLiveProfile profile,
             ref double cadenceRemaining,
             ref double burstIntervalRemaining,
             ref double recoveryRemaining,
@@ -495,7 +495,7 @@ namespace ShooterMover.Domain.Combat
         }
 
         private static WeaponMountPhase DerivePhase(
-            WeaponRuntimeProfile profile,
+            WeaponLiveProfile profile,
             double cadenceRemaining,
             int burstShotsRemaining,
             double recoveryRemaining,
@@ -527,7 +527,7 @@ namespace ShooterMover.Domain.Combat
         }
 
         private static bool TryValidateState(
-            WeaponRuntimeProfile profile,
+            WeaponLiveProfile profile,
             WeaponMountState state,
             out string diagnostic)
         {

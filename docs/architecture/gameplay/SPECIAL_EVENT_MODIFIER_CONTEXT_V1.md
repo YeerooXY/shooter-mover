@@ -2,17 +2,17 @@
 
 ## Purpose
 
-`EVENT-MODIFIER-001` adds a deterministic, engine-neutral boundary for timed special events such as double-drop weekends. Events contribute ordinary `RuntimeModifierDefinitionV1` values. They do not rewrite weapon, enemy, reward, strongbox, or room catalogs.
+`EVENT-MODIFIER-001` adds a deterministic, engine-neutral boundary for timed special events such as double-drop weekends. Events contribute ordinary `LiveModifierDefinition` values. They do not rewrite weapon, enemy, reward, strongbox, or room catalogs.
 
 ## Ownership
 
-- `SpecialEventDefinitionV1` describes one versioned event, activation window, priority, overlap policy, explicit exclusions, and modifier descriptors.
-- `SpecialEventCatalogV1` validates references, canonicalizes definition order, and owns the content fingerprint.
-- `IAuthoritativeEventClockV1` supplies the only time value used by active-event selection.
-- `ActiveEventModifierProjectionServiceV1` selects active definitions once for one injected instant and either projects a snapshot or rejects overlapping conflicts.
-- `ActiveEventModifierSnapshotV1` is the immutable active-event projection and contains the merged `RuntimeModifierSnapshotV1`.
-- `FrozenEventModifierContextV1` is the immutable modifier input retained by reward generation, drop generation, strongbox opening, and mission-result freezing.
-- `EventStampedCommandEnvelopeV1` binds an existing command fingerprint to the exact frozen active-event snapshot without changing the command's underlying generation algorithm.
+- `SpecialEventDefinition` describes one versioned event, activation window, priority, overlap policy, explicit exclusions, and modifier descriptors.
+- `SpecialEventCatalog` validates references, canonicalizes definition order, and owns the content fingerprint.
+- `IAuthoritativeEventClock` supplies the only time value used by active-event selection.
+- `ActiveEventModifierViewActions` selects active definitions once for one injected instant and either projects a snapshot or rejects overlapping conflicts.
+- `ActiveEventModifierSnapshot` is the immutable active-event projection and contains the merged `LiveModifierSnapshot`.
+- `FrozenEventModifierContext` is the immutable modifier input retained by reward generation, drop generation, strongbox opening, and mission-result freezing.
+- `EventStampedCommandEnvelope` binds an existing command fingerprint to the exact frozen active-event snapshot without changing the command's underlying generation algorithm.
 
 No event class owns reward generation, item selection, wallet mutation, XP mutation, strongbox opening, or mission completion.
 
@@ -24,7 +24,7 @@ Activation windows use Unix seconds with a start-inclusive/end-exclusive interva
 start <= authoritative instant < end
 ```
 
-Domain and application event code never reads `DateTime.Now`, `DateTime.UtcNow`, Unity time, or the local operating-system clock. Production composition must inject an implementation of `IAuthoritativeEventClockV1`.
+Domain and application event code never reads `DateTime.Now`, `DateTime.UtcNow`, Unity time, or the local operating-system clock. Production composition must inject an implementation of `IAuthoritativeEventClock`.
 
 The projection service reads the clock exactly once per projection. That instant is included in the snapshot fingerprint.
 
@@ -67,7 +67,7 @@ Targets remain open strings. Unknown future target IDs remain present in the mod
 
 ## Freezing generation and opening results
 
-A reward, drop, opening, or mission command obtains one successful `ActiveEventModifierSnapshotV1` and calls `FreezeForCommand()`. The command boundary then creates the corresponding `EventStampedCommandEnvelopeV1` factory:
+A reward, drop, opening, or mission command obtains one successful `ActiveEventModifierSnapshot` and calls `FreezeForCommand()`. The command boundary then creates the corresponding `EventStampedCommandEnvelope` factory:
 
 - `ForRewardGeneration`;
 - `ForDropGeneration`;
@@ -87,7 +87,7 @@ The event snapshot is an input fact. It is not an instruction to regenerate a te
 
 ## Offline and future server-authoritative boundary
 
-For offline play, composition may bind `IAuthoritativeEventClockV1` to a trusted application clock. Local wall-clock manipulation is therefore a trust limitation of the offline mode and should be documented to players if event rewards matter competitively.
+For offline play, composition may bind `IAuthoritativeEventClock` to a trusted application clock. Local wall-clock manipulation is therefore a trust limitation of the offline mode and should be documented to players if event rewards matter competitively.
 
 For future multiplayer or account-backed events:
 
@@ -101,7 +101,7 @@ No network transport, remote event service, signing scheme, monetization backend
 ## Focused verification
 
 ```text
-Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Modifiers.Events.ActiveEventModifierProjectionV1Tests -testResults Temp/event-modifier-001-projection-editmode.xml -logFile Temp/event-modifier-001-projection-editmode.log
+Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Modifiers.Events.ActiveEventModifierViewTests -testResults Temp/event-modifier-001-projection-editmode.xml -logFile Temp/event-modifier-001-projection-editmode.log
 
-Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Modifiers.Events.EventStampedCommandEnvelopeV1Tests -testResults Temp/event-modifier-001-command-editmode.xml -logFile Temp/event-modifier-001-command-editmode.log
+Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testFilter ShooterMover.Tests.EditMode.Modifiers.Events.EventStampedCommandEnvelopeTests -testResults Temp/event-modifier-001-command-editmode.xml -logFile Temp/event-modifier-001-command-editmode.log
 ```

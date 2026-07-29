@@ -123,7 +123,7 @@ Drag `ConfiguredDoor.prefab` and configure:
 7. distinct closed/open presentation roots;
 8. one or more closed-state colliders.
 
-`ConfiguredDoorAuthoring2D` implements `ILevelDoorPackageAdapter` so the
+`ConfiguredDoorAuthoring2D` implements `ILevelDoorPackageBridge` so the
 foundation can validate package composition without taking door authority from
 DOOR-001. Its preview commands only toggle authored presentation/collision in
 edit mode. Runtime opening, conditions, restart participation, and traversal

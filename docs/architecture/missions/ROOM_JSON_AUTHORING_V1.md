@@ -69,7 +69,7 @@ It does not own:
 - runtime prefab construction;
 - room-clear participation.
 
-`BuiltInRoomContentObjectCatalogV1` currently maps concise authoring IDs to the existing runtime definition and presentation IDs. The resulting `RoomEnemyPlacementContentV1` preserves the concise object ID and level beside the compiled `AuthorableRoomGraphDefinitionV1`. A future enemy runtime factory can resolve those two facts into a live enemy and emit death facts containing concrete instance, object type, level, killer actor, and killer participant.
+`BuiltInRoomContentObjectCatalog` currently maps concise authoring IDs to the existing runtime definition and presentation IDs. The resulting `RoomEnemyPlacementContent` preserves the concise object ID and level beside the compiled `AuthorableRoomGraphDefinition`. A future enemy runtime factory can resolve those two facts into a live enemy and emit death facts containing concrete instance, object type, level, killer actor, and killer participant.
 
 XP, drops, kill catalogs, statistics, and Results remain downstream consumers of death facts. They are not embedded in the room file or enemy runtime.
 
@@ -162,11 +162,11 @@ Background and foreground objects remain separate arrays from gameplay props.
 
 ## Unity adapter
 
-`JsonRoomContentDefinition2D` accepts one manifest `TextAsset` and keyed JSON document `TextAsset` entries. It imports through the engine-neutral `RoomContentJsonImporterV1` and the registered object catalog.
+`JsonRoomContentDefinition2D` accepts one manifest `TextAsset` and keyed JSON document `TextAsset` entries. It imports through the engine-neutral `RoomContentJsonImporter` and the registered object catalog.
 
 The importer returns:
 
-- the compiled existing `AuthorableRoomGraphDefinitionV1` for ROOM-LIVE;
+- the compiled existing `AuthorableRoomGraphDefinition` for ROOM-LIVE;
 - enemy placement sidecars containing object type and level;
 - prop placement sidecars;
 - expanded tile/background/foreground placements;

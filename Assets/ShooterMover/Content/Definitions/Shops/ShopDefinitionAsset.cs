@@ -12,7 +12,7 @@ using UnityEngine;
 namespace ShooterMover.Content.Definitions.Shops
 {
     [Serializable]
-    public sealed class ShopEquipmentCandidateAuthoringV1
+    public sealed class ShopEquipmentCandidateAuthoring
     {
         [SerializeField] private string equipmentDefinitionId = string.Empty;
         [Min(0)] [SerializeField] private int minimumCharacterLevel;
@@ -26,7 +26,7 @@ namespace ShooterMover.Content.Definitions.Shops
         [Min(0.000001f)] [SerializeField] private double baseWeight = 1.0;
         [Min(0.000001f)] [SerializeField] private double sourceBias = 1.0;
 
-        public EquipmentGenerationCandidateV1 Build(ICollection<string> errors, string field)
+        public EquipmentGenerationCandidate Build(ICollection<string> errors, string field)
         {
             StableId definitionId = ParseRequired(equipmentDefinitionId, field + ".equipment_definition_id", errors);
             List<StableId> tags = ParseArray(requiredProgressionTags, field + ".required_progression_tags", errors);
@@ -37,7 +37,7 @@ namespace ShooterMover.Content.Definitions.Shops
 
             try
             {
-                return EquipmentGenerationCandidateV1.Create(
+                return EquipmentGenerationCandidate.Create(
                     definitionId,
                     minimumCharacterLevel,
                     maximumCharacterLevel,
@@ -91,15 +91,15 @@ namespace ShooterMover.Content.Definitions.Shops
     }
 
     [Serializable]
-    public sealed class ShopQualityCandidateAuthoringV1
+    public sealed class ShopQualityCandidateAuthoring
     {
         [SerializeField] private string qualityId = string.Empty;
         [Min(0)] [SerializeField] private long nominalAvailabilityLevel;
         [Min(1)] [SerializeField] private long weight = 1L;
 
-        public EquipmentQualityCandidateV1 Build(ICollection<string> errors, string field)
+        public EquipmentQualityCandidate Build(ICollection<string> errors, string field)
         {
-            StableId id = ShopEquipmentCandidateAuthoringV1.ParseRequired(
+            StableId id = ShopEquipmentCandidateAuthoring.ParseRequired(
                 qualityId,
                 field + ".quality_id",
                 errors);
@@ -110,7 +110,7 @@ namespace ShooterMover.Content.Definitions.Shops
 
             try
             {
-                return EquipmentQualityCandidateV1.Create(id, nominalAvailabilityLevel, checked((ulong)weight));
+                return EquipmentQualityCandidate.Create(id, nominalAvailabilityLevel, checked((ulong)weight));
             }
             catch (Exception exception)
             {
@@ -121,16 +121,16 @@ namespace ShooterMover.Content.Definitions.Shops
     }
 
     [Serializable]
-    public sealed class ShopAugmentCandidateAuthoringV1
+    public sealed class ShopAugmentCandidateAuthoring
     {
         [SerializeField] private string augmentDefinitionId = string.Empty;
         [Min(0)] [SerializeField] private int minimumCharacterLevel;
         [Min(0)] [SerializeField] private int maximumCharacterLevel = 100;
         [Min(1)] [SerializeField] private long weight = 1L;
 
-        public AugmentGenerationCandidateV1 Build(ICollection<string> errors, string field)
+        public AugmentGenerationCandidate Build(ICollection<string> errors, string field)
         {
-            StableId id = ShopEquipmentCandidateAuthoringV1.ParseRequired(
+            StableId id = ShopEquipmentCandidateAuthoring.ParseRequired(
                 augmentDefinitionId,
                 field + ".augment_definition_id",
                 errors);
@@ -141,7 +141,7 @@ namespace ShooterMover.Content.Definitions.Shops
 
             try
             {
-                return AugmentGenerationCandidateV1.Create(
+                return AugmentGenerationCandidate.Create(
                     id,
                     minimumCharacterLevel,
                     maximumCharacterLevel,
@@ -156,7 +156,7 @@ namespace ShooterMover.Content.Definitions.Shops
     }
 
     [Serializable]
-    public sealed class ShopPricingPolicyAuthoringV1
+    public sealed class ShopPricingPolicyAuthoring
     {
         [SerializeField] private string policyId = "shop-pricing.unconfigured";
         [Min(1)] [SerializeField] private long minimumPrice = 1L;
@@ -167,9 +167,9 @@ namespace ShooterMover.Content.Definitions.Shops
         [Min(0)] [SerializeField] private long perAugmentTier;
         [Min(0)] [SerializeField] private long perAugmentLevel;
 
-        public ShopPricingPolicyV1 Build(ICollection<string> errors)
+        public ShopPricingPolicy Build(ICollection<string> errors)
         {
-            StableId id = ShopEquipmentCandidateAuthoringV1.ParseRequired(
+            StableId id = ShopEquipmentCandidateAuthoring.ParseRequired(
                 policyId,
                 "pricing_policy.policy_id",
                 errors);
@@ -180,7 +180,7 @@ namespace ShooterMover.Content.Definitions.Shops
 
             try
             {
-                return ShopPricingPolicyV1.Create(
+                return ShopPricingPolicy.Create(
                     id,
                     minimumPrice,
                     basePrice,
@@ -198,12 +198,12 @@ namespace ShooterMover.Content.Definitions.Shops
         }
     }
 
-    public sealed class ShopDefinitionAssetBuildResultV1
+    public sealed class ShopDefinitionAssetBuildResult
     {
         private readonly ReadOnlyCollection<string> errors;
 
-        public ShopDefinitionAssetBuildResultV1(
-            ShopDefinitionV1 definition,
+        public ShopDefinitionAssetBuildResult(
+            ShopDefinition definition,
             IEnumerable<string> errors)
         {
             Definition = definition;
@@ -211,7 +211,7 @@ namespace ShooterMover.Content.Definitions.Shops
                 new List<string>(errors ?? Array.Empty<string>()));
         }
 
-        public ShopDefinitionV1 Definition { get; }
+        public ShopDefinition Definition { get; }
         public IReadOnlyList<string> Errors { get { return errors; } }
         public bool IsValid { get { return Definition != null && errors.Count == 0; } }
     }
@@ -229,12 +229,12 @@ namespace ShooterMover.Content.Definitions.Shops
 
         [Header("Generation")]
         [SerializeField] private string generationPolicyId = "shop-generation.unconfigured";
-        [SerializeField] private ShopEquipmentCandidateAuthoringV1[] equipmentCandidates =
-            new ShopEquipmentCandidateAuthoringV1[0];
-        [SerializeField] private ShopQualityCandidateAuthoringV1[] qualityCandidates =
-            new ShopQualityCandidateAuthoringV1[0];
-        [SerializeField] private ShopAugmentCandidateAuthoringV1[] augmentCandidates =
-            new ShopAugmentCandidateAuthoringV1[0];
+        [SerializeField] private ShopEquipmentCandidateAuthoring[] equipmentCandidates =
+            new ShopEquipmentCandidateAuthoring[0];
+        [SerializeField] private ShopQualityCandidateAuthoring[] qualityCandidates =
+            new ShopQualityCandidateAuthoring[0];
+        [SerializeField] private ShopAugmentCandidateAuthoring[] augmentCandidates =
+            new ShopAugmentCandidateAuthoring[0];
         [Min(0)] [SerializeField] private int minimumAugmentSlots;
         [Min(0)] [SerializeField] private int maximumAugmentSlots;
         [SerializeField] private bool requireExactAugmentSlotCount;
@@ -246,44 +246,44 @@ namespace ShooterMover.Content.Definitions.Shops
         [Range(0.0f, 1.0f)] [SerializeField] private double minimumRetention = 0.2;
 
         [Header("Runtime Policies")]
-        [SerializeField] private ShopProgressionContextPolicyV1 progressionContextPolicy =
-            ShopProgressionContextPolicyV1.FreezeOnFirstOpen;
-        [SerializeField] private ShopPricingPolicyAuthoringV1 pricingPolicy =
-            new ShopPricingPolicyAuthoringV1();
-        [SerializeField] private ShopRefreshPolicyV1 refreshPolicy = ShopRefreshPolicyV1.Disabled;
+        [SerializeField] private ShopProgressionContextPolicy progressionContextPolicy =
+            ShopProgressionContextPolicy.FreezeOnFirstOpen;
+        [SerializeField] private ShopPricingPolicyAuthoring pricingPolicy =
+            new ShopPricingPolicyAuthoring();
+        [SerializeField] private ShopRefreshPolicy refreshPolicy = ShopRefreshPolicy.Disabled;
         [Min(0)] [SerializeField] private int maximumRunRefreshCount;
         [Min(0)] [SerializeField] private int baseLockCapacity;
         [Min(1)] [SerializeField] private int algorithmVersion = 1;
         [Min(1)] [SerializeField] private int definitionSchemaVersion = 1;
 
-        public ShopDefinitionAssetBuildResultV1 BuildDefinition()
+        public ShopDefinitionAssetBuildResult BuildDefinition()
         {
             List<string> errors = new List<string>();
-            StableId shopId = ShopEquipmentCandidateAuthoringV1.ParseRequired(
+            StableId shopId = ShopEquipmentCandidateAuthoring.ParseRequired(
                 shopStableId,
                 "shop_stable_id",
                 errors);
-            StableId policyId = ShopEquipmentCandidateAuthoringV1.ParseRequired(
+            StableId policyId = ShopEquipmentCandidateAuthoring.ParseRequired(
                 generationPolicyId,
                 "generation_policy_id",
                 errors);
-            List<StableId> categories = ShopEquipmentCandidateAuthoringV1.ParseArray(
+            List<StableId> categories = ShopEquipmentCandidateAuthoring.ParseArray(
                 eligibleCategoryIds,
                 "eligible_category_ids",
                 errors);
-            List<StableId> requiredTags = ShopEquipmentCandidateAuthoringV1.ParseArray(
+            List<StableId> requiredTags = ShopEquipmentCandidateAuthoring.ParseArray(
                 requiredEquipmentTags,
                 "required_equipment_tags",
                 errors);
-            List<StableId> excludedTags = ShopEquipmentCandidateAuthoringV1.ParseArray(
+            List<StableId> excludedTags = ShopEquipmentCandidateAuthoring.ParseArray(
                 excludedEquipmentTags,
                 "excluded_equipment_tags",
                 errors);
 
-            List<EquipmentGenerationCandidateV1> equipment = BuildEquipmentCandidates(errors);
-            List<EquipmentQualityCandidateV1> qualities = BuildQualityCandidates(errors);
-            List<AugmentGenerationCandidateV1> augments = BuildAugmentCandidates(errors);
-            ShopPricingPolicyV1 domainPricing = pricingPolicy == null
+            List<EquipmentGenerationCandidate> equipment = BuildEquipmentCandidates(errors);
+            List<EquipmentQualityCandidate> qualities = BuildQualityCandidates(errors);
+            List<AugmentGenerationCandidate> augments = BuildAugmentCandidates(errors);
+            ShopPricingPolicy domainPricing = pricingPolicy == null
                 ? null
                 : pricingPolicy.Build(errors);
             if (pricingPolicy == null)
@@ -293,12 +293,12 @@ namespace ShooterMover.Content.Definitions.Shops
 
             if (errors.Count > 0)
             {
-                return new ShopDefinitionAssetBuildResultV1(null, errors);
+                return new ShopDefinitionAssetBuildResult(null, errors);
             }
 
             try
             {
-                EquipmentGenerationPolicyV1 generation = EquipmentGenerationPolicyV1.Create(
+                EquipmentGenerationPolicy generation = EquipmentGenerationPolicy.Create(
                     policyId,
                     equipment,
                     qualities,
@@ -314,7 +314,7 @@ namespace ShooterMover.Content.Definitions.Shops
                         decayStartsAfterLevels,
                         halfLifeLevels,
                         minimumRetention));
-                ShopDefinitionV1 definition = ShopDefinitionV1.Create(
+                ShopDefinition definition = ShopDefinition.Create(
                     shopId,
                     inventorySize,
                     categories,
@@ -328,19 +328,19 @@ namespace ShooterMover.Content.Definitions.Shops
                     baseLockCapacity,
                     algorithmVersion,
                     definitionSchemaVersion);
-                return new ShopDefinitionAssetBuildResultV1(definition, errors);
+                return new ShopDefinitionAssetBuildResult(definition, errors);
             }
             catch (Exception exception)
             {
                 errors.Add("shop_definition: " + exception.Message);
-                return new ShopDefinitionAssetBuildResultV1(null, errors);
+                return new ShopDefinitionAssetBuildResult(null, errors);
             }
         }
 
-        private List<EquipmentGenerationCandidateV1> BuildEquipmentCandidates(
+        private List<EquipmentGenerationCandidate> BuildEquipmentCandidates(
             ICollection<string> errors)
         {
-            List<EquipmentGenerationCandidateV1> result = new List<EquipmentGenerationCandidateV1>();
+            List<EquipmentGenerationCandidate> result = new List<EquipmentGenerationCandidate>();
             if (equipmentCandidates == null)
             {
                 errors.Add("equipment_candidates: collection is null");
@@ -349,14 +349,14 @@ namespace ShooterMover.Content.Definitions.Shops
 
             for (int index = 0; index < equipmentCandidates.Length; index++)
             {
-                ShopEquipmentCandidateAuthoringV1 value = equipmentCandidates[index];
+                ShopEquipmentCandidateAuthoring value = equipmentCandidates[index];
                 if (value == null)
                 {
                     errors.Add("equipment_candidates[" + index + "]: entry is null");
                     continue;
                 }
 
-                EquipmentGenerationCandidateV1 built = value.Build(
+                EquipmentGenerationCandidate built = value.Build(
                     errors,
                     "equipment_candidates[" + index + "]");
                 if (built != null) { result.Add(built); }
@@ -365,10 +365,10 @@ namespace ShooterMover.Content.Definitions.Shops
             return result;
         }
 
-        private List<EquipmentQualityCandidateV1> BuildQualityCandidates(
+        private List<EquipmentQualityCandidate> BuildQualityCandidates(
             ICollection<string> errors)
         {
-            List<EquipmentQualityCandidateV1> result = new List<EquipmentQualityCandidateV1>();
+            List<EquipmentQualityCandidate> result = new List<EquipmentQualityCandidate>();
             if (qualityCandidates == null)
             {
                 errors.Add("quality_candidates: collection is null");
@@ -377,14 +377,14 @@ namespace ShooterMover.Content.Definitions.Shops
 
             for (int index = 0; index < qualityCandidates.Length; index++)
             {
-                ShopQualityCandidateAuthoringV1 value = qualityCandidates[index];
+                ShopQualityCandidateAuthoring value = qualityCandidates[index];
                 if (value == null)
                 {
                     errors.Add("quality_candidates[" + index + "]: entry is null");
                     continue;
                 }
 
-                EquipmentQualityCandidateV1 built = value.Build(
+                EquipmentQualityCandidate built = value.Build(
                     errors,
                     "quality_candidates[" + index + "]");
                 if (built != null) { result.Add(built); }
@@ -393,10 +393,10 @@ namespace ShooterMover.Content.Definitions.Shops
             return result;
         }
 
-        private List<AugmentGenerationCandidateV1> BuildAugmentCandidates(
+        private List<AugmentGenerationCandidate> BuildAugmentCandidates(
             ICollection<string> errors)
         {
-            List<AugmentGenerationCandidateV1> result = new List<AugmentGenerationCandidateV1>();
+            List<AugmentGenerationCandidate> result = new List<AugmentGenerationCandidate>();
             if (augmentCandidates == null)
             {
                 errors.Add("augment_candidates: collection is null");
@@ -405,14 +405,14 @@ namespace ShooterMover.Content.Definitions.Shops
 
             for (int index = 0; index < augmentCandidates.Length; index++)
             {
-                ShopAugmentCandidateAuthoringV1 value = augmentCandidates[index];
+                ShopAugmentCandidateAuthoring value = augmentCandidates[index];
                 if (value == null)
                 {
                     errors.Add("augment_candidates[" + index + "]: entry is null");
                     continue;
                 }
 
-                AugmentGenerationCandidateV1 built = value.Build(
+                AugmentGenerationCandidate built = value.Build(
                     errors,
                     "augment_candidates[" + index + "]");
                 if (built != null) { result.Add(built); }

@@ -14,7 +14,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
         [Test]
         public void GrantAndBoundedSpendApplyWithImmutableChangeFacts()
         {
-            var wallet = new MoneyWalletService();
+            var wallet = new MoneyWalletActions();
 
             MoneyWalletChangeFact granted = wallet.Grant(
                 Id("transaction.grant-001"),
@@ -42,7 +42,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
         [Test]
         public void InsufficientFundsRejectWithoutMutationAndReplayDeterministically()
         {
-            var wallet = new MoneyWalletService();
+            var wallet = new MoneyWalletActions();
             wallet.Grant(Id("transaction.seed-001"), Id("operation.seed-001"), 10L);
             MoneyTransactionCommand rejectedCommand = MoneyTransactionCommand.CreateSpend(
                 Id("transaction.spend-rejected"),
@@ -73,7 +73,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
         [TestCase("currency.unknown")]
         public void NonMoneyCurrencyRejectsAndIsIdempotent(string currencyText)
         {
-            var wallet = new MoneyWalletService();
+            var wallet = new MoneyWalletActions();
             MoneyTransactionCommand command = MoneyTransactionCommand.CreateGrant(
                 Id("transaction.wrong-currency"),
                 Id("operation.reward-wrong-currency"),
@@ -97,7 +97,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
         [TestCase(-1L)]
         public void InvalidAmountsRejectWithoutAdmission(long amount)
         {
-            var wallet = new MoneyWalletService();
+            var wallet = new MoneyWalletActions();
 
             MoneyWalletChangeFact grant = wallet.Grant(
                 Id("transaction.invalid-grant"),
@@ -124,7 +124,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
         [Test]
         public void CheckedOverflowRejectsAndExactRetryReturnsNoChange()
         {
-            var wallet = new MoneyWalletService();
+            var wallet = new MoneyWalletActions();
             wallet.Grant(
                 Id("transaction.max"),
                 Id("operation.max"),
@@ -150,7 +150,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
         [Test]
         public void ExactDuplicateAndChangedReuseAreDistinctOutcomes()
         {
-            var wallet = new MoneyWalletService();
+            var wallet = new MoneyWalletActions();
             MoneyTransactionCommand original = MoneyTransactionCommand.CreateGrant(
                 Id("transaction.duplicate"),
                 Id("operation.duplicate"),
@@ -176,7 +176,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
         [Test]
         public void ExpectedSequenceAdmitsExactMatchAndRejectsStaleCommand()
         {
-            var wallet = new MoneyWalletService();
+            var wallet = new MoneyWalletActions();
 
             MoneyWalletChangeFact applied = wallet.Grant(
                 Id("transaction.sequence-001"),
@@ -205,7 +205,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
         [Test]
         public void ExportedSnapshotIsImmutableDetachedAndCanonicallyOrdered()
         {
-            var wallet = new MoneyWalletService();
+            var wallet = new MoneyWalletActions();
             wallet.Grant(Id("transaction.zulu"), Id("operation.zulu"), 2L);
             wallet.Grant(Id("transaction.alpha"), Id("operation.alpha"), 1L);
             MoneyWalletSnapshot snapshot = wallet.CurrentSnapshot;
@@ -228,7 +228,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
         [Test]
         public void SnapshotRoundTripPreservesBalanceSequenceFingerprintAndReplayFacts()
         {
-            var source = new MoneyWalletService();
+            var source = new MoneyWalletActions();
             MoneyTransactionCommand grant = MoneyTransactionCommand.CreateGrant(
                 Id("transaction.roundtrip-grant"),
                 Id("operation.roundtrip-grant"),
@@ -246,7 +246,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
                 5L,
                 1L);
             MoneyWalletSnapshot exported = source.CurrentSnapshot;
-            var restored = new MoneyWalletService();
+            var restored = new MoneyWalletActions();
 
             MoneyWalletImportResult imported = restored.ImportSnapshot(exported);
             MoneyWalletChangeFact duplicateGrant = restored.Apply(grant);
@@ -268,7 +268,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
         [Test]
         public void CorruptImportRejectsAtomicallyAndLeavesExistingStateUnchanged()
         {
-            var source = new MoneyWalletService();
+            var source = new MoneyWalletActions();
             source.Grant(Id("transaction.source"), Id("operation.source"), 20L);
             MoneyWalletSnapshot valid = source.CurrentSnapshot;
             var corrupt = new MoneyWalletSnapshot(
@@ -278,7 +278,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
                 valid.Contributions,
                 valid.Transactions,
                 "sha256:" + new string('0', 64));
-            var target = new MoneyWalletService();
+            var target = new MoneyWalletActions();
             target.Grant(Id("transaction.existing"), Id("operation.existing"), 7L);
             MoneyWalletSnapshot before = target.CurrentSnapshot;
 
@@ -295,7 +295,7 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
         [Test]
         public void CanonicalSnapshotFingerprintIgnoresCallerCollectionOrder()
         {
-            var wallet = new MoneyWalletService();
+            var wallet = new MoneyWalletActions();
             wallet.Grant(Id("transaction.order-b"), Id("operation.order-b"), 2L);
             wallet.Grant(Id("transaction.order-a"), Id("operation.order-a"), 1L);
             MoneyWalletSnapshot exported = wallet.CurrentSnapshot;
@@ -317,13 +317,13 @@ namespace ShooterMover.Tests.EditMode.Economy.Money
         public void PublicAuthorityHasNoUnitySceneUiProductScrapOrRawLedgerSurface()
         {
             AssertAssemblyHasNoForbiddenReference(typeof(MoneyWalletSnapshot).Assembly);
-            AssertAssemblyHasNoForbiddenReference(typeof(MoneyWalletService).Assembly);
+            AssertAssemblyHasNoForbiddenReference(typeof(MoneyWalletActions).Assembly);
             AssertPublicSurfaceHasNoForbiddenType(typeof(MoneyWalletSnapshot));
             AssertPublicSurfaceHasNoForbiddenType(typeof(MoneyWalletChangeFact));
             AssertPublicSurfaceHasNoForbiddenType(typeof(MoneyTransactionCommand));
-            AssertPublicSurfaceHasNoForbiddenType(typeof(MoneyWalletService));
+            AssertPublicSurfaceHasNoForbiddenType(typeof(MoneyWalletActions));
 
-            PropertyInfo[] publicProperties = typeof(MoneyWalletService).GetProperties();
+            PropertyInfo[] publicProperties = typeof(MoneyWalletActions).GetProperties();
             Assert.That(
                 publicProperties.Any(property =>
                     (property.PropertyType.FullName ?? string.Empty)

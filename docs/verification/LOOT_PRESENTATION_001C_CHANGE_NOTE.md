@@ -11,10 +11,10 @@ This stacked correction extracts bindable projection views from the development 
 
 ## Authority boundaries
 
-- `LootRunHudViewV1` consumes immutable totals only.
-- `OwnedStrongboxGroupsViewV1` owns only presentation selection state.
-- `StrongboxOpeningPresentationViewV1` reads one existing opening session and does not invoke BOX/RAP.
-- `StrongboxRewardCardsViewV1` reads immutable reveal items only.
+- `LootRunHudView` consumes immutable totals only.
+- `OwnedStrongboxGroupsView` owns only presentation selection state.
+- `StrongboxOpeningPresentationView` reads one existing opening session and does not invoke BOX/RAP.
+- `StrongboxRewardCardsView` reads immutable reveal items only.
 - No production composition or persistence file is changed.
 
 ## Validation status

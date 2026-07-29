@@ -4,19 +4,19 @@ Launch base: `7b2dfb1dadb13a6d8c0631a56d10fc44f3080472`
 
 ## Ownership boundary
 
-`CriticalHitResolutionAuthorityV1` sits between an accepted `CombatHitPolicyResultV1` and the existing `DamageReceiverCommand`.
+`CriticalHitResolutionState` sits between an accepted `CombatHitPolicyResult` and the existing `DamageReceiverCommand`.
 
 It owns deterministic critical resolution and run-local operation replay state only. It does not mutate health, select targets, infer factions, author weapon stats, own status effects, or grant rewards. The existing player/enemy damage receiver remains the sole health authority.
 
 ## Explicit critical policy
 
-Critical behavior is not inferred from effect geometry. The weapon, attack, or effect execution supplies immutable `CriticalHitEffectFactsV1` containing:
+Critical behavior is not inferred from effect geometry. The weapon, attack, or effect execution supplies immutable `CriticalHitEffectFacts` containing:
 
 - effect-definition identity;
 - explicit critical-policy identity;
 - concrete equipment-instance identity when the effect is equipment-backed.
 
-`CriticalHitPolicyRegistryV1` resolves the policy definition. The default registry provides:
+`CriticalHitPolicyRegistry` resolves the policy definition. The default registry provides:
 
 - `critical-hit-policy.normal-v1` — profile chance and multiplier;
 - `critical-hit-policy.cannot-crit-v1` — effective chance `0`, effective multiplier `1`;
@@ -30,13 +30,13 @@ A projectile, explosion, melee swing, contact attack, persistent field, or chain
 
 ## Shared stat composition
 
-`RunCombatProfileV1` remains the source of:
+`RunCombatProfile` remains the source of:
 
 - outgoing damage multiplier;
 - character/run critical chance;
 - character/run critical multiplier.
 
-Permanent skills/equipment and temporary event/status contributions continue to flow through the existing `RuntimeModifierSnapshotV1` and `DefaultDerivedCharacterStatComposerV1`. The critical policy is applied after that shared profile is built; no second modifier system is introduced.
+Permanent skills/equipment and temporary event/status contributions continue to flow through the existing `LiveModifierSnapshot` and `DefaultDerivedCharacterStatComposer`. The critical policy is applied after that shared profile is built; no second modifier system is introduced.
 
 For `cannot-crit`, profile critical modifiers are deliberately ignored for the critical decision and multiplier. Outgoing damage still applies normally.
 
@@ -78,7 +78,7 @@ The first 64 digest bits produce a decimal sample in `[0, 1)`. Identical immutab
 6. Decide critical outcome from policy eligibility and deterministic roll.
 7. For a critical hit: `ordinary damage × effective critical multiplier`.
 8. Store one immutable result in the operation ledger.
-9. Project only final damage through `CriticalHitDamageCommandAdapterV1`.
+9. Project only final damage through `CriticalHitDamageCommandBridge`.
 
 The critical operation ID is reused as the downstream damage event ID, preserving health-authority idempotency.
 

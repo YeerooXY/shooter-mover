@@ -15,7 +15,7 @@ using ShooterMover.UnityAdapters.Weapons.Live;
 
 namespace ShooterMover.Tests.EditMode.Weapons.Live
 {
-    public sealed partial class InventoryBackedWeaponExecutionAdapterTests
+    public sealed partial class InventoryBackedWeaponExecutionBridgeTests
     {
         private static WeaponCatalog WeaponCatalogFor()
         {
@@ -223,31 +223,31 @@ namespace ShooterMover.Tests.EditMode.Weapons.Live
                 new AugmentInstance[0]);
         }
 
-        private static PlayerHoldingsService CreateHoldingsService()
+        private static PlayerHoldingsActions CreateHoldingsService()
         {
-            return new PlayerHoldingsService(
+            return new PlayerHoldingsActions(
                 HoldingsAuthorityId,
                 1000L,
                 new AcceptingEquipmentValidator());
         }
 
         private static void AddEquipment(
-            PlayerHoldingsService service,
+            PlayerHoldingsActions service,
             EquipmentInstance equipment,
             long expectedSequence)
         {
             string token = equipment.InstanceId.ToString().Replace('.', '-');
-            PlayerHoldingsMutationResultV1 result = service.Apply(
-                PlayerHoldingsCommandV1.AddEquipment(
+            PlayerHoldingsMutationResult result = service.Apply(
+                PlayerHoldingsCommand.AddEquipment(
                     StableId.Parse("transaction." + token),
                     StableId.Parse("operation." + token),
                     HoldingsAuthorityId,
                     equipment,
-                    HoldingProvenanceV1.Create(
+                    HoldingProvenance.Create(
                         StableId.Parse("grant." + token),
                         StableId.Parse("source.test")),
                     expectedSequence));
-            Assert.That(result.Status, Is.EqualTo(PlayerHoldingsMutationStatusV1.Applied));
+            Assert.That(result.Status, Is.EqualTo(PlayerHoldingsMutationStatus.Applied));
         }
 
     }

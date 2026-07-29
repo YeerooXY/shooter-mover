@@ -182,7 +182,7 @@ namespace ShooterMover.Domain.Combat
 
     /// <summary>
     /// Bounded immutable result of applying the ordered reusable modules from one
-    /// validated WeaponRuntimeProfile to one fire input.
+    /// validated WeaponLiveProfile to one fire input.
     /// </summary>
     public sealed class WeaponFireExecutionPlan : IEquatable<WeaponFireExecutionPlan>
     {

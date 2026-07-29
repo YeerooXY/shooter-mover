@@ -181,9 +181,9 @@ namespace ShooterMover.Domain.Weapons
     /// Structured fail-closed result shared by trusted weapon boundaries and Inventory presentation.
     /// It reports availability only; it never mutates weapon, receipt, wallet or mount state.
     /// </summary>
-    public sealed class CanonicalWeaponOperationAvailabilityV1
+    public sealed class WeaponOperationAvailability
     {
-        private CanonicalWeaponOperationAvailabilityV1(
+        private WeaponOperationAvailability(
             bool isAvailable,
             string rejectionCode,
             string message)
@@ -197,15 +197,15 @@ namespace ShooterMover.Domain.Weapons
         public string RejectionCode { get; }
         public string Message { get; }
 
-        public static CanonicalWeaponOperationAvailabilityV1 Available()
+        public static WeaponOperationAvailability Available()
         {
-            return new CanonicalWeaponOperationAvailabilityV1(
+            return new WeaponOperationAvailability(
                 true,
                 string.Empty,
                 string.Empty);
         }
 
-        public static CanonicalWeaponOperationAvailabilityV1 Rejected(
+        public static WeaponOperationAvailability Rejected(
             string rejectionCode,
             string message)
         {
@@ -215,7 +215,7 @@ namespace ShooterMover.Domain.Weapons
                     "A rejected canonical weapon operation requires a code.",
                     nameof(rejectionCode));
             }
-            return new CanonicalWeaponOperationAvailabilityV1(
+            return new WeaponOperationAvailability(
                 false,
                 rejectionCode.Trim(),
                 message);
@@ -226,26 +226,26 @@ namespace ShooterMover.Domain.Weapons
     /// Safety policy for canonical weapon operations whose product contract is not implemented yet.
     /// Compatibility receipts are observations only and never make an operation available.
     /// </summary>
-    public static class CanonicalWeaponSafetyPolicyV1
+    public static class WeaponSafetyPolicy
     {
-        public static CanonicalWeaponOperationAvailabilityV1 EvaluateGenericUpgrade(
+        public static WeaponOperationAvailability EvaluateGenericUpgrade(
             bool isWeaponReceipt,
             bool canonicalDefinitionResolved)
         {
             if (!isWeaponReceipt)
             {
-                return CanonicalWeaponOperationAvailabilityV1.Available();
+                return WeaponOperationAvailability.Available();
             }
             if (!canonicalDefinitionResolved)
             {
                 return DefinitionUnresolved();
             }
-            return CanonicalWeaponOperationAvailabilityV1.Rejected(
+            return WeaponOperationAvailability.Rejected(
                 "canonical-weapon-upgrade-route-unsupported",
                 "Canonical weapon upgrades require the future canonical transaction; the generic equipment replacement route is disabled.");
         }
 
-        public static CanonicalWeaponOperationAvailabilityV1 EvaluateRewardAcceptance(
+        public static WeaponOperationAvailability EvaluateRewardAcceptance(
             WeaponEquipmentInstance instance,
             bool canonicalDefinitionResolved)
         {
@@ -257,10 +257,10 @@ namespace ShooterMover.Domain.Weapons
             {
                 return OverclockUnsupported();
             }
-            return CanonicalWeaponOperationAvailabilityV1.Available();
+            return WeaponOperationAvailability.Available();
         }
 
-        public static CanonicalWeaponOperationAvailabilityV1 EvaluateLiveExecution(
+        public static WeaponOperationAvailability EvaluateLiveExecution(
             WeaponEquipmentInstance instance,
             bool canonicalDefinitionResolved)
         {
@@ -272,24 +272,24 @@ namespace ShooterMover.Domain.Weapons
             {
                 return OverclockUnsupported();
             }
-            return CanonicalWeaponOperationAvailabilityV1.Available();
+            return WeaponOperationAvailability.Available();
         }
 
-        public static CanonicalWeaponOperationAvailabilityV1 EvaluateOverclockInstallation()
+        public static WeaponOperationAvailability EvaluateOverclockInstallation()
         {
             return OverclockUnsupported();
         }
 
-        private static CanonicalWeaponOperationAvailabilityV1 DefinitionUnresolved()
+        private static WeaponOperationAvailability DefinitionUnresolved()
         {
-            return CanonicalWeaponOperationAvailabilityV1.Rejected(
+            return WeaponOperationAvailability.Rejected(
                 "canonical-weapon-definition-unresolved",
                 "The canonical weapon definition could not be resolved; destructive or replacement operations are blocked.");
         }
 
-        private static CanonicalWeaponOperationAvailabilityV1 OverclockUnsupported()
+        private static WeaponOperationAvailability OverclockUnsupported()
         {
-            return CanonicalWeaponOperationAvailabilityV1.Rejected(
+            return WeaponOperationAvailability.Rejected(
                 "canonical-weapon-overclock-policy-unsupported",
                 "Overclock installation and live execution are not available until a canonical ownership, slot/capacity and runtime policy exists.");
         }

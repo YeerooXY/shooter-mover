@@ -23,18 +23,18 @@ namespace ShooterMover.UI.ProductionFlow
     public interface ICharacterProfiles
     {
         bool TryExportProfiles(
-            out IReadOnlyList<ProductionFlowProfileRecordV1> profiles,
+            out IReadOnlyList<FlowProfileRecord> profiles,
             out string rejectionCode);
 
         bool TryActivate(
             int slotIndex,
-            ProductionFlowProfileRecordV1 requestedProfile,
-            out ProductionFlowProfileRecordV1 authoritativeProfile,
+            FlowProfileRecord requestedProfile,
+            out FlowProfileRecord authoritativeProfile,
             out string rejectionCode);
 
         bool TryDelete(
             int slotIndex,
-            ProductionFlowProfileRecordV1 requestedProfile,
+            FlowProfileRecord requestedProfile,
             out string rejectionCode);
     }
 
@@ -58,28 +58,28 @@ namespace ShooterMover.UI.ProductionFlow
         private static CharacterAccount instance;
 
         private GameFlow flow;
-        private PlayerPrefsProductionFlowProfileStoreV1 legacyStore;
-        private AtomicPlayerAccountStoreV1 accountStore;
-        private PlayerAccountSaveAuthorityV1 accountAuthority;
-        private ProductionCharacterRuntimeGraphFactoryV1 graphFactory;
-        private CharacterCompositionCoordinatorV1 composition;
-        private ProductionFlowProfileRecordV1 currentProfile;
+        private PlayerPrefsFlowProfileStore legacyStore;
+        private AtomicPlayerAccountStore accountStore;
+        private PlayerAccountSaveState accountAuthority;
+        private CharacterLiveGraphFactory graphFactory;
+        private CharacterSetupFlow composition;
+        private FlowProfileRecord currentProfile;
         private string diagnostic = string.Empty;
         private bool initialized;
         private bool failed;
         private bool quitting;
 
-        public CharacterCompositionCoordinatorV1 Composition
+        public CharacterSetupFlow Composition
         {
             get { return composition; }
         }
 
-        public PlayerAccountSnapshotV1 Account
+        public PlayerAccountSnapshot Account
         {
             get { return accountAuthority == null ? null : accountAuthority.Current; }
         }
 
-        public ProductionFlowProfileRecordV1 CurrentProfile
+        public FlowProfileRecord CurrentProfile
         {
             get { return currentProfile; }
         }
@@ -103,10 +103,10 @@ namespace ShooterMover.UI.ProductionFlow
         }
 
         public static bool TryResolveCurrent(
-            out ProductionCharacterRuntimeGraphV1 graph,
-            out ProductionFlowProfileRecordV1 profile)
+            out CharacterLiveGraph graph,
+            out FlowProfileRecord profile)
         {
-            CharacterCompositionCoordinatorV1 ignored;
+            CharacterSetupFlow ignored;
             return TryResolveCurrent(
                 out graph,
                 out profile,
@@ -114,9 +114,9 @@ namespace ShooterMover.UI.ProductionFlow
         }
 
         public static bool TryResolveCurrent(
-            out ProductionCharacterRuntimeGraphV1 graph,
-            out ProductionFlowProfileRecordV1 profile,
-            out CharacterCompositionCoordinatorV1 currentComposition)
+            out CharacterLiveGraph graph,
+            out FlowProfileRecord profile,
+            out CharacterSetupFlow currentComposition)
         {
             EnsureInstalled();
             if (instance == null || !instance.SynchronizeNow())
@@ -128,7 +128,7 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             graph = instance.composition.ActiveRuntime
-                as ProductionCharacterRuntimeGraphV1;
+                as CharacterLiveGraph;
             profile = instance.currentProfile;
             currentComposition = instance.composition;
             return graph != null
@@ -137,7 +137,7 @@ namespace ShooterMover.UI.ProductionFlow
                 && !graph.IsDisposed;
         }
 
-        public static CharacterCompositionResultV1 PersistCurrent(
+        public static CharacterSetupResult PersistCurrent(
             string mutationScope,
             string immutableMutationFingerprint)
         {
@@ -231,24 +231,24 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
 
-            legacyStore = new PlayerPrefsProductionFlowProfileStoreV1();
+            legacyStore = new PlayerPrefsFlowProfileStore();
             string activePath = Path.Combine(
                 UnityEngine.Application.persistentDataPath,
                 AccountFileName);
-            accountStore = new AtomicPlayerAccountStoreV1(
-                new SystemIoAtomicSaveFilePortV1(),
+            accountStore = new AtomicPlayerAccountStore(
+                new SystemIoAtomicSaveFilePort(),
                 activePath,
                 activePath + TemporarySuffix,
                 activePath + BackupSuffix,
-                snapshot => PlayerAccountComponentSemanticsV1.Validate(snapshot));
+                snapshot => PlayerAccountComponentSemantics.Validate(snapshot));
 
-            PlayerAccountStoreResultV1 loaded = accountStore.Load();
+            PlayerAccountStoreResult loaded = accountStore.Load();
             bool firstAccount = loaded != null
-                && loaded.Status == PlayerAccountStoreStatusV1.NotFound;
-            PlayerAccountSnapshotV1 account;
+                && loaded.Status == PlayerAccountStoreStatus.NotFound;
+            PlayerAccountSnapshot account;
             if (firstAccount)
             {
-                account = PlayerAccountSnapshotV1.Empty(AccountStableId);
+                account = PlayerAccountSnapshot.Empty(AccountStableId);
             }
             else if (loaded != null
                 && loaded.Succeeded
@@ -256,7 +256,7 @@ namespace ShooterMover.UI.ProductionFlow
             {
                 account = loaded.Snapshot;
                 if (loaded.Status
-                    == PlayerAccountStoreStatusV1.RecoveredLastKnownGood)
+                    == PlayerAccountStoreStatus.RecoveredLastKnownGood)
                 {
                     diagnostic =
                         "character-account-recovered-last-known-good:"
@@ -273,13 +273,13 @@ namespace ShooterMover.UI.ProductionFlow
                 return;
             }
 
-            graphFactory = ProductionCharacterRuntimeGraphFactoryV1
+            graphFactory = CharacterLiveGraphFactory
                 .CreateVerticalSliceDefaults();
 
             if (!firstAccount)
             {
-                RetiredWeaponSaveMigrationResultV1 weaponMigration =
-                    RetiredWeaponSaveMigrationV1.Migrate(account);
+                RetiredWeaponSaveMigrationResult weaponMigration =
+                    RetiredWeaponSaveMigration.Migrate(account);
                 if (weaponMigration == null || !weaponMigration.Succeeded)
                 {
                     Fail(
@@ -291,7 +291,7 @@ namespace ShooterMover.UI.ProductionFlow
                 }
                 if (weaponMigration.Changed)
                 {
-                    PlayerAccountStoreResultV1 migratedSave =
+                    PlayerAccountStoreResult migratedSave =
                         accountStore.Save(weaponMigration.Account);
                     if (migratedSave == null
                         || !migratedSave.Succeeded
@@ -310,8 +310,8 @@ namespace ShooterMover.UI.ProductionFlow
 
             if (!firstAccount)
             {
-                RequiredCharacterComponentBackfillResultV1 backfill =
-                    RequiredCharacterComponentBackfillV1.Migrate(
+                RequiredCharacterComponentBackfillResult backfill =
+                    RequiredCharacterComponentBackfill.Migrate(
                         account,
                         graphFactory);
                 if (backfill == null || !backfill.Succeeded)
@@ -325,7 +325,7 @@ namespace ShooterMover.UI.ProductionFlow
                 }
                 if (backfill.Changed)
                 {
-                    PlayerAccountStoreResultV1 backfilledSave =
+                    PlayerAccountStoreResult backfilledSave =
                         accountStore.Save(backfill.Account);
                     if (backfilledSave == null
                         || !backfilledSave.Succeeded
@@ -342,16 +342,16 @@ namespace ShooterMover.UI.ProductionFlow
                 }
             }
 
-            accountAuthority = new PlayerAccountSaveAuthorityV1(account);
-            composition = new CharacterCompositionCoordinatorV1(
+            accountAuthority = new PlayerAccountSaveState(account);
+            composition = new CharacterSetupFlow(
                 accountAuthority,
                 graphFactory,
                 accountStore.Save,
-                snapshot => PlayerAccountComponentSemanticsV1.Validate(snapshot));
+                snapshot => PlayerAccountComponentSemantics.Validate(snapshot));
 
             if (firstAccount)
             {
-                LegacyCharacterProfileMigrationResultV1 migration =
+                LegacyCharacterProfileMigrationResult migration =
                     MigrateLegacyAccountOnce();
                 if (migration == null || !migration.Succeeded)
                 {
@@ -363,9 +363,9 @@ namespace ShooterMover.UI.ProductionFlow
                     return;
                 }
                 if (migration.Status
-                    == CharacterCompositionStatusV1.ExactNoChange)
+                    == CharacterSetupStatus.ExactNoChange)
                 {
-                    PlayerAccountStoreResultV1 initialSave =
+                    PlayerAccountStoreResult initialSave =
                         accountStore.Save(accountAuthority.Current);
                     if (initialSave == null || !initialSave.Succeeded)
                     {
@@ -389,7 +389,7 @@ namespace ShooterMover.UI.ProductionFlow
         }
 
         public bool TryExportProfiles(
-            out IReadOnlyList<ProductionFlowProfileRecordV1> profiles,
+            out IReadOnlyList<FlowProfileRecord> profiles,
             out string rejectionCode)
         {
             profiles = null;
@@ -400,13 +400,13 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
-            var projection = new ProductionFlowProfileRecordV1[
-                PlayerAccountSnapshotV1.CharacterSlotCount];
+            var projection = new FlowProfileRecord[
+                PlayerAccountSnapshot.CharacterSlotCount];
             for (int slotIndex = 0;
                  slotIndex < projection.Length;
                  slotIndex++)
             {
-                CharacterInstanceSnapshotV1 character =
+                CharacterInstanceSnapshot character =
                     accountAuthority.Current.CharacterAt(slotIndex);
                 if (character == null)
                 {
@@ -424,8 +424,8 @@ namespace ShooterMover.UI.ProductionFlow
 
         public bool TryActivate(
             int slotIndex,
-            ProductionFlowProfileRecordV1 requestedProfile,
-            out ProductionFlowProfileRecordV1 authoritativeProfile,
+            FlowProfileRecord requestedProfile,
+            out FlowProfileRecord authoritativeProfile,
             out string rejectionCode)
         {
             authoritativeProfile = null;
@@ -436,18 +436,18 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
             if (slotIndex < 0
-                || slotIndex >= PlayerAccountSnapshotV1.CharacterSlotCount)
+                || slotIndex >= PlayerAccountSnapshot.CharacterSlotCount)
             {
                 rejectionCode = "character-activation-slot-invalid";
                 return false;
             }
 
-            CharacterInstanceSnapshotV1 character =
+            CharacterInstanceSnapshot character =
                 accountAuthority.Current.CharacterAt(slotIndex);
             if (character == null)
             {
-                LegacyCharacterProfileMigrationResultV1 migration =
-                    new LegacyCharacterProfileMigrationV1(
+                LegacyCharacterProfileMigrationResult migration =
+                    new LegacyCharacterProfileMigration(
                         accountAuthority,
                         graphFactory,
                         accountStore.Save).Migrate(new[]
@@ -472,7 +472,7 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
-            CharacterCompositionResultV1 selected = composition.Select(slotIndex);
+            CharacterSetupResult selected = composition.Select(slotIndex);
             if (selected == null || !selected.Succeeded)
             {
                 rejectionCode = selected == null
@@ -489,7 +489,7 @@ namespace ShooterMover.UI.ProductionFlow
 
         public bool TryDelete(
             int slotIndex,
-            ProductionFlowProfileRecordV1 requestedProfile,
+            FlowProfileRecord requestedProfile,
             out string rejectionCode)
         {
             rejectionCode = string.Empty;
@@ -499,13 +499,13 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
             if (slotIndex < 0
-                || slotIndex >= PlayerAccountSnapshotV1.CharacterSlotCount)
+                || slotIndex >= PlayerAccountSnapshot.CharacterSlotCount)
             {
                 rejectionCode = "character-delete-slot-invalid";
                 return false;
             }
 
-            CharacterInstanceSnapshotV1 character =
+            CharacterInstanceSnapshot character =
                 accountAuthority.Current.CharacterAt(slotIndex);
             if (character == null)
             {
@@ -522,7 +522,7 @@ namespace ShooterMover.UI.ProductionFlow
 
             if (composition.ActiveSlotIndex == slotIndex)
             {
-                CharacterCompositionResultV1 persisted =
+                CharacterSetupResult persisted =
                     PersistCurrentState("character-delete");
                 if (persisted == null || !persisted.Succeeded)
                 {
@@ -535,10 +535,10 @@ namespace ShooterMover.UI.ProductionFlow
                 currentProfile = null;
             }
 
-            PlayerAccountSaveAuthoritySnapshotV1 rollback =
+            PlayerAccountSaveStateSnapshot rollback =
                 accountAuthority.ExportSnapshot();
-            PlayerAccountSaveResultV1 deleted = accountAuthority.Apply(
-                PlayerAccountSaveCommandV1.DeleteCharacter(
+            PlayerAccountSaveResult deleted = accountAuthority.Apply(
+                PlayerAccountSaveCommand.DeleteCharacter(
                     StableId.Parse(
                         "operation.character-delete-"
                             + Hash(character.Fingerprint)),
@@ -546,9 +546,9 @@ namespace ShooterMover.UI.ProductionFlow
                     slotIndex,
                     character.CharacterInstanceStableId));
             if (deleted == null
-                || (deleted.Status != PlayerAccountSaveStatusV1.Applied
+                || (deleted.Status != PlayerAccountSaveStatus.Applied
                     && deleted.Status
-                        != PlayerAccountSaveStatusV1.ExactDuplicateNoChange))
+                        != PlayerAccountSaveStatus.ExactDuplicateNoChange))
             {
                 rejectionCode = deleted == null
                     ? "character-delete-account-result-null"
@@ -556,7 +556,7 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
-            PlayerAccountStoreResultV1 stored =
+            PlayerAccountStoreResult stored =
                 accountStore.Save(accountAuthority.Current);
             if (stored == null || !stored.Succeeded)
             {
@@ -590,7 +590,7 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
-            ProductionFlowProfileRecordV1 selectedProfile = flow.Profile;
+            FlowProfileRecord selectedProfile = flow.Profile;
             if (selectedProfile == null)
             {
                 composition.UnbindActive();
@@ -600,7 +600,7 @@ namespace ShooterMover.UI.ProductionFlow
             }
 
             int slotIndex = flow.ActiveProfileSlotIndex;
-            CharacterInstanceSnapshotV1 character =
+            CharacterInstanceSnapshot character =
                 accountAuthority.Current.CharacterAt(slotIndex);
             if (character == null)
             {
@@ -618,7 +618,7 @@ namespace ShooterMover.UI.ProductionFlow
             {
                 if (composition.ActiveRuntime != null)
                 {
-                    CharacterCompositionResultV1 persisted =
+                    CharacterSetupResult persisted =
                         PersistCurrentState("character-slot-switch");
                     if (persisted == null || !persisted.Succeeded)
                     {
@@ -629,7 +629,7 @@ namespace ShooterMover.UI.ProductionFlow
                     }
                 }
 
-                CharacterCompositionResultV1 selected =
+                CharacterSetupResult selected =
                     composition.Select(slotIndex);
                 if (selected == null || !selected.Succeeded)
                 {
@@ -646,19 +646,19 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
             return composition.ActiveRuntime
-                is ProductionCharacterRuntimeGraphV1;
+                is CharacterLiveGraph;
         }
 
-        private CharacterCompositionResultV1 PersistCurrentState(string scope)
+        private CharacterSetupResult PersistCurrentState(string scope)
         {
             if (composition == null || composition.ActiveRuntime == null)
             {
                 return null;
             }
-            IReadOnlyList<SaveComponentSnapshotV1> components;
+            IReadOnlyList<SaveComponentSnapshot> components;
             try
             {
-                components = PlayerAccountRestoreCoordinatorV1.ExportComponents(
+                components = PlayerAccountRestoreFlow.ExportComponents(
                     composition.ActiveRuntime.SaveAdapters);
             }
             catch (Exception exception)
@@ -677,7 +677,7 @@ namespace ShooterMover.UI.ProductionFlow
             return Persist(scope, Hash(fingerprint));
         }
 
-        private CharacterCompositionResultV1 Persist(
+        private CharacterSetupResult Persist(
             string mutationScope,
             string immutableMutationFingerprint)
         {
@@ -694,7 +694,7 @@ namespace ShooterMover.UI.ProductionFlow
                         mutationScope.Trim()
                             + "|"
                             + immutableMutationFingerprint.Trim()));
-            CharacterCompositionResultV1 result =
+            CharacterSetupResult result =
                 composition.PersistActive(operationId);
             if (result == null || !result.Succeeded)
             {
@@ -704,7 +704,7 @@ namespace ShooterMover.UI.ProductionFlow
                 return result;
             }
 
-            CharacterInstanceSnapshotV1 persisted = result.Character;
+            CharacterInstanceSnapshot persisted = result.Character;
             if (persisted != null)
             {
                 string ignored;
@@ -714,31 +714,31 @@ namespace ShooterMover.UI.ProductionFlow
             return result;
         }
 
-        private LegacyCharacterProfileMigrationResultV1
+        private LegacyCharacterProfileMigrationResult
             MigrateLegacyAccountOnce()
         {
-            var legacy = new List<LegacyCharacterProfileV1>();
+            var legacy = new List<LegacyCharacterProfile>();
             for (int slotIndex = 0;
-                 slotIndex < PlayerAccountSnapshotV1.CharacterSlotCount;
+                 slotIndex < PlayerAccountSnapshot.CharacterSlotCount;
                  slotIndex++)
             {
-                ProductionFlowProfileRecordV1 record;
+                FlowProfileRecord record;
                 if (legacyStore.TryLoad(slotIndex, out record))
                 {
                     legacy.Add(Legacy(slotIndex, record));
                 }
             }
-            return new LegacyCharacterProfileMigrationV1(
+            return new LegacyCharacterProfileMigration(
                 accountAuthority,
                 graphFactory,
                 accountStore.Save).Migrate(legacy);
         }
 
-        private static LegacyCharacterProfileV1 Legacy(
+        private static LegacyCharacterProfile Legacy(
             int slotIndex,
-            ProductionFlowProfileRecordV1 record)
+            FlowProfileRecord record)
         {
-            return new LegacyCharacterProfileV1(
+            return new LegacyCharacterProfile(
                 slotIndex,
                 record.DisplayName,
                 record.Payload.SelectedCharacterStableId,
@@ -748,15 +748,15 @@ namespace ShooterMover.UI.ProductionFlow
         }
 
         private static bool TryProject(
-            CharacterInstanceSnapshotV1 character,
-            out ProductionFlowProfileRecordV1 profile,
+            CharacterInstanceSnapshot character,
+            out FlowProfileRecord profile,
             out string rejectionCode)
         {
             profile = null;
             rejectionCode = string.Empty;
-            SaveComponentSnapshotV1 component;
+            SaveComponentSnapshot component;
             if (!character.TryGetComponent(
-                    KnownSaveComponentDefinitionsV1.ExactInstanceLoadout()
+                    KnownSaveComponentDefinitions.ExactInstanceLoadout()
                         .ComponentStableId,
                     out component))
             {
@@ -764,8 +764,8 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
-            InventoryLoadoutAuthoritySnapshotV1 loadout;
-            if (!KnownSaveComponentCodecsV1.ExactInstanceLoadout.TryDecode(
+            InventoryLoadoutStateSnapshot loadout;
+            if (!KnownSaveComponentCodecs.ExactInstanceLoadout.TryDecode(
                     component.CanonicalPayload,
                     out loadout,
                     out rejectionCode))
@@ -775,15 +775,15 @@ namespace ShooterMover.UI.ProductionFlow
                 return false;
             }
 
-            PlayerRouteProfilePayloadV1 routePayload;
-            SaveComponentSnapshotV1 mountComponent;
+            PlayerRouteProfilePayload routePayload;
+            SaveComponentSnapshot mountComponent;
             if (character.TryGetComponent(
-                    WeaponMountLoadoutSaveComponentV2.Definition()
+                    WeaponMountLoadoutSaveComponent.Definition()
                         .ComponentStableId,
                     out mountComponent))
             {
-                WeaponMountLoadoutSnapshotV2 mounts;
-                if (!WeaponMountLoadoutSaveComponentV2.Codec.TryDecode(
+                WeaponMountLoadoutSnapshot mounts;
+                if (!WeaponMountLoadoutSaveComponent.Codec.TryDecode(
                         mountComponent.CanonicalPayload,
                         out mounts,
                         out rejectionCode))
@@ -796,11 +796,11 @@ namespace ShooterMover.UI.ProductionFlow
 
                 try
                 {
-                    routePayload = ProductionWeaponMountLoadoutProjectionV2
+                    routePayload = WeaponMountLoadoutView
                         .Route(
                             character.CharacterInstanceStableId,
                             character.ClassDefinitionStableId,
-                            ProductionWeaponMountPolicyV1.ResolveLayout(
+                            WeaponMountPolicy.ResolveLayout(
                                 character.ClassDefinitionStableId),
                             mounts);
                 }
@@ -814,17 +814,17 @@ namespace ShooterMover.UI.ProductionFlow
             else
             {
                 var instances = new List<StableId>(
-                    PlayerRouteProfilePayloadV1.WeaponSlotCount);
+                    PlayerRouteProfilePayload.WeaponSlotCount);
                 for (int index = 0;
-                     index < PlayerRouteProfilePayloadV1.WeaponSlotCount;
+                     index < PlayerRouteProfilePayload.WeaponSlotCount;
                      index++)
                 {
                     instances.Add(loadout.GetBinding(
-                        InventoryLoadoutSlotsV1.All[index].SlotStableId)
+                        InventoryLoadoutSlots.All[index].SlotStableId)
                         .EquipmentInstanceStableId);
                 }
 
-                routePayload = PlayerRouteProfilePayloadV1.Create(
+                routePayload = PlayerRouteProfilePayload.Create(
                     character.CharacterInstanceStableId,
                     character.ClassDefinitionStableId,
                     instances);
@@ -832,7 +832,7 @@ namespace ShooterMover.UI.ProductionFlow
 
             try
             {
-                profile = new ProductionFlowProfileRecordV1(
+                profile = new FlowProfileRecord(
                     character.DisplayName,
                     routePayload);
                 return true;
@@ -932,8 +932,8 @@ namespace ShooterMover.UI.ProductionFlow
             }
         }
 
-        private sealed class SystemIoAtomicSaveFilePortV1 :
-            IAtomicSaveFilePortV1
+        private sealed class SystemIoAtomicSaveFilePort :
+            IAtomicSaveFilePort
         {
             public bool Exists(string path)
             {

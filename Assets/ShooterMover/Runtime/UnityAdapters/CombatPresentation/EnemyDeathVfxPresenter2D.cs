@@ -7,9 +7,9 @@ using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.CombatPresentation
 {
-    public sealed class EnemyTerminalPresentationFactV1
+    public sealed class EnemyTerminalPresentationFact
     {
-        public EnemyTerminalPresentationFactV1(
+        public EnemyTerminalPresentationFact(
             StableId terminalEventStableId,
             StableId entityInstanceStableId,
             long lifecycleGeneration,
@@ -56,15 +56,15 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         }
     }
 
-    public static class EnemyTerminalPresentationFactProjectorV1
+    public static class EnemyTerminalPresentationFactProjector
     {
-        public static EnemyTerminalPresentationFactV1 FromCanonical(
-            EnemyDeathFactV1 fact,
+        public static EnemyTerminalPresentationFact FromCanonical(
+            EnemyDeathFact fact,
             Vector3 finalWorldPosition,
             float largestPresentationDimension)
         {
             if (fact == null) throw new ArgumentNullException(nameof(fact));
-            return new EnemyTerminalPresentationFactV1(
+            return new EnemyTerminalPresentationFact(
                 fact.DeathEventStableId,
                 fact.Identity.EntityInstanceId,
                 fact.LifecycleGeneration,
@@ -74,9 +74,9 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
 
         /// <summary>
         /// Transitional adapter for current EN-002 Unity packages. New factory-created enemies
-        /// should project the canonical EnemyDeathFactV1 overload instead.
+        /// should project the canonical EnemyDeathFact overload instead.
         /// </summary>
-        public static EnemyTerminalPresentationFactV1 FromLegacy(
+        public static EnemyTerminalPresentationFact FromLegacy(
             EnemyDestroyedNotification notification,
             long lifecycleGeneration,
             Vector3 finalWorldPosition,
@@ -86,7 +86,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             {
                 throw new ArgumentNullException(nameof(notification));
             }
-            return new EnemyTerminalPresentationFactV1(
+            return new EnemyTerminalPresentationFact(
                 notification.EventId,
                 notification.TargetId,
                 lifecycleGeneration,
@@ -95,9 +95,9 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         }
     }
 
-    public sealed class EnemyDeathVfxScaleConfigurationV1
+    public sealed class EnemyDeathVfxScaleConfiguration
     {
-        public EnemyDeathVfxScaleConfigurationV1(
+        public EnemyDeathVfxScaleConfiguration(
             float referenceSize = 1f,
             float minimumScale = 0.75f,
             float maximumScale = 2.25f)
@@ -136,7 +136,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         }
     }
 
-    public enum EnemyDeathVfxPresentationStatusV1
+    public enum EnemyDeathVfxPresentationStatus
     {
         Spawned = 1,
         ExactReplay = 2,
@@ -160,7 +160,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         private long lifecycleGeneration = -1L;
         private CombatHealthBarPresenter2D healthBar;
         private CombatDeathVfxPool2D explosionPool;
-        private EnemyDeathVfxScaleConfigurationV1 scaleConfiguration;
+        private EnemyDeathVfxScaleConfiguration scaleConfiguration;
         private bool configured;
 
         public StableId BoundEntityStableId { get { return boundEntityStableId; } }
@@ -173,7 +173,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             long initialLifecycleGeneration,
             CombatHealthBarPresenter2D boundHealthBar,
             CombatDeathVfxPool2D sharedExplosionPool,
-            EnemyDeathVfxScaleConfigurationV1 configuredScale = null)
+            EnemyDeathVfxScaleConfiguration configuredScale = null)
         {
             if (entityInstanceStableId == null)
             {
@@ -204,7 +204,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             lifecycleGeneration = initialLifecycleGeneration;
             healthBar = boundHealthBar;
             explosionPool = sharedExplosionPool;
-            scaleConfiguration = configuredScale ?? new EnemyDeathVfxScaleConfigurationV1();
+            scaleConfiguration = configuredScale ?? new EnemyDeathVfxScaleConfiguration();
             configured = true;
         }
 
@@ -220,34 +220,34 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             return true;
         }
 
-        public EnemyDeathVfxPresentationStatusV1 TryPresent(
-            EnemyTerminalPresentationFactV1 fact)
+        public EnemyDeathVfxPresentationStatus TryPresent(
+            EnemyTerminalPresentationFact fact)
         {
             if (!configured)
             {
-                return EnemyDeathVfxPresentationStatusV1.NotConfigured;
+                return EnemyDeathVfxPresentationStatus.NotConfigured;
             }
             if (fact == null)
             {
-                return EnemyDeathVfxPresentationStatusV1.RejectedInvalid;
+                return EnemyDeathVfxPresentationStatus.RejectedInvalid;
             }
             if (fact.EntityInstanceStableId != boundEntityStableId)
             {
-                return EnemyDeathVfxPresentationStatusV1.RejectedWrongEntity;
+                return EnemyDeathVfxPresentationStatus.RejectedWrongEntity;
             }
             if (fact.LifecycleGeneration < lifecycleGeneration)
             {
-                return EnemyDeathVfxPresentationStatusV1.RejectedStaleLifecycle;
+                return EnemyDeathVfxPresentationStatus.RejectedStaleLifecycle;
             }
             if (fact.LifecycleGeneration > lifecycleGeneration)
             {
-                return EnemyDeathVfxPresentationStatusV1.RejectedFutureLifecycle;
+                return EnemyDeathVfxPresentationStatus.RejectedFutureLifecycle;
             }
 
             string ledgerKey = fact.LifecycleGeneration + "|" + fact.TerminalEventStableId;
             if (acceptedFacts.Contains(ledgerKey))
             {
-                return EnemyDeathVfxPresentationStatusV1.ExactReplay;
+                return EnemyDeathVfxPresentationStatus.ExactReplay;
             }
 
             float scale = scaleConfiguration.Resolve(fact.LargestPresentationDimension);
@@ -256,7 +256,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             acceptedFacts.Add(ledgerKey);
             SpawnedCount++;
             LastResolvedScale = scale;
-            return EnemyDeathVfxPresentationStatusV1.Spawned;
+            return EnemyDeathVfxPresentationStatus.Spawned;
         }
     }
 

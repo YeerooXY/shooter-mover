@@ -18,28 +18,28 @@ using ShooterMover.Domain.Rewards.Model;
 
 namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
 {
-    public sealed partial class AugmentUpgradeServiceV1Tests
+    public sealed partial class AugmentUpgradeActionsTests
     {
         [Test]
         public void ConflictingDuplicateIsRejected()
         {
             var fixture = new Fixture();
-            AugmentUpgradeQuoteV1 quote = fixture.Quote(2);
+            AugmentUpgradeQuote quote = fixture.Quote(2);
             StableId confirmationId = Id("confirmation.conflict");
-            AugmentUpgradeFactV1 first = fixture.Service.Confirm(
-                AugmentUpgradeConfirmationV1.Create(confirmationId, quote));
+            AugmentUpgradeFact first = fixture.Service.Confirm(
+                AugmentUpgradeConfirmation.Create(confirmationId, quote));
             long balance = fixture.Money.Balance;
             long holdingsSequence = fixture.Holdings.Sequence;
 
-            AugmentUpgradeFactV1 conflict = fixture.Service.Confirm(
-                AugmentUpgradeConfirmationV1.Create(
+            AugmentUpgradeFact conflict = fixture.Service.Confirm(
+                AugmentUpgradeConfirmation.Create(
                     confirmationId,
                     quote,
                     Hash('x')));
 
-            Assert.That(first.Status, Is.EqualTo(AugmentUpgradeConfirmationStatusV1.Applied));
+            Assert.That(first.Status, Is.EqualTo(AugmentUpgradeConfirmationStatus.Applied));
             Assert.That(conflict.Status,
-                Is.EqualTo(AugmentUpgradeConfirmationStatusV1.ConflictingDuplicate));
+                Is.EqualTo(AugmentUpgradeConfirmationStatus.ConflictingDuplicate));
             Assert.That(fixture.Money.Balance, Is.EqualTo(balance));
             Assert.That(fixture.Holdings.Sequence, Is.EqualTo(holdingsSequence));
         }
@@ -48,16 +48,16 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         public void InsufficientFundsChangesNothing()
         {
             var fixture = new Fixture(initialMoney: 50L);
-            AugmentUpgradeQuoteV1 quote = fixture.Quote(2);
+            AugmentUpgradeQuote quote = fixture.Quote(2);
             long walletSequence = fixture.Money.Sequence;
             long holdingsSequence = fixture.Holdings.Sequence;
 
-            AugmentUpgradeFactV1 fact = fixture.Confirm(
+            AugmentUpgradeFact fact = fixture.Confirm(
                 quote,
                 "confirmation.insufficient");
 
             Assert.That(fact.Status,
-                Is.EqualTo(AugmentUpgradeConfirmationStatusV1.InsufficientFunds));
+                Is.EqualTo(AugmentUpgradeConfirmationStatus.InsufficientFunds));
             Assert.That(fixture.Money.Balance, Is.EqualTo(50L));
             Assert.That(fixture.Money.Sequence, Is.EqualTo(walletSequence));
             Assert.That(fixture.Holdings.Sequence, Is.EqualTo(holdingsSequence));
@@ -68,17 +68,17 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         public void MissingEquipmentIsRejected()
         {
             var fixture = new Fixture();
-            AugmentUpgradeQuoteV1 quote = fixture.Quote(2);
+            AugmentUpgradeQuote quote = fixture.Quote(2);
             fixture.RemoveOriginal("setup-remove.missing-equipment");
             long balance = fixture.Money.Balance;
             long holdingsSequence = fixture.Holdings.Sequence;
 
-            AugmentUpgradeFactV1 fact = fixture.Confirm(
+            AugmentUpgradeFact fact = fixture.Confirm(
                 quote,
                 "confirmation.missing-equipment");
 
             Assert.That(fact.Status,
-                Is.EqualTo(AugmentUpgradeConfirmationStatusV1.MissingEquipment));
+                Is.EqualTo(AugmentUpgradeConfirmationStatus.MissingEquipment));
             Assert.That(fixture.Money.Balance, Is.EqualTo(balance));
             Assert.That(fixture.Holdings.Sequence, Is.EqualTo(holdingsSequence));
         }
@@ -87,18 +87,18 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         public void MissingAugmentSlotIsRejected()
         {
             var fixture = new Fixture();
-            AugmentUpgradeQuoteV1 quote = fixture.Quote(2);
-            AugmentUpgradeQuoteV1 missing = CopyQuote(
+            AugmentUpgradeQuote quote = fixture.Quote(2);
+            AugmentUpgradeQuote missing = CopyQuote(
                 quote,
                 augmentSlotIndex: 7,
                 augmentInstanceStableId: Id("augment-instance.missing"));
 
-            AugmentUpgradeFactV1 fact = fixture.Confirm(
+            AugmentUpgradeFact fact = fixture.Confirm(
                 missing,
                 "confirmation.missing-augment");
 
             Assert.That(fact.Status,
-                Is.EqualTo(AugmentUpgradeConfirmationStatusV1.MissingAugment));
+                Is.EqualTo(AugmentUpgradeConfirmationStatus.MissingAugment));
             Assert.That(fixture.Money.Sequence, Is.EqualTo(quote.WalletSequence));
             Assert.That(fixture.Holdings.Sequence, Is.EqualTo(quote.HoldingsSequence));
         }
@@ -107,18 +107,18 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         public void InvalidLevelJumpIsRejected()
         {
             var fixture = new Fixture();
-            AugmentUpgradeQuoteV1 quote = fixture.Quote(2);
-            AugmentUpgradeQuoteV1 jump = CopyQuote(
+            AugmentUpgradeQuote quote = fixture.Quote(2);
+            AugmentUpgradeQuote jump = CopyQuote(
                 quote,
                 targetLevel: 3,
                 moneyCost: quote.MoneyCost + 1L);
 
-            AugmentUpgradeFactV1 fact = fixture.Confirm(
+            AugmentUpgradeFact fact = fixture.Confirm(
                 jump,
                 "confirmation.invalid-jump");
 
             Assert.That(fact.Status,
-                Is.EqualTo(AugmentUpgradeConfirmationStatusV1.InvalidLevelJump));
+                Is.EqualTo(AugmentUpgradeConfirmationStatus.InvalidLevelJump));
             Assert.That(fixture.Money.Sequence, Is.EqualTo(quote.WalletSequence));
             Assert.That(fixture.Holdings.Sequence, Is.EqualTo(quote.HoldingsSequence));
         }
@@ -127,16 +127,16 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         public void MaximumLevelUpgradeIsRejected()
         {
             var fixture = new Fixture(maximumLevel: 3, currentLevel: 3);
-            AugmentUpgradeQuoteV1 manual = fixture.CreateManualQuote(
+            AugmentUpgradeQuote manual = fixture.CreateManualQuote(
                 targetLevel: 4,
                 moneyCost: 1L);
 
-            AugmentUpgradeFactV1 fact = fixture.Confirm(
+            AugmentUpgradeFact fact = fixture.Confirm(
                 manual,
                 "confirmation.maximum");
 
             Assert.That(fact.Status,
-                Is.EqualTo(AugmentUpgradeConfirmationStatusV1.MaximumLevel));
+                Is.EqualTo(AugmentUpgradeConfirmationStatus.MaximumLevel));
             Assert.That(fixture.Money.Sequence, Is.EqualTo(manual.WalletSequence));
             Assert.That(fixture.Holdings.Sequence, Is.EqualTo(manual.HoldingsSequence));
         }
@@ -145,18 +145,18 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         public void StaleEquipmentFingerprintIsRejected()
         {
             var fixture = new Fixture();
-            AugmentUpgradeQuoteV1 quote = fixture.Quote(2);
-            AugmentUpgradeQuoteV1 stale = CopyQuote(
+            AugmentUpgradeQuote quote = fixture.Quote(2);
+            AugmentUpgradeQuote stale = CopyQuote(
                 quote,
                 equipmentFingerprint: Hash('e'));
 
-            AugmentUpgradeFactV1 fact = fixture.Confirm(
+            AugmentUpgradeFact fact = fixture.Confirm(
                 stale,
                 "confirmation.stale-equipment");
 
             Assert.That(fact.Status,
                 Is.EqualTo(
-                    AugmentUpgradeConfirmationStatusV1.StaleEquipmentFingerprint));
+                    AugmentUpgradeConfirmationStatus.StaleEquipmentFingerprint));
             Assert.That(fixture.Money.Sequence, Is.EqualTo(quote.WalletSequence));
             Assert.That(fixture.Holdings.Sequence, Is.EqualTo(quote.HoldingsSequence));
         }
@@ -165,27 +165,27 @@ namespace ShooterMover.Tests.EditMode.Equipment.Upgrades
         public void StaleQuoteAndCostPolicyAreRejected()
         {
             var fixture = new Fixture();
-            AugmentUpgradeQuoteV1 quote = fixture.Quote(2);
-            AugmentUpgradeFactV1 staleQuote = fixture.Service.Confirm(
-                AugmentUpgradeConfirmationV1.Create(
+            AugmentUpgradeQuote quote = fixture.Quote(2);
+            AugmentUpgradeFact staleQuote = fixture.Service.Confirm(
+                AugmentUpgradeConfirmation.Create(
                     Id("confirmation.stale-quote"),
                     quote,
                     Hash('q')));
 
-            AugmentUpgradeCostPolicyV1 replacementPolicy = Policy(
+            AugmentUpgradeCostPolicy replacementPolicy = Policy(
                 version: 2,
                 tierOneBase: 777L);
-            AugmentUpgradeServiceV1 replacementService = fixture.CreateService(
+            AugmentUpgradeActions replacementService = fixture.CreateService(
                 replacementPolicy);
-            AugmentUpgradeFactV1 stalePolicy = replacementService.Confirm(
-                AugmentUpgradeConfirmationV1.Create(
+            AugmentUpgradeFact stalePolicy = replacementService.Confirm(
+                AugmentUpgradeConfirmation.Create(
                     Id("confirmation.stale-policy"),
                     quote));
 
             Assert.That(staleQuote.Status,
-                Is.EqualTo(AugmentUpgradeConfirmationStatusV1.StaleQuote));
+                Is.EqualTo(AugmentUpgradeConfirmationStatus.StaleQuote));
             Assert.That(stalePolicy.Status,
-                Is.EqualTo(AugmentUpgradeConfirmationStatusV1.StaleCostPolicy));
+                Is.EqualTo(AugmentUpgradeConfirmationStatus.StaleCostPolicy));
             Assert.That(fixture.Money.Sequence, Is.EqualTo(quote.WalletSequence));
             Assert.That(fixture.Holdings.Sequence, Is.EqualTo(quote.HoldingsSequence));
         }

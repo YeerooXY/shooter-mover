@@ -34,23 +34,23 @@ Errors must identify the affected object, stable identity, path or operation. Un
 | Room identity | `LevelRoomAuthoring2D.RoomIdText` | display name, hierarchy name, grid coordinate, folder name, ordering |
 | Door identity and room ownership | `LevelDoorEndpointAuthoring2D.DoorIdText` plus exact `OwningRoom` | hierarchy position, side, local/world coordinate |
 | Link identity and endpoints | `LevelDoorLinkAuthoring2D.ConnectionIdText` plus exact room-and-door references | rendered lines, relative room position |
-| Playable start/final metadata | `LevelGridPlayableMetadataV2` exact object references | editor popup indices, labels, selected objects |
-| Scene mutation commands | `LevelGridEditorOperationsV2` | menus, inspectors, Problems window, editor view models |
-| Playable-aware topology validation | `LevelGridPlayableValidationV2` over the authoritative records and exact final-exit IDs | exporter-specific rewrites, status-only exceptions |
-| Production validation/build orchestration | `LevelGridPlayableBuildFacadeV2` | toolbar/menu callbacks |
-| Compiler-ready source package | canonical `LevelGridV2PlayableExporter` transaction | Phase-1 draft/validated-authoring exporter |
-| Generated publication | `LevelGridV2AssetCompiler` transactional immutable-version publication | generated folder contents viewed in UI |
-| Destination resolution | `LevelGridPlayableBuildPathsV2`, derived from exact stable level ID | display names, manually chosen paths |
-| Production level registration | `ProductionPlayableLevelCatalogV1` exact stable-ID and Resource-path entry | editor registration text |
+| Playable start/final metadata | `LevelGridPlayableMetadata` exact object references | editor popup indices, labels, selected objects |
+| Scene mutation commands | `LevelGridEditorOperations` | menus, inspectors, Problems window, editor view models |
+| Playable-aware topology validation | `LevelGridPlayableValidation` over the authoritative records and exact final-exit IDs | exporter-specific rewrites, status-only exceptions |
+| Production validation/build orchestration | `LevelGridPlayableBuildFacade` | toolbar/menu callbacks |
+| Compiler-ready source package | canonical `LevelGridPlayableExporter` transaction | Phase-1 draft/validated-authoring exporter |
+| Generated publication | `LevelGridAssetCompiler` transactional immutable-version publication | generated folder contents viewed in UI |
+| Destination resolution | `LevelGridPlayableBuildPaths`, derived from exact stable level ID | display names, manually chosen paths |
+| Production level registration | `PlayableLevelCatalog` exact stable-ID and Resource-path entry | editor registration text |
 | Production entry route | production Level Selection and its existing selected-character/navigation authorities | editor-only injection or fallback play route |
 
 ## Production changes
 
 ### Canonical editor route
 
-- Added `LevelGridEditorWindowV2.OpenForRoot` so compatibility callers open the exact authoring root rather than relying on ambient selection.
-- Routed GameObject door creation and endpoint linking through `LevelGridEditorOperationsV2`.
-- Routed inspector/menu validation and room deletion through `LevelGridEditorOperationsV2`.
+- Added `LevelGridEditorWindow.OpenForRoot` so compatibility callers open the exact authoring root rather than relying on ambient selection.
+- Routed GameObject door creation and endpoint linking through `LevelGridEditorOperations`.
+- Routed inspector/menu validation and room deletion through `LevelGridEditorOperations`.
 - Redirected the retained Problems entry point into the integrated Level Grid editor.
 - Removed direct room/door Grid V2 snapping from the generic foundation menu; the command now directs the user to canonical Move/Reflow operations.
 - Preserved unrelated legacy placement snapping.
@@ -70,7 +70,7 @@ The stale inspector statement that the runtime importer is not connected was rep
 
 ### Consistent final-exit validation
 
-`LevelGridPlayableValidationV2` now owns the one playable topology exception:
+`LevelGridPlayableValidation` now owns the one playable topology exception:
 
 - the exact configured final-exit door remains a traversable runtime exit but is not required to connect to another authored room;
 - the same exact endpoint cannot also participate in a room-to-room link;
@@ -122,7 +122,7 @@ Movement, rename, selection, pan, zoom, room-folder migration and publication re
 
 ### Scene mutation
 
-`LevelGridEditorOperationsV2` remains the sole command authority for Grid V2 room, door, link, deletion, reflow and explicit validation operations.
+`LevelGridEditorOperations` remains the sole command authority for Grid V2 room, door, link, deletion, reflow and explicit validation operations.
 
 - **Before commit:** validate exact selected objects and ownership; create or record all Undo participants.
 - **Commit point:** the grouped Unity Undo operation is collapsed after the complete scene mutation.
@@ -139,7 +139,7 @@ Movement, rename, selection, pan, zoom, room-folder migration and publication re
 
 ### Compiled asset publication
 
-The accepted immutable-version `LevelGridV2AssetCompiler` transaction remains authoritative and was not rewritten.
+The accepted immutable-version `LevelGridAssetCompiler` transaction remains authoritative and was not rewritten.
 
 - **Commit point:** atomic replacement of the authoritative `JsonRoomContentDefinition2D` after staged import and runtime validation.
 - **Rollback:** exact previous asset bytes and references are restored and validated if the switch fails.
@@ -181,7 +181,7 @@ The accepted immutable-version `LevelGridV2AssetCompiler` transaction remains au
 
 ## Tests authored
 
-`LevelSystemStabilizationV2Tests` adds focused Editor-tooling coverage for:
+`LevelSystemStabilizationTests` adds focused Editor-tooling coverage for:
 
 - successful canonical playable source export;
 - scene mutation during staging aborting before source replacement;
@@ -261,31 +261,31 @@ The production additions cross the approximate 500-line review prompt. A split w
 ```text
 Claim: Compatibility topology actions have one command authority
 → production path: GameObject menus / inspector / retained Problems entry
-  → LevelGridEditorOperationsV2 / LevelGridEditorWindowV2.OpenForRoot
+  → LevelGridEditorOperations / LevelGridEditorWindow.OpenForRoot
 → authoritative state: exact scene root hierarchy and stable object references
 → tests: CompatibilitySurfaces_DelegateOrDisableInsteadOfMutatingDirectly
 → execution evidence: static full-file and unified-diff review completed
 → limitation: Unity menu invocation and Undo acceptance not executed
 
 Claim: Validate and export agree on the exact final-exit endpoint
-→ production path: LevelDesignSceneAuthoringRoot2D and LevelGridV2PlayableExporter
-  → LevelGridPlayableValidationV2
-→ authoritative state: LevelGridPlayableMetadataV2 exact room-plus-door references
+→ production path: LevelDesignSceneAuthoringRoot2D and LevelGridPlayableExporter
+  → LevelGridPlayableValidation
+→ authoritative state: LevelGridPlayableMetadata exact room-plus-door references
 → tests: successful graph validation/export plus hostile final-exit link reuse
 → execution evidence: static caller/assembly review completed
 → limitation: Editor test assembly not compiled or executed
 
 Claim: Late source or destination changes cannot overwrite the previous source package
-→ production path: LevelGridV2PlayableExporter staged transaction
+→ production path: LevelGridPlayableExporter staged transaction
 → authoritative state: scene fingerprint + exact destination content snapshot
 → tests: hostile scene and destination mutation hooks
 → execution evidence: transaction and rollback paths statically reviewed
 → limitation: filesystem fault tests not executed in Unity
 
 Claim: Production entry remains exact catalogue resolution through Level Selection
-→ production path: LevelGridPlayableBuildFacadeV2
-  → LevelGridV2AssetCompiler
-  → ProductionPlayableLevelCatalogV1
+→ production path: LevelGridPlayableBuildFacade
+  → LevelGridAssetCompiler
+  → PlayableLevelCatalog
   → production Level Selection
 → authoritative state: exact level stable ID and exact Resource path
 → tests: existing runtime-integration source coverage plus manual checklist
@@ -315,7 +315,7 @@ Claim: Production entry remains exact catalogue resolution through Level Selecti
 
 This branch is the sole active owner of broad level-editor/export/publication consolidation. It should merge before any branch that:
 
-- decomposes `LevelGridEditorWindowV2` into new services;
+- decomposes `LevelGridEditorWindow` into new services;
 - adds a Create Level/catalogue-registration workflow;
 - adds room-content authoring;
 - adds a runtime map;

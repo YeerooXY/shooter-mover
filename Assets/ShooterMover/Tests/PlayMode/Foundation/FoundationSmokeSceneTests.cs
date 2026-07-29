@@ -46,7 +46,7 @@ namespace ShooterMover.Tests.PlayMode.Foundation
         public IEnumerator LoadUnloadReloadFlow_ReturnsToExactBootstrapBaseline()
         {
             Scene bootstrapBefore = RequireBootstrapScene();
-            BootstrapSceneAdapter adapterBefore = RequireSingleRunningBootstrap();
+            BootstrapSceneBridge adapterBefore = RequireSingleRunningBootstrap();
             int adapterInstanceId = adapterBefore.GetInstanceID();
             int baselineSceneObjectCount = CountLoadedSceneGameObjects();
             int baselineServiceCount = GetRegisteredServiceCount(adapterBefore);
@@ -78,7 +78,7 @@ namespace ShooterMover.Tests.PlayMode.Foundation
                 "FoundationSmoke retained a runtime fixture instance after unload.");
 
             Scene bootstrapAfter = RequireBootstrapScene();
-            BootstrapSceneAdapter adapterAfter = RequireSingleRunningBootstrap();
+            BootstrapSceneBridge adapterAfter = RequireSingleRunningBootstrap();
             Assert.That(
                 adapterAfter.GetInstanceID(),
                 Is.EqualTo(adapterInstanceId),
@@ -335,14 +335,14 @@ namespace ShooterMover.Tests.PlayMode.Foundation
             return scene;
         }
 
-        private static BootstrapSceneAdapter RequireSingleRunningBootstrap()
+        private static BootstrapSceneBridge RequireSingleRunningBootstrap()
         {
-            List<BootstrapSceneAdapter> adapters = FindBootstrapAdapters();
+            List<BootstrapSceneBridge> adapters = FindBootstrapAdapters();
             int runningCount = adapters.Count(adapter => adapter.IsCompositionRootRunning);
             if (adapters.Count != 1 || runningCount != 1)
             {
                 Assert.Fail(
-                    "Expected exactly one running BootstrapSceneAdapter; found "
+                    "Expected exactly one running BootstrapSceneBridge; found "
                     + adapters.Count + " adapter(s), " + runningCount
                     + " running. " + DescribeAdapters(adapters));
             }
@@ -350,9 +350,9 @@ namespace ShooterMover.Tests.PlayMode.Foundation
             return adapters[0];
         }
 
-        private static List<BootstrapSceneAdapter> FindBootstrapAdapters()
+        private static List<BootstrapSceneBridge> FindBootstrapAdapters()
         {
-            var adapters = new List<BootstrapSceneAdapter>();
+            var adapters = new List<BootstrapSceneBridge>();
             for (int sceneIndex = 0; sceneIndex < SceneManager.sceneCount; sceneIndex++)
             {
                 Scene scene = SceneManager.GetSceneAt(sceneIndex);
@@ -365,30 +365,30 @@ namespace ShooterMover.Tests.PlayMode.Foundation
                 for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
                 {
                     adapters.AddRange(
-                        roots[rootIndex].GetComponentsInChildren<BootstrapSceneAdapter>(true));
+                        roots[rootIndex].GetComponentsInChildren<BootstrapSceneBridge>(true));
                 }
             }
 
             return adapters;
         }
 
-        private static int GetRegisteredServiceCount(BootstrapSceneAdapter adapter)
+        private static int GetRegisteredServiceCount(BootstrapSceneBridge adapter)
         {
-            FieldInfo field = typeof(BootstrapSceneAdapter).GetField(
+            FieldInfo field = typeof(BootstrapSceneBridge).GetField(
                 "compositionRoot",
                 BindingFlags.Instance | BindingFlags.NonPublic);
             if (field == null)
             {
                 Assert.Fail(
-                    "BootstrapSceneAdapter no longer exposes the expected private "
+                    "BootstrapSceneBridge no longer exposes the expected private "
                     + "compositionRoot ownership field at " + DescribeAdapter(adapter) + ".");
             }
 
-            var root = field.GetValue(adapter) as BootstrapCompositionRoot;
+            var root = field.GetValue(adapter) as BootstrapSetupRoot;
             if (root == null)
             {
                 Assert.Fail(
-                    "BootstrapSceneAdapter has no live composition root at "
+                    "BootstrapSceneBridge has no live composition root at "
                     + DescribeAdapter(adapter) + ".");
             }
 
@@ -538,7 +538,7 @@ namespace ShooterMover.Tests.PlayMode.Foundation
             }
         }
 
-        private static string DescribeAdapters(IEnumerable<BootstrapSceneAdapter> adapters)
+        private static string DescribeAdapters(IEnumerable<BootstrapSceneBridge> adapters)
         {
             string[] descriptions = adapters.Select(DescribeAdapter).ToArray();
             return descriptions.Length == 0
@@ -546,7 +546,7 @@ namespace ShooterMover.Tests.PlayMode.Foundation
                 : "Adapters: " + string.Join(" | ", descriptions);
         }
 
-        private static string DescribeAdapter(BootstrapSceneAdapter adapter)
+        private static string DescribeAdapter(BootstrapSceneBridge adapter)
         {
             if (adapter == null)
             {

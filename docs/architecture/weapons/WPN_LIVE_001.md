@@ -8,10 +8,10 @@
 
 ## Corrected runtime flow
 
-`PlayerRouteProfilePayloadV1` exact four-slot loadout
+`PlayerRouteProfilePayload` exact four-slot loadout
 → selected concrete equipment-instance identity
 → immutable `InventoryWeaponFireRequest` locking that identity
-→ sequence-cached exact equipment lookup over `IPlayerHoldingsAuthorityV1`
+→ sequence-cached exact equipment lookup over `IPlayerHoldingsState`
 → equipment definition/runtime weapon reference
 → JSON-derived `WeaponCatalog` definition
 → `WeaponExecutionCore.TryExecute`
@@ -63,8 +63,8 @@ dictionary lookup rather than a full holdings, stack, transaction, ledger, and f
 The production-compatible composition is independent of any deleted demo controller:
 
 - `RouteProfileActiveWeaponSource` consumes the real immutable route/loadout payload and owns only active-slot selection;
-- `PlayerRuntimeWeaponStateAdapter` projects actor, participant, and lifecycle facts from the real `PlayerRuntimeComposition`;
-- `PlayerInventoryWeaponRuntimeCompositionRoot` creates the lookup, adapter, intent factory, active-slot source, and runtime;
+- `PlayerLiveWeaponStateBridge` projects actor, participant, and lifecycle facts from the real `PlayerLiveSetup`;
+- `PlayerInventoryWeaponLiveSetupRoot` creates the lookup, adapter, intent factory, active-slot source, and runtime;
 - `InventoryWeaponEffectEmitter2D` stages the complete core batch under an inactive Unity root, configures every effect, and activates the root only after all effects succeed;
 - canonical DoT projectiles create physical `InventoryWeaponPersistentDamageArea2D` pool objects from the core effect description.
 
@@ -95,7 +95,7 @@ Focused PlayMode:
 ```bash
 "<UNITY_EDITOR>" -batchmode -nographics -projectPath <project> \
   -runTests -testPlatform PlayMode \
-  -testFilter ShooterMover.Tests.PlayMode.Weapons.Live.InventoryWeaponRuntimePlayModeTests \
+  -testFilter ShooterMover.Tests.PlayMode.Weapons.Live.InventoryWeaponLivePlayModeTests \
   -testResults artifacts/test-results/WPN-LIVE-001-PlayMode.xml \
   -logFile artifacts/test-results/WPN-LIVE-001-PlayMode.log
 ```

@@ -8,9 +8,9 @@ The new contracts are deliberately parallel to the active authorities so migrati
 
 ## 1. Current authorities
 
-### `Runtime/Domain/Combat/WeaponRuntimeProfile.cs`
+### `Runtime/Domain/Combat/WeaponLiveProfile.cs`
 
-`WeaponRuntimeProfile` is an immutable legacy runtime-tuning aggregate. It currently owns cadence, burst timing, post-cycle recovery, heat/charge/power-bank fields, recoil influence, behavior module IDs, presentation priority, canonical serialization, fingerprinting, and deterministic identity. It remains supported as a migration source, but it is not the target weapon definition model.
+`WeaponLiveProfile` is an immutable legacy runtime-tuning aggregate. It currently owns cadence, burst timing, post-cycle recovery, heat/charge/power-bank fields, recoil influence, behavior module IDs, presentation priority, canonical serialization, fingerprinting, and deterministic identity. It remains supported as a migration source, but it is not the target weapon definition model.
 
 ### `Runtime/Domain/Weapons/Catalog/WeaponCatalogModel.*`
 
@@ -30,7 +30,7 @@ The application catalog layer remains the JSON DTO/import/export boundary. It st
 
 ### `Runtime/Domain/Weapons/Execution/WeaponExecutionModel.cs`
 
-`WeaponDefinitionId`, `EquipmentInstanceId`, `WeaponRuntimeFiringProfile`, and execution identities remain unchanged. The new blueprint reuses the existing `WeaponDefinitionId`; it does not create a duplicate identity type. The integer `WeaponRuntimeFiringProfile.Pierce` remains supported until a later mapper can explicitly reject or resolve fractional pierce.
+`WeaponDefinitionId`, `EquipmentInstanceId`, `WeaponLiveFiringProfile`, and execution identities remain unchanged. The new blueprint reuses the existing `WeaponDefinitionId`; it does not create a duplicate identity type. The integer `WeaponLiveFiringProfile.Pierce` remains supported until a later mapper can explicitly reject or resolve fractional pierce.
 
 ### `Runtime/Domain/Weapons/Execution/WeaponEffectBatch.cs`
 
@@ -97,9 +97,9 @@ Owns typed `Physical`, `Thermal`, `Chemical`, or `Energy` damage plus direct, ar
 
 Owns optional reusable definition-time descriptions for explosion, damage over time, and chain arc. These descriptions contain no Unity behavior. Blueprint validation rejects explosion trigger/area-damage data without an explosion effect and damage-over-time magnitude/duration without a damage-over-time effect.
 
-## 3. Field-by-field mapping from `WeaponRuntimeProfile`
+## 3. Field-by-field mapping from `WeaponLiveProfile`
 
-| `WeaponRuntimeProfile` field | Modular destination | Migration rule |
+| `WeaponLiveProfile` field | Modular destination | Migration rule |
 |---|---|---|
 | `ProfileVersion` | Migration envelope, not `WeaponBlueprint` | Retain in the legacy serializer until a blueprint serialization version is designed. |
 | `ProfileId` | Lookup input toward `WeaponDefinitionId` | Do not copy blindly. Resolve the canonical weapon definition through the catalog/equipment mapping. |
@@ -141,10 +141,10 @@ The current flat catalog remains authoritative. A later application mapper shoul
 
 The following remain active and unchanged:
 
-- `WeaponRuntimeProfile` canonical parsing/fingerprinting;
+- `WeaponLiveProfile` canonical parsing/fingerprinting;
 - JSON `WeaponCatalog` import/export/validation;
 - flat `WeaponDefinitionData` values;
-- `WeaponRuntimeFiringProfile`, including integer pierce and string damage type;
+- `WeaponLiveFiringProfile`, including integer pierce and string damage type;
 - `WeaponBehaviorRegistry` and built-in behaviors;
 - `EquipmentDefinition`, `EquipmentInstance`, `AugmentDefinition`, and `AugmentInstance`;
 - `WeaponEffectBatch` and current effect descriptions;
@@ -170,7 +170,7 @@ The following remain active and unchanged:
 
 1. Keep `WeaponBlueprint` immutable and catalog-owned.
 2. Add an application mapper from validated `WeaponDefinitionData` to `WeaponBlueprint`. Every ambiguous current field must produce an explicit mapping decision or validation failure.
-3. Add a temporary adapter from `WeaponBlueprint` to the existing `WeaponRuntimeFiringProfile`/behavior selection boundary. Fractional pierce must fail until execution contracts support it.
+3. Add a temporary adapter from `WeaponBlueprint` to the existing `WeaponLiveFiringProfile`/behavior selection boundary. Fractional pierce must fail until execution contracts support it.
 4. Introduce `EffectiveWeapon` in a later task as an immutable derived result of:
    - one canonical `WeaponBlueprint`;
    - one existing `EquipmentInstance`;

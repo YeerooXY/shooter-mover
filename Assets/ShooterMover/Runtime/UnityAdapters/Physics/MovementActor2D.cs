@@ -14,13 +14,13 @@ namespace ShooterMover.UnityAdapters.Physics
     /// </summary>
     public sealed class MovementActor2D :
         IAuthoritativeMovementVelocitySource,
-        IMovementContactAuthority,
+        IMovementContactState,
         IDisposable
     {
         private readonly Rigidbody2D body;
-        private readonly PlayerMovementIntentAdapter inputAdapter;
-        private readonly MovementContact2DAdapter contactAdapter;
-        private readonly MovementBody2DAdapter bodyAdapter;
+        private readonly PlayerMovementIntentBridge inputAdapter;
+        private readonly MovementContact2DBridge contactAdapter;
+        private readonly MovementBody2DBridge bodyAdapter;
         private readonly MovementThrusterTuningProfile tuning;
 
         private ThrusterBurstState movement;
@@ -36,9 +36,9 @@ namespace ShooterMover.UnityAdapters.Physics
 
         public MovementActor2D(
             Rigidbody2D body,
-            PlayerMovementIntentAdapter inputAdapter,
+            PlayerMovementIntentBridge inputAdapter,
             InputActionAsset inputActions,
-            MovementContact2DAdapter contactAdapter,
+            MovementContact2DBridge contactAdapter,
             MovementThrusterTuningProfile tuning)
         {
             if (body == null)
@@ -79,7 +79,7 @@ namespace ShooterMover.UnityAdapters.Physics
             this.inputAdapter = inputAdapter;
             this.contactAdapter = contactAdapter;
             this.tuning = tuning;
-            bodyAdapter = new MovementBody2DAdapter(body);
+            bodyAdapter = new MovementBody2DBridge(body);
 
             // Construction is deliberately quiescent. No Unity callback may sample or
             // mutate authority until Activate is called by the owning lifecycle.

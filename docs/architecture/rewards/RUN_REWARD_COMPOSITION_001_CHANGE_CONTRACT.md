@@ -17,25 +17,25 @@ The display is derived from pending-admission records. It does not infer success
 
 ## Authorities
 
-- selected character, owned equipment, loadout, wallets, holdings and strongboxes: existing account-backed `ProductionCharacterRuntimeGraphV1` authorities;
-- transient run identity, frozen selected-character inputs, participant roster, reward environment, pacing state and personal-delivery outbox: one `RunSessionAuthorityV1` aggregate owned by the gameplay scene;
-- room terminal state, room clear and door state: existing `RoomRuntimeComposition2D` route through `RoomEnemySpawner2D.EnemyRoomPort`;
-- enemy terminal fact: existing `EnemyPlacementRuntimeInstanceV1` canonical death publication;
+- selected character, owned equipment, loadout, wallets, holdings and strongboxes: existing account-backed `CharacterLiveGraph` authorities;
+- transient run identity, frozen selected-character inputs, participant roster, reward environment, pacing state and personal-delivery outbox: one `RunSessionState` aggregate owned by the gameplay scene;
+- room terminal state, room clear and door state: existing `RoomLiveSetup2D` route through `RoomEnemySpawner2D.EnemyRoomPort`;
+- enemy terminal fact: existing `EnemyPlacementLiveInstance` canonical death publication;
 - reward profile resolution and generation: existing production override catalogue and terminal personal-reward authority;
 - deterministic proof behavior: one placement-only overlay over the canonical production override result;
-- pending admission and replay: one scene-local `PendingTerminalDropAdmissionAuthorityV1`;
+- pending admission and replay: one scene-local `PendingTerminalDropAdmissionState`;
 - HUD: read-only projection over admitted pending records;
 - XP and kill statistics: explicit typed no-op consumers until their dedicated lanes integrate.
 
 ## Synchronous production composition
 
-`ProductionRunRewardSceneCompositionV1` is serialized on `PlayableLevel.unity`. Its `Awake()` subscribes to `JsonRoomRuntimeBootstrap2D.BuildAccepted` before the production controller starts the selected route.
+`RunRewardSceneSetup` is serialized on `PlayableLevel.unity`. Its `Awake()` subscribes to `JsonRoomLiveBootstrap2D.BuildAccepted` before the production controller starts the selected route.
 
 The exact ordering is:
 
 ```text
-ProductionPlayableLevelControllerV1.Begin(...)
--> JsonRoomRuntimeBootstrap2D.BuildFromJson()
+PlayableLevelController.Begin(...)
+-> JsonRoomLiveBootstrap2D.BuildFromJson()
 -> room authority and imported bundle commit
 -> synchronous BuildAccepted callback
 -> selected-character Run Session starts
@@ -62,7 +62,7 @@ At Run Session start the composition freezes:
 
 Terminal reward generation reads the immutable `ProgressionContext` captured at Run Session start. It does not read `graph.ExperienceAuthority.CurrentContext` after the run has started.
 
-`RunSessionParticipantDropPacingStateStoreV1` and `RunSessionPersonalRewardDeliveryOutboxV1` keep pacing and delivery state on the exact run lifecycle. Reconstructing a reward service for the same run therefore cannot silently reset participant luck or discard pending delivery state.
+`RunSessionParticipantDropPacingStateStore` and `RunSessionPersonalRewardDeliveryOutbox` keep pacing and delivery state on the exact run lifecycle. Reconstructing a reward service for the same run therefore cannot silently reset participant luck or discard pending delivery state.
 
 ## Stable identities
 
@@ -74,11 +74,11 @@ Each reward transaction is keyed by the canonical enemy death-event identity. A 
 
 ## Reward transaction commit, compensation and retry
 
-The Level 1 composition explicitly opts into strict terminal-reward publication. Other callers of `TerminalDropBindingCompositionV1.Create(...)` retain the previous lenient behavior unless they also opt in.
+The Level 1 composition explicitly opts into strict terminal-reward publication. Other callers of `TerminalDropBindingSetup.Create(...)` retain the previous lenient behavior unless they also opt in.
 
 For every enemy reward delivery in this production route:
 
-1. export the complete pre-attempt `RunRewardRuntimeSnapshotV1`;
+1. export the complete pre-attempt `RunRewardLiveSnapshot`;
 2. create a fresh personal-generation authority backed by the exact Run Session pacing store and delivery outbox;
 3. generate the participant batch;
 4. admit every generated participant result to pending state;
@@ -110,7 +110,7 @@ Scene teardown discards the transient Run Session and pending authority. Re-entr
 
 ## Truthful level availability
 
-`ProductionPlayableLevelCatalogV1` now exposes only Level 1 through the production catalogue. The stable `AuthoredCombatLoopTestLevelStableId` constant remains available to the separate level/compiler lane, but the missing Combat Loop Test resource is no longer advertised as an unlocked live route and does not resolve through the production catalogue.
+`PlayableLevelCatalog` now exposes only Level 1 through the production catalogue. The stable `AuthoredCombatLoopTestLevelStableId` constant remains available to the separate level/compiler lane, but the missing Combat Loop Test resource is no longer advertised as an unlocked live route and does not resolve through the production catalogue.
 
 ## Targeted self-audit repairs
 
@@ -157,7 +157,7 @@ Available immediately on this branch:
 3. Open Play, choose Solo, and confirm only `LEVEL 1` is offered by the production catalogue.
 4. Enter `PlayableLevel.unity` and confirm the level remains loaded instead of immediately returning to Hub.
 5. Confirm one Run Session composition exists and the entry enemy binds once.
-6. Return and re-enter; confirm no duplicate `ProductionRunRewardSceneCompositionV1`, stale run or duplicate enemy binding.
+6. Return and re-enter; confirm no duplicate `RunRewardSceneSetup`, stale run or duplicate enemy binding.
 
 After the canonical combat caller is integrated:
 

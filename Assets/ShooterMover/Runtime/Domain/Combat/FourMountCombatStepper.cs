@@ -6,7 +6,7 @@ namespace ShooterMover.Domain.Combat
 {
     public sealed class FourMountCombatStepInput
     {
-        private readonly WeaponRuntimeProfile[] profiles;
+        private readonly WeaponLiveProfile[] profiles;
         private readonly StableId[] weaponIds;
         private readonly StableId[] mountIds;
         private readonly WeaponMountOrigin[] mountOrigins;
@@ -19,7 +19,7 @@ namespace ShooterMover.Domain.Combat
             bool empoweredRequested,
             AimVector2 sharedAimIntent,
             AimVector2 sharedAimPoint,
-            WeaponRuntimeProfile[] profiles,
+            WeaponLiveProfile[] profiles,
             StableId[] weaponIds,
             StableId[] mountIds,
             WeaponMountOrigin[] mountOrigins,
@@ -55,7 +55,7 @@ namespace ShooterMover.Domain.Combat
             EmpoweredRequested = empoweredRequested;
             SharedAimIntent = sharedAimIntent;
             SharedAimPoint = sharedAimPoint;
-            this.profiles = (WeaponRuntimeProfile[])profiles.Clone();
+            this.profiles = (WeaponLiveProfile[])profiles.Clone();
             this.weaponIds = (StableId[])weaponIds.Clone();
             this.mountIds = (StableId[])mountIds.Clone();
             this.mountOrigins = (WeaponMountOrigin[])mountOrigins.Clone();
@@ -71,7 +71,7 @@ namespace ShooterMover.Domain.Combat
         public AimVector2 SharedAimIntent { get; }
         public AimVector2 SharedAimPoint { get; }
 
-        public WeaponRuntimeProfile GetProfile(int index) { return profiles[index]; }
+        public WeaponLiveProfile GetProfile(int index) { return profiles[index]; }
         public StableId GetWeaponId(int index) { return weaponIds[index]; }
         public StableId GetMountId(int index) { return mountIds[index]; }
         public string GetExternalFaultDetail(int index) { return externalFaultDetails[index]; }
@@ -201,7 +201,7 @@ namespace ShooterMover.Domain.Combat
 
             try
             {
-                WeaponRuntimeProfile profile = input.GetProfile(index);
+                WeaponLiveProfile profile = input.GetProfile(index);
                 string externalFault = input.GetExternalFaultDetail(index);
                 if (!string.IsNullOrWhiteSpace(externalFault))
                 {

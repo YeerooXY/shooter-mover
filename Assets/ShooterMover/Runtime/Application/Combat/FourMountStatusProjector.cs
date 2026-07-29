@@ -15,7 +15,7 @@ namespace ShooterMover.Application.Combat
     {
         public DomainCombat.FourMountStatusSnapshot Project(
             DomainCombat.FourMountCombatState combatState,
-            DomainCombat.WeaponRuntimeProfile[] profiles,
+            DomainCombat.WeaponLiveProfile[] profiles,
             StableId[] weaponIds,
             DomainCombat.FourMountCombatStepResult latestStepResult = null)
         {
@@ -41,7 +41,7 @@ namespace ShooterMover.Application.Combat
                 ContractCombat.WeaponMountSlot contractSlot =
                     ContractCombat.WeaponMountContractRules.GetSlotAtHudIndex(stableIndex);
                 int stableSlotNumber = (int)contractSlot;
-                DomainCombat.WeaponRuntimeProfile profile = profiles[stableIndex];
+                DomainCombat.WeaponLiveProfile profile = profiles[stableIndex];
                 StableId weaponId = weaponIds[stableIndex];
                 DomainCombat.WeaponMountState mountState =
                     combatState.GetMountByStableIndex(stableIndex);
@@ -117,7 +117,7 @@ namespace ShooterMover.Application.Combat
         /// </summary>
         public ContractPresentation.WeaponHudState ProjectAcceptedHudState(
             DomainCombat.FourMountCombatState combatState,
-            DomainCombat.WeaponRuntimeProfile[] profiles,
+            DomainCombat.WeaponLiveProfile[] profiles,
             StableId[] weaponIds)
         {
             DomainCombat.FourMountStatusSnapshot status = Project(
@@ -139,7 +139,7 @@ namespace ShooterMover.Application.Combat
                     continue;
                 }
 
-                DomainCombat.WeaponRuntimeProfile profile = profiles[stableIndex];
+                DomainCombat.WeaponLiveProfile profile = profiles[stableIndex];
                 DomainCombat.WeaponMountState sourceMount =
                     combatState.GetMountByStableIndex(stableIndex);
                 DomainCombat.WeaponPowerBankState sourcePower =
@@ -178,7 +178,7 @@ namespace ShooterMover.Application.Combat
         }
 
         private static ContractCombat.WeaponMountReadiness MapAcceptedReadiness(
-            DomainCombat.WeaponRuntimeProfile profile,
+            DomainCombat.WeaponLiveProfile profile,
             DomainCombat.WeaponMountState mountState)
         {
             switch (mountState.Phase)
@@ -213,7 +213,7 @@ namespace ShooterMover.Application.Combat
         }
 
         private static ContractCombat.WeaponCycleResourceState BuildAcceptedCycleResource(
-            DomainCombat.WeaponRuntimeProfile profile,
+            DomainCombat.WeaponLiveProfile profile,
             DomainCombat.WeaponMountState mountState)
         {
             switch (profile.CycleMode)
@@ -327,7 +327,7 @@ namespace ShooterMover.Application.Combat
         }
 
         private static void ValidateProfileAndState(
-            DomainCombat.WeaponRuntimeProfile profile,
+            DomainCombat.WeaponLiveProfile profile,
             DomainCombat.WeaponMountState mountState,
             DomainCombat.WeaponPowerBankState powerBank,
             int stableSlotNumber)
@@ -395,7 +395,7 @@ namespace ShooterMover.Application.Combat
         }
 
         private static void GetCycleValues(
-            DomainCombat.WeaponRuntimeProfile profile,
+            DomainCombat.WeaponLiveProfile profile,
             DomainCombat.WeaponMountState mountState,
             out double current,
             out double maximum)

@@ -85,7 +85,7 @@ namespace ShooterMover.Application.Weapons.Execution
 
         private static WeaponImpactDecision BuildWallFallback(
             WeaponImpactRequest request,
-            WeaponRicochetRuntimeState state,
+            WeaponRicochetLiveState state,
             DeterministicRandom random)
         {
             WeaponExplosionTriggerReason explosionReasons = ResolveExplosionReasons(
@@ -172,7 +172,7 @@ namespace ShooterMover.Application.Weapons.Execution
             WeaponVector2 directionAfterImpact,
             double speedAfterImpact,
             double homingPauseSeconds,
-            WeaponRicochetRuntimeState state,
+            WeaponRicochetLiveState state,
             DeterministicRandom random)
         {
             return new WeaponImpactDecision(

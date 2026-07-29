@@ -29,10 +29,10 @@ Provide reusable visual presentation for:
 | Concept | Authoritative owner | This lane may do |
 |---|---|---|
 | Reward generation and tier choice | Existing reward-generation and strongbox policy authorities | Read immutable tier/result projections only |
-| Run-local pickup availability and collection | `RunLocalPickupAuthorityV1` / canonical collection route | Render exported snapshots and retire views only after accepted collection state |
+| Run-local pickup availability and collection | `RunLocalPickupState` / canonical collection route | Render exported snapshots and retire views only after accepted collection state |
 | Run totals | Existing Run Session collected-reward projection | Display supplied immutable totals |
 | Owned unopened boxes | Existing player holdings authority | Group exact immutable instance projections; never mutate counts |
-| Strongbox opening transaction | `StrongboxOpeningServiceV1` and durable executor | Submit one immutable command through existing port; animate committed result |
+| Strongbox opening transaction | `StrongboxOpeningActions` and durable executor | Submit one immutable command through existing port; animate committed result |
 | Reward application and permanent holdings | Existing RAP/holdings/save authorities | Display immutable result cards only |
 | Presentation timing and local selection | This lane | Own animation stage, speed, selected exact instance ID and purely visual state |
 | Development fixture state | Development-only fixture | Own disposable immutable sample projections; never bind to production holdings |

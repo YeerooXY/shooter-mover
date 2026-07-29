@@ -94,7 +94,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e913596aa7e246b29cfe9220b7bbfdba, type: 3}
   m_Name:
-  m_EditorClassIdentifier: ShooterMover.UI.Shop::ShooterMover.UI.Shop.ShopScreenControllerV1
+  m_EditorClassIdentifier: ShooterMover.UI.Shop::ShooterMover.UI.Shop.ShopScreenController
   shopTemplate: {fileID: 2800000, guid: 8c8186ad6e2b4f50bceeedcb7c80ca45, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
