@@ -1,0 +1,53 @@
+name: Publish source name cleanup
+
+on:
+  push:
+    branches:
+      - agent/remove-legacy-names-everywhere
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/remove-legacy-names-everywhere
+          fetch-depth: 0
+
+      - name: Build and publish source-only rename
+        shell: bash
+        run: |
+          set -euo pipefail
+          start_sha="$(git rev-parse HEAD)"
+          awk '
+            /python3 - <<'"'"'PY'"'"'/ { capture=1; next }
+            capture && /^          PY$/ { capture=0; exit }
+            capture { sub(/^          /, ""); print }
+          ' .github/workflows/remove-legacy-type-names.yml > /tmp/rename.py
+
+          python3 /tmp/rename.py
+
+          # Existing CI workflows are operational files, not game type names. Keep them exact.
+          git checkout "$start_sha" -- .github/workflows
+
+          rm -f .github/workflows/remove-legacy-type-names.yml
+          rm -f .github/workflows/publish-mass-rename.yml
+          rm -f .github/workflows/publish-source-name-cleanup.yml
+          rm -f docs/audits/.run-full-rename
+          rm -f docs/audits/.run-publisher
+          rm -f docs/audits/REPOSITORY_NAMING_REMOVAL_AUDIT.md
+          rm -f docs/audits/CLEAR_GAME_NAMING_PLAN.md
+          rm -f docs/audits/REPOSITORY_RENAME_DIAGNOSTIC.md
+          rm -f docs/audits/REPOSITORY_RENAME_FAILURE.md
+          rm -f docs/audits/MASS_RENAME_COMMIT_DIAGNOSTIC.md
+          rm -f docs/audits/MASS_RENAME_PUSH_DIAGNOSTIC.md
+
+          git config user.name "shooter-mover-naming-bot"
+          git config user.email "naming-bot@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Remove warning-style type names everywhere"
+          git push origin HEAD:refs/heads/agent/remove-legacy-names-result --force
