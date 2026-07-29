@@ -53,6 +53,11 @@ namespace ShooterMover.UI.ProductionFlow
         private const string AccountFileName = "player-account-v1.save";
         private const string TemporarySuffix = ".tmp";
         private const string BackupSuffix = ".bak";
+        private const string OldWeaponHoldingsPayloadInvalid =
+            "weapon-holdings-v2-payload-invalid";
+        private const string OldWeaponHoldingsLoadRejection =
+            "active=" + OldWeaponHoldingsPayloadInvalid
+                + ";backup=" + OldWeaponHoldingsPayloadInvalid;
         private static readonly StableId AccountStableId =
             StableId.Parse("account.production-player-v1");
         private static CharacterAccount instance;
@@ -235,14 +240,47 @@ namespace ShooterMover.UI.ProductionFlow
             string activePath = Path.Combine(
                 UnityEngine.Application.persistentDataPath,
                 AccountFileName);
+            string temporaryPath = activePath + TemporarySuffix;
+            string backupPath = activePath + BackupSuffix;
+            var files = new SystemIoAtomicSaveFilePort();
             accountStore = new AtomicPlayerAccountStore(
-                new SystemIoAtomicSaveFilePort(),
+                files,
                 activePath,
-                activePath + TemporarySuffix,
-                activePath + BackupSuffix,
+                temporaryPath,
+                backupPath,
                 snapshot => PlayerAccountComponentSemantics.Validate(snapshot));
 
             PlayerAccountStoreResult loaded = accountStore.Load();
+            bool resetOldSave = IsOldWeaponHoldingsSave(loaded);
+            if (resetOldSave)
+            {
+                string resetError;
+                if (!TryDeleteOldAccountFiles(
+                        files,
+                        activePath,
+                        temporaryPath,
+                        backupPath,
+                        out resetError))
+                {
+                    Fail(
+                        "character-account-old-save-reset-rejected:"
+                            + resetError);
+                    return;
+                }
+
+                loaded = accountStore.Load();
+                if (loaded == null
+                    || loaded.Status != PlayerAccountStoreStatus.NotFound)
+                {
+                    Fail(
+                        "character-account-old-save-reset-verification-rejected:"
+                            + (loaded == null
+                                ? "result-null"
+                                : loaded.RejectionCode));
+                    return;
+                }
+            }
+
             bool firstAccount = loaded != null
                 && loaded.Status == PlayerAccountStoreStatus.NotFound;
             PlayerAccountSnapshot account;
@@ -351,30 +389,54 @@ namespace ShooterMover.UI.ProductionFlow
 
             if (firstAccount)
             {
-                LegacyCharacterProfileMigrationResult migration =
-                    MigrateLegacyAccountOnce();
-                if (migration == null || !migration.Succeeded)
-                {
-                    Fail(
-                        "character-account-migration-rejected:"
-                            + (migration == null
-                                ? "result-null"
-                                : migration.Diagnostic));
-                    return;
-                }
-                if (migration.Status
-                    == CharacterSetupStatus.ExactNoChange)
+                if (resetOldSave)
                 {
                     PlayerAccountStoreResult initialSave =
                         accountStore.Save(accountAuthority.Current);
-                    if (initialSave == null || !initialSave.Succeeded)
+                    if (initialSave == null
+                        || !initialSave.Succeeded
+                        || initialSave.Snapshot == null)
                     {
                         Fail(
-                            "character-account-initial-save-rejected:"
+                            "character-account-old-save-reset-store-rejected:"
                                 + (initialSave == null
                                     ? "result-null"
                                     : initialSave.RejectionCode));
                         return;
+                    }
+
+                    Debug.LogWarning(
+                        "character-account-old-save-reset:"
+                            + OldWeaponHoldingsPayloadInvalid,
+                        this);
+                }
+                else
+                {
+                    LegacyCharacterProfileMigrationResult migration =
+                        MigrateLegacyAccountOnce();
+                    if (migration == null || !migration.Succeeded)
+                    {
+                        Fail(
+                            "character-account-migration-rejected:"
+                                + (migration == null
+                                    ? "result-null"
+                                    : migration.Diagnostic));
+                        return;
+                    }
+                    if (migration.Status
+                        == CharacterSetupStatus.ExactNoChange)
+                    {
+                        PlayerAccountStoreResult initialSave =
+                            accountStore.Save(accountAuthority.Current);
+                        if (initialSave == null || !initialSave.Succeeded)
+                        {
+                            Fail(
+                                "character-account-initial-save-rejected:"
+                                    + (initialSave == null
+                                        ? "result-null"
+                                        : initialSave.RejectionCode));
+                            return;
+                        }
                     }
                 }
             }
@@ -842,6 +904,64 @@ namespace ShooterMover.UI.ProductionFlow
                 rejectionCode = "character-projection-threw:"
                     + exception.GetType().Name;
                 return false;
+            }
+        }
+
+        private static bool IsOldWeaponHoldingsSave(
+            PlayerAccountStoreResult loaded)
+        {
+            return loaded != null
+                && loaded.Status
+                    == PlayerAccountStoreStatus.ValidationRejected
+                && string.Equals(
+                    loaded.RejectionCode,
+                    OldWeaponHoldingsLoadRejection,
+                    StringComparison.Ordinal);
+        }
+
+        private static bool TryDeleteOldAccountFiles(
+            IAtomicSaveFilePort files,
+            string activePath,
+            string temporaryPath,
+            string backupPath,
+            out string rejectionCode)
+        {
+            rejectionCode = string.Empty;
+            if (files == null)
+            {
+                rejectionCode = "file-port-null";
+                return false;
+            }
+
+            try
+            {
+                DeleteIfExists(files, temporaryPath);
+                DeleteIfExists(files, backupPath);
+                DeleteIfExists(files, activePath);
+                if (files.Exists(activePath)
+                    || files.Exists(temporaryPath)
+                    || files.Exists(backupPath))
+                {
+                    rejectionCode = "account-save-files-remain";
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception exception)
+            {
+                rejectionCode = "account-save-delete-io-failure:"
+                    + exception.GetType().Name;
+                return false;
+            }
+        }
+
+        private static void DeleteIfExists(
+            IAtomicSaveFilePort files,
+            string path)
+        {
+            if (files.Exists(path))
+            {
+                files.Delete(path);
             }
         }
 
