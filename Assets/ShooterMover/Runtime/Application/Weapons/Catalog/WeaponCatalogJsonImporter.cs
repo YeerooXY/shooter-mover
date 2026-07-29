@@ -222,10 +222,6 @@ namespace ShooterMover.Application.Weapons.Catalog
             {
                 string path = "$.definitions[" + index + "]";
                 DefinitionDto dto = Require(source[index], path);
-                double actualDirectDps = dto.DamagePerProjectile
-                    * dto.FireRate
-                    * dto.ProjectilesPerTrigger
-                    * dto.BurstCount;
                 result.Add(
                     new WeaponDefinitionData(
                         dto.DefinitionId,
@@ -249,7 +245,7 @@ namespace ShooterMover.Application.Weapons.Catalog
                         dto.CraftingRoute,
                         0d,
                         0d,
-                        actualDirectDps,
+                        0d,
                         0d,
                         0d,
                         0d,
