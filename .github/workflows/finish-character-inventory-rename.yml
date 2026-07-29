@@ -1,0 +1,48 @@
+name: Finish character and inventory rename
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  finish-rename:
+    if: github.head_ref == 'agent/rename-character-inventory-flow'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out rename branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Match renamed test filename
+        shell: bash
+        run: |
+          set -euo pipefail
+          old='Assets/ShooterMover/Tests/PlayMode/Flow/InventoryLoadout/ProductionInventoryWeaponCardsPresenterV1Tests.cs'
+          new='Assets/ShooterMover/Tests/PlayMode/Flow/InventoryLoadout/InventoryWeaponCardsTests.cs'
+          test -f "$old"
+          test ! -e "$new"
+          git mv -- "$old" "$new"
+          if test -f "$old.meta"; then
+            git mv -- "$old.meta" "$new.meta"
+          fi
+          git diff --check
+
+      - name: Commit final rename
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "shooter-mover-rename-bot"
+          git config user.email "rename-bot@users.noreply.github.com"
+          git rm -- .github/workflows/finish-character-inventory-rename.yml
+          git add -- Assets/ShooterMover
+          git diff --cached --check
+          git commit -m "Match Inventory weapon card test filename"
+          git push origin HEAD:${{ github.head_ref }}
