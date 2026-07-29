@@ -34,8 +34,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     root == activeRoot,
                     delegate(object selected)
                     {
-                        SetActiveRoot(
-                            (LevelDraft)selected);
+                        SetActiveRoot((LevelDraft)selected);
                     },
                     root);
             }
@@ -167,8 +166,7 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return;
             }
 
-            LevelDraft selectedRoot =
-                selected as LevelDraft;
+            LevelDraft selectedRoot = selected as LevelDraft;
             if (selectedRoot != null)
             {
                 SetActiveRoot(selectedRoot);
@@ -230,7 +228,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 || selected is LevelRoom
                 || selected is LevelDraft
                 || selected is LevelObject
-                || selected is DoorConnection
                 || selected is VoidArea)
             {
                 return selected;
@@ -247,38 +244,27 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 return null;
             }
 
-            DoorEndpoint door =
-                gameObject.GetComponent<DoorEndpoint>();
+            DoorEndpoint door = gameObject.GetComponent<DoorEndpoint>();
             if (door != null)
             {
                 return door;
             }
-            DoorLink connection =
-                gameObject.GetComponent<DoorLink>();
+            DoorLink connection = gameObject.GetComponent<DoorLink>();
             if (connection != null)
             {
                 return connection;
             }
-            LevelObject placement =
-                gameObject.GetComponent<LevelObject>();
+            LevelObject placement = gameObject.GetComponent<LevelObject>();
             if (placement != null)
             {
                 return placement;
             }
-            DoorConnection legacyDoor =
-                gameObject.GetComponent<DoorConnection>();
-            if (legacyDoor != null)
-            {
-                return legacyDoor;
-            }
-            VoidArea voidRegion =
-                gameObject.GetComponent<VoidArea>();
+            VoidArea voidRegion = gameObject.GetComponent<VoidArea>();
             if (voidRegion != null)
             {
                 return voidRegion;
             }
-            LevelRoom room =
-                gameObject.GetComponentInParent<LevelRoom>();
+            LevelRoom room = gameObject.GetComponentInParent<LevelRoom>();
             if (room != null)
             {
                 return room;
@@ -681,38 +667,26 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
         private void FrameSelection()
         {
             LevelRoom room = selectedAuthoringObject as LevelRoom;
-            DoorEndpoint door =
-                selectedAuthoringObject as DoorEndpoint;
+            DoorEndpoint door = selectedAuthoringObject as DoorEndpoint;
             if (door != null)
             {
                 room = door.OwningRoom;
             }
 
-            DoorLink link =
-                selectedAuthoringObject as DoorLink;
+            DoorLink link = selectedAuthoringObject as DoorLink;
             if (link != null
                 && TryFrameRoomPair(link.SourceRoom, link.DestinationRoom))
             {
                 return;
             }
 
-            DoorConnection legacyDoor =
-                selectedAuthoringObject as DoorConnection;
-            if (legacyDoor != null
-                && TryFrameRoomPair(legacyDoor.SourceRoom, legacyDoor.DestinationRoom))
-            {
-                return;
-            }
-
-            LevelObject placement =
-                selectedAuthoringObject as LevelObject;
+            LevelObject placement = selectedAuthoringObject as LevelObject;
             if (placement != null)
             {
                 room = placement.Room;
             }
 
-            VoidArea voidRegion =
-                selectedAuthoringObject as VoidArea;
+            VoidArea voidRegion = selectedAuthoringObject as VoidArea;
             if (voidRegion != null)
             {
                 room = voidRegion.Room;
@@ -873,7 +847,6 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
 
             public Vector2 Start { get; }
-
             public Vector2 End { get; }
         }
     }
