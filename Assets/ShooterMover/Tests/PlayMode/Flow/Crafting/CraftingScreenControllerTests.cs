@@ -316,7 +316,7 @@ namespace ShooterMover.Tests.PlayMode.Flow.Crafting
             {
                 CraftingRecipe recipe = recipes.Find(command.RecipeStableId);
                 return EquipmentInstance.Create(
-                    Crafting.DeriveStableId(
+                    CraftingFormat.DeriveStableId(
                         "craftitem",
                         command.CraftTransactionStableId.ToString()),
                     recipe.TargetEquipmentDefinitionStableId,

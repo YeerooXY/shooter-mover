@@ -633,7 +633,7 @@ namespace ShooterMover.Application.Crafting.Presentation
             CraftingRecipe recipe = authoritySnapshot.RecipeCatalog.Find(recipeStableId);
             if (recipe == null) return attempt;
 
-            StableId operationStableId = Crafting.DeriveStableId(
+            StableId operationStableId = CraftingFormat.DeriveStableId(
                 "craftui-operation",
                 screenSessionStableId.ToString(),
                 recipeStableId.ToString(),

@@ -69,7 +69,7 @@ namespace ShooterMover.Application.Crafting.Integration
                 + "\nequipment_fingerprint=" + EquipmentFingerprint
                 + "\nexpected_loadout_sequence="
                 + Optional(ExpectedLoadoutSequence);
-            Fingerprint = Crafting.Fingerprint(canonicalText);
+            Fingerprint = CraftingFormat.Fingerprint(canonicalText);
         }
 
         public StableId TransactionStableId { get; }
@@ -109,7 +109,7 @@ namespace ShooterMover.Application.Crafting.Integration
 
         public override int GetHashCode()
         {
-            return Crafting.DeterministicHash(canonicalText);
+            return CraftingFormat.DeterministicHash(canonicalText);
         }
 
         private static string Optional(long? value)
@@ -258,7 +258,7 @@ namespace ShooterMover.Application.Crafting.Integration
                 + "\nloadout_slot_id=" + LoadoutSlotStableId
                 + "\nexpected_loadout_sequence="
                 + Optional(ExpectedLoadoutSequence);
-            Fingerprint = Crafting.Fingerprint(canonicalText);
+            Fingerprint = CraftingFormat.Fingerprint(canonicalText);
         }
 
         public CraftEquipmentCommand CraftCommand { get; }
@@ -290,7 +290,7 @@ namespace ShooterMover.Application.Crafting.Integration
 
         public override int GetHashCode()
         {
-            return Crafting.DeterministicHash(canonicalText);
+            return CraftingFormat.DeterministicHash(canonicalText);
         }
 
         private static string Optional(long? value)
@@ -422,7 +422,7 @@ namespace ShooterMover.Application.Crafting.Integration
                 throw new ArgumentNullException(nameof(command));
             }
 
-            return Crafting.DeriveStableId(
+            return CraftingFormat.DeriveStableId(
                 namespaceName,
                 purpose,
                 command.CraftTransactionStableId.ToString());
