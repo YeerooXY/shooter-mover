@@ -344,7 +344,7 @@ namespace ShooterMover.UI.ProductionFlow
         private Camera gameplayCamera;
         private WeaponActorState actorState;
         private InventoryWeaponLiveSetup runtime;
-        private ProjectileEffectSink2D effectSink;
+        private BulletSpawner2D bulletSpawner;
         private IReadOnlyList<EquippedGun> equippedGuns =
             Array.Empty<EquippedGun>();
         private Vector2 aimDirection = Vector2.right;
@@ -446,8 +446,8 @@ namespace ShooterMover.UI.ProductionFlow
 
             WeaponActorState stagedActor = null;
             InventoryWeaponLiveSetup stagedRuntime = null;
-            ProjectileEffectSink2D stagedSink = null;
-            bool sinkAdded = false;
+            BulletSpawner2D stagedSpawner = null;
+            bool spawnerAdded = false;
             try
             {
                 var exactLookup = new WeaponEquipmentViewLookup(
@@ -486,21 +486,21 @@ namespace ShooterMover.UI.ProductionFlow
                     configuredSource.CharacterInstanceId,
                     lifecycle);
 
-                stagedSink = GetComponent<
-                    ProjectileEffectSink2D>();
-                if (stagedSink != null)
+                stagedSpawner = GetComponent<
+                    BulletSpawner2D>();
+                if (stagedSpawner != null)
                 {
                     throw new InvalidOperationException(
                         "canonical-weapon-fire-unowned-effect-sink-present");
                 }
-                stagedSink = gameObject.AddComponent<
-                    ProjectileEffectSink2D>();
-                sinkAdded = true;
+                stagedSpawner = gameObject.AddComponent<
+                    BulletSpawner2D>();
+                spawnerAdded = true;
 
                 for (int index = 0; index < resolvedGuns.Count; index++)
                 {
                     EquippedGun gun = resolvedGuns[index];
-                    if (!stagedSink.TryBindSource(
+                    if (!stagedSpawner.TryBindSource(
                             stagedActor.ActorId,
                             stagedActor.Lifecycle,
                             gun.Mount.MountStableId,
@@ -521,7 +521,7 @@ namespace ShooterMover.UI.ProductionFlow
                     configuredGraph.LoadoutRuntime.EquipmentCatalog,
                     configuredGraph.LoadoutRuntime.WeaponCatalog,
                     stagedActor,
-                    stagedSink,
+                    stagedSpawner,
                     ticksPerSecond,
                     resolver,
                     new UnaugmentedWeaponModifierSetResolver());
@@ -535,7 +535,7 @@ namespace ShooterMover.UI.ProductionFlow
                 gameplayCamera = configuredCamera;
                 actorState = stagedActor;
                 runtime = stagedRuntime;
-                effectSink = stagedSink;
+                bulletSpawner = stagedSpawner;
                 equippedGuns = resolvedGuns.AsReadOnly();
                 bound = true;
                 return true;
@@ -545,8 +545,8 @@ namespace ShooterMover.UI.ProductionFlow
                 if (WeaponLiveExceptionPolicy.IsFatal(exception)) throw;
                 if (stagedRuntime != null) stagedRuntime.Dispose();
                 if (stagedActor != null) stagedActor.Deactivate();
-                if (stagedSink != null) stagedSink.RetireOwnerPresentation();
-                if (sinkAdded && stagedSink != null) Destroy(stagedSink);
+                if (stagedSpawner != null) stagedSpawner.ClearOwnerBullets();
+                if (spawnerAdded && stagedSpawner != null) Destroy(stagedSpawner);
                 Report("canonical-weapon-fire-composition-rejected:"
                     + exception.Message);
                 return false;
@@ -847,10 +847,10 @@ namespace ShooterMover.UI.ProductionFlow
             bound = false;
             if (actorState != null) actorState.Deactivate();
             if (runtime != null) runtime.Dispose();
-            if (effectSink != null) effectSink.RetireOwnerPresentation();
+            if (bulletSpawner != null) bulletSpawner.ClearOwnerBullets();
             runtime = null;
             actorState = null;
-            effectSink = null;
+            bulletSpawner = null;
             equippedGuns = Array.Empty<EquippedGun>();
             gameplayCamera = null;
             source = null;
