@@ -11,7 +11,7 @@ using UnityEngine;
 namespace ShooterMover.UnityAdapters.Weapons.Live
 {
     [DisallowMultipleComponent]
-    public sealed class NormalProjectile2D : MonoBehaviour
+    public sealed class Bullet2D : MonoBehaviour
     {
         private static readonly StableId BlockingWallId = StableId.Create(
             "canonical-projectile-wall",
@@ -30,7 +30,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         private Transform sourceOwner;
         private Rigidbody2D body;
         private CircleCollider2D trigger;
-        private Action<NormalProjectile2D> completedCallback;
+        private Action<Bullet2D> finishedCallback;
         private bool configured;
         private bool launched;
         private bool completed;
@@ -40,16 +40,16 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
 
         public bool TryConfigure(
             ProjectileLaunchEffect configuredEffect,
-            Sprite projectileSprite,
+            Sprite bulletSprite,
             Transform configuredSourceOwner,
-            Action<NormalProjectile2D> onCompleted)
+            Action<Bullet2D> onFinished)
         {
             if (configured
                 || configuredEffect == null
                 || configuredEffect.InitialState == null
-                || projectileSprite == null
+                || bulletSprite == null
                 || configuredSourceOwner == null
-                || onCompleted == null)
+                || onFinished == null)
             {
                 return false;
             }
@@ -57,7 +57,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             effect = configuredEffect;
             state = configuredEffect.InitialState;
             sourceOwner = configuredSourceOwner;
-            completedCallback = onCompleted;
+            finishedCallback = onFinished;
             Vector2 direction = ToUnity(state.Direction);
             if (!state.IsActive
                 || state.Speed <= 0d
@@ -77,7 +77,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             visualObject.transform.SetParent(transform, false);
             visualObject.transform.localScale = new Vector3(0.28f, 0.1f, 1f);
             SpriteRenderer renderer = visualObject.AddComponent<SpriteRenderer>();
-            renderer.sprite = projectileSprite;
+            renderer.sprite = bulletSprite;
             renderer.color = new Color(1f, 0.82f, 0.2f, 1f);
             renderer.sortingOrder = 100;
 
@@ -94,7 +94,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             return true;
         }
 
-        public bool BeginEmission()
+        public bool Launch()
         {
             if (!configured || completed) return false;
             if (launched) return true;
@@ -108,7 +108,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             return true;
         }
 
-        public void RetireOwner()
+        public void RemoveFromGame()
         {
             if (completed) return;
             Complete();
@@ -460,9 +460,9 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             rangeExpiryPending = false;
             impactedTargets.Clear();
             StopTravel();
-            Action<NormalProjectile2D> callback =
-                completedCallback;
-            completedCallback = null;
+            Action<Bullet2D> callback =
+                finishedCallback;
+            finishedCallback = null;
             if (callback != null) callback(this);
             Destroy(gameObject);
         }

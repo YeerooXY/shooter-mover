@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace ShooterMover.Tests.EditMode
 {
-    public sealed class WeaponProjectileSourceIdentityTests
+    public sealed class WeaponBulletSourceTests
     {
         private sealed class ExactBlueprintResolver :
             IWeaponBlueprintMappingPolicyResolver,
@@ -135,11 +135,11 @@ namespace ShooterMover.Tests.EditMode
         [Test]
         public void ExactSourceReplayIsIdempotentAndIdentityConflictsFailClosed()
         {
-            GameObject owner = new GameObject("canonical-projectile-source-test");
+            GameObject owner = new GameObject("bullet-source-test");
             try
             {
-                ProjectileSourceIdentity2D identity =
-                    owner.AddComponent<ProjectileSourceIdentity2D>();
+                BulletSource2D identity =
+                    owner.AddComponent<BulletSource2D>();
                 var actorId = new WeaponActorInstanceId(
                     StableId.Parse("character.test-canonical-source"));
                 var participantId = new RunParticipantId(
@@ -205,23 +205,23 @@ namespace ShooterMover.Tests.EditMode
         }
 
         [Test]
-        public void EffectSinkRejectsDeliveryBeforeExactSourceBinding()
+        public void BulletSpawnerRejectsShotBeforeSourceBinding()
         {
-            GameObject owner = new GameObject("canonical-projectile-sink-test");
+            GameObject owner = new GameObject("bullet-spawner-test");
             try
             {
-                ProjectileEffectSink2D sink =
-                    owner.AddComponent<ProjectileEffectSink2D>();
+                BulletSpawner2D spawner =
+                    owner.AddComponent<BulletSpawner2D>();
 
-                WeaponEffectBatchSinkResult result = sink.TryAccept(null);
+                WeaponEffectBatchSinkResult result = spawner.TryAccept(null);
 
                 Assert.That(result, Is.Not.Null);
                 Assert.That(result.IsAcceptance, Is.False);
                 Assert.That(
                     result.RejectionCode,
                     Is.EqualTo("canonical-projectile-source-unbound"));
-                Assert.That(sink.AcceptedBatchCount, Is.Zero);
-                Assert.That(sink.ActiveProjectileCount, Is.Zero);
+                Assert.That(spawner.AcceptedBatchCount, Is.Zero);
+                Assert.That(spawner.ActiveBulletCount, Is.Zero);
             }
             finally
             {

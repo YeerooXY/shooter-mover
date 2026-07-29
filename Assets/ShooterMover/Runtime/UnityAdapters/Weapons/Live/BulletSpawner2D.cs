@@ -11,7 +11,7 @@ using UnityEngine.SceneManagement;
 namespace ShooterMover.UnityAdapters.Weapons.Live
 {
     [DisallowMultipleComponent]
-    public sealed class ProjectileSourceIdentity2D : MonoBehaviour
+    public sealed class BulletSource2D : MonoBehaviour
     {
         public WeaponActorInstanceId ActorId { get; private set; }
         public RunParticipantId ParticipantId { get; private set; }
@@ -60,7 +60,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
     }
 
     [DisallowMultipleComponent]
-    public sealed class ProjectileEffectSink2D :
+    public sealed class BulletSpawner2D :
         MonoBehaviour,
         IInventoryWeaponEffectBatchSink
     {
@@ -87,8 +87,8 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         private readonly Dictionary<string, string> accepted =
             new Dictionary<string, string>(StringComparer.Ordinal);
         private readonly Queue<string> acceptedOrder = new Queue<string>();
-        private readonly HashSet<NormalProjectile2D> active =
-            new HashSet<NormalProjectile2D>();
+        private readonly HashSet<Bullet2D> activeBullets =
+            new HashSet<Bullet2D>();
         private readonly Dictionary<string, BoundGunSource> gunSources =
             new Dictionary<string, BoundGunSource>(StringComparer.Ordinal);
         private WeaponActorInstanceId sourceActorId;
@@ -101,7 +101,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
         private bool retired;
 
         public int AcceptedBatchCount { get { return accepted.Count; } }
-        public int ActiveProjectileCount { get { return active.Count; } }
+        public int ActiveBulletCount { get { return activeBullets.Count; } }
         public int BoundSourceCount { get { return gunSources.Count; } }
         public bool IsSourceBound { get { return sourceBound; } }
         public RunParticipantId SourceParticipantId { get { return sourceParticipantId; } }
@@ -271,30 +271,30 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 effects.Add(effect);
             }
 
-            var projectileObjects = new List<GameObject>(effects.Count);
-            var projectiles = new List<NormalProjectile2D>(effects.Count);
+            var bulletObjects = new List<GameObject>(effects.Count);
+            var bullets = new List<Bullet2D>(effects.Count);
             try
             {
-                EnsureSprite();
+                EnsureBulletSprite();
                 for (int index = 0; index < effects.Count; index++)
                 {
                     ProjectileLaunchEffect effect = effects[index];
-                    GameObject projectileObject = new GameObject(
-                        "CanonicalPlayerProjectile_"
+                    GameObject bulletObject = new GameObject(
+                        "PlayerBullet_"
                         + effect.Identity.ShotSequence.ToString(
                             CultureInfo.InvariantCulture)
                         + "_" + effect.Identity.ProjectileOrdinal.Value.ToString(
                             CultureInfo.InvariantCulture));
-                    projectileObjects.Add(projectileObject);
+                    bulletObjects.Add(bulletObject);
                     SceneManager.MoveGameObjectToScene(
-                        projectileObject,
+                        bulletObject,
                         gameObject.scene);
-                    projectileObject.SetActive(false);
+                    bulletObject.SetActive(false);
 
-                    ProjectileSourceIdentity2D identityProjection =
-                        projectileObject.AddComponent<
-                            ProjectileSourceIdentity2D>();
-                    if (!identityProjection.TryBind(
+                    BulletSource2D bulletSource =
+                        bulletObject.AddComponent<
+                            BulletSource2D>();
+                    if (!bulletSource.TryBind(
                             sourceActorId,
                             sourceParticipantId ?? batch.Identity.ParticipantId,
                             sourceLifecycle,
@@ -306,28 +306,28 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                             "canonical-projectile-source-projection-rejected");
                     }
 
-                    NormalProjectile2D projectile =
-                        projectileObject.AddComponent<NormalProjectile2D>();
-                    projectiles.Add(projectile);
-                    if (!projectile.TryConfigure(
+                    Bullet2D bullet =
+                        bulletObject.AddComponent<Bullet2D>();
+                    bullets.Add(bullet);
+                    if (!bullet.TryConfigure(
                             effect,
                             sprite,
                             transform,
-                            HandleProjectileCompleted))
+                            HandleBulletFinished))
                     {
                         throw new InvalidOperationException(
                             "canonical-projectile-configuration-rejected");
                     }
                 }
 
-                for (int index = 0; index < projectiles.Count; index++)
+                for (int index = 0; index < bullets.Count; index++)
                 {
-                    active.Add(projectiles[index]);
-                    projectileObjects[index].SetActive(true);
+                    activeBullets.Add(bullets[index]);
+                    bulletObjects[index].SetActive(true);
                 }
-                for (int index = 0; index < projectiles.Count; index++)
+                for (int index = 0; index < bullets.Count; index++)
                 {
-                    if (!projectiles[index].BeginEmission())
+                    if (!bullets[index].Launch())
                     {
                         throw new InvalidOperationException(
                             "canonical-projectile-emission-rejected");
@@ -343,7 +343,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             }
             catch (Exception exception)
             {
-                CleanupStagedProjectiles(projectileObjects, projectiles);
+                CleanupStagedBullets(bulletObjects, bullets);
                 if (WeaponLiveExceptionPolicy.IsFatal(exception)) throw;
                 Debug.LogError(
                     "canonical-projectile-batch-staging-failed:"
@@ -354,14 +354,14 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             }
         }
 
-        public void RetireOwnerPresentation()
+        public void ClearOwnerBullets()
         {
             if (retired) return;
             retired = true;
-            var snapshot = new List<NormalProjectile2D>(active);
+            var snapshot = new List<Bullet2D>(activeBullets);
             for (int index = 0; index < snapshot.Count; index++)
             {
-                if (snapshot[index] != null) snapshot[index].RetireOwner();
+                if (snapshot[index] != null) snapshot[index].RemoveFromGame();
             }
         }
 
@@ -417,28 +417,28 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             }
         }
 
-        private void CleanupStagedProjectiles(
-            IList<GameObject> projectileObjects,
-            IList<NormalProjectile2D> projectiles)
+        private void CleanupStagedBullets(
+            IList<GameObject> bulletObjects,
+            IList<Bullet2D> bullets)
         {
-            for (int index = 0; index < projectiles.Count; index++)
+            for (int index = 0; index < bullets.Count; index++)
             {
-                NormalProjectile2D projectile = projectiles[index];
-                if (projectile != null) active.Remove(projectile);
+                Bullet2D bullet = bullets[index];
+                if (bullet != null) activeBullets.Remove(bullet);
             }
-            for (int index = 0; index < projectileObjects.Count; index++)
+            for (int index = 0; index < bulletObjects.Count; index++)
             {
-                GameObject projectileObject = projectileObjects[index];
-                if (projectileObject == null) continue;
-                projectileObject.SetActive(false);
-                Destroy(projectileObject);
+                GameObject bulletObject = bulletObjects[index];
+                if (bulletObject == null) continue;
+                bulletObject.SetActive(false);
+                Destroy(bulletObject);
             }
         }
 
-        private void HandleProjectileCompleted(
-            NormalProjectile2D projectile)
+        private void HandleBulletFinished(
+            Bullet2D bullet)
         {
-            if (projectile != null) active.Remove(projectile);
+            if (bullet != null) activeBullets.Remove(bullet);
         }
 
         private static bool IsSupported(
@@ -509,11 +509,11 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             return true;
         }
 
-        private void EnsureSprite()
+        private void EnsureBulletSprite()
         {
             if (sprite != null) return;
             texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
-            texture.name = "Canonical Projectile Pixel";
+            texture.name = "Bullet Pixel";
             texture.SetPixel(0, 0, Color.white);
             texture.Apply(false, true);
             sprite = Sprite.Create(
@@ -521,20 +521,20 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 new Rect(0f, 0f, 1f, 1f),
                 new Vector2(0.5f, 0.5f),
                 1f);
-            sprite.name = "Canonical Projectile Sprite";
+            sprite.name = "Bullet Sprite";
         }
 
         private void OnDisable()
         {
-            RetireOwnerPresentation();
+            ClearOwnerBullets();
         }
 
         private void OnDestroy()
         {
-            RetireOwnerPresentation();
+            ClearOwnerBullets();
             accepted.Clear();
             acceptedOrder.Clear();
-            active.Clear();
+            activeBullets.Clear();
             gunSources.Clear();
             if (sprite != null) Destroy(sprite);
             if (texture != null) Destroy(texture);
