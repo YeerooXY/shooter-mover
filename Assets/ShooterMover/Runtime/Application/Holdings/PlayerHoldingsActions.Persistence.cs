@@ -78,7 +78,7 @@ namespace ShooterMover.Application.Holdings
 
                 string computedFingerprint =
                     PlayerHoldingsSnapshot.ComputeFingerprint(snapshot);
-                if (!Holdings.IsCanonicalFingerprint(
+                if (!HoldingsFormat.IsCanonicalFingerprint(
                         snapshot.Fingerprint)
                     || !string.Equals(
                         snapshot.Fingerprint,

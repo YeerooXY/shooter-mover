@@ -40,7 +40,7 @@ namespace ShooterMover.Contracts.Holdings
             }
 
             if (commandFingerprint != null
-                && !Holdings.IsCanonicalFingerprint(commandFingerprint))
+                && !HoldingsFormat.IsCanonicalFingerprint(commandFingerprint))
             {
                 throw new ArgumentException(
                     "Command fingerprint must be canonical when supplied.",
@@ -90,46 +90,46 @@ namespace ShooterMover.Contracts.Holdings
             RejectionCode = rejectionCode;
 
             var builder = new StringBuilder();
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "transaction_stable_id",
                 TransactionStableId == null
                     ? "null"
                     : TransactionStableId.ToString());
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "status",
                 ((int)Status).ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "original_status",
                 ((int)OriginalStatus).ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "command_fingerprint",
                 CommandFingerprint ?? "null");
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "previous_sequence",
                 PreviousSequence.ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "current_sequence",
                 CurrentSequence.ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "previous_quantity",
                 PreviousQuantity.ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "current_quantity",
                 CurrentQuantity.ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "rejection_code",
                 RejectionCode ?? "none");
             canonicalText = builder.ToString();
-            Fingerprint = Holdings.ComputeSha256(canonicalText);
+            Fingerprint = HoldingsFormat.ComputeSha256(canonicalText);
         }
 
         public StableId TransactionStableId { get; }
@@ -201,7 +201,7 @@ namespace ShooterMover.Contracts.Holdings
 
         public override int GetHashCode()
         {
-            return Holdings.DeterministicHash(canonicalText);
+            return HoldingsFormat.DeterministicHash(canonicalText);
         }
     }
 

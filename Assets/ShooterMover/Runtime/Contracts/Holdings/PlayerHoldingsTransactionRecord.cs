@@ -66,48 +66,48 @@ namespace ShooterMover.Contracts.Holdings
             RejectionCode = rejectionCode;
 
             var builder = new StringBuilder();
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "command",
                 Command.ToCanonicalString());
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "original_status",
                 ((int)OriginalStatus).ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "ledger_original_status",
                 ((int)LedgerOriginalStatus).ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "sequence_before",
                 SequenceBefore.ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "sequence_after",
                 SequenceAfter.ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "ledger_previous_quantity",
                 LedgerPreviousQuantity.ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "ledger_current_quantity",
                 LedgerCurrentQuantity.ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "holding_previous_quantity",
                 HoldingPreviousQuantity.ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "holding_current_quantity",
                 HoldingCurrentQuantity.ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "rejection_code",
                 RejectionCode ?? "none");
             canonicalText = builder.ToString();
-            Fingerprint = Holdings.ComputeSha256(canonicalText);
+            Fingerprint = HoldingsFormat.ComputeSha256(canonicalText);
         }
 
         public PlayerHoldingsCommand Command { get; }
@@ -189,7 +189,7 @@ namespace ShooterMover.Contracts.Holdings
 
         public override int GetHashCode()
         {
-            return Holdings.DeterministicHash(canonicalText);
+            return HoldingsFormat.DeterministicHash(canonicalText);
         }
     }
 

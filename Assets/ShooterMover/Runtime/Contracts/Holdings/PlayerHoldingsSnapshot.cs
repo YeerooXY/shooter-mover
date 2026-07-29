@@ -41,21 +41,21 @@ namespace ShooterMover.Contracts.Holdings
             MaximumStackQuantity = maximumStackQuantity;
             LedgerSnapshot = ledgerSnapshot
                 ?? throw new ArgumentNullException(nameof(ledgerSnapshot));
-            this.uniqueHoldings = Holdings.CopyAndSort(
+            this.uniqueHoldings = HoldingsFormat.CopyAndSort(
                 uniqueHoldings,
                 delegate(UniqueHoldingSnapshot left, UniqueHoldingSnapshot right)
                 {
                     return left.CompareTo(right);
                 },
                 nameof(uniqueHoldings));
-            this.stackHoldings = Holdings.CopyAndSort(
+            this.stackHoldings = HoldingsFormat.CopyAndSort(
                 stackHoldings,
                 delegate(StackHoldingSnapshot left, StackHoldingSnapshot right)
                 {
                     return left.CompareTo(right);
                 },
                 nameof(stackHoldings));
-            this.transactions = Holdings.CopyAndSort(
+            this.transactions = HoldingsFormat.CopyAndSort(
                 transactions,
                 delegate(PlayerHoldingsTransactionRecord left, PlayerHoldingsTransactionRecord right)
                 {
@@ -128,59 +128,59 @@ namespace ShooterMover.Contracts.Holdings
             }
 
             var builder = new StringBuilder();
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "schema_version",
                 snapshot.SchemaVersion.ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "authority_stable_id",
                 snapshot.AuthorityStableId.ToString());
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "maximum_stack_quantity",
                 snapshot.MaximumStackQuantity.ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "ledger_fingerprint",
                 snapshot.LedgerSnapshot.Fingerprint ?? "null");
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "unique_count",
                 snapshot.UniqueHoldings.Count.ToString(CultureInfo.InvariantCulture));
             for (int index = 0; index < snapshot.UniqueHoldings.Count; index++)
             {
-                Holdings.AppendToken(
+                HoldingsFormat.AppendToken(
                     builder,
                     "unique_" + index.ToString(CultureInfo.InvariantCulture),
                     snapshot.UniqueHoldings[index].ToCanonicalString());
             }
 
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "stack_count",
                 snapshot.StackHoldings.Count.ToString(CultureInfo.InvariantCulture));
             for (int index = 0; index < snapshot.StackHoldings.Count; index++)
             {
-                Holdings.AppendToken(
+                HoldingsFormat.AppendToken(
                     builder,
                     "stack_" + index.ToString(CultureInfo.InvariantCulture),
                     snapshot.StackHoldings[index].ToCanonicalString());
             }
 
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "transaction_count",
                 snapshot.Transactions.Count.ToString(CultureInfo.InvariantCulture));
             for (int index = 0; index < snapshot.Transactions.Count; index++)
             {
-                Holdings.AppendToken(
+                HoldingsFormat.AppendToken(
                     builder,
                     "transaction_" + index.ToString(CultureInfo.InvariantCulture),
                     snapshot.Transactions[index].ToCanonicalString());
             }
 
-            return Holdings.ComputeSha256(builder.ToString());
+            return HoldingsFormat.ComputeSha256(builder.ToString());
         }
     }
 

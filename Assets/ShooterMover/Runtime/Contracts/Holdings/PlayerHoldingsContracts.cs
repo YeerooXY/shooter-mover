@@ -90,26 +90,26 @@ namespace ShooterMover.Contracts.Holdings
             RewardKind = rewardKind;
 
             var builder = new StringBuilder();
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "transaction",
                 Transaction.ToCanonicalString());
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "reward_kind",
                 ((int)RewardKind).ToString(CultureInfo.InvariantCulture));
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "provenance",
                 Provenance.ToCanonicalString());
-            Holdings.AppendToken(
+            HoldingsFormat.AppendToken(
                 builder,
                 "equipment_instance",
                 EquipmentInstance == null
                     ? "none"
                     : EquipmentInstance.ToCanonicalString());
             canonicalText = builder.ToString();
-            PayloadFingerprint = Holdings.ComputeSha256(canonicalText);
+            PayloadFingerprint = HoldingsFormat.ComputeSha256(canonicalText);
         }
 
         public EconomyTransactionCommand Transaction { get; }
@@ -307,7 +307,7 @@ namespace ShooterMover.Contracts.Holdings
 
         public override int GetHashCode()
         {
-            return Holdings.DeterministicHash(canonicalText);
+            return HoldingsFormat.DeterministicHash(canonicalText);
         }
 
         public override string ToString()
