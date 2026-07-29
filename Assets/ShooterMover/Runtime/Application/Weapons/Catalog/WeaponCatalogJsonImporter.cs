@@ -110,7 +110,7 @@ namespace ShooterMover.Application.Weapons.Catalog
             return new WeaponCatalogRules(
                 dto.FixedStatsPerDefinition,
                 dto.OrdinaryMarkGap,
-                dto.ApexPowerAnchors,
+                null,
                 Require(dto.DamageTypes, "$.rules.damage_types"),
                 dto.MaxAugments,
                 dto.NoRecoil,
