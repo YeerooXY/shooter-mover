@@ -161,6 +161,20 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                     parameterName);
             }
         }
+
+        private static string SanitizeFileName(string value)
+        {
+            var builder = new StringBuilder();
+            string text = string.IsNullOrWhiteSpace(value) ? "compiled" : value.Trim();
+            for (int index = 0; index < text.Length; index++)
+            {
+                char c = text[index];
+                builder.Append(char.IsLetterOrDigit(c) || c == '-' || c == '_'
+                    ? c
+                    : '-');
+            }
+            return builder.ToString();
+        }
     }
 }
 #endif
