@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -14,36 +15,37 @@ namespace ShooterMover.UI.ProductionFlow
         private float desiredRotation;
         private bool hasAim;
 
-        public bool TryBind(Rigidbody2D configuredBody)
+        public void Bind(Rigidbody2D configuredBody)
         {
             if (configuredBody == null)
             {
-                return false;
+                throw new ArgumentNullException(nameof(configuredBody));
             }
             if (body != null && body != configuredBody)
             {
-                return false;
-            }
-
-            Camera resolved = ResolveGameplayCamera(gameObject.scene);
-            if (resolved == null)
-            {
-                return false;
+                throw new InvalidOperationException(
+                    "player-facing-body-already-bound");
             }
 
             body = configuredBody;
-            gameplayCamera = resolved;
             body.freezeRotation = false;
             body.angularVelocity = 0f;
-            return true;
         }
 
         private void Update()
         {
             Mouse mouse = Mouse.current;
-            if (body == null || gameplayCamera == null || mouse == null)
+            if (body == null || mouse == null)
             {
                 return;
+            }
+            if (gameplayCamera == null)
+            {
+                gameplayCamera = ResolveGameplayCamera(gameObject.scene);
+                if (gameplayCamera == null)
+                {
+                    return;
+                }
             }
 
             Vector2 screen = mouse.position.ReadValue();
