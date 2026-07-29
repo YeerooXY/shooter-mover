@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -22,16 +21,12 @@ namespace ShooterMover.Domain.Weapons.Catalog
                 WeaponArchetypeDefinition value = pair.Value;
                 Append(builder, "archetype.id", value.ArchetypeId);
                 Append(builder, "archetype.description", value.Description);
-                Append(builder, "archetype.dps_factor", value.DpsFactor);
                 Append(builder, "archetype.fire_rate", value.FireRate);
                 Append(builder, "archetype.projectiles", value.Projectiles);
                 Append(builder, "archetype.burst", value.Burst);
                 Append(builder, "archetype.spread", value.Spread);
                 Append(builder, "archetype.speed", value.Speed);
                 Append(builder, "archetype.range", value.Range);
-                Append(builder, "archetype.direct_share", value.DirectShare);
-                Append(builder, "archetype.area_share", value.AreaShare);
-                Append(builder, "archetype.dot_share", value.DotShare);
                 Append(builder, "archetype.radius", value.Radius);
                 Append(builder, "archetype.dot_duration", value.DotDuration);
                 Append(builder, "archetype.pool_radius", value.PoolRadius);
@@ -87,10 +82,6 @@ namespace ShooterMover.Domain.Weapons.Catalog
         {
             Append(builder, "rules.fixed_stats_per_definition", value.FixedStatsPerDefinition);
             Append(builder, "rules.ordinary_mark_gap", value.OrdinaryMarkGap);
-            for (int index = 0; index < value.ApexPowerAnchors.Count; index++)
-            {
-                Append(builder, "rules.apex_power_anchor", value.ApexPowerAnchors[index]);
-            }
             AppendList(builder, "rules.damage_type", value.DamageTypes);
             Append(builder, "rules.max_augments", value.MaxAugments);
             Append(builder, "rules.no_recoil", value.NoRecoil);
@@ -100,10 +91,6 @@ namespace ShooterMover.Domain.Weapons.Catalog
 
         private static void AppendInputs(StringBuilder builder, WeaponCatalogInputs value)
         {
-            Append(builder, "inputs.base_dps", value.BaseDps);
-            Append(builder, "inputs.growth_1_30", value.Growth1To30);
-            Append(builder, "inputs.growth_31_70", value.Growth31To70);
-            Append(builder, "inputs.growth_71_plus", value.Growth71Plus);
             List<string> rarityIds = new List<string>(value.Rarities.Keys);
             rarityIds.Sort(StringComparer.Ordinal);
             for (int index = 0; index < rarityIds.Count; index++)
@@ -111,7 +98,6 @@ namespace ShooterMover.Domain.Weapons.Catalog
                 WeaponRarityInput rarity = value.Rarities[rarityIds[index]];
                 Append(builder, "rarity.id", rarity.Rarity);
                 Append(builder, "rarity.weight", rarity.Weight);
-                Append(builder, "rarity.power_bonus", rarity.PowerBonus);
                 Append(builder, "rarity.early_tail", rarity.EarlyTail);
                 Append(builder, "rarity.late_tail", rarity.LateTail);
             }
@@ -128,7 +114,6 @@ namespace ShooterMover.Domain.Weapons.Catalog
             Append(builder, "definition.build_affinity", value.BuildAffinity);
             Append(builder, "definition.first_appearance", value.FirstAppearance);
             Append(builder, "definition.peak_drop_level", value.PeakDropLevel);
-            Append(builder, "definition.power_anchor", value.PowerAnchor);
             Append(builder, "definition.rarity", value.Rarity);
             Append(builder, "definition.rarity_weight", value.RarityWeight);
             Append(builder, "definition.definition_weight_modifier", value.DefinitionWeightModifier);
@@ -138,12 +123,6 @@ namespace ShooterMover.Domain.Weapons.Catalog
             Append(builder, "definition.acquisition_class", value.AcquisitionClass);
             Append(builder, "definition.top_box_only", value.TopBoxOnly);
             Append(builder, "definition.crafting_route", value.CraftingRoute);
-            Append(builder, "definition.archetype_dps_factor", value.ArchetypeDpsFactor);
-            Append(builder, "definition.power_index", value.PowerIndex);
-            Append(builder, "definition.target_dps", value.TargetDps);
-            Append(builder, "definition.direct_share", value.DirectShare);
-            Append(builder, "definition.area_share", value.AreaShare);
-            Append(builder, "definition.dot_share", value.DotShare);
             Append(builder, "definition.fire_rate", value.FireRate);
             Append(builder, "definition.projectiles_per_trigger", value.ProjectilesPerTrigger);
             Append(builder, "definition.burst_count", value.BurstCount);
