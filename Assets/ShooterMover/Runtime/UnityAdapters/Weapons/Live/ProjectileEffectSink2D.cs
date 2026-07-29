@@ -226,9 +226,7 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
             if (batch == null
                 || batch.CoreBatch == null
                 || batch.Identity == null
-                || batch.Identity.ParticipantId == null
-                || batch.CoreBatch.EffectCount < 1
-                || batch.CoreBatch.EffectCount != batch.CoreBatch.Effects.Count)
+                || batch.Identity.ParticipantId == null)
             {
                 return WeaponEffectBatchSinkResult.Reject(
                     "canonical-projectile-batch-invalid");
@@ -254,26 +252,15 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                         "canonical-projectile-batch-conflicting-duplicate");
             }
 
-            var effects = new List<ProjectileLaunchEffect>(
-                batch.CoreBatch.EffectCount);
+            var effects = new List<ProjectileLaunchEffect>(batch.EffectCount);
             for (int index = 0; index < batch.CoreBatch.Effects.Count; index++)
             {
                 ProjectileLaunchEffect effect =
                     batch.CoreBatch.Effects[index] as ProjectileLaunchEffect;
-                if (effect == null
-                    || effect.Identity == null
-                    || !SameFire(batch.Identity, effect.Identity))
+                if (effect == null)
                 {
                     return WeaponEffectBatchSinkResult.Reject(
-                        "canonical-projectile-effect-identity-mismatch");
-                }
-
-                BoundGunSource effectSource;
-                if (!TryResolveBoundSource(effect.Identity, out effectSource)
-                    || effectSource.MountStableId != gunSource.MountStableId)
-                {
-                    return WeaponEffectBatchSinkResult.Reject(
-                        "canonical-projectile-source-identity-mismatch");
+                        "canonical-projectile-launch-required");
                 }
 
                 string rejectionCode;
@@ -402,21 +389,6 @@ namespace ShooterMover.UnityAdapters.Weapons.Live
                 return false;
             }
             return true;
-        }
-
-        private static bool SameFire(
-            WeaponEffectIdentity left,
-            WeaponEffectIdentity right)
-        {
-            return left != null
-                && right != null
-                && left.ActorId.Equals(right.ActorId)
-                && left.ParticipantId.Equals(right.ParticipantId)
-                && left.EquipmentInstanceId.Equals(right.EquipmentInstanceId)
-                && left.WeaponDefinitionId.Equals(right.WeaponDefinitionId)
-                && left.FireOperationId.Equals(right.FireOperationId)
-                && left.LifecycleGeneration.Equals(right.LifecycleGeneration)
-                && left.ShotSequence == right.ShotSequence;
         }
 
         private static string FireKey(WeaponEffectIdentity identity)
