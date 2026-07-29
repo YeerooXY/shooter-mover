@@ -7,7 +7,7 @@
       "match": {
         "door_id": "door.combat-loop-single-west"
       },
-      "open_when": "always"
+      "open_when": "room-complete"
     },
     {
       "match": {

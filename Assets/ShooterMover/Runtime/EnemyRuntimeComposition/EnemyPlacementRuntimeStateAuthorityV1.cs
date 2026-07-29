@@ -10,9 +10,18 @@ namespace ShooterMover.EnemyRuntimeComposition
 {
     public sealed partial class EnemyPlacementRuntimeInstanceV1
     {
-        private StableId pendingTerminalDamageOperationStableId;
-        private string pendingTerminalDamageSignature;
-        private double pendingTerminalOccurredAtSeconds;
+        private int terminalConsequenceFailureCount;
+        private string lastTerminalConsequenceFailure = string.Empty;
+
+        public int TerminalConsequenceFailureCount
+        {
+            get { return terminalConsequenceFailureCount; }
+        }
+
+        public string LastTerminalConsequenceFailure
+        {
+            get { return lastTerminalConsequenceFailure; }
+        }
 
         public EnemyMovementRealizationV1 RealizeMovement(
             EnemyPlacementDecisionV1 decision,
@@ -44,8 +53,6 @@ namespace ShooterMover.EnemyRuntimeComposition
             return Movement.Realizer.Realize(intent, scaledContext, Movement.Configuration);
         }
 
-        // Compatibility bridge for pre-lifecycle call sites. New production adapters must always pass
-        // the observed target lifecycle explicitly through the four-argument overload.
         [Obsolete("Pass observedTargetLifecycleGeneration explicitly.")]
         public EnemyPlayerDamagePortResultV1 RoutePlayerImpact(
             EnemyAttackExecutionRequestV1 execution,
@@ -61,10 +68,10 @@ namespace ShooterMover.EnemyRuntimeComposition
         }
 
         /// <summary>
-        /// Applies damage at an authoritative run time. The timestamp is used only to determine
-        /// which already-dispatched attack emissions remain live when this damage terminalizes
-        /// the enemy. Existing callers use the compatibility overload and conservatively cancel
-        /// every not-yet-processed scheduled emission from time zero.
+        /// Applies one damage command at an authoritative run time. Health reaching zero commits the
+        /// enemy death immediately. Collision shutdown, room reporting, attack cancellation, XP,
+        /// drops, and kill statistics are target-owned death consequences; each is attempted once and
+        /// cannot turn an already dead enemy back into a pending projectile operation.
         /// </summary>
         public EnemyRuntimeDamageResultV1 ApplyDamage(
             EnemyRuntimeDamageCommandV1 command,
@@ -93,30 +100,6 @@ namespace ShooterMover.EnemyRuntimeComposition
                     replay.Result.Rejection,
                     Runtime,
                     replay.Result.DeathFact);
-            }
-
-            if (pendingTerminalDamageOperationStableId != null)
-            {
-                if (command.OperationStableId != pendingTerminalDamageOperationStableId)
-                    return RejectedDamage(EnemyRuntimeRejectionCodeV1.ActorTerminal);
-                if (!string.Equals(
-                    signature,
-                    pendingTerminalDamageSignature,
-                    StringComparison.Ordinal))
-                {
-                    return RejectedDamage(
-                        EnemyRuntimeRejectionCodeV1.ConflictingDuplicate);
-                }
-
-                EnemyRuntimeDamageResultV1 pending = CompletePendingTerminalTransition();
-                if (pending.Status == EnemyRuntimeOperationStatusV1.Applied)
-                {
-                    damageReplay.Add(
-                        command.OperationStableId,
-                        new DamageReplayRecord(signature, pending));
-                    ClearPendingTerminalTransition();
-                }
-                return pending;
             }
 
             EnemyRuntimeDamageResultV1 result;
@@ -158,12 +141,7 @@ namespace ShooterMover.EnemyRuntimeComposition
                 else
                 {
                     CreateDeathFactOnce(command, destroyed);
-                    pendingTerminalDamageOperationStableId = command.OperationStableId;
-                    pendingTerminalDamageSignature = signature;
-                    pendingTerminalOccurredAtSeconds = occurredAtSeconds;
-                    result = CompletePendingTerminalTransition();
-                    if (result.Status == EnemyRuntimeOperationStatusV1.Applied)
-                        ClearPendingTerminalTransition();
+                    result = CompleteTerminalConsequences(occurredAtSeconds);
                 }
             }
 
@@ -186,14 +164,13 @@ namespace ShooterMover.EnemyRuntimeComposition
                 SpawnStableId);
         }
 
-        private EnemyRuntimeDamageResultV1 CompletePendingTerminalTransition()
+        private EnemyRuntimeDamageResultV1 CompleteTerminalConsequences(
+            double occurredAtSeconds)
         {
-            if (publishedDeath == null
-                || pendingTerminalDamageOperationStableId == null
-                || string.IsNullOrWhiteSpace(pendingTerminalDamageSignature))
+            if (publishedDeath == null)
             {
                 throw new InvalidOperationException(
-                    "A pending terminal transition requires one canonical death fact.");
+                    "A terminal enemy requires one canonical death fact.");
             }
 
             StableId cancellationOperation = StableId.Create(
@@ -204,31 +181,57 @@ namespace ShooterMover.EnemyRuntimeComposition
                     + LifecycleGeneration.ToString(CultureInfo.InvariantCulture)
                     + "|"
                     + publishedDeath.DeathEventStableId));
-            var cancellationCommand = new EnemyAttackLifecycleCancellationCommandV1(
-                cancellationOperation,
-                Identity.EntityInstanceId,
-                LifecycleGeneration,
-                pendingTerminalOccurredAtSeconds);
-            EnemyAttackPatternCancellationResultV1 cancellation =
-                CancelAttackPatterns(cancellationCommand);
-            if (!cancellation.IsAccepted)
-                return RejectedDamage(EnemyRuntimeRejectionCodeV1.InvalidCommand);
-
-            downstream.TerminalCollision.SetTerminal(
-                new EnemyTerminalCollisionFactV1(
+            try
+            {
+                var cancellationCommand = new EnemyAttackLifecycleCancellationCommandV1(
+                    cancellationOperation,
                     Identity.EntityInstanceId,
-                    publishedDeath.DeathEventStableId,
-                    LifecycleGeneration));
+                    LifecycleGeneration,
+                    occurredAtSeconds);
+                EnemyAttackPatternCancellationResultV1 cancellation =
+                    CancelAttackPatterns(cancellationCommand);
+                if (cancellation == null || !cancellation.IsAccepted)
+                {
+                    RecordTerminalConsequenceFailure(
+                        "enemy-terminal-attack-cancellation-rejected",
+                        null);
+                }
+            }
+            catch (Exception exception)
+            {
+                if (IsFatalException(exception)) throw;
+                RecordTerminalConsequenceFailure(
+                    "enemy-terminal-attack-cancellation-failed",
+                    exception);
+            }
+
+            AttemptTerminalConsequence(
+                "enemy-terminal-collision-failed",
+                () => downstream.TerminalCollision.SetTerminal(
+                    new EnemyTerminalCollisionFactV1(
+                        Identity.EntityInstanceId,
+                        publishedDeath.DeathEventStableId,
+                        LifecycleGeneration)));
+
             StableId roomOperation = StableId.Create(
                 "room-operation",
                 "enemy-terminal-" + DeterministicEnemyRuntimeIdentityDeriverV1.Hash64(
                     Identity.EntityInstanceId + "|" + publishedDeath.DeathEventStableId));
-            downstream.RoomTerminal.Report(
-                BuildTerminalCommand(roomOperation),
-                publishedDeath);
-            downstream.Experience.Consume(publishedDeath);
-            downstream.Drops.Consume(publishedDeath);
-            downstream.KillStats.Consume(publishedDeath);
+            AttemptTerminalConsequence(
+                "enemy-terminal-room-report-failed",
+                () => downstream.RoomTerminal.Report(
+                    BuildTerminalCommand(roomOperation),
+                    publishedDeath));
+            AttemptTerminalConsequence(
+                "enemy-terminal-experience-failed",
+                () => downstream.Experience.Consume(publishedDeath));
+            AttemptTerminalConsequence(
+                "enemy-terminal-drop-failed",
+                () => downstream.Drops.Consume(publishedDeath));
+            AttemptTerminalConsequence(
+                "enemy-terminal-kill-stat-failed",
+                () => downstream.KillStats.Consume(publishedDeath));
+
             return new EnemyRuntimeDamageResultV1(
                 EnemyRuntimeOperationStatusV1.Applied,
                 EnemyRuntimeRejectionCodeV1.None,
@@ -236,11 +239,27 @@ namespace ShooterMover.EnemyRuntimeComposition
                 publishedDeath);
         }
 
-        private void ClearPendingTerminalTransition()
+        private void AttemptTerminalConsequence(string code, Action consequence)
         {
-            pendingTerminalDamageOperationStableId = null;
-            pendingTerminalDamageSignature = null;
-            pendingTerminalOccurredAtSeconds = 0d;
+            if (consequence == null) throw new ArgumentNullException(nameof(consequence));
+            try
+            {
+                consequence();
+            }
+            catch (Exception exception)
+            {
+                if (IsFatalException(exception)) throw;
+                RecordTerminalConsequenceFailure(code, exception);
+            }
+        }
+
+        private void RecordTerminalConsequenceFailure(string code, Exception exception)
+        {
+            terminalConsequenceFailureCount++;
+            lastTerminalConsequenceFailure = code
+                + (exception == null
+                    ? string.Empty
+                    : ":" + exception.GetType().Name + ":" + exception.Message);
         }
 
         private EnemyRuntimeRejectionCodeV1 ValidateDecisionCode(
@@ -311,6 +330,13 @@ namespace ShooterMover.EnemyRuntimeComposition
                 if (destroyed != null) return destroyed;
             }
             return null;
+        }
+
+        private static bool IsFatalException(Exception exception)
+        {
+            return exception is OutOfMemoryException
+                || exception is StackOverflowException
+                || exception is AccessViolationException;
         }
 
         private EnemyAttackExecutionResultV1 RejectedAttack(EnemyRuntimeRejectionCodeV1 rejection)

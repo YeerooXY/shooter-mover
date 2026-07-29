@@ -25,7 +25,9 @@ namespace ShooterMover.UnityAdapters.Enemies
         private readonly Dictionary<StableId, string> cancellations =
             new Dictionary<StableId, string>();
 
-        public void Bind(RoomEnemyActor2D actor, long revision)
+        public int BoundPublisherCount { get { return attacks.Count; } }
+
+        public EnemyAttack2D Bind(RoomEnemyActor2D actor, long revision)
         {
             if (actor == null) throw new ArgumentNullException(nameof(actor));
             if (revision <= 0L) throw new ArgumentOutOfRangeException(nameof(revision));
@@ -35,7 +37,7 @@ namespace ShooterMover.UnityAdapters.Enemies
             }
             if (!EnemyAttack2D.Supports(actor.Runtime))
             {
-                return;
+                throw new InvalidOperationException("enemy-attack-mechanics-unsupported");
             }
 
             EnemyAttack2D currentAttack;
@@ -53,9 +55,16 @@ namespace ShooterMover.UnityAdapters.Enemies
                 {
                     throw new InvalidOperationException("enemy-attack-binding-lost");
                 }
+                if (currentAttack.gameObject != actor.gameObject
+                    || currentProjection.gameObject != actor.gameObject)
+                {
+                    throw new InvalidOperationException(
+                        "enemy-attack-actor-identity-duplicated");
+                }
                 currentAttack.Bind(actor, revision);
                 currentProjection.Bind(actor, revision);
-                return;
+                RequireCurrentBinding(currentAttack, currentProjection, actor, revision);
+                return currentAttack;
             }
 
             EnemyAttack2D attack = actor.GetComponent<EnemyAttack2D>()
@@ -65,8 +74,10 @@ namespace ShooterMover.UnityAdapters.Enemies
                 ?? actor.gameObject.AddComponent<EnemyAttackPresentationProjection2D>();
             attack.Bind(actor, revision);
             projection.Bind(actor, revision);
+            RequireCurrentBinding(attack, projection, actor, revision);
             attacks.Add(actor.ActorStableId, attack);
             projections.Add(actor.ActorStableId, projection);
+            return attack;
         }
 
         public void Emit(EnemyAttackExecutionRequestV1 request)
@@ -236,6 +247,26 @@ namespace ShooterMover.UnityAdapters.Enemies
             return EnemyAttackPatternDispatchResultV1.Applied(
                 cancellation.CancellationStableId,
                 cancellation.Fingerprint);
+        }
+
+        private static void RequireCurrentBinding(
+            EnemyAttack2D attack,
+            EnemyAttackPresentationProjection2D projection,
+            RoomEnemyActor2D actor,
+            long revision)
+        {
+            if (attack == null
+                || projection == null
+                || actor == null
+                || attack.gameObject != actor.gameObject
+                || projection.gameObject != actor.gameObject
+                || !attack.IsBound
+                || !projection.IsBound
+                || attack.PresentationRevision != revision
+                || actor.LifecycleGeneration != revision)
+            {
+                throw new InvalidOperationException("enemy-attack-publisher-binding-incomplete");
+            }
         }
 
         private static bool IsFatal(Exception exception)
