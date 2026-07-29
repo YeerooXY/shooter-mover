@@ -49,9 +49,6 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 GetComponentsInChildren<LevelRoom>(includeInactive);
             LevelObject[] placementComponents =
                 GetComponentsInChildren<LevelObject>(includeInactive);
-            DoorConnection[] doorComponents =
-                GetComponentsInChildren<DoorConnection>(
-                    includeInactive);
             VoidArea[] voidComponents =
                 GetComponentsInChildren<VoidArea>(includeInactive);
 
@@ -69,13 +66,6 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 placements.Add(placementComponents[index].BuildRecord());
             }
 
-            List<LevelDoorRecord> doors =
-                new List<LevelDoorRecord>(doorComponents.Length);
-            for (int index = 0; index < doorComponents.Length; index++)
-            {
-                doors.Add(doorComponents[index].BuildRecord());
-            }
-
             List<LevelVoidRecord> voids =
                 new List<LevelVoidRecord>(voidComponents.Length);
             for (int index = 0; index < voidComponents.Length; index++)
@@ -87,7 +77,7 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
                 levelId,
                 rooms,
                 placements,
-                doors,
+                Array.Empty<LevelDoorRecord>(),
                 voids);
             return lastValidation;
         }
