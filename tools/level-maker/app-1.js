@@ -33,7 +33,7 @@ function newRoom(index=0){
 }
 function initialState(){
  const r=newRoom(0);
- const exit={id:"door.level-1-final-exit",kind:"door",position:[11,0],rotation:90,side:"East",placementMode:"Fixed",traversable:true,visibleOnMap:true,runtimeObject:"door.room-standard",openWhen:"room-complete"};
+ const exit={id:"door.level-1-final-exit",kind:"door",position:[12,0],rotation:90,side:"East",placementMode:"Fixed",traversable:true,visibleOnMap:true,runtimeObject:"door.room-standard",openWhen:"room-complete"};
  r.doors.push(exit);
  return {
   format:"shooter-mover-web-level-project",editorVersion:1,schemaVersion:2,
@@ -71,6 +71,7 @@ function normalize(){
    r.bounds.width=Math.max(2,Math.round(Number(r.bounds.width)||24));
    r.bounds.height=Math.max(2,Math.round(Number(r.bounds.height)||14));
    r.entities ||= []; r.doors ||= []; r.encounter ||= {completion:"all-enemies"};
+   r.doors.forEach(d=>{const placement=doorEdgePlacement(r,d.position||[0,0]);d.position=placement.position;d.side=placement.side;d.rotation=placement.rotation});
    r.grid ||= [i,0]; r.slot ||= 1; r.floorObject ||= "tile.floor-industrial"; r.tiles ||= [];
    if(typeof r.tileGridEnabled!=="boolean")r.tileGridEnabled=r.tiles.length>0;
    const cols=Math.max(1,Math.round(r.bounds.width)),rows=Math.max(1,Math.round(r.bounds.height));

@@ -36,6 +36,19 @@ function snapToRoomCellCenter(r,p){
  const y=clamp(Math.floor(p[1]-minY),0,rows-1);
  return [minX+x+.5,minY+y+.5]
 }
+function doorEdgePlacement(r,p){
+ const hw=r.bounds.width/2,hh=r.bounds.height/2,x=clamp(p[0],-hw,hw),y=clamp(p[1],-hh,hh);
+ const side=[["East",Math.abs(hw-x)],["West",Math.abs(-hw-x)],["North",Math.abs(hh-y)],["South",Math.abs(-hh-y)]].sort((a,b)=>a[1]-b[1])[0][0];
+ if(side==="East")return {side,position:[hw,y],rotation:90};
+ if(side==="West")return {side,position:[-hw,y],rotation:90};
+ if(side==="North")return {side,position:[x,hh],rotation:0};
+ return {side,position:[x,-hh],rotation:0}
+}
+function doorIsOnRoomEdge(r,d){
+ const hw=r.bounds.width/2,hh=r.bounds.height/2,x=d.position?.[0],y=d.position?.[1],epsilon=.001;
+ if(!Number.isFinite(x)||!Number.isFinite(y))return false;
+ return Math.abs(Math.abs(x)-hw)<=epsilon||Math.abs(Math.abs(y)-hh)<=epsilon
+}
 function renderCanvas(){
  if(!ctx)return;const rect=canvas.getBoundingClientRect();ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,rect.width,rect.height);
  drawGrid(rect);

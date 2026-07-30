@@ -44,10 +44,12 @@ Connections are written to `map.json`.
 
 - Room width and height use whole 1 × 1 cells.
 - **Single** places one object per click.
-- **Paint** stamps enemies, props, or floor tiles across visited cells.
+- Floor brushes always paint continuously while held. Select a floor asset,
+  press `F`, then click and drag across the room.
+- **Paint** stamps enemies and props across visited cells.
 - Props snap to the nearest tile center when placed, painted, or dragged.
 - Walls are drag-drawn segments.
-- Doors snap to the nearest room edge.
+- Doors are constrained to the nearest room edge when placed or dragged.
 - Enemy placements choose tier 1–4. Runtime health multipliers are
   `1× / 2× / 4× / 8×`; damage multipliers are `1× / 1.5× / 2× / 3×`.
 

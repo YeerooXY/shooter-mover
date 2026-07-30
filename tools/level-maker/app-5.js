@@ -2,10 +2,8 @@ function placeAt(tool,pos){
  const r=currentRoom(),p=tool==="prop"?snapToRoomCellCenter(r,pos):snapPoint(pos),a=assetForTool(tool);
  if(tool==="player"){r.playerStart={position:p,rotation:0};state.editor.selectedId=null;return}
  if(tool==="door"){
-  const hw=r.bounds.width/2,hh=r.bounds.height/2;let side,pp=[...p],rot=0;
-  const distances=[["East",Math.abs(hw-p[0])],["West",Math.abs(-hw-p[0])],["North",Math.abs(hh-p[1])],["South",Math.abs(-hh-p[1])]].sort((x,y)=>x[1]-y[1]);side=distances[0][0];
-  if(side==="East"){pp[0]=hw-1;rot=90}else if(side==="West"){pp[0]=-hw+1;rot=90}else if(side==="North"){pp[1]=hh-1;rot=0}else{pp[1]=-hh+1;rot=0}
-  const d={id:uid("door"),kind:"door",position:pp,rotation:rot,side,placementMode:"Fixed",traversable:true,visibleOnMap:true,runtimeObject:a?.id||"door.room-standard",openWhen:"room-complete"};
+  const placement=doorEdgePlacement(r,p);
+  const d={id:uid("door"),kind:"door",position:placement.position,rotation:placement.rotation,side:placement.side,placementMode:"Fixed",traversable:true,visibleOnMap:true,runtimeObject:a?.id||"door.room-standard",openWhen:"room-complete"};
   r.doors.push(d);state.editor.selectedId=d.id;return;
  }
  if(tool==="teleporter"){
@@ -51,7 +49,7 @@ canvas.addEventListener("pointerdown",e=>{
  if(state.editor.tool==="tile"||state.editor.tool==="tile-erase"||e.button===2){
    const cell=tileCellFromWorld(currentRoom(),rawWorld),erase=state.editor.tool==="tile-erase"||e.button===2;
    setRoomTile(currentRoom(),cell,erase?null:selectedFloorObject());pointer.lastTileKey=cell?.key||null;
-   pointer.mode=state.editor.placementMode==="paint"?"tile-paint":"placed";renderCanvas();renderHeaderFields();renderFooter();return
+   pointer.mode="tile-paint";renderCanvas();renderHeaderFields();renderFooter();return
  }
  const paintable=["enemy","prop"].includes(state.editor.tool);
  if(paintable&&state.editor.placementMode==="paint"){
@@ -81,7 +79,10 @@ canvas.addEventListener("pointermove",e=>{
   if(sel){
    const o=sel.entity||sel.door;
    if(sel.entity?.kind==="prop")o.position=snapToRoomCellCenter(currentRoom(),raw);
-   else{const p=snapPoint(raw);o.position=[p[0]-pointer.dragOffset[0],p[1]-pointer.dragOffset[1]]}
+   else if(sel.door){
+    const p=snapPoint(raw),placement=doorEdgePlacement(currentRoom(),[p[0]-pointer.dragOffset[0],p[1]-pointer.dragOffset[1]]);
+    o.position=placement.position;o.side=placement.side;o.rotation=placement.rotation
+   }else{const p=snapPoint(raw);o.position=[p[0]-pointer.dragOffset[0],p[1]-pointer.dragOffset[1]]}
    renderCanvas();renderInspector();renderFooter()
   }
  }else if(pointer.mode==="wall")renderCanvas();
@@ -124,7 +125,7 @@ function validate(){
    if(e.kind==="enemy"&&(!Number.isInteger(Number(e.tier))||e.tier<1||e.tier>4))err(`${e.id} enemy tier must be 1–4.`);
    if(e.kind==="teleporter")warn(`${e.id} is preserved but not emitted into the current runtime package.`);
   });
-  r.doors.forEach(d=>{if(!d.runtimeObject)err(`${d.id} has no runtime door object.`);if(d.runtimeObject&&!catalogIds.has(d.runtimeObject))warn(`${d.id} uses unknown door object ${d.runtimeObject}.`);if(!["always","room-complete"].includes(d.openWhen||"always"))warn(`${d.id} uses ${d.openWhen}; this rule is preserved in editor metadata but not emitted to the current runtime encounter schema.`)});
+  r.doors.forEach(d=>{if(!d.runtimeObject)err(`${d.id} has no runtime door object.`);if(d.runtimeObject&&!catalogIds.has(d.runtimeObject))warn(`${d.id} uses unknown door object ${d.runtimeObject}.`);if(!doorIsOnRoomEdge(r,d))err(`${d.id} must be placed on a room edge.`);if(!["always","room-complete"].includes(d.openWhen||"always"))warn(`${d.id} uses ${d.openWhen}; this rule is preserved in editor metadata but not emitted to the current runtime encounter schema.`)});
  });
  const allDoorIds=new Set(state.rooms.flatMap(r=>r.doors.map(d=>d.id)));
  state.connections.forEach(c=>{if(!allDoorIds.has(c.fromDoorId))err(`${c.id} has an invalid source door.`);if(!allDoorIds.has(c.toDoorId))err(`${c.id} has an invalid destination door.`);if(c.fromDoorId===c.toDoorId)err(`${c.id} connects a door to itself.`)});
