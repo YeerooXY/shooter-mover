@@ -10,7 +10,11 @@ async function connectHelper(){
  try{
   const status=await helper("/api/status");helperToken=status.mutationToken;
   const catalogue=await helper("/api/level-assets");
-  if(catalogue.assets?.length)state.catalog=catalogue.assets;
+  if(catalogue.assets?.length){
+   const merged=new Map(state.catalog.map(asset=>[asset.id,asset]));
+   catalogue.assets.forEach(asset=>merged.set(asset.id,{...merged.get(asset.id),...asset}));
+   state.catalog=[...merged.values()].sort((left,right)=>left.type.localeCompare(right.type)||left.id.localeCompare(right.id));
+  }
   normalize();renderAll();setStatus(`Connected to ${status.branch}; ${catalogue.assets.length} project assets available.`,"good");
  }catch(error){setStatus(`Local helper unavailable: ${error.message}`,"bad")}
 }

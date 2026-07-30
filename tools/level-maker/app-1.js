@@ -18,6 +18,8 @@ const defaultCatalog = [
  {id:"enemy.blaster-turret",label:"Blaster Turret",type:"enemy",source:"EnemyCatalog"},
  {id:"enemy.pursuer-drone",label:"Pursuer Drone",type:"enemy",source:"EnemyCatalog"},
  {id:"enemy.hybrid-sentinel",label:"Hybrid Sentinel",type:"enemy",source:"EnemyCatalog"},
+ {id:"prop.wall-1x1",label:"Indestructible Wall 1x1",type:"prop",source:"BuiltInRoomContentObjectCatalog"},
+ {id:"prop.wall-2x2",label:"Indestructible Wall 2x2",type:"prop",source:"BuiltInRoomContentObjectCatalog"},
  {id:"tile.floor-industrial",label:"Industrial Floor",type:"floor",source:"Level1"},
  {id:"door.room-standard",label:"Standard Room Door",type:"door",source:"Level1"},
 ];
@@ -43,7 +45,7 @@ function initialState(){
  };
 }
 let state=initialState(), history=[], future=[], gestureSnapshot=null;
-let pointer={down:false,last:[0,0],mode:null,wallStart:null,dragOffset:[0,0],lastTileKey:null,lastPlacementKey:null,sourceDoorId:null,mapRoomOffset:[0,0],moved:false};
+let pointer={down:false,last:[0,0],mode:null,dragOffset:[0,0],lastTileKey:null,lastPlacementKey:null,sourceDoorId:null,mapRoomOffset:[0,0],moved:false};
 let canvas=$("#stage"), ctx=canvas.getContext("2d"), dpr=1;
 
 function currentRoom(){return state.rooms.find(r=>r.id===state.activeRoomId)||state.rooms[0]}
@@ -63,7 +65,9 @@ function undo(){if(!history.length)return;future.push(snapshot());state=JSON.par
 function redo(){if(!future.length)return;history.push(snapshot());state=JSON.parse(future.pop());normalize();renderAll()}
 function updateUndo(){$("#undoBtn").disabled=!history.length;$("#redoBtn").disabled=!future.length}
 function normalize(){
- if(!state.catalog)state.catalog=clone(defaultCatalog);
+ const knownAssets=new Map(defaultCatalog.map(asset=>[asset.id,clone(asset)]));
+ (state.catalog||[]).forEach(asset=>knownAssets.set(asset.id,{...knownAssets.get(asset.id),...asset}));
+ state.catalog=[...knownAssets.values()].sort((left,right)=>left.type.localeCompare(right.type)||left.id.localeCompare(right.id));
  if(!state.rooms?.length){state.rooms=[newRoom(0)]}
  if(!state.rooms.some(r=>r.id===state.activeRoomId))state.activeRoomId=state.rooms[0].id;
  state.rooms.forEach((r,i)=>{
