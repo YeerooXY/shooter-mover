@@ -63,7 +63,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 return 0;
             }
 
-            NextShot = now + ShotGap(fire);
+            NextShot = MoveNext(NextShot, now, ShotGap(fire));
             return 1;
         }
 
@@ -77,7 +77,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 return 0;
             }
 
-            NextShot = now + ShotGap(fire);
+            NextShot = MoveNext(NextShot, now, ShotGap(fire));
             return 1;
         }
 
@@ -109,6 +109,17 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 NextShot = now + fire.IntervalAfterBurstSeconds;
             }
             return 1;
+        }
+
+        private static double MoveNext(
+            double previous,
+            double now,
+            double gap)
+        {
+            double scheduled = previous + gap;
+            return scheduled <= now + Epsilon
+                ? now + gap
+                : scheduled;
         }
 
         private static double ShotGap(FireSettings fire)
