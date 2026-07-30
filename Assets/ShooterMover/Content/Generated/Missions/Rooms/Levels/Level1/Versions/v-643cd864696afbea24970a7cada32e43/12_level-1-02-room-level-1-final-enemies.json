@@ -1,0 +1,1 @@
+{"enemies":[{"id":"double-droid-lower","object":"enemy.moving-droid","position":[4,-3],"rotation":180,"tier":1},{"id":"double-droid-upper","object":"enemy.moving-droid","position":[4,3],"rotation":180,"tier":1}],"room":"room.level-1-final"}

@@ -1,0 +1,1 @@
+{"completion":"all-enemies","door_rules":[{"match":{"door_id":"door.level-1-final-west"},"open_when":"room-complete"},{"match":{"door_id":"door.level-1-final-exit"},"open_when":"room-complete"}],"optional_enemy_ids":[],"room":"room.level-1-final"}

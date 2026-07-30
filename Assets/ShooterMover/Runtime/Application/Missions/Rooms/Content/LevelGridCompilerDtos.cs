@@ -132,7 +132,8 @@ namespace ShooterMover.Application.Missions.Rooms.Content
         {
             [DataMember(Name = "id", IsRequired = true)] public string Id { get; set; }
             [DataMember(Name = "object", IsRequired = true)] public string Object { get; set; }
-            [DataMember(Name = "level", IsRequired = true)] public int Level { get; set; }
+            [DataMember(Name = "tier", EmitDefaultValue = false)] public int? Tier { get; set; }
+            [DataMember(Name = "level", EmitDefaultValue = false)] public int? LegacyLevel { get; set; }
             [DataMember(Name = "position", IsRequired = true)] public double[] Position { get; set; }
             [DataMember(Name = "rotation", IsRequired = true)] public double Rotation { get; set; }
         }

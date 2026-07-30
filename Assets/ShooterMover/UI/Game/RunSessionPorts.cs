@@ -39,11 +39,6 @@ namespace ShooterMover.UI.Game
             RankedSkillAllocationSnapshot skillSnapshot,
             IReadOnlyList<FrozenRunEquipment> frozenEquipment)
         {
-            if (level.LevelStableId != PlayableLevelCatalog.FirstLevelStableId)
-            {
-                throw new InvalidOperationException(
-                    "No authored run-stat baseline exists for level " + level.LevelStableId);
-            }
             if (command == null
                 || resolvedRunStableId == null
                 || characterGraph == null
@@ -63,11 +58,12 @@ namespace ShooterMover.UI.Game
                 new DerivedCharacterStatInput(
                     character.CharacterInstanceStableId.ToString(),
                     new CharacterBaseStatProfile(
-                        "base-profile.production-playable-level-1",
+                        "base-profile.production-playable-level",
                         character.ClassDefinitionStableId.ToString(),
                         frozenProgression.CharacterLevel,
                         RunFingerprint.Hash(
-                            "production-playable-level-1-base-v1|"
+                            "production-playable-level-base-v1|"
+                            + level.LevelStableId + "|"
                             + character.ClassDefinitionStableId + "|"
                             + frozenProgression.Fingerprint),
                         values),

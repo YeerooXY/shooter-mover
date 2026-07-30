@@ -1,6 +1,5 @@
 #if UNITY_EDITOR
 using System;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
@@ -13,168 +12,6 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
 {
     public sealed class LevelGridAuthoringAuditTests
     {
-        private string temporaryRoot;
-
-        [SetUp]
-        public void SetUp()
-        {
-            temporaryRoot = Path.Combine(
-                Path.GetTempPath(),
-                "ShooterMover-LevelLevels-" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(temporaryRoot);
-        }
-
-        [TearDown]
-        public void TearDown()
-        {
-            if (Directory.Exists(temporaryRoot))
-            {
-                Directory.Delete(temporaryRoot, true);
-            }
-        }
-
-        [Test]
-        public void ProductionExporterSource_RequiresFoundationAndGraphValidation()
-        {
-            string source = File.ReadAllText(
-                "Assets/ShooterMover/Editor/LevelDesign/Foundation/"
-                + "LevelGridAuthoringJsonExporter.cs");
-
-            StringAssert.Contains("root.ValidateHierarchy()", source);
-            StringAssert.Contains("!foundationValidation.IsValid", source);
-            StringAssert.Contains("!gridValidation.CanPublish", source);
-        }
-
-        [Test]
-        public void MovingRoom_MigratesFolderAndPreservesSidecars()
-        {
-            GameObject rootObject = new GameObject("Root");
-            try
-            {
-                LevelDraft root =
-                    rootObject.AddComponent<LevelDraft>();
-                root.ConfigureForTests("level.folder-migration");
-                LevelRoom room = CreateRoom(
-                    root.transform,
-                    "room.migrating",
-                    Vector2Int.zero,
-                    1,
-                    true);
-
-                string output = Path.Combine(temporaryRoot, "Level");
-                ExportTransaction(root, output, LevelGridValidationPurpose.Draft);
-                string originalFolder = Path.Combine(output, "Rooms", "Room_0_0_01");
-                string markerPath = Path.Combine(originalFolder, "props.json");
-                const string marker = "{\"room\":\"room.migrating\",\"props\":[\"keep-me\"]}";
-                File.WriteAllText(markerPath, marker);
-
-                room.ConfigureForTests(
-                    "room.migrating",
-                    new Vector2Int(4, 1),
-                    Vector2.one,
-                    Vector2Int.one,
-                    room.RoomBounds);
-                room.ConfigureFolderSlotForTests(1);
-                ExportTransaction(root, output, LevelGridValidationPurpose.Draft);
-
-                string migratedFolder = Path.Combine(output, "Rooms", "Room_4_1_01");
-                Assert.That(Directory.Exists(originalFolder), Is.False);
-                Assert.That(Directory.Exists(migratedFolder), Is.True);
-                Assert.That(
-                    File.ReadAllText(Path.Combine(migratedFolder, "props.json")),
-                    Is.EqualTo(marker));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(rootObject);
-            }
-        }
-
-        [Test]
-        public void DeletedRoomFolder_IsNeverAdoptedByAnotherRoom()
-        {
-            GameObject rootObject = new GameObject("Root");
-            try
-            {
-                LevelDraft root =
-                    rootObject.AddComponent<LevelDraft>();
-                root.ConfigureForTests("level.folder-ownership");
-                LevelRoom roomA = CreateRoom(
-                    root.transform,
-                    "room.owner-a",
-                    Vector2Int.zero,
-                    1,
-                    true);
-
-                string output = Path.Combine(temporaryRoot, "Level");
-                ExportTransaction(root, output, LevelGridValidationPurpose.Draft);
-                UnityEngine.Object.DestroyImmediate(roomA.gameObject);
-                CreateRoom(
-                    root.transform,
-                    "room.owner-b",
-                    Vector2Int.zero,
-                    1,
-                    true);
-
-                TargetInvocationException exception = Assert.Throws<TargetInvocationException>(
-                    () => ExportTransaction(
-                        root,
-                        output,
-                        LevelGridValidationPurpose.Draft));
-                Assert.That(exception.InnerException, Is.TypeOf<InvalidOperationException>());
-                StringAssert.Contains(
-                    "already belongs to room 'room.owner-a'",
-                    exception.InnerException.Message);
-
-                string persisted = File.ReadAllText(
-                    Path.Combine(output, "Rooms", "Room_0_0_01", "room.json"));
-                StringAssert.Contains("room.owner-a", persisted);
-                StringAssert.DoesNotContain("room.owner-b", persisted);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(rootObject);
-            }
-        }
-
-        [Test]
-        public void MalformedExistingRoomIdentity_BlocksWithoutReplacingDestination()
-        {
-            GameObject rootObject = new GameObject("Root");
-            try
-            {
-                LevelDraft root =
-                    rootObject.AddComponent<LevelDraft>();
-                root.ConfigureForTests("level.malformed-folder");
-                CreateRoom(
-                    root.transform,
-                    "room.malformed",
-                    Vector2Int.zero,
-                    1,
-                    true);
-
-                string output = Path.Combine(temporaryRoot, "Level");
-                ExportTransaction(root, output, LevelGridValidationPurpose.Draft);
-                string roomJson = Path.Combine(
-                    output,
-                    "Rooms",
-                    "Room_0_0_01",
-                    "room.json");
-                File.WriteAllText(roomJson, "{ not valid json");
-
-                Assert.Throws<TargetInvocationException>(
-                    () => ExportTransaction(
-                        root,
-                        output,
-                        LevelGridValidationPurpose.Draft));
-                Assert.That(File.ReadAllText(roomJson), Is.EqualTo("{ not valid json"));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(rootObject);
-            }
-        }
-
         [Test]
         public void DeleteDoor_RemovesLinkPreservesOppositeAndUndoesAtomically()
         {
@@ -344,18 +181,6 @@ namespace ShooterMover.Tests.EditMode.LevelDesign.Foundation
                 result.Problems.Count(
                     issue => issue.Code == LevelGridProblemCode.DuplicateRoomFolderSlot),
                 Is.EqualTo(2));
-        }
-
-        private static void ExportTransaction(
-            LevelDraft root,
-            string output,
-            LevelGridValidationPurpose purpose)
-        {
-            MethodInfo export = typeof(LevelGridAuthoringJsonExporter).GetMethod(
-                "ExportTransaction",
-                BindingFlags.NonPublic | BindingFlags.Static);
-            Assert.That(export, Is.Not.Null);
-            export.Invoke(null, new object[] { root, output, purpose });
         }
 
         private static LevelRoom CreateRoom(

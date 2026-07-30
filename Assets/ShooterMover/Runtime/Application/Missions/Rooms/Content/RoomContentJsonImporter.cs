@@ -559,12 +559,13 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                             path + ".id",
                             "Enemy authored ID is duplicated: " + authoredId);
                     }
-                    if (dto.Level <= 0)
+                    int tier = dto.Tier ?? dto.LegacyLevel ?? 0;
+                    if (tier < 1 || tier > 4)
                     {
                         throw Mapping(
-                            "room-content-enemy-level-invalid",
-                            path + ".level",
-                            "Enemy level must be greater than zero.");
+                            "room-content-enemy-tier-invalid",
+                            path + ".tier",
+                            "Enemy tier must be between 1 and 4.");
                     }
 
                     RoomContentObjectDefinition objectDefinition = ResolveObject(
@@ -576,7 +577,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                         path + ".position");
                     string signature = objectDefinition.ObjectStableId
                         + "|"
-                        + dto.Level
+                        + tier
                         + "|"
                         + Number(position.X)
                         + "|"
@@ -606,7 +607,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                         instanceId,
                         source.RoomStableId,
                         objectDefinition.ObjectStableId,
-                        dto.Level,
+                        tier,
                         position,
                         dto.Rotation,
                         authoredId));

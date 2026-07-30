@@ -10,37 +10,37 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cf2833e1171d44b89e67f2eaa0f7c10a, type: 3}
-  m_Name: Level1RoomContent
-  m_EditorClassIdentifier: 
-  manifest: {fileID: 4900000, guid: 69f006061b4849942469e375ca87d205, type: 3}
+  m_Name: RoomContent
+  m_EditorClassIdentifier: ShooterMover.UnityAdapters::ShooterMover.UnityAdapters.Authoring.LevelDesign.RoomFile
+  manifest: {fileID: 4900000, guid: 26b536dd0ecb6b244ba9a5f3d523b61f, type: 3}
   documents:
   - key: level-1.00.room-level-1-start.decor
-    document: {fileID: 4900000, guid: 97ee4e7fb8d6101510e55fa16e04d146, type: 3}
+    document: {fileID: 4900000, guid: b0a03dbc3df1aee47b5db7cb785227cc, type: 3}
   - key: level-1.00.room-level-1-start.encounter
-    document: {fileID: 4900000, guid: c42803bea203e3ba115be73a32e3f301, type: 3}
+    document: {fileID: 4900000, guid: 6c0f912caa65e4a419ad8b25b1625589, type: 3}
   - key: level-1.00.room-level-1-start.enemies
-    document: {fileID: 4900000, guid: f506a521d161e9022015d5cab1cd295a, type: 3}
+    document: {fileID: 4900000, guid: d894395b4091cf24ea30d69fee5ce213, type: 3}
   - key: level-1.00.room-level-1-start.layout
-    document: {fileID: 4900000, guid: 69afa77daaef9e39a73f68a394fc8ea9, type: 3}
+    document: {fileID: 4900000, guid: 4d03d852ceea010498bfa89fdb2fc87f, type: 3}
   - key: level-1.00.room-level-1-start.props
-    document: {fileID: 4900000, guid: 7e558147bd5b41ec71695f1b9ffaa835, type: 3}
+    document: {fileID: 4900000, guid: e01535c2c4e64f648af06e458682870f, type: 3}
   - key: level-1.01.room-level-1-middle.decor
-    document: {fileID: 4900000, guid: 64b6273c169b8d4e39243369e4ad28c7, type: 3}
+    document: {fileID: 4900000, guid: b0eac879f7c02ce43a94a05389440e5a, type: 3}
   - key: level-1.01.room-level-1-middle.encounter
-    document: {fileID: 4900000, guid: 33cff77ea65544b5f0eb10aab2de21ef, type: 3}
+    document: {fileID: 4900000, guid: 797f910d854190c47814ef1b5df0dcbf, type: 3}
   - key: level-1.01.room-level-1-middle.enemies
-    document: {fileID: 4900000, guid: 88af215392a08247aa110394c22a8971, type: 3}
+    document: {fileID: 4900000, guid: e589d9b9fa510634282c689a8b78d0a3, type: 3}
   - key: level-1.01.room-level-1-middle.layout
-    document: {fileID: 4900000, guid: 14804ac068b33c3ddfa309c9858d20c6, type: 3}
+    document: {fileID: 4900000, guid: 25425ea5176a2ab4ca0733668b9e482a, type: 3}
   - key: level-1.01.room-level-1-middle.props
-    document: {fileID: 4900000, guid: 6cb63eefa6f8adf5788a5c1c9d089dd7, type: 3}
+    document: {fileID: 4900000, guid: e0142c96db01fa346b85b6c591bd93d6, type: 3}
   - key: level-1.02.room-level-1-final.decor
-    document: {fileID: 4900000, guid: 2130e26ce213ec087cf9b015aea6552f, type: 3}
+    document: {fileID: 4900000, guid: b9744647f35551b4e823afdf52de70b5, type: 3}
   - key: level-1.02.room-level-1-final.encounter
-    document: {fileID: 4900000, guid: 72543f392fb90c390e6d019b0859ba29, type: 3}
+    document: {fileID: 4900000, guid: c6bf4eb884ce182458f35e17c490bdef, type: 3}
   - key: level-1.02.room-level-1-final.enemies
-    document: {fileID: 4900000, guid: cafaf13b43c97ca13917abace9c980bb, type: 3}
+    document: {fileID: 4900000, guid: 9b7d54beea505734cacb8e9c7c125f83, type: 3}
   - key: level-1.02.room-level-1-final.layout
-    document: {fileID: 4900000, guid: 449cbaa5a1f1bc214809963a94ff4759, type: 3}
+    document: {fileID: 4900000, guid: 1c858e3daec890443960b5b87121fd84, type: 3}
   - key: level-1.02.room-level-1-final.props
-    document: {fileID: 4900000, guid: bbfbbd0eb280c8dfb614756ecebd1ce7, type: 3}
+    document: {fileID: 4900000, guid: 6bcadfc9f15b9e54eb51bc14001b0418, type: 3}

@@ -130,7 +130,7 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
         public static readonly StableId FirstLevelStableId =
             StableId.Parse("level.level-1");
 
-        private static readonly PlayableLevelDefinition[] Entries =
+        private static readonly PlayableLevelDefinition[] FallbackEntries =
         {
             new PlayableLevelDefinition(
                 FirstLevelStableId,
@@ -143,6 +143,17 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
                 new LevelRecommendation(1, 1, 1, "STANDARD"),
                 10),
         };
+
+        private static PlayableLevelDefinition[] entries;
+
+        private static PlayableLevelDefinition[] Entries
+        {
+            get
+            {
+                if (entries == null) entries = LoadEntries();
+                return entries;
+            }
+        }
 
         public static IReadOnlyList<PlayableLevelDefinition> All
         {
@@ -178,6 +189,69 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
                 definitions.Add(Entries[index].ToSelectionDefinition());
             }
             return new LevelSelectionCatalog(definitions);
+        }
+
+        private static PlayableLevelDefinition[] LoadEntries()
+        {
+            TextAsset asset = Resources.Load<TextAsset>("Levels/PlayableLevelCatalog");
+            if (asset == null) return (PlayableLevelDefinition[])FallbackEntries.Clone();
+            PlayableLevelCatalogJson payload =
+                JsonUtility.FromJson<PlayableLevelCatalogJson>(asset.text);
+            if (payload == null || payload.levels == null || payload.levels.Length == 0)
+                return (PlayableLevelDefinition[])FallbackEntries.Clone();
+
+            var values = new List<PlayableLevelDefinition>(payload.levels.Length);
+            for (int index = 0; index < payload.levels.Length; index++)
+            {
+                PlayableLevelJson value = payload.levels[index];
+                StableId levelId;
+                StableId playerPresentation;
+                if (value == null
+                    || !StableId.TryParse(value.level_id, out levelId)
+                    || !StableId.TryParse(value.player_presentation, out playerPresentation))
+                {
+                    throw new InvalidOperationException(
+                        "The published playable-level catalogue contains an invalid identity.");
+                }
+                values.Add(new PlayableLevelDefinition(
+                    levelId,
+                    value.display_name,
+                    value.description,
+                    PlayableLevelScenePath,
+                    value.room_content_resource,
+                    value.enemy_catalog_resource,
+                    playerPresentation,
+                    new LevelRecommendation(
+                        value.recommended_player_level,
+                        value.recommended_equipment_level,
+                        value.recommended_party_size,
+                        value.difficulty_label),
+                    value.sort_order));
+            }
+            return values.ToArray();
+        }
+
+        [Serializable]
+        private sealed class PlayableLevelCatalogJson
+        {
+            public int schema_version;
+            public PlayableLevelJson[] levels;
+        }
+
+        [Serializable]
+        private sealed class PlayableLevelJson
+        {
+            public string level_id;
+            public string display_name;
+            public string description;
+            public string room_content_resource;
+            public string enemy_catalog_resource;
+            public string player_presentation;
+            public int recommended_player_level;
+            public int recommended_equipment_level;
+            public int recommended_party_size;
+            public string difficulty_label;
+            public int sort_order;
         }
     }
 

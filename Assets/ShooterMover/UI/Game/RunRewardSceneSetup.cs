@@ -23,7 +23,6 @@ namespace ShooterMover.UI.Game
     [DisallowMultipleComponent]
     public sealed class RunRewardSceneSetup : MonoBehaviour
     {
-        private const string ProofAuthoredId = "run-reward-proof";
         private static readonly StableId SoloPlayModeId =
             StableId.Parse("play-mode.solo");
         private static readonly StableId CampaignRewardGameModeId =
@@ -126,24 +125,6 @@ namespace ShooterMover.UI.Game
                     "The exact selected account-backed character graph is unavailable.");
             }
 
-            StableId proofRoomId = StableId.Parse("room.level-1-start");
-            List<RoomEnemyPlacementContent> proofRows = acceptedBundle.Enemies
-                .Where(row => row != null
-                    && row.RoomStableId == proofRoomId
-                    && string.Equals(
-                        row.AuthoredId,
-                        ProofAuthoredId,
-                        StringComparison.Ordinal))
-                .ToList();
-            if (levelId != PlayableLevelCatalog.FirstLevelStableId
-                || proofRows.Count != 1
-                || proofRows[0].InstanceStableId == null)
-            {
-                throw new InvalidOperationException(
-                    "RUN-REWARD-COMPOSITION-001 requires one exact authored proof enemy "
-                    + ProofAuthoredId + " in the Level 1 entry room.");
-            }
-
             EnemyCatalogAsset enemyAsset = Resources.Load<EnemyCatalogAsset>(
                 level.EnemyCatalogResourcePath);
             if (enemyAsset == null)
@@ -164,9 +145,7 @@ namespace ShooterMover.UI.Game
                 graph,
                 coordinator,
                 rooms,
-                imported.Catalog,
-                proofRoomId,
-                proofRows[0].InstanceStableId);
+                imported.Catalog);
             spawner.ConfigureRunDownstream(
                 runtime.RunStableId,
                 runtime.ExperienceConsumer,

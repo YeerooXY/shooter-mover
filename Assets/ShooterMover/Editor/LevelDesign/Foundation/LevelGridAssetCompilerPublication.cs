@@ -157,7 +157,14 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             string versionId = ComputePackageVersionId(package);
             string versionsRoot = generatedAssetFolder + "/" + VersionsFolderName;
             string finalFolder = versionsRoot + "/v-" + versionId;
-            string stagingFolder = finalFolder + ".__staging-" + transactionId;
+            // Keep the staging folder extension-free. Unity treats dotted directory names under
+            // Assets inconsistently during synchronous imports and can remove the directory
+            // between sidecar writes.
+            string stagingFolder = versionsRoot
+                + "/__staging-"
+                + transactionId
+                + "-v-"
+                + versionId;
 
             EnsureAssetFolder(versionsRoot);
             if (AssetDatabase.IsValidFolder(finalFolder))
@@ -190,11 +197,37 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
             }
 
             bool movedToFinal = false;
+            string externalStaging = Path.Combine(
+                Path.GetTempPath(),
+                "ShooterMover-LevelPublish-" + transactionId);
             try
             {
-                EnsureAssetFolder(stagingFolder);
-                WriteVersionFiles(package, stagingFolder);
-                WritePublishingMarker(stagingFolder, transactionId);
+                // Build the immutable version completely outside Assets, then expose the
+                // completed directory to Unity in one move. Unity's asset watcher can otherwise
+                // remove an unimported staging directory between immediate sidecar writes.
+                AssetDatabase.DisallowAutoRefresh();
+                try
+                {
+                    if (Directory.Exists(externalStaging))
+                        Directory.Delete(externalStaging, true);
+                    Directory.CreateDirectory(externalStaging);
+                    WriteVersionFilesToDirectory(package, externalStaging);
+                    File.WriteAllText(
+                        Path.Combine(externalStaging, PublishingMarkerFileName),
+                        transactionId + Environment.NewLine,
+                        Utf8WithoutBom);
+
+                    string stagingAbsolute = ToAbsolutePath(stagingFolder);
+                    if (Directory.Exists(stagingAbsolute))
+                        Directory.Delete(stagingAbsolute, true);
+                    Directory.Move(externalStaging, stagingAbsolute);
+                }
+                finally
+                {
+                    if (Directory.Exists(externalStaging))
+                        Directory.Delete(externalStaging, true);
+                    AssetDatabase.AllowAutoRefresh();
+                }
                 AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
                 LoadAndValidateVersion(package, stagingFolder, true);
                 Inject(
@@ -235,6 +268,25 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 WriteAssetText(
                     DocumentAssetPath(folderPath, index, keys[index]),
                     package.Documents[keys[index]]);
+            }
+        }
+
+        private static void WriteVersionFilesToDirectory(
+            RoomContentJsonPackage package,
+            string absoluteFolder)
+        {
+            File.WriteAllText(
+                Path.Combine(absoluteFolder, "compiled.manifest.json"),
+                package.ManifestJson + Environment.NewLine,
+                Utf8WithoutBom);
+            List<string> keys = SortedKeys(package);
+            for (int index = 0; index < keys.Count; index++)
+            {
+                string assetPath = DocumentAssetPath("Assets", index, keys[index]);
+                File.WriteAllText(
+                    Path.Combine(absoluteFolder, Path.GetFileName(assetPath)),
+                    package.Documents[keys[index]] + Environment.NewLine,
+                    Utf8WithoutBom);
             }
         }
 

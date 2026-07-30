@@ -267,9 +267,7 @@ namespace ShooterMover.EnemyRuntimeComposition
                     EnemyFactoryRejection.PresentationMismatch,
                     definition.DefinitionId);
             }
-            if (definition.LevelScaling != null
-                && (request.Placement.Level < definition.LevelScaling.BaseLevel
-                    || request.Placement.Level > definition.LevelScaling.MaximumLevel))
+            if (request.Placement.Tier < 1 || request.Placement.Tier > 4)
             {
                 return Reject(
                     EnemyFactoryRejection.LevelOutOfRange,
@@ -319,16 +317,18 @@ namespace ShooterMover.EnemyRuntimeComposition
                 request.RoomRuntimeInstanceStableId,
                 request.Placement.RoomStableId,
                 request.Placement.InstanceStableId);
-            EnemyDifficultyScaling scaling = difficulty.Policy.Resolve(
-                request.Placement.Level,
+            EnemyDifficultyScaling difficultyScaling = difficulty.Policy.Resolve(
+                request.Placement.Tier,
                 request.Difficulty,
                 difficulty.Configuration);
-            double definitionHealth = definition.LevelScaling == null
-                ? definition.BaseHealth
-                : definition.LevelScaling.ResolveHealth(
-                    definition.BaseHealth,
-                    request.Placement.Level);
-            double maximumHealth = definitionHealth * scaling.HealthMultiplier;
+            var scaling = new EnemyDifficultyScaling(
+                difficultyScaling.HealthMultiplier
+                    * EnemyTierBalance.HealthMultiplier(request.Placement.Tier),
+                difficultyScaling.DamageMultiplier
+                    * EnemyTierBalance.DamageMultiplier(request.Placement.Tier),
+                difficultyScaling.CooldownMultiplier,
+                difficultyScaling.MovementMultiplier);
+            double maximumHealth = definition.BaseHealth * scaling.HealthMultiplier;
             EnemyActorState actor = EnemyActorState.Create(
                 identity.EntityInstanceId,
                 definition.DefinitionId,

@@ -60,9 +60,7 @@ namespace ShooterMover.UI.Game
             CharacterLiveGraph graph,
             ShooterMover.Application.Persistence.Composition.CharacterSetupFlow coordinator,
             LevelRooms rooms,
-            ShooterMover.Domain.Enemies.Catalog.EnemyCatalog enemyCatalog,
-            StableId proofRoomId,
-            StableId proofPlacementId)
+            ShooterMover.Domain.Enemies.Catalog.EnemyCatalog enemyCatalog)
         {
             if (level == null) throw new ArgumentNullException(nameof(level));
             if (gameModeId == null) throw new ArgumentNullException(nameof(gameModeId));
@@ -70,9 +68,6 @@ namespace ShooterMover.UI.Game
             if (coordinator == null) throw new ArgumentNullException(nameof(coordinator));
             if (rooms == null) throw new ArgumentNullException(nameof(rooms));
             if (enemyCatalog == null) throw new ArgumentNullException(nameof(enemyCatalog));
-            if (proofRoomId == null) throw new ArgumentNullException(nameof(proofRoomId));
-            if (proofPlacementId == null)
-                throw new ArgumentNullException(nameof(proofPlacementId));
 
             StableId difficultyId = StableId.Parse("difficulty.normal");
             ProgressionContext currentProgression =
@@ -148,13 +143,6 @@ namespace ShooterMover.UI.Game
             Func<RunSessionAggregate> runResolver = delegate { return run; };
             var canonicalOverrides =
                 new RunSessionTerminalRewardOverrideResolver(runResolver);
-            var proofOverrides = new DeterministicProofRewardOverrideResolver(
-                runId,
-                proofRoomId,
-                proofPlacementId);
-            var composedOverrides = new ProofOverlayRewardOverrideResolver(
-                canonicalOverrides,
-                proofOverrides);
             var enemySourceContexts =
                 new ExactRunEnemySourceContextResolver(runResolver);
             var propCatalog = new PropCatalog(
@@ -198,7 +186,7 @@ namespace ShooterMover.UI.Game
                         personalGenerationService: personalGeneration,
                         participantResolver: participantResolver,
                         environmentResolver: environmentResolver,
-                        overrideResolver: composedOverrides,
+                        overrideResolver: canonicalOverrides,
                         deliveryOutbox: deliveryOutbox,
                         requireAcceptedPublication: true);
                 return binding.EnemyConsumer;
@@ -209,10 +197,7 @@ namespace ShooterMover.UI.Game
                     run,
                     pending,
                     projection,
-                    consumerFactory,
-                    runId,
-                    proofRoomId,
-                    proofPlacementId);
+                    consumerFactory);
             return new RunLoot(
                 authority,
                 run,
@@ -331,9 +316,6 @@ namespace ShooterMover.UI.Game
         private readonly PendingLootDropAdmissionState pending;
         private readonly PendingAdmissionViewConsumer projection;
         private readonly Func<EnemyLootDropFactConsumer> consumerFactory;
-        private readonly StableId runId;
-        private readonly StableId proofRoomId;
-        private readonly StableId proofPlacementId;
         private readonly Dictionary<StableId, EnemyLootDropFactConsumer>
             committedByDeathEvent =
                 new Dictionary<StableId, EnemyLootDropFactConsumer>();
@@ -342,10 +324,7 @@ namespace ShooterMover.UI.Game
             RunSessionAggregate run,
             PendingLootDropAdmissionState pending,
             PendingAdmissionViewConsumer projection,
-            Func<EnemyLootDropFactConsumer> consumerFactory,
-            StableId runId,
-            StableId proofRoomId,
-            StableId proofPlacementId)
+            Func<EnemyLootDropFactConsumer> consumerFactory)
         {
             this.run = run ?? throw new ArgumentNullException(nameof(run));
             this.pending = pending ?? throw new ArgumentNullException(nameof(pending));
@@ -353,11 +332,6 @@ namespace ShooterMover.UI.Game
                 ?? throw new ArgumentNullException(nameof(projection));
             this.consumerFactory = consumerFactory
                 ?? throw new ArgumentNullException(nameof(consumerFactory));
-            this.runId = runId ?? throw new ArgumentNullException(nameof(runId));
-            this.proofRoomId = proofRoomId
-                ?? throw new ArgumentNullException(nameof(proofRoomId));
-            this.proofPlacementId = proofPlacementId
-                ?? throw new ArgumentNullException(nameof(proofPlacementId));
         }
 
         public void Consume(EnemyDeathFact fact)
@@ -377,7 +351,6 @@ namespace ShooterMover.UI.Game
                         out committed))
                 {
                     committed.Consume(fact);
-                    ValidateProofIfRequired(fact, committed.LastAdmissions);
                     Publish(committed.LastAdmissions);
                     return;
                 }
@@ -395,7 +368,6 @@ namespace ShooterMover.UI.Game
                     }
 
                     attempt.Consume(fact);
-                    ValidateProofIfRequired(fact, attempt.LastAdmissions);
                     Publish(attempt.LastAdmissions);
                     committedByDeathEvent.Add(
                         fact.DeathEventStableId,
@@ -486,57 +458,6 @@ namespace ShooterMover.UI.Game
             {
                 projection.Consume(admissions[index]);
             }
-        }
-
-        private void ValidateProofIfRequired(
-            EnemyDeathFact fact,
-            IReadOnlyList<PendingLootDropAdmissionResult> admissions)
-        {
-            if (!IsProof(fact)) return;
-            if (admissions == null
-                || admissions.Count != 1
-                || admissions[0] == null
-                || !admissions[0].IsAccepted
-                || admissions[0].PendingResult == null
-                || !HasExactProofRewards(admissions[0].PendingResult))
-            {
-                string detail = admissions == null || admissions.Count == 0
-                    ? "admission-missing"
-                    : admissions[0] == null
-                        ? "admission-null"
-                        : admissions[0].Diagnostic;
-                throw new InvalidOperationException(
-                    "The deterministic proof reward was not admitted exactly once: "
-                    + detail);
-            }
-        }
-
-        private bool IsProof(EnemyDeathFact fact)
-        {
-            return fact.Identity != null
-                && fact.Identity.RunStableId == runId
-                && fact.Identity.RoomStableId == proofRoomId
-                && fact.Identity.PlacementStableId == proofPlacementId;
-        }
-
-        private static bool HasExactProofRewards(
-            GeneratedLootDropResult result)
-        {
-            long cash = 0L;
-            long scrap = 0L;
-            long boxes = 0L;
-            for (int index = 0; index < result.GeneratedRewards.Count; index++)
-            {
-                GeneratedLootDropReward reward =
-                    result.GeneratedRewards[index];
-                if (reward.Kind == RewardGrantKind.Money)
-                    cash += reward.Quantity;
-                else if (reward.Kind == RewardGrantKind.Scrap)
-                    scrap += reward.Quantity;
-                else if (reward.Kind == RewardGrantKind.Strongbox)
-                    boxes += reward.Quantity;
-            }
-            return cash == 1L && scrap == 1L && boxes == 1L;
         }
 
         private static Exception Combine(Exception current, Exception next)
@@ -649,173 +570,6 @@ namespace ShooterMover.UI.Game
             progressionContext = frozenProgression;
             diagnostic = string.Empty;
             return true;
-        }
-    }
-
-    internal sealed class ProofOverlayRewardOverrideResolver :
-        ITerminalRewardOverrideResolver
-    {
-        private readonly ITerminalRewardOverrideResolver production;
-        private readonly ITerminalRewardOverrideResolver proof;
-
-        public ProofOverlayRewardOverrideResolver(
-            ITerminalRewardOverrideResolver production,
-            ITerminalRewardOverrideResolver proof)
-        {
-            this.production = production
-                ?? throw new ArgumentNullException(nameof(production));
-            this.proof = proof ?? throw new ArgumentNullException(nameof(proof));
-        }
-
-        public bool TryResolve(
-            LootDropSourceFact source,
-            LootDropRunGenerationContext runContext,
-            TerminalRewardEnvironment environment,
-            TerminalRewardPlacementContext placement,
-            out TerminalRewardOverrideSet overrides,
-            out string diagnostic)
-        {
-            overrides = null;
-            TerminalRewardOverrideSet productionSet;
-            if (!production.TryResolve(
-                    source,
-                    runContext,
-                    environment,
-                    placement,
-                    out productionSet,
-                    out diagnostic)
-                || productionSet == null)
-            {
-                diagnostic = string.IsNullOrWhiteSpace(diagnostic)
-                    ? "production-reward-overrides-unavailable"
-                    : diagnostic;
-                return false;
-            }
-
-            TerminalRewardOverrideSet proofSet;
-            string proofDiagnostic;
-            if (!proof.TryResolve(
-                    source,
-                    runContext,
-                    environment,
-                    placement,
-                    out proofSet,
-                    out proofDiagnostic)
-                || proofSet == null)
-            {
-                diagnostic = string.IsNullOrWhiteSpace(proofDiagnostic)
-                    ? "proof-reward-overrides-unavailable"
-                    : proofDiagnostic;
-                return false;
-            }
-
-            overrides = new TerminalRewardOverrideSet(
-                productionSet.GameModeOverride,
-                productionSet.MissionOverride,
-                productionSet.DifficultyOverride,
-                productionSet.EventOverrides,
-                proofSet.PlacementOverride ?? productionSet.PlacementOverride);
-            diagnostic = string.Empty;
-            return true;
-        }
-    }
-
-    internal sealed class DeterministicProofRewardOverrideResolver :
-        ITerminalRewardOverrideResolver
-    {
-        private readonly StableId runId;
-        private readonly StableId roomId;
-        private readonly StableId placementId;
-        private readonly RewardProfileOverride proofOverride;
-
-        public DeterministicProofRewardOverrideResolver(
-            StableId runId,
-            StableId roomId,
-            StableId placementId)
-        {
-            this.runId = runId ?? throw new ArgumentNullException(nameof(runId));
-            this.roomId = roomId ?? throw new ArgumentNullException(nameof(roomId));
-            this.placementId = placementId
-                ?? throw new ArgumentNullException(nameof(placementId));
-            LootSourceProfile profile = LootSourceProfile.Create(
-                StableId.Parse("drop-source.development-run-reward-proof"),
-                StrongboxTierSelectionCatalog.LowSourceProfileId,
-                new[]
-                {
-                    Guaranteed("cash", 0, RewardGrantKind.Money,
-                        StableId.Parse("currency.money"), RewardBoxPacingMode.None),
-                    Guaranteed("scrap", 1, RewardGrantKind.Scrap,
-                        StableId.Parse("currency.scrap"), RewardBoxPacingMode.None),
-                    Guaranteed("strongbox", 2, RewardGrantKind.Strongbox,
-                        StrongboxTierSelectionCatalog.LowSourceProfileId,
-                        RewardBoxPacingMode.GuaranteedBox),
-                });
-            proofOverride = RewardProfileOverride.Replace(
-                StableId.Parse("drop-override.development-run-reward-proof"),
-                profile);
-        }
-
-        public bool TryResolve(
-            LootDropSourceFact source,
-            LootDropRunGenerationContext runContext,
-            TerminalRewardEnvironment environment,
-            TerminalRewardPlacementContext placement,
-            out TerminalRewardOverrideSet overrides,
-            out string diagnostic)
-        {
-            overrides = TerminalRewardOverrideSet.Empty();
-            if (source == null || runContext == null
-                || environment == null || placement == null)
-            {
-                diagnostic = "proof-reward-context-missing";
-                return false;
-            }
-            if (source.RunStableId != runId
-                || runContext.RunStableId != runId
-                || placement.RoomStableId != roomId
-                || placement.PlacementStableId != placementId)
-            {
-                diagnostic = string.Empty;
-                return true;
-            }
-            if (source.DeclaredDropProfileStableId == null)
-            {
-                diagnostic = "proof-enemy-declared-drop-profile-missing";
-                return false;
-            }
-            overrides = new TerminalRewardOverrideSet(
-                null,
-                null,
-                null,
-                Array.Empty<RewardProfileOverride>(),
-                proofOverride);
-            diagnostic = string.Empty;
-            return true;
-        }
-
-        private static RewardRollGroup Guaranteed(
-            string slug,
-            int ordinal,
-            RewardGrantKind kind,
-            StableId content,
-            RewardBoxPacingMode pacing)
-        {
-            return RewardRollGroup.CreateGuaranteed(
-                StableId.Create("drop-group", "development-proof-" + slug),
-                ordinal,
-                pacing,
-                new[]
-                {
-                    RewardOutcome.CreateGrant(
-                        StableId.Create("drop-outcome", "development-proof-" + slug),
-                        RewardGrantSpecification.Create(
-                            StableId.Create("drop-grant", "development-proof-" + slug),
-                            kind,
-                            content,
-                            RewardQuantityRange.Create(1L, 1L),
-                            Array.Empty<RewardScalingInputDescriptor>()),
-                        1UL),
-                });
         }
     }
 
