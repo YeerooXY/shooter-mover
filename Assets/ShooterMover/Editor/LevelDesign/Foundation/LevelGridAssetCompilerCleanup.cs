@@ -247,7 +247,8 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
 
         private static void WriteAssetText(string assetPath, string content)
         {
-            EnsureAssetFolder(Path.GetDirectoryName(assetPath).Replace('\\', '/'));
+            string folder = Path.GetDirectoryName(assetPath).Replace('\\', '/');
+            Directory.CreateDirectory(ToAbsolutePath(folder));
             File.WriteAllText(
                 ToAbsolutePath(assetPath),
                 (content ?? string.Empty) + Environment.NewLine,
@@ -264,13 +265,31 @@ namespace ShooterMover.Editor.LevelDesign.Foundation
                 string next = current + "/" + segments[index];
                 if (!AssetDatabase.IsValidFolder(next))
                 {
-                    string guid = AssetDatabase.CreateFolder(current, segments[index]);
-                    if (string.IsNullOrEmpty(guid))
+                    // A just-created staging folder can exist on disk before AssetDatabase
+                    // recognizes it. Creating it again may replace that physical directory and
+                    // discard sidecars written earlier in the same publication transaction.
+                    string nextAbsolute = ToAbsolutePath(next);
+                    if (!Directory.Exists(nextAbsolute))
                     {
-                        throw new IOException("Could not create Unity asset folder: " + next);
+                        string guid = AssetDatabase.CreateFolder(current, segments[index]);
+                        if (string.IsNullOrEmpty(guid))
+                        {
+                            throw new IOException(
+                                "Could not create Unity asset folder: " + next);
+                        }
                     }
                 }
                 current = next;
+            }
+
+            // AssetDatabase.CreateFolder can report success before the physical directory is
+            // visible to immediate System.IO writes during a batch import. Publication writes
+            // version sidecars in the same transaction, so make that filesystem boundary
+            // explicit before WriteAssetText proceeds.
+            string absolute = ToAbsolutePath(assetFolder);
+            if (!Directory.Exists(absolute))
+            {
+                Directory.CreateDirectory(absolute);
             }
         }
 

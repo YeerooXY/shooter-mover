@@ -195,7 +195,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
             StableId instanceStableId,
             StableId roomStableId,
             StableId objectStableId,
-            int level,
+            int tier,
             RoomVector2 localPosition,
             double localRotationDegrees,
             string authoredId)
@@ -206,12 +206,12 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                 ?? throw new ArgumentNullException(nameof(roomStableId));
             ObjectStableId = objectStableId
                 ?? throw new ArgumentNullException(nameof(objectStableId));
-            if (level <= 0)
+            if (tier < 1 || tier > 4)
             {
-                throw new ArgumentOutOfRangeException(nameof(level));
+                throw new ArgumentOutOfRangeException(nameof(tier));
             }
 
-            Level = level;
+            Tier = tier;
             LocalPosition = localPosition
                 ?? throw new ArgumentNullException(nameof(localPosition));
             LocalRotationDegrees = localRotationDegrees;
@@ -226,7 +226,10 @@ namespace ShooterMover.Application.Missions.Rooms.Content
 
         public StableId ObjectStableId { get; }
 
-        public int Level { get; }
+        public int Tier { get; }
+
+        [Obsolete("Enemy placements use Tier. This alias remains during the room-runtime cutover.")]
+        public int Level { get { return Tier; } }
 
         public RoomVector2 LocalPosition { get; }
 
@@ -416,7 +419,7 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     .Append('|')
                     .Append(value.ObjectStableId)
                     .Append('|')
-                    .Append(value.Level.ToString(CultureInfo.InvariantCulture))
+                    .Append(value.Tier.ToString(CultureInfo.InvariantCulture))
                     .Append('|')
                     .Append(Number(value.LocalPosition.X))
                     .Append('|')

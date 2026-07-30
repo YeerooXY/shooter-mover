@@ -35,12 +35,13 @@ namespace ShooterMover.Application.Missions.Rooms.Content
                     RequireText(enemy.Object, path + ".object");
                     RequireFiniteVector(enemy.Position, path + ".position");
                     RequireFinite(enemy.Rotation, path + ".rotation");
-                    if (enemy.Level <= 0)
+                    int tier = enemy.Tier ?? enemy.LegacyLevel ?? 0;
+                    if (tier < 1 || tier > 4)
                     {
                         throw Error(
-                            "level-level-1-enemy-level-invalid",
-                            path + ".level",
-                            "Enemy level must be positive.");
+                            "level-enemy-tier-invalid",
+                            path + ".tier",
+                            "Enemy tier must be between 1 and 4.");
                     }
                 }
 

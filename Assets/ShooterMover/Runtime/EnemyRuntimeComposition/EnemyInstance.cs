@@ -164,7 +164,9 @@ namespace ShooterMover.EnemyRuntimeComposition
         public StableId RunParticipantStableId { get { return Identity.RunParticipantId; } }
         public StableId ItemInstanceStableId { get { return Request.ItemInstanceStableId; } }
         public StableId PresentationStableId { get { return Definition.PresentationId; } }
-        public int Level { get { return Request.Placement.Level; } }
+        public int Tier { get { return Request.Placement.Tier; } }
+        [Obsolete("Enemy runtime strength is represented by Tier.")]
+        public int Level { get { return Tier; } }
         public long LifecycleGeneration { get { return Request.LifecycleGeneration; } }
         public StableId LifecycleStableId
         {
