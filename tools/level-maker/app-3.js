@@ -148,22 +148,30 @@ function mapDoorWorldPosition(r,d){
  if(side==="East"||side==="West"){const n=clamp((d.position?.[1]||0)/(r.bounds.height/2||1),-.85,.85);return [c[0]+(side==="East"?hx:-hx),c[1]+n*hy*.8]}
  const n=clamp((d.position?.[0]||0)/(r.bounds.width/2||1),-.85,.85);return [c[0]+n*hx*.8,c[1]+(side==="North"?hy:-hy)]
 }
-function mapDoorTangent(d){return ({East:[1,0],West:[-1,0],North:[0,1],South:[0,-1]})[d.side]||[1,0]}
 function drawMapConnection(c,previewEnd=null){
- const from=findDoor(c.fromDoorId),to=findDoor(c.toDoorId);if(!from)return;const a=worldToScreen(mapDoorWorldPosition(from.room,from.door));
+ const from=findDoor(c.fromDoorId),to=findDoor(c.toDoorId);if(!from)return;
+ const a=worldToScreen(mapDoorWorldPosition(from.room,from.door));
  const b=previewEnd||(!to?null:worldToScreen(mapDoorWorldPosition(to.room,to.door)));if(!b)return;
- const ta=mapDoorTangent(from.door),tb=to?mapDoorTangent(to.door):[-ta[0],-ta[1]],curve=Math.max(35,Math.hypot(b[0]-a[0],b[1]-a[1])*.28);
- ctx.strokeStyle=previewEnd?"#fff2a8":"#68bdf3";ctx.lineWidth=previewEnd?3:2;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.bezierCurveTo(a[0]+ta[0]*curve,a[1]-ta[1]*curve,b[0]-tb[0]*curve,b[1]+tb[1]*curve,b[0],b[1]);ctx.stroke();
- if(!previewEnd){ctx.fillStyle="#68bdf3";ctx.beginPath();ctx.arc((a[0]+b[0])/2,(a[1]+b[1])/2,3,0,Math.PI*2);ctx.fill()}
+ ctx.strokeStyle=previewEnd?"#fff2a8":"#68bdf3";ctx.lineWidth=previewEnd?3:2;
+ ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
+}
+function drawMapRoomBody(r){
+ const c=worldToScreen(mapRoomCenter(r)),w=MAP_ROOM_HALF[0]*2*state.editor.zoom,h=MAP_ROOM_HALF[1]*2*state.editor.zoom;
+ ctx.fillStyle=r.id===state.activeRoomId?"#26384b":"#1b2430";ctx.strokeStyle=r.id===state.activeRoomId?"#79c9ff":"#6d7b91";ctx.lineWidth=r.id===state.activeRoomId?3:2;ctx.fillRect(c[0]-w/2,c[1]-h/2,w,h);ctx.strokeRect(c[0]-w/2,c[1]-h/2,w,h)
+}
+function drawMapRoomLabel(r){
+ const c=worldToScreen(mapRoomCenter(r));
+ ctx.fillStyle="#eef3fb";ctx.font="600 12px system-ui";ctx.textAlign="center";ctx.fillText(r.displayName,c[0],c[1]-4);ctx.fillStyle="#9eabc0";ctx.font="10px system-ui";ctx.fillText(`${r.bounds.width}×${r.bounds.height} · ${r.doors.length} doors`,c[0],c[1]+13)
+}
+function drawMapDoorSocket(r,d){
+ const p=worldToScreen(mapDoorWorldPosition(r,d));ctx.fillStyle=d.id===state.editor.selectedId?"#fff":"#ffd166";ctx.strokeStyle="#604d20";ctx.lineWidth=2;ctx.beginPath();ctx.arc(p[0],p[1],7,0,Math.PI*2);ctx.fill();ctx.stroke()
 }
 function drawLevelMap(){
+ state.rooms.forEach(drawMapRoomBody);
  state.connections.forEach(c=>drawMapConnection(c));
- for(const r of state.rooms){const c=worldToScreen(mapRoomCenter(r)),w=MAP_ROOM_HALF[0]*2*state.editor.zoom,h=MAP_ROOM_HALF[1]*2*state.editor.zoom;
-  ctx.fillStyle=r.id===state.activeRoomId?"#26384b":"#1b2430";ctx.strokeStyle=r.id===state.activeRoomId?"#79c9ff":"#6d7b91";ctx.lineWidth=r.id===state.activeRoomId?3:2;ctx.fillRect(c[0]-w/2,c[1]-h/2,w,h);ctx.strokeRect(c[0]-w/2,c[1]-h/2,w,h);
-  ctx.fillStyle="#eef3fb";ctx.font="600 12px system-ui";ctx.textAlign="center";ctx.fillText(r.displayName,c[0],c[1]-4);ctx.fillStyle="#9eabc0";ctx.font="10px system-ui";ctx.fillText(`${r.bounds.width}×${r.bounds.height} · ${r.doors.length} doors`,c[0],c[1]+13);
-  for(const d of r.doors){const p=worldToScreen(mapDoorWorldPosition(r,d));ctx.fillStyle=d.id===state.editor.selectedId?"#fff":"#ffd166";ctx.strokeStyle="#604d20";ctx.lineWidth=2;ctx.beginPath();ctx.arc(p[0],p[1],7,0,Math.PI*2);ctx.fill();ctx.stroke()}
- }
- if(pointer.mode==="connect-door"&&pointer.sourceDoorId)drawMapConnection({fromDoorId:pointer.sourceDoorId},pointer.last)
+ if(pointer.mode==="connect-door"&&pointer.sourceDoorId)drawMapConnection({fromDoorId:pointer.sourceDoorId},pointer.last);
+ state.rooms.forEach(drawMapRoomLabel);
+ for(const r of state.rooms)r.doors.forEach(d=>drawMapDoorSocket(r,d))
 }
 function mapHitTest(screen){
  for(const r of [...state.rooms].reverse())for(const d of [...r.doors].reverse()){const p=worldToScreen(mapDoorWorldPosition(r,d));if(Math.hypot(screen[0]-p[0],screen[1]-p[1])<=12)return {type:"door",room:r,door:d}}
