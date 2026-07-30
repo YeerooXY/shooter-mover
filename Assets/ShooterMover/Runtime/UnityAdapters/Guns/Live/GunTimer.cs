@@ -58,7 +58,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
             {
                 NextShot = now;
             }
-            if (!held || now + Epsilon < NextShot)
+            if ((!held && !pressed) || now + Epsilon < NextShot)
             {
                 return 0;
             }
