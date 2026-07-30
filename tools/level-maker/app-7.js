@@ -11,8 +11,8 @@ async function connectHelper(){
   const status=await helper("/api/status");helperToken=status.mutationToken;
   const catalogue=await helper("/api/level-assets");
   if(catalogue.assets?.length)state.catalog=catalogue.assets;
-  normalize();renderAll();setStatus(`Connected to ${status.branch}; ${catalogue.assets.length} project assets available.`,"good");
- }catch(error){setStatus(`Local helper unavailable: ${error.message}`,"bad")}
+  normalize();renderAll();setStatus(`Connected to ${status.branch}; ${catalogue.assets.length} project assets available.${recoveryNotice()}`,"good");
+ }catch(error){setStatus(`Local helper unavailable: ${error.message}.${recoveryNotice()}`,"bad")}
 }
 async function publishProject(){
  const errors=validate().filter(x=>x.severity==="error");
@@ -70,10 +70,10 @@ $("#addRoom").onclick=addRoom;$("#duplicateRoom").onclick=duplicateRoom;
 $("#addConnection").onclick=()=>mutate(()=>state.connections.push({id:uid("connection"),fromDoorId:"",toDoorId:"",travelPolicy:"Bidirectional"}));
 $("#addLogic").onclick=()=>mutate(()=>state.logic.push({id:uid("logic"),name:"New rule",when:"switch-activated",targetId:"",action:"open-door"}));
 $$(".tabs button").forEach(b=>b.onclick=()=>{$$(".tabs button").forEach(x=>x.classList.toggle("active",x===b));$$(".tab-page").forEach(x=>x.classList.toggle("active",x.id===`tab-${b.dataset.tab}`))});
-$$("[data-tool]").forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
-$$("[data-view]").forEach(b=>b.onclick=()=>{setViewMode(b.dataset.view,{focus:b.dataset.view==="room"});if(b.dataset.view==="map")fitMap();else fitRoom();renderAll()});
-$$("[data-map-mode]").forEach(b=>b.onclick=()=>setMapMode(b.dataset.mapMode));
-$$("[data-placement-mode]").forEach(b=>b.onclick=()=>setPlacementMode(b.dataset.placementMode));
+$$('[data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+$$('[data-view]').forEach(b=>b.onclick=()=>{setViewMode(b.dataset.view,{focus:b.dataset.view==="room"});if(b.dataset.view==="map")fitMap();else fitRoom();renderAll()});
+$$('[data-map-mode]').forEach(b=>b.onclick=()=>setMapMode(b.dataset.mapMode));
+$$('[data-placement-mode]').forEach(b=>b.onclick=()=>setPlacementMode(b.dataset.placementMode));
 $("#backToGraph").onclick=()=>{setViewMode("map",{focus:false});fitMap();renderAll()};
 $("#toggleAssetsDrawer").onclick=()=>toggleDrawer("left");
 $("#toggleInspectorDrawer").onclick=()=>toggleDrawer("right");
@@ -98,6 +98,12 @@ document.addEventListener("keydown",e=>{
  if(keys[key])setTool(keys[key]);
  if(["q","e"].includes(key)&&state.editor.selectedId){mutate(()=>{const s=selected(),o=s?.entity||s?.door;if(o)o.rotation=round((o.rotation||0)+(key==="e"?15:-15))})}
 });
+document.addEventListener("pointerup",scheduleRecoverySave);
+document.addEventListener("change",scheduleRecoverySave);
+document.addEventListener("keyup",scheduleRecoverySave);
+canvas.addEventListener("wheel",scheduleRecoverySave,{passive:true});
+window.addEventListener("pagehide",writeRecoveryDraft);
+window.addEventListener("beforeunload",writeRecoveryDraft);
 window.addEventListener("resize",resizeCanvas);
 window.addEventListener("orientationchange",()=>setTimeout(resizeCanvas,80));
 if(window.ResizeObserver)new ResizeObserver(()=>resizeCanvas()).observe($("#stage-wrap"));
