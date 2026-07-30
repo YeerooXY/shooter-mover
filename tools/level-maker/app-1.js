@@ -62,10 +62,10 @@ function recoveryNotice(){
 function newRoom(index=0){
  const rid=`room.level-1-${index===0?"start":"room-"+(index+1)}`;
  return {
-  id:rid, displayName:index===0?"START ROOM":`ROOM ${index+1}`, grid:[index,0], slot:1,
-  bounds:{width:24,height:14}, playerStart:index===0?{position:[-9,0],rotation:0}:null,
-  floorObject:"tile.floor-industrial", tileGridEnabled:false, tiles:[], entities:[], doors:[],
-  encounter:{completion:"all-enemies"}, visibleOnMap:true
+   id:rid, displayName:index===0?"START ROOM":`ROOM ${index+1}`, grid:[index,0], slot:1,
+   bounds:{width:24,height:14}, playerStart:index===0?{position:[-9,0],rotation:0}:null,
+   floorObject:"tile.floor-industrial", tileGridEnabled:false, tiles:[], entities:[], doors:[],
+   encounter:{completion:"all-enemies"}, visibleOnMap:true
  };
 }
 function initialState(){
@@ -104,15 +104,15 @@ function normalize(){
  if(!state.rooms?.length){state.rooms=[newRoom(0)]}
  if(!state.rooms.some(r=>r.id===state.activeRoomId))state.activeRoomId=state.rooms[0].id;
  state.rooms.forEach((r,i)=>{
-  r.bounds ||= {width:24,height:14};
-  r.bounds.width=Math.max(2,Math.round(Number(r.bounds.width)||24));
-  r.bounds.height=Math.max(2,Math.round(Number(r.bounds.height)||14));
-  r.entities ||= []; r.doors ||= []; r.encounter ||= {completion:"all-enemies"};
-  r.doors.forEach(d=>{const placement=doorEdgePlacement(r,d.position||[0,0]);d.position=placement.position;d.side=placement.side;d.rotation=placement.rotation});
-  r.grid ||= [i,0]; r.slot ||= 1; r.floorObject ||= "tile.floor-industrial"; r.tiles ||= [];
-  if(typeof r.tileGridEnabled!=="boolean")r.tileGridEnabled=r.tiles.length>0;
-  const cols=Math.max(1,Math.round(r.bounds.width)),rows=Math.max(1,Math.round(r.bounds.height));
-  r.tiles=r.tiles.filter(t=>Number.isInteger(t.x)&&Number.isInteger(t.y)&&t.x>=0&&t.y>=0&&t.x<cols&&t.y<rows&&t.object);
+   r.bounds ||= {width:24,height:14};
+   r.bounds.width=Math.max(2,Math.round(Number(r.bounds.width)||24));
+   r.bounds.height=Math.max(2,Math.round(Number(r.bounds.height)||14));
+   r.entities ||= []; r.doors ||= []; r.encounter ||= {completion:"all-enemies"};
+   r.doors.forEach(d=>{const placement=doorEdgePlacement(r,d.position||[0,0]);d.position=placement.position;d.side=placement.side;d.rotation=placement.rotation});
+   r.grid ||= [i,0]; r.slot ||= 1; r.floorObject ||= "tile.floor-industrial"; r.tiles ||= [];
+   if(typeof r.tileGridEnabled!=="boolean")r.tileGridEnabled=r.tiles.length>0;
+   const cols=Math.max(1,Math.round(r.bounds.width)),rows=Math.max(1,Math.round(r.bounds.height));
+   r.tiles=r.tiles.filter(t=>Number.isInteger(t.x)&&Number.isInteger(t.y)&&t.x>=0&&t.y>=0&&t.x<cols&&t.y<rows&&t.object);
  });
  state.connections ||= [];state.logic ||= [];
  state.editor ||= initialState().editor;
@@ -148,7 +148,7 @@ function toggleDrawer(side){
 }
 function setMapMode(mode){
  state.editor.mapMode=mode;
- $$('[data-map-mode]').forEach(b=>b.classList.toggle("active",b.dataset.mapMode===mode));
+ $$("[data-map-mode]").forEach(b=>b.classList.toggle("active",b.dataset.mapMode===mode));
  const help={open:"Click a room to edit it",arrange:"Drag rooms on the graph grid",connect:"Drag one door socket onto another"}[mode];
  $("#map-mode-help").textContent=help;
  canvas.style.cursor=mode==="arrange"?"move":mode==="connect"?"crosshair":"pointer";
@@ -156,7 +156,7 @@ function setMapMode(mode){
 }
 function setPlacementMode(mode){
  state.editor.placementMode=mode;
- $$('[data-placement-mode]').forEach(b=>b.classList.toggle("active",b.dataset.placementMode===mode));
+ $$("[data-placement-mode]").forEach(b=>b.classList.toggle("active",b.dataset.placementMode===mode));
  renderFooter();scheduleRecoverySave();
 }
 function renderHeaderFields(){
@@ -192,11 +192,11 @@ function renderAssets(){
    <div class="asset-icon">${iconFor(a.type)}</div><div><div class="asset-name">${esc(a.label||a.id)}</div><div class="asset-path">${esc(a.id)}${a.path?" · "+esc(a.path):""}</div></div><span class="badge">${esc(a.type)}</span>
  </div>`).join("")||`<div class="notice">No matching project assets. Add an ID manually if its content package is still being prepared.</div>`;
  $$(".asset").forEach(el=>el.onclick=()=>{
-  state.editor.selectedAssetId=el.dataset.asset;
-  const a=state.catalog.find(x=>x.id===el.dataset.asset);
-  if(a?.type==="enemy")setTool("enemy");else if(a?.type==="door")setTool("door");else if(a?.type==="floor")setTool("tile");else setTool("prop");
-  if(document.body.classList.contains("room-focus"))closeDrawers();
-  renderAssets();renderCanvas();scheduleRecoverySave();
+   state.editor.selectedAssetId=el.dataset.asset;
+   const a=state.catalog.find(x=>x.id===el.dataset.asset);
+   if(a?.type==="enemy")setTool("enemy");else if(a?.type==="door")setTool("door");else if(a?.type==="floor")setTool("tile");else setTool("prop");
+   if(document.body.classList.contains("room-focus"))closeDrawers();
+   renderAssets();renderCanvas();scheduleRecoverySave();
  });
 }
 function renderRooms(){
