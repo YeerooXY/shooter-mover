@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shooter Mover — Web Level Designer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+<header>
+  <div class="brand">Shooter Mover <small>Web Level Designer · compiler-ready schema v2</small></div>
+  <button id="newBtn">New</button>
+  <button id="openBtn">Open</button>
+  <button id="saveBtn">Save project</button>
+  <button id="scanBtn">Scan Unity project</button>
+  <button id="undoBtn" title="Ctrl+Z">Undo</button>
+  <button id="redoBtn" title="Ctrl+Y">Redo</button>
+  <div class="spacer"></div>
+  <button id="validateBtn">Validate</button>
+  <button class="good" id="exportBtn">Export playable ZIP</button>
+</header>
+
+<div class="workspace">
+<aside id="left">
+  <div class="tabs">
+    <button data-tab="assets" class="active">Assets</button>
+    <button data-tab="rooms">Rooms</button>
+    <button data-tab="logic">Logic</button>
+  </div>
+
+  <div id="tab-assets" class="tab-page active">
+    <div class="panel">
+      <div class="search">
+        <input id="assetSearch" placeholder="Search catalogue…">
+        <div class="row" style="margin-top:6px">
+          <select id="assetFilter" class="grow">
+            <option value="all">All types</option>
+            <option value="enemy">Enemies</option>
+            <option value="prop">Props / walls</option>
+            <option value="floor">Floors</option>
+            <option value="door">Doors</option>
+            <option value="decor">Decor</option>
+          </select>
+          <button id="addCustomAsset" title="Add asset ID manually">＋</button>
+        </div>
+      </div>
+      <div id="assetList" class="asset-list"></div>
+    </div>
+  </div>
+
+  <div id="tab-rooms" class="tab-page">
+    <div class="panel">
+      <div class="row"><button class="primary grow" id="addRoom">Add room</button><button id="duplicateRoom">Duplicate</button></div>
+      <div class="help" style="margin:7px 0">Each room exports to its own compiler-ready folder. The canvas edits the active room.</div>
+      <div id="roomList"></div>
+    </div>
+  </div>
+
+  <div id="tab-logic" class="tab-page">
+    <div class="panel">
+      <h2>Door connections</h2>
+      <div class="help">Connect doors between rooms. These become <code>map.json</code> connections.</div>
+      <button id="addConnection" style="margin:8px 0">Add connection</button>
+      <div id="connectionList"></div>
+    </div>
+    <div class="panel">
+      <h2>Custom logic</h2>
+      <div class="help">Switches, triggers and future teleporters are preserved in the editor project. Door completion rules export to the current runtime schema.</div>
+      <button id="addLogic">Add logic rule</button>
+      <div id="logicList" style="margin-top:8px"></div>
+    </div>
+  </div>
+</aside>
+
+<main id="stage-wrap">
+  <canvas id="stage"></canvas>
+  <div id="tools" class="floating">
+    <button data-tool="select" class="active" title="Select / move (V)">↖</button>
+    <button data-tool="pan" title="Pan (H)">✋</button>
+    <button data-tool="enemy" title="Place selected enemy (E)">👾</button>
+    <button data-tool="prop" title="Place selected prop (P)">▣</button>
+    <button data-tool="tile" title="Paint selected floor tile (F)">▦</button>
+    <button data-tool="tile-erase" title="Erase floor tile (X)">⌫</button>
+    <button data-tool="wall" title="Draw wall (W)">▬</button>
+    <button data-tool="door" title="Place door (D)">▥</button>
+    <button data-tool="player" title="Set player start">●</button>
+    <button data-tool="teleporter" title="Teleporter placeholder (T)">◎</button>
+  </div>
+  <div id="mode-switch" class="floating">
+    <button data-view="room" class="active">Edit current room</button>
+    <button data-view="map">Level graph</button>
+  </div>
+  <div id="map-tools" class="floating">
+    <button data-map-mode="open" class="active" title="Click a room to open its fullscreen editor">Open room</button>
+    <button data-map-mode="arrange" title="Drag rooms around the graph grid">Arrange</button>
+    <button data-map-mode="connect" title="Drag one door socket onto another">Connect doors</button>
+    <span id="map-mode-help" class="map-mode-help">Click a room to edit it</span>
+  </div>
+  <div id="room-focus-tools" class="floating">
+    <button id="backToGraph" class="primary">← Level graph</button>
+    <button id="toggleAssetsDrawer">Assets</button>
+    <button id="toggleInspectorDrawer">Inspector</button>
+    <span class="divider"></span>
+    <button data-placement-mode="single" class="active" title="Place one item per click">Single</button>
+    <button data-placement-mode="paint" title="Hold and drag to stamp on every grid cell">Paint</button>
+    <span class="divider"></span>
+    <label class="grid-label" for="snapSelect" style="margin:0">Grid</label>
+    <select id="snapSelect" title="Placement snap">
+      <option value="0.25">0.25</option>
+      <option value="0.5">0.5</option>
+      <option value="1" selected>1</option>
+      <option value="2">2</option>
+    </select>
+    <span id="selected-asset-chip">No asset selected</span>
+  </div>
+  <div id="view-hud" class="floating">100% · snap 1</div>
+  <div id="room-hud" class="floating"></div>
+  <div id="selection-hud" class="floating">Nothing selected</div>
+</main>
+
+<aside id="right">
+  <div class="panel">
+    <h2>Level</h2>
+    <div class="grid2">
+      <div><label>Level ID</label><input id="levelId"></div>
+      <div><label>Target folder</label><input id="targetFolder"></div>
+    </div>
+    <label>Display name</label><input id="levelName">
+    <div class="grid2">
+      <div><label>Start room</label><select id="startRoom"></select></div>
+      <div><label>Final room</label><select id="finalRoom"></select></div>
+    </div>
+    <label>Final exit door</label><select id="finalDoor"></select>
+    <div class="row" style="margin-top:8px">
+      <label style="margin:0"><input type="checkbox" id="includeBridge" checked> Include Unity auto-compiler bridge</label>
+    </div>
+  </div>
+  <div id="inspector"></div>
+</aside>
+</div>
+
+<footer>
+  <span id="status">Ready.</span>
+  <span id="counts"></span>
+  <span class="spacer"></span>
+  <span><kbd>1</kbd> single · <kbd>2</kbd> paint · <kbd>F</kbd> tile · <kbd>X</kbd> erase · <kbd>G</kbd> graph · <kbd>Del</kbd> delete · <kbd>Q/E</kbd> rotate</span>
+</footer>
+</div>
+
+<input id="openInput" type="file" accept=".json,.smlvl" hidden>
+<input id="folderInput" type="file" webkitdirectory multiple hidden>
+
+<dialog id="validationDialog">
+  <h2>Validation</h2>
+  <div id="validationSummary"></div>
+  <div id="validationList" class="validation-list"></div>
+  <form method="dialog" style="text-align:right;margin-top:10px"><button>Close</button></form>
+</dialog>
+
+<dialog id="customAssetDialog">
+  <h2>Add catalogue asset</h2>
+  <div class="grid2">
+    <div><label>Type</label><select id="customAssetType"><option>enemy</option><option>prop</option><option>floor</option><option>door</option><option>decor</option></select></div>
+    <div><label>Stable object ID</label><input id="customAssetId" placeholder="prop.wall-standard"></div>
+  </div>
+  <label>Label</label><input id="customAssetLabel" placeholder="Standard wall">
+  <div class="row" style="justify-content:flex-end;margin-top:12px"><button id="cancelCustomAsset">Cancel</button><button class="primary" id="confirmCustomAsset">Add</button></div>
+</dialog>
+
+<script src="app-1.js"></script>
+<script src="app-2.js"></script>
+<script src="app-3.js"></script>
+<script src="app-4.js"></script>
+<script src="app-5.js"></script>
+<script src="app-6.js"></script>
+<script src="app-7.js"></script>
+</body>
+</html>
