@@ -31,6 +31,16 @@ namespace ShooterMover.Content.Definitions.Missions.Rooms
                         "prop.level1-cover",
                         "presentation.prop-level1-cover"),
                     Definition(
+                        "prop.wall-1x1",
+                        RoomContentObjectKind.Prop,
+                        "prop.wall-1x1",
+                        "presentation.prop-wall-1x1"),
+                    Definition(
+                        "prop.wall-2x2",
+                        RoomContentObjectKind.Prop,
+                        "prop.wall-2x2",
+                        "presentation.prop-wall-2x2"),
+                    Definition(
                         "door.room-standard",
                         RoomContentObjectKind.Door,
                         "environment.room-door",

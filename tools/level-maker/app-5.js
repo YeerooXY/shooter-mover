@@ -1,5 +1,5 @@
 function placeAt(tool,pos){
- const r=currentRoom(),p=tool==="prop"?snapToRoomCellCenter(r,pos):snapPoint(pos),a=assetForTool(tool);
+ const r=currentRoom(),p=(tool==="prop"||tool==="wall")?snapToRoomCellCenter(r,pos):snapPoint(pos),a=assetForTool(tool);
  if(tool==="player"){r.playerStart={position:p,rotation:0};state.editor.selectedId=null;return}
  if(tool==="door"){
   const placement=doorEdgePlacement(r,p);
@@ -45,20 +45,19 @@ canvas.addEventListener("pointerdown",e=>{
  if(state.editor.tool==="select"){
    const hit=hitTest(pointer.last);state.editor.selectedId=hit?.id||null;pointer.mode=hit?"drag":"select";if(hit)pointer.dragOffset=[wp[0]-hit.position[0],wp[1]-hit.position[1]];renderAll();return;
  }
- if(state.editor.tool==="wall"){pointer.mode="wall";pointer.wallStart=wp;return}
  if(state.editor.tool==="tile"||state.editor.tool==="tile-erase"||e.button===2){
    const cell=tileCellFromWorld(currentRoom(),rawWorld),erase=state.editor.tool==="tile-erase"||e.button===2;
    setRoomTile(currentRoom(),cell,erase?null:selectedFloorObject());pointer.lastTileKey=cell?.key||null;
    pointer.mode="tile-paint";renderCanvas();renderHeaderFields();renderFooter();return
  }
- const paintable=["enemy","prop"].includes(state.editor.tool);
+ const paintable=["enemy","prop","wall"].includes(state.editor.tool);
  if(paintable&&state.editor.placementMode==="paint"){
    pointer.mode="entity-paint";placeAt(state.editor.tool,rawWorld);pointer.lastPlacementKey=placementKey(rawWorld);renderAll();return
  }
  placeAt(state.editor.tool,wp);pointer.mode="placed";renderAll();
 });
 canvas.addEventListener("pointermove",e=>{
- pointer.last=eventPoint(e);if(!pointer.down){if(pointer.wallStart)renderCanvas();return}
+ pointer.last=eventPoint(e);if(!pointer.down)return;
  if(Math.abs(e.movementX)+Math.abs(e.movementY)>2)pointer.moved=true;
  const dx=e.movementX,dy=e.movementY;
  if(pointer.mode==="pan"){state.editor.pan[0]+=dx;state.editor.pan[1]+=dy;saveCurrentView();renderCanvas();renderFooter();return}
@@ -95,12 +94,8 @@ canvas.addEventListener("pointerup",e=>{
    if(!duplicate)state.connections.push({id:uid("connection"),fromDoorId:pointer.sourceDoorId,toDoorId:hit.door.id,travelPolicy:"Bidirectional"});else setStatus("Those doors are already connected.","warn")
   }
  }
- if(pointer.mode==="wall"&&pointer.wallStart){
-   const a=pointer.wallStart,b=snapPoint(screenToWorld(pointer.last)),dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(dx,dy);
-   if(len>.1){const asset=assetForTool("wall"),wall={id:uid("wall"),kind:"wall",object:asset?.id||"",position:[(a[0]+b[0])/2,(a[1]+b[1])/2],rotation:round(Math.atan2(dy,dx)*180/Math.PI),length:round(len),thickness:.5,height:1};currentRoom().entities.push(wall);state.editor.selectedId=wall.id}
- }
- if(["drag","wall","pan","tile-paint","entity-paint","drag-map-room","connect-door","placed"].includes(pointer.mode)&&gestureSnapshot&&gestureSnapshot!==snapshot())pushHistory(gestureSnapshot);
- pointer.down=false;pointer.mode=null;pointer.wallStart=null;pointer.sourceDoorId=null;pointer.lastTileKey=null;pointer.lastPlacementKey=null;pointer.moved=false;gestureSnapshot=null;saveCurrentView();canvas.style.cursor=state.editor.viewMode==="map"?"default":state.editor.tool==="pan"?"grab":state.editor.tool==="select"?"default":"crosshair";renderAll();
+ if(["drag","pan","tile-paint","entity-paint","drag-map-room","connect-door","placed"].includes(pointer.mode)&&gestureSnapshot&&gestureSnapshot!==snapshot())pushHistory(gestureSnapshot);
+ pointer.down=false;pointer.mode=null;pointer.sourceDoorId=null;pointer.lastTileKey=null;pointer.lastPlacementKey=null;pointer.moved=false;gestureSnapshot=null;saveCurrentView();canvas.style.cursor=state.editor.viewMode==="map"?"default":state.editor.tool==="pan"?"grab":state.editor.tool==="select"?"default":"crosshair";renderAll();
 });
 canvas.addEventListener("wheel",e=>{
  e.preventDefault();const before=screenToWorld(eventPoint(e)),factor=e.deltaY<0?1.12:.89;state.editor.zoom=clamp(state.editor.zoom*factor,6,120);const after=worldToScreen(before),pt=eventPoint(e);state.editor.pan[0]+=pt[0]-after[0];state.editor.pan[1]+=pt[1]-after[1];saveCurrentView();renderCanvas();renderFooter()
@@ -121,6 +116,7 @@ function validate(){
   [...r.entities,...r.doors].forEach(o=>{if(instanceIds.has(o.id))err(`Duplicate instance ID ${o.id} in ${r.id}.`);instanceIds.add(o.id)});
   r.entities.forEach(e=>{
    if(["enemy","prop","wall"].includes(e.kind)&&!e.object)err(`${e.id} has no runtime object ID.`);
+   if(e.kind==="wall")err(`${e.id} is a legacy freeform wall. Replace it with a 1x1 or 2x2 indestructible wall prop.`);
    if(e.object&&!catalogIds.has(e.object))warn(`${e.id} uses ${e.object}, which was not found in the project catalogue.`);
    if(e.kind==="enemy"&&(!Number.isInteger(Number(e.tier))||e.tier<1||e.tier>4))err(`${e.id} enemy tier must be 1–4.`);
    if(e.kind==="teleporter")warn(`${e.id} is preserved but not emitted into the current runtime package.`);
