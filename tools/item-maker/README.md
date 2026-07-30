@@ -4,6 +4,8 @@ Open `index.html` directly in a modern browser. No server, package manager, or b
 
 The page creates gun and gear packages with exactly MK1, MK2, and MK3. It can import its own JSON packages for later editing and exports one `<item-id>.item.json` file.
 
+The layout supports desktop, tablet, and mobile screens. On phones it switches to one column, uses touch-sized controls, keeps the MK tabs accessible, and places previews, calculations, checks, and JSON below the editor.
+
 Current boundary:
 
 - edits and validates item values;
