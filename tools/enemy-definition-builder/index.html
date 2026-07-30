@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Enemy Definition Builder</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <main class="page">
+    <header class="header">
+      <div>
+        <h1>Enemy Definition Builder</h1>
+        <p>
+          Define enemy identity, level-specific stats, shooting behaviour, loot
+          settings, and implementation notes. Export logic is isolated so the
+          final serialization format can be replaced later.
+        </p>
+      </div>
+
+      <div class="toolbar">
+        <button class="btn" id="previewButton" type="button">Preview Data</button>
+        <button class="btn" id="copyButton" type="button">Copy Export</button>
+        <button class="btn primary" id="downloadButton" type="button">Export File</button>
+        <button class="btn danger" id="resetButton" type="button">Reset</button>
+      </div>
+    </header>
+
+    <form id="enemyForm">
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Enemy information</h2>
+        </div>
+
+        <div class="grid">
+          <div class="field">
+            <label for="enemyId">Enemy ID</label>
+            <input id="enemyId" name="enemyId" placeholder="enemy_grunt_01" />
+          </div>
+
+          <div class="field">
+            <label for="displayName">Display name</label>
+            <input id="displayName" name="displayName" placeholder="Rattler Grunt" />
+          </div>
+
+          <div class="field">
+            <label for="enemyType">Enemy type</label>
+            <select id="enemyType" name="enemyType">
+              <option value="grunt">Grunt</option>
+              <option value="elite">Elite</option>
+              <option value="sniper">Sniper</option>
+              <option value="heavy">Heavy</option>
+              <option value="support">Support</option>
+              <option value="boss">Boss</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+
+          <div class="field half">
+            <label for="prefabReference">
+              Asset / prefab reference
+              <span class="hint">(plain text for now)</span>
+            </label>
+            <input
+              id="prefabReference"
+              name="prefabReference"
+              placeholder="assets/enemies/rattler-grunt"
+            />
+          </div>
+
+          <div class="field half">
+            <label for="tags">Tags <span class="hint">(comma separated)</span></label>
+            <input id="tags" name="tags" placeholder="ranged, robot, light" />
+          </div>
+
+          <div class="field full">
+            <label for="description">Description</label>
+            <textarea
+              id="description"
+              name="description"
+              placeholder="Short gameplay or visual description..."
+            ></textarea>
+          </div>
+
+          <div class="field full">
+            <label for="globalNotes">Implementation notes / comments</label>
+            <textarea
+              id="globalNotes"
+              name="globalNotes"
+              placeholder="Behaviour ideas, missing animations, edge cases, TODO items..."
+            ></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h2>Enemy levels</h2>
+            <div class="hint">Add one or more configurable stat profiles.</div>
+          </div>
+          <button class="btn primary" id="addLevelButton" type="button">+ Add Level</button>
+        </div>
+
+        <div id="levelsContainer"></div>
+        <div id="emptyLevels" class="empty">No levels added yet.</div>
+      </section>
+
+      <div class="status" id="statusMessage" role="status"></div>
+    </form>
+  </main>
+
+  <dialog id="previewDialog">
+    <div class="dialog-header">
+      <strong>Export preview</strong>
+      <button class="btn small" id="closePreviewButton" type="button">Close</button>
+    </div>
+    <pre id="previewOutput"></pre>
+    <div class="dialog-footer">
+      <button class="btn" id="copyPreviewButton" type="button">Copy</button>
+      <button class="btn primary" id="downloadPreviewButton" type="button">
+        Export File
+      </button>
+    </div>
+  </dialog>
+
+  <template id="levelTemplate">
+    <article class="level-card">
+      <div class="panel-header">
+        <div class="level-title">
+          <strong class="level-heading">Level 1</strong>
+          <span class="hint level-summary"></span>
+        </div>
+
+        <div class="level-actions">
+          <button class="btn small collapse-level" type="button">Collapse</button>
+          <button class="btn small duplicate-level" type="button">Duplicate</button>
+          <button class="btn small danger remove-level" type="button">Remove</button>
+        </div>
+      </div>
+
+      <div class="level-body">
+        <div class="grid">
+          <div class="field quarter">
+            <label>Level number</label>
+            <input class="level-number" type="number" min="1" step="1" value="1" />
+          </div>
+
+          <div class="field quarter">
+            <label>Maximum HP</label>
+            <input class="max-hp" type="number" min="0" step="1" value="100" />
+          </div>
+
+          <div class="field quarter">
+            <label>Contact damage</label>
+            <input class="contact-damage" type="number" min="0" step="0.1" value="10" />
+          </div>
+
+          <div class="field quarter">
+            <label>Movement speed</label>
+            <input class="movement-speed" type="number" min="0" step="0.1" value="3" />
+          </div>
+
+          <div class="field quarter">
+            <label>Detection range</label>
+            <input class="detection-range" type="number" min="0" step="0.1" value="15" />
+          </div>
+
+          <div class="field quarter">
+            <label>Attack range</label>
+            <input class="attack-range" type="number" min="0" step="0.1" value="10" />
+          </div>
+
+          <div class="field quarter">
+            <label>Drop chance (%)</label>
+            <input class="drop-chance" type="number" min="0" max="100" step="0.1" value="10" />
+          </div>
+
+          <div class="field quarter">
+            <label>Loot table reference</label>
+            <input class="loot-table" placeholder="loot/common_enemy" />
+          </div>
+
+          <div class="subsection">
+            <h4>Shooting behaviour</h4>
+            <div class="grid">
+              <div class="field third">
+                <label>Shooting type</label>
+                <select class="shooting-type">
+                  <option value="none">None</option>
+                  <option value="single">Single shot</option>
+                  <option value="automatic" selected>Automatic</option>
+                  <option value="burst">Burst</option>
+                  <option value="spread">Spread</option>
+                  <option value="pattern">Projectile pattern</option>
+                </select>
+              </div>
+
+              <div class="field third">
+                <label>Projectile reference</label>
+                <input class="projectile-reference" placeholder="projectiles/enemy_round" />
+              </div>
+
+              <div class="field third">
+                <label>Projectile damage</label>
+                <input class="projectile-damage" type="number" min="0" step="0.1" value="10" />
+              </div>
+
+              <div class="field quarter">
+                <label>Rate of fire <span class="hint">(shots/sec)</span></label>
+                <input class="rate-of-fire" type="number" min="0" step="0.01" value="2" />
+              </div>
+
+              <div class="field quarter">
+                <label>Projectile speed</label>
+                <input class="projectile-speed" type="number" min="0" step="0.1" value="20" />
+              </div>
+
+              <div class="field quarter">
+                <label>Projectile count</label>
+                <input class="projectile-count" type="number" min="1" step="1" value="1" />
+              </div>
+
+              <div class="field quarter">
+                <label>Burst size</label>
+                <input class="burst-size" type="number" min="1" step="1" value="3" />
+              </div>
+
+              <div class="field quarter">
+                <label>Time between bursts</label>
+                <input class="burst-delay" type="number" min="0" step="0.01" value="1.5" />
+              </div>
+
+              <div class="field quarter">
+                <label>Horizontal spread (°)</label>
+                <input class="horizontal-spread" type="number" min="0" step="0.1" value="2" />
+              </div>
+
+              <div class="field quarter">
+                <label>Vertical spread (°)</label>
+                <input class="vertical-spread" type="number" min="0" step="0.1" value="0" />
+              </div>
+
+              <div class="field quarter">
+                <label>Spread distribution</label>
+                <select class="spread-distribution">
+                  <option value="random">Random</option>
+                  <option value="fixed">Fixed</option>
+                  <option value="even">Even</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="field full">
+            <label>Level-specific implementation notes</label>
+            <textarea
+              class="level-notes"
+              placeholder="Special behaviour, unfinished logic, animation notes, balancing comments..."
+            ></textarea>
+          </div>
+        </div>
+      </div>
+    </article>
+  </template>
+  <script src="app.js"></script>
+</body>
+</html>
