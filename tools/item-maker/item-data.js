@@ -1,9 +1,34 @@
 "use strict";
 
-const rarityOptions = ["common", "uncommon", "rare", "epic", "legendary", "artifact"];
-const damageTypes = ["physical", "energy", "fire", "cold", "electric", "chemical", "special"];
-const gearSlots = ["armor", "helmet", "core", "utility"];
-const gearStats = ["max-health", "armor", "movement", "damage", "fire-rate"];
+const SCHEMA_GUN = "shooter-mover.gun-family/1";
+const SCHEMA_GEAR = "shooter-mover.gear-set/1";
+const rarityOptions = ["common", "rare", "epic", "legendary", "artifact"];
+const damageTypes = ["physical", "thermal", "chemical", "energy"];
+const gunCategories = [
+  "automatic-rifle", "shotgun", "precision", "rocket-launcher",
+  "orb-launcher", "beam", "spray", "special"
+];
+const fireModes = ["semi-automatic", "automatic", "burst"];
+const shotKinds = ["single", "spread", "pulse-spread", "twin-barrel", "volley", "beam", "spray"];
+const deliveryTypes = ["normal", "orb", "rocket", "laser", "special"];
+const gearSlots = ["headpiece", "body-armor", "legs", "boots"];
+const modifierOperations = ["flat", "percentage", "multiplicative"];
+const gearStats = [
+  { id: "combat.maximum-health", label: "Maximum Health", live: true },
+  { id: "combat.armor", label: "Armor", live: true },
+  { id: "combat.movement-speed", label: "Movement Speed", live: true },
+  { id: "combat.physical-damage-resistance", label: "Kinetic Resistance", live: true },
+  { id: "combat.energy-damage-resistance", label: "Light Resistance", live: true },
+  { id: "combat.thermal-damage-resistance", label: "Thermal Resistance", live: true },
+  { id: "combat.chemical-damage-resistance", label: "Chemical Resistance", live: true },
+  { id: "combat.outgoing-damage-multiplier", label: "Global Damage", live: true },
+  { id: "combat.gun-damage-multiplier", label: "Gun Damage", live: true },
+  { id: "combat.gun-fire-rate-multiplier", label: "Gun Fire Rate", live: true },
+  { id: "combat.critical-chance", label: "Critical Chance", live: true },
+  { id: "combat.critical-multiplier", label: "Critical Multiplier", live: true },
+  { id: "combat.contact-damage", label: "Contact Damage", live: false },
+  { id: "combat.health-regeneration", label: "Health Regeneration", live: false }
+];
 
 const elements = {
   newGunButton: document.querySelector("#newGunButton"),
@@ -11,6 +36,11 @@ const elements = {
   importButton: document.querySelector("#importButton"),
   importInput: document.querySelector("#importInput"),
   exportButton: document.querySelector("#exportButton"),
+  saveRepoButton: document.querySelector("#saveRepoButton"),
+  fetchButton: document.querySelector("#fetchButton"),
+  pullButton: document.querySelector("#pullButton"),
+  repoStatus: document.querySelector("#repoStatus"),
+  packageList: document.querySelector("#packageList"),
   gunKindButton: document.querySelector("#gunKindButton"),
   gearKindButton: document.querySelector("#gearKindButton"),
   itemName: document.querySelector("#itemName"),
@@ -36,80 +66,99 @@ let activeMark = "mk1";
 let dirty = false;
 let idTracksName = true;
 let state = makeItem("gun");
+let repositoryConnected = false;
 const previews = {};
 
-function makeGunMark() {
+function defaultProgression(mark) {
   return {
+    mark,
     available: false,
-    rarity: "common",
-    dropLevel: 1,
+    peakDropLevel: mark === 1 ? 1 : (mark === 2 ? 40 : 79),
+    craftLevel: mark === 1 ? 1 : (mark === 2 ? 45 : 84),
     dropWeight: 1,
-    fire: {
-      mode: "automatic",
-      wavesPerSecond: 4,
-      wavesPerBurst: 3,
-      secondsBetweenWaves: 0.05,
-      fullChargeSeconds: 1.5,
-      maxHoldSeconds: 3,
-      fullChargeDamage: 3,
-      autoFireAtFull: false
-    },
-    shot: { projectiles: 1, spread: 0 },
-    damage: {
-      amount: 1,
-      type: "physical",
-      dotDamage: 0,
-      dotSeconds: 0,
-      movement: 0
-    },
-    delivery: {
-      type: "normal",
-      speed: 20,
-      range: 25,
-      radius: 0.1,
-      explosionRadius: 0,
-      beamWidth: 0.2
-    },
-    homing: {
-      enabled: false,
-      turnSpeed: 180,
-      findRange: 20,
-      startDelay: 0,
-      findAnotherTarget: true
-    },
-    impact: { pierce: 0, ricochet: 0, knockback: 0 },
-    art: { side: "", mounted: "", projectile: "", trail: "", impact: "", explosion: "" },
-    special: { code: "", notes: "" }
+    minimumBoxTier: 1,
+    maxAugmentSlots: mark + 1
   };
 }
 
-function makeGearMark() {
+function makeGunMark(mark) {
+  return Object.assign(defaultProgression(mark), {
+    damage: { direct: 1, area: 0, dotPerSecond: 0 },
+    art: { side: "", mounted: "", delivery: "", trail: "", impact: "", explosion: "" }
+  });
+}
+
+function makeGearPiece(slot) {
   return {
-    available: false,
+    name: "",
+    maxAugmentSlots: 2,
+    art: "",
+    modifiers: [],
+    pendingModules: []
+  };
+}
+
+function makeGearMark(mark) {
+  return Object.assign(defaultProgression(mark), {
+    pieces: {
+      headpiece: makeGearPiece("headpiece"),
+      "body-armor": makeGearPiece("body-armor"),
+      legs: makeGearPiece("legs"),
+      boots: makeGearPiece("boots")
+    }
+  });
+}
+
+function makeGun() {
+  return {
+    $schema: SCHEMA_GUN,
+    kind: "gun-family",
+    id: "",
+    name: "",
+    intendedUse: "",
     rarity: "common",
-    dropLevel: 1,
-    dropWeight: 1,
-    slot: "armor",
-    augmentSlots: 0,
-    bonuses: [],
-    art: { side: "" },
-    special: { code: "", notes: "" }
+    category: "automatic-rifle",
+    damageType: "physical",
+    runtimeStatus: "live",
+    fire: { mode: "automatic", cyclesPerSecond: 4, shotsPerBurst: 3, secondsBetweenShots: 0.08 },
+    shot: {
+      kind: "single", projectiles: 1, spreadDegrees: 0,
+      randomnessDegrees: 0, pulses: 1, secondsBetweenPulses: 0
+    },
+    delivery: { type: "normal", speed: 20, radius: 0.1, range: 25, beamWidth: 0.2 },
+    guidance: {
+      mode: "unguided", acquisitionRange: 20, turnRateDegreesPerSecond: 180,
+      activationDelaySeconds: 0, targetPolicy: "closest-to-aim", reacquire: true
+    },
+    impact: { pierce: 1, ricochet: 0, retainedSpeedPerRicochet: 1, knockback: 0 },
+    effects: {
+      explosion: { enabled: false, radius: 0, minimumDamageMultiplier: 0.5 },
+      damageOverTime: { enabled: false, durationSeconds: 0, ticksPerSecond: 2, maximumStacks: 1, refreshesDuration: true },
+      chain: { enabled: false, maximumTargets: 1, acquisitionRange: 0, retainedDamagePerJump: 1 }
+    },
+    pendingFeature: { id: "", notes: "" },
+    marks: [makeGunMark(1), makeGunMark(2), makeGunMark(3)]
+  };
+}
+
+function makeGear() {
+  return {
+    $schema: SCHEMA_GEAR,
+    kind: "gear-set",
+    id: "",
+    name: "",
+    intendedUse: "",
+    rarity: "common",
+    marks: [makeGearMark(1), makeGearMark(2), makeGearMark(3)]
   };
 }
 
 function makeItem(kind) {
-  const markFactory = kind === "gun" ? makeGunMark : makeGearMark;
-  return {
-    kind,
-    id: "",
-    name: "",
-    intendedUse: "",
-    marks: {
-      mk1: markFactory(),
-      mk2: markFactory(),
-      mk3: markFactory()
-    }
-  };
+  return kind === "gear" || kind === "gear-set" ? makeGear() : makeGun();
+}
+
+function activeMarkValue() {
+  return state.marks[Number(activeMark.substring(2)) - 1];
 }
 
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
@@ -131,12 +180,16 @@ function number(value, fallback = 0) {
 
 function setDirty(value = true) {
   dirty = value;
-  elements.saveStatus.textContent = value ? "Unsaved changes" : "Exported";
+  elements.saveStatus.textContent = value ? "Unsaved changes" : "Saved";
   elements.saveStatus.className = "status-pill " + (value ? "warn" : "good");
 }
 
 function optionList(values, selected) {
-  return values.map(value => `<option value="${escapeHtml(value)}"${value === selected ? " selected" : ""}>${title(value)}</option>`).join("");
+  return values.map(value => {
+    const optionValue = typeof value === "string" ? value : value.id;
+    const optionLabel = typeof value === "string" ? title(value) : value.label + (value.live ? "" : " (pending)");
+    return `<option value="${escapeHtml(optionValue)}"${optionValue === selected ? " selected" : ""}>${escapeHtml(optionLabel)}</option>`;
+  }).join("");
 }
 
 function title(value) {

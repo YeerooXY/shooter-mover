@@ -47,6 +47,7 @@ button {
 
 button:hover { border-color: var(--accent); background: #29384a; }
 button:active { transform: translateY(1px); }
+button:disabled { opacity: .45; cursor: not-allowed; }
 button.primary { background: linear-gradient(180deg, #1686bd, #106b99); border-color: #4cc6ff; }
 button.danger { border-color: #7b3c46; background: #3d242b; }
 button.ghost { background: transparent; }
@@ -138,6 +139,13 @@ textarea { resize: vertical; min-height: 72px; }
 }
 
 .help { color: var(--muted); font-size: 12px; }
+.repo-state { color: var(--muted); overflow-wrap: anywhere; }
+.repo-state.good { color: var(--good); }
+.repo-state.warn { color: var(--warn); }
+.repo-actions { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
+.package-list { display: grid; gap: 6px; max-height: 240px; overflow: auto; }
+.package-entry { text-align: left; display: flex; justify-content: space-between; gap: 8px; }
+.package-entry small { color: var(--muted); }
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   overflow-wrap: anywhere;
@@ -246,6 +254,7 @@ details.section .section-body { padding: 14px; border-top: 1px solid var(--line)
   align-items: center;
   margin-bottom: 8px;
 }
+.gear-modifier-row { grid-template-columns: minmax(150px, 1fr) 125px 90px 34px; }
 
 .json-preview {
   max-height: 260px;

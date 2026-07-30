@@ -17,12 +17,26 @@
     <button id="importButton">Import JSON</button>
     <input id="importInput" type="file" accept="application/json,.json" hidden>
     <div class="spacer"></div>
-    <div id="saveStatus" class="status-pill">Not exported</div>
+    <button id="saveRepoButton">Save to Repository</button>
+    <div id="saveStatus" class="status-pill">Not saved</div>
     <button id="exportButton" class="primary">Export JSON</button>
   </header>
 
   <main class="workspace">
     <aside class="sidebar">
+      <section class="panel">
+        <div class="panel-head">Repository</div>
+        <div class="panel-body">
+          <div id="repoStatus" class="repo-state">Checking local helper…</div>
+          <div class="repo-actions">
+            <button id="fetchButton" class="small">Fetch</button>
+            <button id="pullButton" class="small">Pull (fast-forward only)</button>
+          </div>
+          <div class="divider"></div>
+          <div id="packageList" class="package-list"></div>
+        </div>
+      </section>
+
       <section class="panel">
         <div class="panel-head">Item</div>
         <div class="panel-body">
@@ -58,7 +72,7 @@
             <div class="stat-row"><span>Marks</span><strong>MK1–MK3</strong></div>
           </div>
           <div class="divider"></div>
-          <div class="help">Exported packages contain values and asset references. A later game-side installer can turn them into live content.</div>
+          <div class="help">Repository saves compile deterministic package source into Unity-readable generated content. Export remains available offline.</div>
         </div>
       </section>
     </aside>

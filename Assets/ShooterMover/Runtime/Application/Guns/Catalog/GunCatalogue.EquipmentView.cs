@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Guns.Execution;
+using ShooterMover.Application.Items;
 
 namespace ShooterMover.Application.Guns.Catalog
 {
@@ -44,6 +45,7 @@ namespace ShooterMover.Application.Guns.Catalog
                         Array.Empty<StableId>()));
                 }
             }
+            AddAuthoredGearDefinitions(definitions);
 
             EquipmentCatalogBuildResult result = EquipmentCatalog.Build(
                 definitions,
@@ -54,6 +56,66 @@ namespace ShooterMover.Application.Guns.Catalog
                     "The production gun/equipment catalogue projection was rejected.");
             }
             return result.Catalog;
+        }
+
+        private static void AddAuthoredGearDefinitions(
+            ICollection<EquipmentDefinition> definitions)
+        {
+            foreach (ItemPackageDocument package
+                in ItemPackageCatalog.Current.Packages.Values)
+            {
+                if (!string.Equals(
+                        package.Kind,
+                        "gear-set",
+                        StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                EquipmentQualityTier quality =
+                    EquipmentQualityTier.Create(
+                        StableId.Create(
+                            "equipment-quality",
+                            package.Rarity),
+                        UppercaseFirst(package.Rarity),
+                        ResolveQualityRank(package.Rarity));
+                foreach (ItemMarkPackage mark in package.Marks)
+                {
+                    if (!mark.Available || mark.Pieces == null)
+                    {
+                        continue;
+                    }
+
+                    foreach (KeyValuePair<string, GearPiecePackage> pair
+                        in mark.Pieces)
+                    {
+                        GearPiecePackage piece = pair.Value;
+                        if (piece == null)
+                        {
+                            throw new InvalidOperationException(
+                                "Authored gear package contains a null piece: "
+                                + package.Id);
+                        }
+
+                        definitions.Add(EquipmentDefinition.Create(
+                            StableId.Create(
+                                "equipment",
+                                "gear-" + package.Id + "-"
+                                + pair.Key + "-mk" + mark.Mark),
+                            EquipmentCategoryIds.Armor,
+                            StableId.Create("gear-set", package.Id),
+                            piece.Name,
+                            null,
+                            InclusiveIntRange.Create(1, 200),
+                            piece.MaxAugmentSlots,
+                            new[] { quality },
+                            new[]
+                            {
+                                StableId.Create("gear-slot", pair.Key),
+                            }));
+                    }
+                }
+            }
         }
 
         private static int ResolveQualityRank(string rarity)

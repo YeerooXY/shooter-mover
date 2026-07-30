@@ -1,18 +1,33 @@
 # Item Maker
 
-Open `index.html` directly in a modern browser. No server, package manager, or build step is required.
+Run `Start-ItemMaker.ps1` from this folder. It opens a local-only web app at
+`http://127.0.0.1:4173`. Node.js is required; no npm install is needed.
 
-The page creates gun and gear packages with exactly MK1, MK2, and MK3. It can import its own JSON packages for later editing and exports one `<item-id>.item.json` file.
+The editor owns two source formats:
 
-The layout supports desktop, tablet, and mobile screens. On phones it switches to one column, uses touch-sized controls, keeps the MK tabs accessible, and places previews, calculations, checks, and JSON below the editor.
+- `Content/Items/Guns/<family-id>.gun.json`: one gun family with shared firing,
+  shot, delivery, guidance, impact, and effect behavior plus MK1–MK3 progression,
+  damage, and art.
+- `Content/Items/Gear/<set-id>.gear.json`: one four-piece set (headpiece,
+  body armor, legs, boots) with MK1–MK3 progression and typed stat modifiers.
 
-Current boundary:
+Saving through the helper writes atomically and regenerates
+`ItemPackageSources.g.cs`. Unity reads those generated sources through
+`ItemPackageCatalog`; raw JSON never needs to live under `Assets`.
 
-- edits and validates item values;
-- previews locally selected images without embedding them in the package;
-- exports stable asset-reference text fields;
-- does not install packages into Unity;
-- does not replace the current live gun catalogue;
-- does not implement charge or special gameplay.
+Repository controls are intentionally narrow:
 
-Unfinished marks can still be exported by leaving `Available` off. Available marks must pass the page's gameplay and required-art checks.
+- Fetch only runs `git fetch --prune origin`.
+- Pull only runs `git pull --ff-only` and refuses a dirty worktree.
+- The helper never resets, commits, pushes, switches branches, merges, or deletes
+  user work.
+
+Opening `index.html` directly remains supported as offline import/export mode.
+Gear stats labelled “pending” are retained as explicit metadata and do not
+silently affect gameplay. A gun with `runtimeStatus: runtime-pending` may appear
+in authoring/loot data, but firing must fail explicitly until its reusable
+runtime behavior is implemented.
+
+`node compile-packages.js <repository-path>` can be used by CI or pre-commit
+automation to validate package identities and regenerate the deterministic
+Unity source registry.
