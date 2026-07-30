@@ -22,6 +22,43 @@ const defaultCatalog = [
  {id:"door.room-standard",label:"Standard Room Door",type:"door",source:"Level1"},
 ];
 
+const RECOVERY_STORAGE_KEY="shooter-mover.level-maker.recovery.v1";
+const RECOVERY_SAVE_DELAY_MS=500;
+let recoverySaveTimer=null,recoveryRestoredAt="",recoveryWriteError="";
+
+function readRecoveryDraft(){
+ try{
+  const raw=localStorage.getItem(RECOVERY_STORAGE_KEY);if(!raw)return null;
+  const value=JSON.parse(raw),project=value?.project;
+  if(!project||project.format!=="shooter-mover-web-level-project"||!Array.isArray(project.rooms)||!project.rooms.length)throw new Error("Recovery draft is not a valid Level Maker project.");
+  recoveryRestoredAt=String(value.savedAt||"");return project;
+ }catch(error){
+  console.warn("Level Maker recovery draft could not be restored.",error);
+  try{localStorage.removeItem(RECOVERY_STORAGE_KEY)}catch{}
+  return null;
+ }
+}
+function writeRecoveryDraft(){
+ if(recoverySaveTimer){clearTimeout(recoverySaveTimer);recoverySaveTimer=null}
+ try{
+  const savedAt=new Date().toISOString();
+  localStorage.setItem(RECOVERY_STORAGE_KEY,JSON.stringify({version:1,savedAt,project:state}));
+  recoveryWriteError="";
+ }catch(error){
+  recoveryWriteError=error?.message||"Browser storage is unavailable.";
+  console.warn("Level Maker recovery autosave failed.",error);
+ }
+}
+function scheduleRecoverySave(){
+ if(recoverySaveTimer)clearTimeout(recoverySaveTimer);
+ recoverySaveTimer=setTimeout(writeRecoveryDraft,RECOVERY_SAVE_DELAY_MS);
+}
+function recoveryNotice(){
+ if(!recoveryRestoredAt)return recoveryWriteError?` Local recovery is unavailable: ${recoveryWriteError}`:"";
+ const saved=new Date(recoveryRestoredAt),label=Number.isNaN(saved.getTime())?recoveryRestoredAt:saved.toLocaleString();
+ return ` Restored the local recovery draft saved ${label}.`;
+}
+
 function newRoom(index=0){
  const rid=`room.level-1-${index===0?"start":"room-"+(index+1)}`;
  return {
@@ -42,7 +79,7 @@ function initialState(){
   editor:{tool:"select",viewMode:"room",mapMode:"open",placementMode:"single",focusRoom:true,selectedId:null,selectedAssetId:"enemy.moving-droid",zoom:32,pan:[0,0],snap:true,snapSize:1,roomView:{zoom:32,pan:[0,0]},mapView:{zoom:22,pan:[0,0]}}
  };
 }
-let state=initialState(), history=[], future=[], gestureSnapshot=null;
+let state=readRecoveryDraft()||initialState(), history=[], future=[], gestureSnapshot=null;
 let pointer={down:false,last:[0,0],mode:null,wallStart:null,dragOffset:[0,0],lastTileKey:null,lastPlacementKey:null,sourceDoorId:null,mapRoomOffset:[0,0],moved:false};
 let canvas=$("#stage"), ctx=canvas.getContext("2d"), dpr=1;
 
@@ -91,7 +128,7 @@ function normalize(){
 function setStatus(text,kind=""){
  const el=$("#status");el.textContent=text;el.className=kind?`status-${kind}`:"";
 }
-function renderAll(){renderHeaderFields();renderAssets();renderRooms();renderLogic();renderInspector();renderCanvas();renderFooter();updateUndo()}
+function renderAll(){renderHeaderFields();renderAssets();renderRooms();renderLogic();renderInspector();renderCanvas();renderFooter();updateUndo();scheduleRecoverySave()}
 function syncWorkspaceMode(){
  const focused=state.editor.viewMode==="room"&&state.editor.focusRoom!==false;
  document.body.classList.toggle("room-focus",focused);
@@ -115,12 +152,12 @@ function setMapMode(mode){
  const help={open:"Click a room to edit it",arrange:"Drag rooms on the graph grid",connect:"Drag one door socket onto another"}[mode];
  $("#map-mode-help").textContent=help;
  canvas.style.cursor=mode==="arrange"?"move":mode==="connect"?"crosshair":"pointer";
- renderCanvas();renderFooter();
+ renderCanvas();renderFooter();scheduleRecoverySave();
 }
 function setPlacementMode(mode){
  state.editor.placementMode=mode;
  $$("[data-placement-mode]").forEach(b=>b.classList.toggle("active",b.dataset.placementMode===mode));
- renderFooter();
+ renderFooter();scheduleRecoverySave();
 }
 function renderHeaderFields(){
  syncWorkspaceMode();
@@ -159,7 +196,7 @@ function renderAssets(){
    const a=state.catalog.find(x=>x.id===el.dataset.asset);
    if(a?.type==="enemy")setTool("enemy");else if(a?.type==="door")setTool("door");else if(a?.type==="floor")setTool("tile");else setTool("prop");
    if(document.body.classList.contains("room-focus"))closeDrawers();
-   renderAssets();renderCanvas();
+   renderAssets();renderCanvas();scheduleRecoverySave();
  });
 }
 function renderRooms(){

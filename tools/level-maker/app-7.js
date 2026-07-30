@@ -11,8 +11,8 @@ async function connectHelper(){
   const status=await helper("/api/status");helperToken=status.mutationToken;
   const catalogue=await helper("/api/level-assets");
   if(catalogue.assets?.length)state.catalog=catalogue.assets;
-  normalize();renderAll();setStatus(`Connected to ${status.branch}; ${catalogue.assets.length} project assets available.`,"good");
- }catch(error){setStatus(`Local helper unavailable: ${error.message}`,"bad")}
+  normalize();renderAll();setStatus(`Connected to ${status.branch}; ${catalogue.assets.length} project assets available.${recoveryNotice()}`,"good");
+ }catch(error){setStatus(`Local helper unavailable: ${error.message}${recoveryNotice()}`,"bad")}
 }
 async function publishProject(){
  const errors=validate().filter(x=>x.severity==="error");
@@ -98,6 +98,12 @@ document.addEventListener("keydown",e=>{
  if(keys[key])setTool(keys[key]);
  if(["q","e"].includes(key)&&state.editor.selectedId){mutate(()=>{const s=selected(),o=s?.entity||s?.door;if(o)o.rotation=round((o.rotation||0)+(key==="e"?15:-15))})}
 });
+document.addEventListener("pointerup",scheduleRecoverySave);
+document.addEventListener("change",scheduleRecoverySave);
+document.addEventListener("keyup",scheduleRecoverySave);
+canvas.addEventListener("wheel",scheduleRecoverySave,{passive:true});
+window.addEventListener("pagehide",writeRecoveryDraft);
+window.addEventListener("beforeunload",writeRecoveryDraft);
 window.addEventListener("resize",resizeCanvas);
 window.addEventListener("orientationchange",()=>setTimeout(resizeCanvas,80));
 if(window.ResizeObserver)new ResizeObserver(()=>resizeCanvas()).observe($("#stage-wrap"));
