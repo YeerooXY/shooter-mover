@@ -10,6 +10,8 @@
     "ShooterMover.EnemyRuntimeComposition",
     "ShooterMover.PlayerRuntime",
     "ShooterMover.TerminalDropBinding",
+    "ShooterMover.RunLoot",
+    "ShooterMover.RunLootUnity",
     "ShooterMover.UnityAdapters",
     "ShooterMover.UI.Hub",
     "ShooterMover.UI.InventoryLoadout",
