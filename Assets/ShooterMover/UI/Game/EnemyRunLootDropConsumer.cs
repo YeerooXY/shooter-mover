@@ -163,7 +163,7 @@ namespace ShooterMover.UI.Game
                 || actor.PlacementStableId != fact.Identity.PlacementStableId
                 || actor.LifecycleGeneration != fact.LifecycleGeneration
                 || actor.Runtime.RoomStableId != fact.Identity.RoomStableId
-                || actor.Runtime.Identity.RunStableId != fact.Identity.RunStableId)
+                || actor.Runtime.Request.RunStableId != fact.Identity.RunStableId)
             {
                 throw new InvalidOperationException(
                     "The bound enemy actor does not match the immutable death fact.");
