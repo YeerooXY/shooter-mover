@@ -316,6 +316,17 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
             }
         }
 
+        public void ConfigureRuntime(
+            RunLootPositions sourcePositions,
+            PendingLootDropPickupConsumer pickupConsumer,
+            RunLootView presenter)
+        {
+            ConfigureRuntime(new UnityPickupAdmissionLive(
+                sourcePositions,
+                pickupConsumer,
+                presenter));
+        }
+
         public void ReleaseRuntime()
         {
             lock (gate) runtime = null;
@@ -486,6 +497,82 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
                     PickupDeliveryDisposition.Applied,
                     admission,
                     string.Empty);
+            }
+        }
+
+        /// <summary>
+        /// Compensates a newly accepted admission only while it is still retained in this
+        /// bridge's pending queue. A realized/completed or quarantined delivery is never
+        /// silently rewound.
+        /// </summary>
+        public bool TryRollbackAccepted(
+            PendingLootDropAdmissionResult admission,
+            out string diagnostic)
+        {
+            lock (gate)
+            {
+                diagnostic = string.Empty;
+                if (admission == null
+                    || admission.Status
+                        != PendingLootDropAdmissionStatus.Accepted
+                    || admission.OperationStableId == null
+                    || string.IsNullOrWhiteSpace(admission.BatchFingerprint))
+                {
+                    diagnostic = "pickup-admission-rollback-input-invalid";
+                    return false;
+                }
+
+                string completed;
+                if (completedByOperation.TryGetValue(
+                        admission.OperationStableId,
+                        out completed))
+                {
+                    diagnostic = string.Equals(
+                            completed,
+                            admission.BatchFingerprint,
+                            StringComparison.Ordinal)
+                        ? "pickup-admission-rollback-already-completed"
+                        : "pickup-admission-rollback-completed-conflict";
+                    return false;
+                }
+
+                QuarantineRecord quarantined;
+                if (quarantinedByOperation.TryGetValue(
+                        admission.OperationStableId,
+                        out quarantined))
+                {
+                    diagnostic = quarantined != null
+                        && string.Equals(
+                            quarantined.Fingerprint,
+                            admission.BatchFingerprint,
+                            StringComparison.Ordinal)
+                        ? "pickup-admission-rollback-quarantined"
+                        : "pickup-admission-rollback-quarantine-conflict";
+                    return false;
+                }
+
+                DeliveryRecord pending;
+                if (!pendingByOperation.TryGetValue(
+                        admission.OperationStableId,
+                        out pending))
+                {
+                    diagnostic = "pickup-admission-rollback-pending-missing";
+                    return false;
+                }
+                if (pending == null
+                    || pending.Admission == null
+                    || !string.Equals(
+                        pending.Admission.BatchFingerprint,
+                        admission.BatchFingerprint,
+                        StringComparison.Ordinal))
+                {
+                    diagnostic = "pickup-admission-rollback-pending-conflict";
+                    return false;
+                }
+
+                pendingByOperation.Remove(admission.OperationStableId);
+                LastDiagnostic = string.Empty;
+                return true;
             }
         }
 
