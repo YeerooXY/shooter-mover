@@ -535,7 +535,8 @@ namespace ShooterMover.UI.Game
             return gun != null
                 && gun.UsesCanonicalAuthoredDefinition
                 && gun.Projectile != null
-                && gun.Projectile.Kind == GunProjectileKind.RegularProjectile
+                && (gun.Projectile.Kind == GunProjectileKind.RegularProjectile
+                    || gun.Projectile.Kind == GunProjectileKind.Orb)
                 && gun.Projectile.TerminationBehavior
                     == GunProjectileTerminationBehavior.StopWhenPierceIsSpent
                 && gun.Guidance != null
