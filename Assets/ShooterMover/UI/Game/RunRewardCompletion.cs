@@ -20,7 +20,7 @@ namespace ShooterMover.UI.Game
     /// authorities. It projects only already-collected pickup journal facts and never generates
     /// another reward or opens a strongbox in the arena.
     /// </summary>
-    internal sealed class RunRewardCompletion
+    internal sealed class RunFinish
     {
         private readonly RunLoot runtime;
         private readonly CharacterLiveGraph graph;
@@ -39,7 +39,7 @@ namespace ShooterMover.UI.Game
         private MissionResultPayload latestResult;
         private bool strongboxesRecorded;
 
-        public RunRewardCompletion(
+        public RunFinish(
             RunLoot runtime,
             CharacterLiveGraph graph,
             CharacterSetupFlow composition)
