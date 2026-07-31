@@ -18,13 +18,12 @@ namespace ShooterMover.UI.Game
     /// It never generates or grants rewards. Permanent holdings are updated later by the
     /// existing RewardClaim transfer after terminal acceptance.
     /// </summary>
-    internal sealed class RunJournalMissionStatePort :
-        IMissionRunExistingStatePort
+    internal sealed class RunJournal : IMissionRunExistingStatePort
     {
         private readonly CharacterLiveGraph graph;
         private RunSessionAggregate run;
 
-        public RunJournalMissionStatePort(CharacterLiveGraph graph)
+        public RunJournal(CharacterLiveGraph graph)
         {
             this.graph = graph ?? throw new ArgumentNullException(nameof(graph));
         }
