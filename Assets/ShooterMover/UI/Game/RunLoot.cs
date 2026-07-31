@@ -8,6 +8,7 @@ using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Application.Runs.Session;
 using ShooterMover.Content.Definitions.Levels.Selection;
+using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Props;
@@ -21,14 +22,24 @@ namespace ShooterMover.UI.Game
 {
     internal sealed class RunLoot
     {
+        public const int GenerationAlgorithmVersion = 1;
+
+        private readonly PlayableLevelLivePortFactory livePorts;
+
         private RunLoot(
             RunSessionState authority,
             RunSessionAggregate run,
+            ProgressionContext frozenProgression,
+            PlayableLevelLivePortFactory livePorts,
             IEnemyDropFactConsumer dropConsumer)
         {
             RunSessions = authority
                 ?? throw new ArgumentNullException(nameof(authority));
             Run = run ?? throw new ArgumentNullException(nameof(run));
+            FrozenProgression = frozenProgression
+                ?? throw new ArgumentNullException(nameof(frozenProgression));
+            this.livePorts = livePorts
+                ?? throw new ArgumentNullException(nameof(livePorts));
             DropConsumer = dropConsumer
                 ?? throw new ArgumentNullException(nameof(dropConsumer));
             ExperienceConsumer = new ExplicitNoOpExperienceConsumer();
@@ -37,10 +48,17 @@ namespace ShooterMover.UI.Game
 
         public RunSessionState RunSessions { get; }
         public RunSessionAggregate Run { get; }
+        public ProgressionContext FrozenProgression { get; }
         public StableId RunStableId { get { return Run.RunStableId; } }
         public IEnemyExperienceFactConsumer ExperienceConsumer { get; }
         public IEnemyDropFactConsumer DropConsumer { get; }
         public IEnemyKillStatFactConsumer KillStatisticsConsumer { get; }
+
+        public MissionResultPayload RefreshMissionResult(
+            MissionResultPayload prior)
+        {
+            return livePorts.RefreshMissionResult(prior);
+        }
 
         public static RunLoot Create(
             PlayableLevelDefinition level,
@@ -78,12 +96,13 @@ namespace ShooterMover.UI.Game
             StableId runId = StableId.Create("run", "playable-level-" + token);
             long seed = BitConverter.ToInt64(Guid.NewGuid().ToByteArray(), 0)
                 & long.MaxValue;
+            var livePorts = new PlayableLevelLivePortFactory(rooms, graph);
             var source = new CharacterRunSessionStartSource(
                 coordinator,
                 new PlayableLevelStatInputResolver(
                     level,
                     frozenProgression),
-                new PlayableLevelLivePortFactory(rooms));
+                livePorts);
             var authority = new RunSessionState(source);
             var command = new StartRunSessionCommand(
                 StableId.Create("operation", "start-playable-run-" + token),
@@ -112,6 +131,7 @@ namespace ShooterMover.UI.Game
                     "The selected-character production Run Session did not start: "
                     + (start == null ? "result-null" : start.RejectionCode));
             }
+            livePorts.BindRun(run);
             if (run.FrozenInputs.CharacterStats.Level
                     != frozenProgression.CharacterLevel
                 || run.StartCommand.DifficultyStableId
@@ -143,7 +163,7 @@ namespace ShooterMover.UI.Game
                 new FrozenRunProgressionContextProvider(
                     graph.Character.CharacterInstanceStableId,
                     frozenProgression),
-                1);
+                GenerationAlgorithmVersion);
             var participantResolver =
                 new RunSessionTerminalRewardParticipantResolver(
                     runResolver,
@@ -190,6 +210,8 @@ namespace ShooterMover.UI.Game
             return new RunLoot(
                 authority,
                 run,
+                frozenProgression,
+                livePorts,
                 transactionalConsumer);
         }
     }
