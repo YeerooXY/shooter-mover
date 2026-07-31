@@ -6,8 +6,9 @@ using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Application.Runs.Session;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Missions.Results;
+using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Rewards.Model;
+using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Rewards.Strongboxes;
 
 namespace ShooterMover.UI.Game
