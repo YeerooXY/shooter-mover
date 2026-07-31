@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ShooterMover.Application.Flow.Game;
+using ShooterMover.Application.Missions.Results;
 using ShooterMover.Application.Runs.Session;
 using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Contracts.Flow.Session;
-using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Domain.Characters.Stats;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
@@ -78,9 +78,32 @@ namespace ShooterMover.UI.Game
         IRunSessionLivePortFactory
     {
         private readonly LevelRooms rooms;
-        public PlayableLevelLivePortFactory(LevelRooms rooms)
+        private readonly RunJournalMissionStatePort missionProjection;
+        private readonly ExistingMissionResultRunPort missionResults;
+
+        public PlayableLevelLivePortFactory(
+            LevelRooms rooms,
+            CharacterLiveGraph graph)
         {
             this.rooms = rooms ?? throw new ArgumentNullException(nameof(rooms));
+            if (graph == null) throw new ArgumentNullException(nameof(graph));
+            missionProjection = new RunJournalMissionStatePort(graph);
+            missionResults = new ExistingMissionResultRunPort(
+                new MissionRunResultState(missionProjection),
+                graph.LoadoutRuntime.Holdings,
+                graph.StrongboxAuthority.ExportSnapshot);
+        }
+
+        public void BindRun(RunSessionAggregate run)
+        {
+            missionProjection.BindRun(run);
+        }
+
+        public ShooterMover.Contracts.Missions.Results.MissionResultPayload
+            RefreshMissionResult(
+                ShooterMover.Contracts.Missions.Results.MissionResultPayload prior)
+        {
+            return missionProjection.Refresh(prior);
         }
 
         public RunSessionLivePorts Create(
@@ -104,7 +127,7 @@ namespace ShooterMover.UI.Game
                 new SnapshotConditionalRunPort(generation),
                 new SnapshotAbilityRunPort(generation),
                 new SnapshotRoomRunPort(generation, rooms),
-                new UnsupportedMissionResultRunPort());
+                missionResults);
         }
     }
 
@@ -209,47 +232,6 @@ namespace ShooterMover.UI.Game
                 return RunFingerprint.Hash(
                     PortId + "|" + LifecycleGeneration + "|" + CurrentRoomStableId);
             }
-        }
-    }
-
-    internal sealed class UnsupportedMissionResultRunPort : IRunMissionResultPort
-    {
-        public long Sequence { get { return 0L; } }
-        public bool TryGetRun(StableId runStableId, out MissionRunPayload runPayload)
-        {
-            runPayload = null;
-            return false;
-        }
-        public MissionRunStateResult RecordCollectedStrongbox(
-            RunStrongboxCollectionRequest request,
-            PlayerRouteProfilePayload routePayload)
-        {
-            return Invalid(
-                request == null ? null : request.OperationStableId,
-                request == null ? string.Empty : request.Fingerprint);
-        }
-        public MissionRunStateResult EndRun(
-            EndRunSessionCommand command,
-            PlayerRouteProfilePayload routePayload)
-        {
-            return Invalid(
-                command == null ? null : command.OperationStableId,
-                command == null ? string.Empty : command.Fingerprint);
-        }
-        private static MissionRunStateResult Invalid(
-            StableId operation,
-            string fingerprint)
-        {
-            return new MissionRunStateResult(
-                MissionRunStateStatus.InvalidRequest,
-                0L,
-                0L,
-                operation,
-                fingerprint,
-                null,
-                null,
-                null,
-                "run-results-not-composed");
         }
     }
 }
