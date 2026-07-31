@@ -1,4 +1,5 @@
 using System;
+using ShooterMover.Content.Definitions.Enemies;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies.Catalog;
 using ShooterMover.EnemyRuntimeComposition;
@@ -49,17 +50,14 @@ namespace ShooterMover.UnityAdapters.Enemies
             origin = transform.position;
             distance = payload.MaximumTravelDistance;
 
-            SpriteRenderer renderer = gameObject.AddComponent<SpriteRenderer>();
-            renderer.sprite = sprite;
-            renderer.color = payload.AreaPayload == null
-                ? new Color(1f, 0.72f, 0.12f, 1f)
-                : new Color(1f, 0.28f, 0.08f, 1f);
-            renderer.sortingOrder = 300;
-            float diameter = Mathf.Max(0.12f, (float)payload.CollisionRadius * 2f);
-            transform.localScale = new Vector3(diameter, diameter, 1f);
+            bool rocket = BuiltInEnemyProjectileProfiles.IsRocket(
+                payload.ProjectileProfileId);
+            gameObject.name = rocket ? "Enemy Rocket" : "Enemy Bullet";
+            transform.localScale = Vector3.one;
+            BuildVisual(payload, sprite, rocket);
 
             CircleCollider2D collider = gameObject.AddComponent<CircleCollider2D>();
-            collider.radius = 0.5f;
+            collider.radius = Mathf.Max(0.06f, (float)payload.CollisionRadius);
             collider.isTrigger = true;
 
             body = gameObject.AddComponent<Rigidbody2D>();
@@ -153,6 +151,48 @@ namespace ShooterMover.UnityAdapters.Enemies
                 owner.Ended(id);
             }
             Destroy(gameObject);
+        }
+
+        private void BuildVisual(
+            EnemyProjectilePayload payload,
+            Sprite sprite,
+            bool rocket)
+        {
+            float diameter = Mathf.Max(0.12f, (float)payload.CollisionRadius * 2f);
+            GameObject visualObject = new GameObject(
+                rocket ? "Rocket Body" : "Bullet Visual");
+            visualObject.transform.SetParent(transform, false);
+
+            SpriteRenderer renderer = visualObject.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.color = rocket
+                ? new Color(0.95f, 0.35f, 0.10f, 1f)
+                : payload.AreaPayload == null
+                    ? new Color(1f, 0.72f, 0.12f, 1f)
+                    : new Color(1f, 0.28f, 0.08f, 1f);
+            renderer.sortingOrder = 300;
+
+            if (!rocket)
+            {
+                visualObject.transform.localScale =
+                    new Vector3(diameter, diameter, 1f);
+                return;
+            }
+
+            visualObject.transform.localScale =
+                new Vector3(diameter * 2.8f, diameter * 0.9f, 1f);
+
+            GameObject exhaustObject = new GameObject("Rocket Exhaust");
+            exhaustObject.transform.SetParent(transform, false);
+            exhaustObject.transform.localPosition =
+                new Vector3(-diameter * 1.65f, 0f, 0f);
+            exhaustObject.transform.localScale =
+                new Vector3(diameter * 0.9f, diameter * 0.55f, 1f);
+
+            SpriteRenderer exhaust = exhaustObject.AddComponent<SpriteRenderer>();
+            exhaust.sprite = sprite;
+            exhaust.color = new Color(1f, 0.78f, 0.12f, 0.9f);
+            exhaust.sortingOrder = 299;
         }
 
         private static Vector2 ClosestPoint(Collider2D collider, Vector2 fallback)
