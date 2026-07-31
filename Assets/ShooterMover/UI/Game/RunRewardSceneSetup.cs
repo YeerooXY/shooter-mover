@@ -65,10 +65,6 @@ namespace ShooterMover.UI.Game
                 return;
             }
 
-            // This component has an earlier execution order than LevelGame. Subscribing here
-            // makes the durable Results transition the first final-exit action; the legacy
-            // direct-Hub fallback then observes the already accepted scene transition.
-            rooms.FinalExitReached += HandleFinalExitReached;
             roomBootstrap.BuildAccepted += HandleRoomBuildAccepted;
             rooms.CurrentRoomPresentationRebuilt +=
                 HandleRoomPresentationRebuilt;
@@ -215,6 +211,7 @@ namespace ShooterMover.UI.Game
                 runtime,
                 graph,
                 coordinator);
+            controller.ConfigureRunCompletion(completion.Complete);
             observedLifecycleGeneration = runtime.Run.LifecycleGeneration;
             pickupBridge.RetireOtherLifecycles(
                 runtime.RunStableId,
@@ -340,30 +337,6 @@ namespace ShooterMover.UI.Game
             SynchronizeCurrentRoomPickups();
         }
 
-        private void HandleFinalExitReached()
-        {
-            if (runtime == null || completion == null)
-            {
-                diagnostic = "run-reward-completion-unavailable";
-                Debug.LogError(diagnostic, this);
-                return;
-            }
-
-            pickupBridge.ProcessPending();
-            SynchronizeCurrentRoomPickups();
-            if (!completion.Complete())
-            {
-                diagnostic = completion.LastDiagnostic;
-                Debug.LogError(
-                    string.IsNullOrWhiteSpace(diagnostic)
-                        ? "run-reward-completion-rejected"
-                        : diagnostic,
-                    this);
-                return;
-            }
-            diagnostic = string.Empty;
-        }
-
         private void SynchronizeCurrentRoomPickups()
         {
             if (pickupView == null
@@ -393,7 +366,6 @@ namespace ShooterMover.UI.Game
             {
                 rooms.CurrentRoomPresentationRebuilt -=
                     HandleRoomPresentationRebuilt;
-                rooms.FinalExitReached -= HandleFinalExitReached;
             }
 
             if (pickupBridge != null)
