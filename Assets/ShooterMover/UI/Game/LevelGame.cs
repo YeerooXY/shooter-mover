@@ -43,6 +43,7 @@ namespace ShooterMover.UI.Game
         private string routeFingerprint;
         private PlayerMarker playerMarker;
         private Rigidbody2D playerBody;
+        private Func<bool> runCompletion;
         private long operationSequence;
         private bool isConfigured;
         private bool completionAccepted;
@@ -63,6 +64,18 @@ namespace ShooterMover.UI.Game
                     ? null
                     : characterGraph.Character.CharacterInstanceStableId;
             }
+        }
+
+        public void ConfigureRunCompletion(Func<bool> completion)
+        {
+            if (completion == null)
+                throw new ArgumentNullException(nameof(completion));
+            if (runCompletion != null && !ReferenceEquals(runCompletion, completion))
+            {
+                throw new InvalidOperationException(
+                    "playable-level-run-completion-already-configured");
+            }
+            runCompletion = completion;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -603,12 +616,25 @@ namespace ShooterMover.UI.Game
                 return;
             }
 
+            if (runCompletion != null)
+            {
+                if (!runCompletion())
+                {
+                    completionAccepted = false;
+                    Debug.LogError(
+                        "playable-level-run-completion-rejected",
+                        this);
+                }
+                return;
+            }
+
             GameFlow flow = FindFirstObjectByType<
                 GameFlow>(FindObjectsInactive.Include);
             if (flow == null
                 || flow.Transitions == null
                 || !flow.Transitions.TryReturnToHub(characterGraph.RoutePayload))
             {
+                completionAccepted = false;
                 Debug.LogError("playable-level-hub-return-rejected", this);
             }
         }
@@ -656,6 +682,7 @@ namespace ShooterMover.UI.Game
 
         private void OnDestroy()
         {
+            runCompletion = null;
             if (roomRuntime != null)
             {
                 roomRuntime.CurrentRoomPresentationRebuilt -=
