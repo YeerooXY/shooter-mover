@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using ShooterMover.Application.Enemies.Catalog;
 using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Missions.Rooms.Content;
+using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
 using ShooterMover.EnemyRuntimeComposition;
+using ShooterMover.RunLoot;
 using ShooterMover.UI.LevelSelection;
 using ShooterMover.UI.StrongboxOpening;
-using ShooterMover.RunLoot;
 using ShooterMover.UnityAdapters.Enemies;
 using ShooterMover.UnityAdapters.Missions.Rooms;
 using ShooterMover.UnityAdapters.Rewards.RunLoots;
@@ -36,6 +37,7 @@ namespace ShooterMover.UI.Game
         private LevelRooms rooms;
         private RoomEnemies spawner;
         private RunLoot runtime;
+        private RunRewardCompletion completion;
         private PendingAdmissionPickupBridge pickupBridge;
         private RunLootPositions pickupPositions;
         private RunLootLiveSetup pickupLiveSetup;
@@ -63,6 +65,10 @@ namespace ShooterMover.UI.Game
                 return;
             }
 
+            // This component has an earlier execution order than LevelGame. Subscribing here
+            // makes the durable Results transition the first final-exit action; the legacy
+            // direct-Hub fallback then observes the already accepted scene transition.
+            rooms.FinalExitReached += HandleFinalExitReached;
             roomBootstrap.BuildAccepted += HandleRoomBuildAccepted;
             rooms.CurrentRoomPresentationRebuilt +=
                 HandleRoomPresentationRebuilt;
@@ -149,7 +155,7 @@ namespace ShooterMover.UI.Game
 
             CharacterLiveGraph graph;
             FlowProfileRecord profile;
-            ShooterMover.Application.Persistence.Composition.CharacterSetupFlow coordinator;
+            CharacterSetupFlow coordinator;
             if (!CharacterSave.TryResolveCurrent(
                     out graph,
                     out profile,
@@ -205,6 +211,10 @@ namespace ShooterMover.UI.Game
                 physicalDropConsumer,
                 runtime.KillStatisticsConsumer);
 
+            completion = new RunRewardCompletion(
+                runtime,
+                graph,
+                coordinator);
             observedLifecycleGeneration = runtime.Run.LifecycleGeneration;
             pickupBridge.RetireOtherLifecycles(
                 runtime.RunStableId,
@@ -330,6 +340,30 @@ namespace ShooterMover.UI.Game
             SynchronizeCurrentRoomPickups();
         }
 
+        private void HandleFinalExitReached()
+        {
+            if (runtime == null || completion == null)
+            {
+                diagnostic = "run-reward-completion-unavailable";
+                Debug.LogError(diagnostic, this);
+                return;
+            }
+
+            pickupBridge.ProcessPending();
+            SynchronizeCurrentRoomPickups();
+            if (!completion.Complete())
+            {
+                diagnostic = completion.LastDiagnostic;
+                Debug.LogError(
+                    string.IsNullOrWhiteSpace(diagnostic)
+                        ? "run-reward-completion-rejected"
+                        : diagnostic,
+                    this);
+                return;
+            }
+            diagnostic = string.Empty;
+        }
+
         private void SynchronizeCurrentRoomPickups()
         {
             if (pickupView == null
@@ -359,6 +393,7 @@ namespace ShooterMover.UI.Game
             {
                 rooms.CurrentRoomPresentationRebuilt -=
                     HandleRoomPresentationRebuilt;
+                rooms.FinalExitReached -= HandleFinalExitReached;
             }
 
             if (pickupBridge != null)
@@ -385,6 +420,7 @@ namespace ShooterMover.UI.Game
             pickupPositions = null;
             pickupBridge = null;
             runtime = null;
+            completion = null;
         }
     }
 }
