@@ -200,7 +200,7 @@ namespace ShooterMover.UI.StrongboxOpening
         private void ApplyProjection()
         {
             Color accent = ResolveAccent(projection);
-            bodyRenderer.sprite = GetBodySprite(projection.PresentationKind);
+            bodyRenderer.sprite = ResolveBodySprite(projection);
             bodyRenderer.color = accent;
             float bodyScale = projection.IsStrongbox ? 1.15f : 0.92f;
             bodyRenderer.transform.localScale =
@@ -220,6 +220,29 @@ namespace ShooterMover.UI.StrongboxOpening
                     : " x"
                         + projection.Quantity.ToString(
                             CultureInfo.InvariantCulture));
+        }
+
+        private static Sprite ResolveBodySprite(
+            LootPickupPresentation value)
+        {
+            if (value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
+            if (!value.IsStrongbox)
+            {
+                return GetBodySprite(value.PresentationKind);
+            }
+
+            Sprite sprite;
+            string diagnostic;
+            StrongboxTierSpriteCatalog.TryResolve(
+                value.ContentStableId,
+                out sprite,
+                out diagnostic);
+            return sprite == null
+                ? StrongboxTierSpriteCatalog.GetFallbackSprite()
+                : sprite;
         }
 
         private void SetVisible(bool visible)
