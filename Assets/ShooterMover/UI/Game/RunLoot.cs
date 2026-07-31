@@ -24,13 +24,13 @@ namespace ShooterMover.UI.Game
     {
         public const int GenerationAlgorithmVersion = 1;
 
-        private readonly PlayableLevelLivePortFactory livePorts;
+        private readonly LevelPorts livePorts;
 
         private RunLoot(
             RunSessionState authority,
             RunSessionAggregate run,
             ProgressionContext frozenProgression,
-            PlayableLevelLivePortFactory livePorts,
+            LevelPorts livePorts,
             IEnemyDropFactConsumer dropConsumer)
         {
             RunSessions = authority
@@ -42,8 +42,8 @@ namespace ShooterMover.UI.Game
                 ?? throw new ArgumentNullException(nameof(livePorts));
             DropConsumer = dropConsumer
                 ?? throw new ArgumentNullException(nameof(dropConsumer));
-            ExperienceConsumer = new ExplicitNoOpExperienceConsumer();
-            KillStatisticsConsumer = new ExplicitNoOpKillStatisticsConsumer();
+            ExperienceConsumer = new NoXp();
+            KillStatisticsConsumer = new NoKillStats();
         }
 
         public RunSessionState RunSessions { get; }
@@ -67,7 +67,7 @@ namespace ShooterMover.UI.Game
             ShooterMover.Application.Persistence.Composition.CharacterSetupFlow coordinator,
             LevelRooms rooms,
             ShooterMover.Domain.Enemies.Catalog.EnemyCatalog enemyCatalog,
-            PendingAdmissionPickupBridge pickupBridge)
+            LootBridge pickupBridge)
         {
             if (level == null) throw new ArgumentNullException(nameof(level));
             if (gameModeId == null) throw new ArgumentNullException(nameof(gameModeId));
@@ -96,7 +96,7 @@ namespace ShooterMover.UI.Game
             StableId runId = StableId.Create("run", "playable-level-" + token);
             long seed = BitConverter.ToInt64(Guid.NewGuid().ToByteArray(), 0)
                 & long.MaxValue;
-            var livePorts = new PlayableLevelLivePortFactory(rooms, graph);
+            var livePorts = new LevelPorts(rooms, graph);
             var source = new CharacterRunSessionStartSource(
                 coordinator,
                 new PlayableLevelStatInputResolver(
@@ -152,15 +152,14 @@ namespace ShooterMover.UI.Game
             Func<RunSessionAggregate> runResolver = delegate { return run; };
             var canonicalOverrides =
                 new RunSessionTerminalRewardOverrideResolver(runResolver);
-            var enemySourceContexts =
-                new ExactRunEnemySourceContextResolver(runResolver);
+            var enemySourceContexts = new EnemySource(runResolver);
             var propCatalog = new PropCatalog(
                 PropCapabilityRegistry.CreateBuiltIns(),
                 Array.Empty<PropDefinition>());
-            var propSourceContexts = new UnsupportedPropSourceContextResolver();
+            var propSourceContexts = new NoPropSource();
             var runContexts = new RunSessionLootDropContextResolver(
                 authority,
-                new FrozenRunProgressionContextProvider(
+                new RunProgress(
                     graph.Character.CharacterInstanceStableId,
                     frozenProgression),
                 GenerationAlgorithmVersion);
@@ -202,7 +201,7 @@ namespace ShooterMover.UI.Game
             };
 
             IEnemyDropFactConsumer transactionalConsumer =
-                new TransactionalRunRewardEnemyConsumer(
+                new LootTxn(
                     run,
                     pending,
                     pickupBridge,
@@ -216,8 +215,7 @@ namespace ShooterMover.UI.Game
         }
     }
 
-    internal sealed class ExplicitNoOpExperienceConsumer :
-        IEnemyExperienceFactConsumer
+    internal sealed class NoXp : IEnemyExperienceFactConsumer
     {
         public void Consume(EnemyDeathFact fact)
         {
@@ -225,8 +223,7 @@ namespace ShooterMover.UI.Game
         }
     }
 
-    internal sealed class ExplicitNoOpKillStatisticsConsumer :
-        IEnemyKillStatFactConsumer
+    internal sealed class NoKillStats : IEnemyKillStatFactConsumer
     {
         public void Consume(EnemyDeathFact fact)
         {
@@ -240,22 +237,21 @@ namespace ShooterMover.UI.Game
     /// pending-generation authority and the retained physical-pickup delivery queue.
     /// A successful attempt retains its consumer so exact redelivery reuses the same ledger.
     /// </summary>
-    internal sealed class TransactionalRunRewardEnemyConsumer :
-        IEnemyDropFactConsumer
+    internal sealed class LootTxn : IEnemyDropFactConsumer
     {
         private readonly object gate = new object();
         private readonly RunSessionAggregate run;
         private readonly PendingLootDropAdmissionState pending;
-        private readonly PendingAdmissionPickupBridge pickupBridge;
+        private readonly LootBridge pickupBridge;
         private readonly Func<EnemyLootDropFactConsumer> consumerFactory;
         private readonly Dictionary<StableId, EnemyLootDropFactConsumer>
             committedByDeathEvent =
                 new Dictionary<StableId, EnemyLootDropFactConsumer>();
 
-        public TransactionalRunRewardEnemyConsumer(
+        public LootTxn(
             RunSessionAggregate run,
             PendingLootDropAdmissionState pending,
-            PendingAdmissionPickupBridge pickupBridge,
+            LootBridge pickupBridge,
             Func<EnemyLootDropFactConsumer> consumerFactory)
         {
             this.run = run ?? throw new ArgumentNullException(nameof(run));
@@ -416,11 +412,11 @@ namespace ShooterMover.UI.Game
         }
     }
 
-    internal sealed class ExactRunEnemySourceContextResolver :
-        IEnemyTerminalSourceContextResolver
+    internal sealed class EnemySource : IEnemyTerminalSourceContextResolver
     {
         private readonly Func<RunSessionAggregate> runResolver;
-        public ExactRunEnemySourceContextResolver(Func<RunSessionAggregate> runResolver)
+
+        public EnemySource(Func<RunSessionAggregate> runResolver)
         {
             this.runResolver = runResolver ?? throw new ArgumentNullException(nameof(runResolver));
         }
@@ -463,8 +459,7 @@ namespace ShooterMover.UI.Game
         }
     }
 
-    internal sealed class UnsupportedPropSourceContextResolver :
-        IPropTerminalSourceContextResolver
+    internal sealed class NoPropSource : IPropTerminalSourceContextResolver
     {
         public bool TryResolve(
             PropTerminalFact terminalFact,
@@ -477,13 +472,12 @@ namespace ShooterMover.UI.Game
         }
     }
 
-    internal sealed class FrozenRunProgressionContextProvider :
-        IRunRewardProgressionContextProvider
+    internal sealed class RunProgress : IRunRewardProgressionContextProvider
     {
         private readonly StableId characterId;
         private readonly ProgressionContext frozenProgression;
 
-        public FrozenRunProgressionContextProvider(
+        public RunProgress(
             StableId characterId,
             ProgressionContext frozenProgression)
         {
