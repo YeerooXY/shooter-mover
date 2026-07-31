@@ -53,9 +53,19 @@ namespace ShooterMover.Application.Guns.Execution
                 hash *= Prime;
             }
 
+            hash = Avalanche(hash);
             double unit = (hash >> 11) * Unit53;
             double offsetDegrees = (unit - 0.5d) * spreadDegrees;
             return baseDirection.Normalized.RotateDegrees(offsetDegrees).Normalized;
+        }
+
+        private static ulong Avalanche(ulong value)
+        {
+            value ^= value >> 30;
+            value *= 0xbf58476d1ce4e5b9UL;
+            value ^= value >> 27;
+            value *= 0x94d049bb133111ebUL;
+            return value ^ (value >> 31);
         }
     }
 
