@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using ShooterMover.Application.Guns.Execution;
+using ShooterMover.Domain.Guns.Execution;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 

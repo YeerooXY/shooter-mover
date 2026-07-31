@@ -1,0 +1,47 @@
+  
+{
+  "schema_version": 2,
+  "level_id": "level.asdasdad",
+  "display_name": "RealFirstMap",
+  "authoring_state": "validated-playable",
+  "runtime_import_status": "compiler-ready",
+  "start_room_id": "room.asdasdad-start",
+  "final_exit": {
+    "room_id": "room.asdasdad-3",
+    "door_id": "door.00dff085"
+  },
+  "room_ids": [
+    "room.asdasdad-start",
+    "room.asdasdad-2",
+    "room.asdasdad-3"
+  ],
+  "rooms": [
+    {
+      "room_id": "room.asdasdad-start",
+      "grid_position": [
+        0,
+        0
+      ],
+      "slot": 1,
+      "folder": "Room_0_0_01"
+    },
+    {
+      "room_id": "room.asdasdad-2",
+      "grid_position": [
+        1,
+        0
+      ],
+      "slot": 1,
+      "folder": "Room_1_0_01"
+    },
+    {
+      "room_id": "room.asdasdad-3",
+      "grid_position": [
+        2,
+        0
+      ],
+      "slot": 1,
+      "folder": "Room_2_0_01"
+    }
+  ]
+}

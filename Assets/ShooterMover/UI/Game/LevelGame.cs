@@ -32,7 +32,8 @@ namespace ShooterMover.UI.Game
         [SerializeField] private RoomArt presentationCatalog;
         [SerializeField] private Transform presentationRoot;
         [SerializeField] private GameObject playerPrefab;
-        [SerializeField] private float playerSpeed = 6f;
+        // Just-for-fun movement boost: three times the normal player speed.
+        [SerializeField] private float playerSpeed = 18f;
         [SerializeField] private float cameraSize = 8f;
 
         private readonly List<GameObject> ownedBindings = new List<GameObject>();

@@ -1,0 +1,19 @@
+{
+  "schema_version": 2,
+  "room": "room.asdasdad-start",
+  "tiles": [
+    {
+      "object": "tile.floor-industrial",
+      "fill": {
+        "from": [
+          -12,
+          -4
+        ],
+        "to": [
+          12,
+          3
+        ]
+      }
+    }
+  ]
+}

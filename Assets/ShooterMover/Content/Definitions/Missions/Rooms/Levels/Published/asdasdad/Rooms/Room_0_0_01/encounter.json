@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "room": "room.asdasdad-start",
+  "completion": "all-enemies",
+  "optional_enemy_ids": [],
+  "door_rules": [
+    {
+      "match": {
+        "door_id": "door.asdasdad-final-exit"
+      },
+      "open_when": "room-complete"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cf2833e1171d44b89e67f2eaa0f7c10a, type: 3}
+  m_Name: RoomContent
+  m_EditorClassIdentifier: ShooterMover.UnityAdapters::ShooterMover.UnityAdapters.Authoring.LevelDesign.RoomFile
+  manifest: {fileID: 4900000, guid: ae6340f430f1dbf4287926cb3b737811, type: 3}
+  documents:
+  - key: level-1.00.room-asdasdad-start.decor
+    document: {fileID: 4900000, guid: 2229fb7b5774ec749abedde1c7f967c9, type: 3}
+  - key: level-1.00.room-asdasdad-start.encounter
+    document: {fileID: 4900000, guid: 6288a150490a6d34ab7682952a273207, type: 3}
+  - key: level-1.00.room-asdasdad-start.enemies
+    document: {fileID: 4900000, guid: 62672f2d66eeb3b4a804249a09b00bae, type: 3}
+  - key: level-1.00.room-asdasdad-start.layout
+    document: {fileID: 4900000, guid: af3736aa4e9790e478da7b86120006f1, type: 3}
+  - key: level-1.00.room-asdasdad-start.props
+    document: {fileID: 4900000, guid: e2a3bba0fb7acf1448dc749d62a12ae8, type: 3}
+  - key: level-1.01.room-asdasdad-2.decor
+    document: {fileID: 4900000, guid: 2e44d885dcb080c4f9ebed21a91d4ddc, type: 3}
+  - key: level-1.01.room-asdasdad-2.encounter
+    document: {fileID: 4900000, guid: 3ef9717a7ee61044bb72ca45b319732a, type: 3}
+  - key: level-1.01.room-asdasdad-2.enemies
+    document: {fileID: 4900000, guid: d1087618164c24f4ca126af1a9f0930f, type: 3}
+  - key: level-1.01.room-asdasdad-2.layout
+    document: {fileID: 4900000, guid: ea73a529387c7d845a483493db1260fb, type: 3}
+  - key: level-1.01.room-asdasdad-2.props
+    document: {fileID: 4900000, guid: f9d38f637c58dd14198a25b214db5b83, type: 3}
+  - key: level-1.02.room-asdasdad-3.decor
+    document: {fileID: 4900000, guid: 33c15bb856901f145908dcfc9f27dda5, type: 3}
+  - key: level-1.02.room-asdasdad-3.encounter
+    document: {fileID: 4900000, guid: 8be9fce6144deea42b5ef1715f2318aa, type: 3}
+  - key: level-1.02.room-asdasdad-3.enemies
+    document: {fileID: 4900000, guid: 22e905748ba6ff04ab36253022e41053, type: 3}
+  - key: level-1.02.room-asdasdad-3.layout
+    document: {fileID: 4900000, guid: be292fb9418df3548bf8792a149ec706, type: 3}
+  - key: level-1.02.room-asdasdad-3.props
+    document: {fileID: 4900000, guid: 334d6c57305393044a59a2e28f4b6258, type: 3}

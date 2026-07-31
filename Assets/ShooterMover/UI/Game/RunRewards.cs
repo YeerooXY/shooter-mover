@@ -8,6 +8,7 @@ using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.EnemyRuntimeComposition;
 using ShooterMover.RunLoot;
 using ShooterMover.UI.LevelSelection;
@@ -211,7 +212,19 @@ namespace ShooterMover.UI.Game
                 runtime,
                 graph,
                 coordinator);
-            controller.ConfigureRunCompletion(completion.Complete);
+            controller.ConfigureRunCompletion(
+                () =>
+                {
+                    bool accepted = completion.Complete();
+                    if (!accepted)
+                    {
+                        Debug.LogError(
+                            "playable-level-run-completion-rejected:"
+                                + completion.LastDiagnostic,
+                            controller);
+                    }
+                    return accepted;
+                });
             observedLifecycleGeneration = runtime.Run.LifecycleGeneration;
             pickupBridge.RetireOtherLifecycles(
                 runtime.RunStableId,
