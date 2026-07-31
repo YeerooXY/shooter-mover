@@ -8,7 +8,7 @@ Open `index.html` in a browser.
 2. Edit one enemy.
 3. Preview and fix validation issues.
 4. Export `<enemy-id>.enemy.json`.
-5. Unity imports the file through `EnemyPkgJson` and publishes packages through `EnemyPkgCompiler`.
+5. Unity can read the package through `EnemyPkgJson` and publish package sets through `EnemyPkgCompiler`.
 
 ## Catalog snapshot
 
@@ -51,3 +51,5 @@ The export matches schema `1` used by:
 - `EnemyPkgCompiler`
 
 The current runtime still uses the legacy enemy catalog until a later migration adapter is added.
+
+No automated tests are included yet. Unity compilation and a browser smoke pass are still required.
