@@ -200,7 +200,7 @@ namespace ShooterMover.UI.StrongboxOpening
         private void ApplyProjection()
         {
             Color accent = ResolveAccent(projection);
-            bodyRenderer.sprite = GetBodySprite(projection.PresentationKind);
+            bodyRenderer.sprite = ResolveBodySprite(projection);
             bodyRenderer.color = accent;
             float bodyScale = projection.IsStrongbox ? 1.15f : 0.92f;
             bodyRenderer.transform.localScale =
@@ -220,6 +220,29 @@ namespace ShooterMover.UI.StrongboxOpening
                     : " x"
                         + projection.Quantity.ToString(
                             CultureInfo.InvariantCulture));
+        }
+
+        private static Sprite ResolveBodySprite(
+            LootPickupPresentation value)
+        {
+            if (value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
+            if (!value.IsStrongbox)
+            {
+                return GetBodySprite(value.PresentationKind);
+            }
+
+            Sprite sprite;
+            string diagnostic;
+            BoxSprites.TryResolve(
+                value.ContentStableId,
+                out sprite,
+                out diagnostic);
+            return sprite == null
+                ? BoxSprites.GetFallbackSprite()
+                : sprite;
         }
 
         private void SetVisible(bool visible)
@@ -291,8 +314,6 @@ namespace ShooterMover.UI.StrongboxOpening
                 return new Color(0.48f, 0.53f, 0.57f, 1f);
             }
 
-            // Presentation-only procedural palette. The production catalogue remains
-            // the sole tier list, so adding a tier cannot require a second UI table.
             float ordinal = tierNumber - 2f;
             float hue = Mathf.Repeat(0.055f + ordinal * 0.117f, 1f);
             float saturation = Mathf.Clamp01(0.64f + ordinal * 0.025f);

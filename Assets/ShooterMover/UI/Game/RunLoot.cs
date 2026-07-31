@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -9,49 +8,56 @@ using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Application.Runs.Session;
 using ShooterMover.Content.Definitions.Levels.Selection;
+using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Props;
 using ShooterMover.Domain.Rewards.Drops;
-using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.EnemyRuntimeComposition;
 using ShooterMover.LootDropBinding;
 using ShooterMover.UnityAdapters.Missions.Rooms;
+using ShooterMover.UnityAdapters.Rewards.RunLoots;
 
 namespace ShooterMover.UI.Game
 {
     internal sealed class RunLoot
     {
-        private readonly PendingLootDropAdmissionState pending;
-        private readonly PendingAdmissionViewConsumer projection;
+        public const int GenerationAlgorithmVersion = 1;
+
+        private readonly LevelPorts livePorts;
 
         private RunLoot(
             RunSessionState authority,
             RunSessionAggregate run,
-            PendingLootDropAdmissionState pending,
-            PendingAdmissionViewConsumer projection,
+            ProgressionContext frozenProgression,
+            LevelPorts livePorts,
             IEnemyDropFactConsumer dropConsumer)
         {
-            RunSessions = authority;
-            Run = run;
-            this.pending = pending;
-            this.projection = projection;
+            RunSessions = authority
+                ?? throw new ArgumentNullException(nameof(authority));
+            Run = run ?? throw new ArgumentNullException(nameof(run));
+            FrozenProgression = frozenProgression
+                ?? throw new ArgumentNullException(nameof(frozenProgression));
+            this.livePorts = livePorts
+                ?? throw new ArgumentNullException(nameof(livePorts));
             DropConsumer = dropConsumer
                 ?? throw new ArgumentNullException(nameof(dropConsumer));
-            ExperienceConsumer = new ExplicitNoOpExperienceConsumer();
-            KillStatisticsConsumer = new ExplicitNoOpKillStatisticsConsumer();
+            ExperienceConsumer = new NoXp();
+            KillStatisticsConsumer = new NoKillStats();
         }
 
         public RunSessionState RunSessions { get; }
         public RunSessionAggregate Run { get; }
+        public ProgressionContext FrozenProgression { get; }
         public StableId RunStableId { get { return Run.RunStableId; } }
         public IEnemyExperienceFactConsumer ExperienceConsumer { get; }
         public IEnemyDropFactConsumer DropConsumer { get; }
         public IEnemyKillStatFactConsumer KillStatisticsConsumer { get; }
 
-        public PendingRunRewardView ExportPendingProjection()
+        public MissionResultPayload RefreshMissionResult(
+            MissionResultPayload prior)
         {
-            return projection.Export(pending);
+            return livePorts.RefreshMissionResult(prior);
         }
 
         public static RunLoot Create(
@@ -60,7 +66,8 @@ namespace ShooterMover.UI.Game
             CharacterLiveGraph graph,
             ShooterMover.Application.Persistence.Composition.CharacterSetupFlow coordinator,
             LevelRooms rooms,
-            ShooterMover.Domain.Enemies.Catalog.EnemyCatalog enemyCatalog)
+            ShooterMover.Domain.Enemies.Catalog.EnemyCatalog enemyCatalog,
+            LootBridge pickupBridge)
         {
             if (level == null) throw new ArgumentNullException(nameof(level));
             if (gameModeId == null) throw new ArgumentNullException(nameof(gameModeId));
@@ -68,6 +75,7 @@ namespace ShooterMover.UI.Game
             if (coordinator == null) throw new ArgumentNullException(nameof(coordinator));
             if (rooms == null) throw new ArgumentNullException(nameof(rooms));
             if (enemyCatalog == null) throw new ArgumentNullException(nameof(enemyCatalog));
+            if (pickupBridge == null) throw new ArgumentNullException(nameof(pickupBridge));
 
             StableId difficultyId = StableId.Parse("difficulty.normal");
             ProgressionContext currentProgression =
@@ -88,12 +96,13 @@ namespace ShooterMover.UI.Game
             StableId runId = StableId.Create("run", "playable-level-" + token);
             long seed = BitConverter.ToInt64(Guid.NewGuid().ToByteArray(), 0)
                 & long.MaxValue;
+            var livePorts = new LevelPorts(rooms, graph);
             var source = new CharacterRunSessionStartSource(
                 coordinator,
-                new PlayableLevelStatInputResolver(
+                new LevelStats(
                     level,
                     frozenProgression),
-                new PlayableLevelLivePortFactory(rooms));
+                livePorts);
             var authority = new RunSessionState(source);
             var command = new StartRunSessionCommand(
                 StableId.Create("operation", "start-playable-run-" + token),
@@ -122,6 +131,7 @@ namespace ShooterMover.UI.Game
                     "The selected-character production Run Session did not start: "
                     + (start == null ? "result-null" : start.RejectionCode));
             }
+            livePorts.BindRun(run);
             if (run.FrozenInputs.CharacterStats.Level
                     != frozenProgression.CharacterLevel
                 || run.StartCommand.DifficultyStableId
@@ -139,22 +149,20 @@ namespace ShooterMover.UI.Game
                 RunDropPacingCatalog.Default));
 
             var pending = new PendingLootDropAdmissionState();
-            var projection = new PendingAdmissionViewConsumer();
             Func<RunSessionAggregate> runResolver = delegate { return run; };
             var canonicalOverrides =
                 new RunSessionTerminalRewardOverrideResolver(runResolver);
-            var enemySourceContexts =
-                new ExactRunEnemySourceContextResolver(runResolver);
+            var enemySourceContexts = new EnemySource(runResolver);
             var propCatalog = new PropCatalog(
                 PropCapabilityRegistry.CreateBuiltIns(),
                 Array.Empty<PropDefinition>());
-            var propSourceContexts = new UnsupportedPropSourceContextResolver();
+            var propSourceContexts = new NoPropSource();
             var runContexts = new RunSessionLootDropContextResolver(
                 authority,
-                new FrozenRunProgressionContextProvider(
+                new RunProgress(
                     graph.Character.CharacterInstanceStableId,
                     frozenProgression),
-                1);
+                GenerationAlgorithmVersion);
             var participantResolver =
                 new RunSessionTerminalRewardParticipantResolver(
                     runResolver,
@@ -182,7 +190,7 @@ namespace ShooterMover.UI.Game
                         null,
                         null,
                         pending,
-                        admissionConsumer: null,
+                        admissionConsumer: pickupBridge,
                         personalGenerationService: personalGeneration,
                         participantResolver: participantResolver,
                         environmentResolver: environmentResolver,
@@ -193,99 +201,21 @@ namespace ShooterMover.UI.Game
             };
 
             IEnemyDropFactConsumer transactionalConsumer =
-                new TransactionalRunRewardEnemyConsumer(
+                new LootTxn(
                     run,
                     pending,
-                    projection,
+                    pickupBridge,
                     consumerFactory);
             return new RunLoot(
                 authority,
                 run,
-                pending,
-                projection,
+                frozenProgression,
+                livePorts,
                 transactionalConsumer);
         }
     }
 
-    internal sealed class PendingRunRewardView
-    {
-        public PendingRunRewardView(
-            int acceptedAdmissionCount,
-            long cash,
-            long scrap,
-            long strongboxes)
-        {
-            AcceptedAdmissionCount = acceptedAdmissionCount;
-            Cash = cash;
-            Scrap = scrap;
-            Strongboxes = strongboxes;
-        }
-        public int AcceptedAdmissionCount { get; }
-        public long Cash { get; }
-        public long Scrap { get; }
-        public long Strongboxes { get; }
-    }
-
-    internal sealed class PendingAdmissionViewConsumer :
-        IPendingLootDropAdmissionConsumer
-    {
-        private readonly HashSet<StableId> operations = new HashSet<StableId>();
-
-        public void Consume(PendingLootDropAdmissionResult admission)
-        {
-            if (admission == null || !admission.IsAccepted
-                || admission.OperationStableId == null)
-            {
-                return;
-            }
-            operations.Add(admission.OperationStableId);
-        }
-
-        public void RollbackAccepted(
-            PendingLootDropAdmissionResult admission)
-        {
-            if (admission == null
-                || admission.Status
-                    != PendingLootDropAdmissionStatus.Accepted
-                || admission.OperationStableId == null)
-            {
-                return;
-            }
-            operations.Remove(admission.OperationStableId);
-        }
-
-        public PendingRunRewardView Export(
-            PendingLootDropAdmissionState authority)
-        {
-            if (authority == null) throw new ArgumentNullException(nameof(authority));
-            long cash = 0L;
-            long scrap = 0L;
-            long boxes = 0L;
-            int accepted = 0;
-            foreach (StableId operation in operations.OrderBy(value => value))
-            {
-                GeneratedLootDropResult result;
-                if (!authority.TryGetPending(operation, out result) || result == null)
-                {
-                    throw new InvalidOperationException(
-                        "An observed pending reward operation is no longer authoritative: "
-                        + operation);
-                }
-                accepted++;
-                for (int index = 0; index < result.GeneratedRewards.Count; index++)
-                {
-                    GeneratedLootDropReward reward = result.GeneratedRewards[index];
-                    if (reward.Kind == RewardGrantKind.Money) cash += reward.Quantity;
-                    else if (reward.Kind == RewardGrantKind.Scrap) scrap += reward.Quantity;
-                    else if (reward.Kind == RewardGrantKind.Strongbox) boxes += reward.Quantity;
-                }
-            }
-            return new PendingRunRewardView(accepted, cash, scrap, boxes);
-        }
-    }
-
-    internal sealed class ExplicitNoOpExperienceConsumer :
-        IEnemyExperienceFactConsumer
+    internal sealed class NoXp : IEnemyExperienceFactConsumer
     {
         public void Consume(EnemyDeathFact fact)
         {
@@ -293,8 +223,7 @@ namespace ShooterMover.UI.Game
         }
     }
 
-    internal sealed class ExplicitNoOpKillStatisticsConsumer :
-        IEnemyKillStatFactConsumer
+    internal sealed class NoKillStats : IEnemyKillStatFactConsumer
     {
         public void Consume(EnemyDeathFact fact)
         {
@@ -302,34 +231,27 @@ namespace ShooterMover.UI.Game
         }
     }
 
-    /// <summary>
-    /// Coordinates run-owned pacing/outbox state with scene-local pending admission.
-    /// A failed attempt restores the exact run reward snapshot, compensates only pending
-    /// records created by that attempt, and discards the attempt's generation replay state.
-    /// A successful attempt retains its consumer so exact redelivery reuses the same ledger.
-    /// </summary>
-    internal sealed class TransactionalRunRewardEnemyConsumer :
-        IEnemyDropFactConsumer
+    internal sealed class LootTxn : IEnemyDropFactConsumer
     {
         private readonly object gate = new object();
         private readonly RunSessionAggregate run;
         private readonly PendingLootDropAdmissionState pending;
-        private readonly PendingAdmissionViewConsumer projection;
+        private readonly LootBridge pickupBridge;
         private readonly Func<EnemyLootDropFactConsumer> consumerFactory;
         private readonly Dictionary<StableId, EnemyLootDropFactConsumer>
             committedByDeathEvent =
                 new Dictionary<StableId, EnemyLootDropFactConsumer>();
 
-        public TransactionalRunRewardEnemyConsumer(
+        public LootTxn(
             RunSessionAggregate run,
             PendingLootDropAdmissionState pending,
-            PendingAdmissionViewConsumer projection,
+            LootBridge pickupBridge,
             Func<EnemyLootDropFactConsumer> consumerFactory)
         {
             this.run = run ?? throw new ArgumentNullException(nameof(run));
             this.pending = pending ?? throw new ArgumentNullException(nameof(pending));
-            this.projection = projection
-                ?? throw new ArgumentNullException(nameof(projection));
+            this.pickupBridge = pickupBridge
+                ?? throw new ArgumentNullException(nameof(pickupBridge));
             this.consumerFactory = consumerFactory
                 ?? throw new ArgumentNullException(nameof(consumerFactory));
         }
@@ -351,7 +273,6 @@ namespace ShooterMover.UI.Game
                         out committed))
                 {
                     committed.Consume(fact);
-                    Publish(committed.LastAdmissions);
                     return;
                 }
 
@@ -368,7 +289,6 @@ namespace ShooterMover.UI.Game
                     }
 
                     attempt.Consume(fact);
-                    Publish(attempt.LastAdmissions);
                     committedByDeathEvent.Add(
                         fact.DeathEventStableId,
                         attempt);
@@ -409,19 +329,41 @@ namespace ShooterMover.UI.Game
                         continue;
                     }
 
-                    projection.RollbackAccepted(admission);
-                    string diagnostic;
+                    string bridgeDiagnostic;
+                    try
+                    {
+                        if (!pickupBridge.TryRollbackAccepted(
+                                admission,
+                                out bridgeDiagnostic))
+                        {
+                            failure = Combine(
+                                failure,
+                                new InvalidOperationException(
+                                    "Pickup admission compensation rejected: "
+                                    + bridgeDiagnostic));
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        if (IsFatal(exception))
+                        {
+                            ExceptionDispatchInfo.Capture(exception).Throw();
+                        }
+                        failure = Combine(failure, exception);
+                    }
+
+                    string pendingDiagnostic;
                     try
                     {
                         if (!pending.TryRollbackAccepted(
                                 admission,
-                                out diagnostic))
+                                out pendingDiagnostic))
                         {
                             failure = Combine(
                                 failure,
                                 new InvalidOperationException(
                                     "Pending reward compensation rejected: "
-                                    + diagnostic));
+                                    + pendingDiagnostic));
                         }
                     }
                     catch (Exception exception)
@@ -450,16 +392,6 @@ namespace ShooterMover.UI.Game
             return failure;
         }
 
-        private void Publish(
-            IReadOnlyList<PendingLootDropAdmissionResult> admissions)
-        {
-            if (admissions == null) return;
-            for (int index = 0; index < admissions.Count; index++)
-            {
-                projection.Consume(admissions[index]);
-            }
-        }
-
         private static Exception Combine(Exception current, Exception next)
         {
             if (current == null) return next;
@@ -474,11 +406,11 @@ namespace ShooterMover.UI.Game
         }
     }
 
-    internal sealed class ExactRunEnemySourceContextResolver :
-        IEnemyTerminalSourceContextResolver
+    internal sealed class EnemySource : IEnemyTerminalSourceContextResolver
     {
         private readonly Func<RunSessionAggregate> runResolver;
-        public ExactRunEnemySourceContextResolver(Func<RunSessionAggregate> runResolver)
+
+        public EnemySource(Func<RunSessionAggregate> runResolver)
         {
             this.runResolver = runResolver ?? throw new ArgumentNullException(nameof(runResolver));
         }
@@ -521,8 +453,7 @@ namespace ShooterMover.UI.Game
         }
     }
 
-    internal sealed class UnsupportedPropSourceContextResolver :
-        IPropTerminalSourceContextResolver
+    internal sealed class NoPropSource : IPropTerminalSourceContextResolver
     {
         public bool TryResolve(
             PropTerminalFact terminalFact,
@@ -535,13 +466,12 @@ namespace ShooterMover.UI.Game
         }
     }
 
-    internal sealed class FrozenRunProgressionContextProvider :
-        IRunRewardProgressionContextProvider
+    internal sealed class RunProgress : IRunRewardProgressionContextProvider
     {
         private readonly StableId characterId;
         private readonly ProgressionContext frozenProgression;
 
-        public FrozenRunProgressionContextProvider(
+        public RunProgress(
             StableId characterId,
             ProgressionContext frozenProgression)
         {

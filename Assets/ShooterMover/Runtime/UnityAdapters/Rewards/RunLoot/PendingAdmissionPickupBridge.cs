@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Rewards.RunLoots
 {
-    public enum PickupDeliveryDisposition
+    public enum LootSendState
     {
         Applied = 1,
         ExactReplay = 2,
@@ -19,10 +19,10 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
         ConflictingDuplicate = 5,
     }
 
-    public sealed class PickupDeliveryResult
+    public sealed class LootSendResult
     {
-        public PickupDeliveryResult(
-            PickupDeliveryDisposition disposition,
+        public LootSendResult(
+            LootSendState disposition,
             PendingLootDropAdmissionResult admission,
             string diagnostic)
         {
@@ -31,22 +31,22 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
             Diagnostic = diagnostic ?? string.Empty;
         }
 
-        public PickupDeliveryDisposition Disposition { get; }
+        public LootSendState Disposition { get; }
         public PendingLootDropAdmissionResult Admission { get; }
         public string Diagnostic { get; }
         public bool IsAcknowledged
         {
             get
             {
-                return Disposition == PickupDeliveryDisposition.Applied
-                    || Disposition == PickupDeliveryDisposition.ExactReplay;
+                return Disposition == LootSendState.Applied
+                    || Disposition == LootSendState.ExactReplay;
             }
         }
     }
 
-    public sealed class PickupSourcePosition
+    public sealed class LootOrigin
     {
-        public PickupSourcePosition(
+        public LootOrigin(
             StableId roomStableId,
             Vector2 position,
             string fingerprint)
@@ -66,21 +66,20 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
         public string Fingerprint { get; }
     }
 
-    public interface IPickupSourcePositionResolver
+    public interface ILootOrigin
     {
         bool TryResolve(
-            out PickupSourcePosition position,
+            out LootOrigin position,
             out string diagnostic);
     }
 
-    public sealed class TransformPickupSourcePositionResolver :
-        IPickupSourcePositionResolver
+    public sealed class TransformOrigin : ILootOrigin
     {
         private readonly StableId roomStableId;
         private readonly Transform sourceTransform;
         private readonly StableId terminalEventStableId;
 
-        public TransformPickupSourcePositionResolver(
+        public TransformOrigin(
             StableId roomStableId,
             Transform sourceTransform,
             StableId terminalEventStableId)
@@ -93,7 +92,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
         }
 
         public bool TryResolve(
-            out PickupSourcePosition position,
+            out LootOrigin position,
             out string diagnostic)
         {
             position = null;
@@ -106,7 +105,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
             try
             {
                 Vector2 value = sourceTransform.position;
-                string fingerprint = PickupBridgeFingerprint.Hash(
+                string fingerprint = LootHash.Hash(
                     (terminalEventStableId == null
                         ? "terminal-event-unbound"
                         : terminalEventStableId.ToString())
@@ -114,7 +113,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
                     + value.x.ToString("R", CultureInfo.InvariantCulture)
                     + "|"
                     + value.y.ToString("R", CultureInfo.InvariantCulture));
-                position = new PickupSourcePosition(
+                position = new LootOrigin(
                     roomStableId,
                     value,
                     fingerprint);
@@ -131,19 +130,17 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
         }
     }
 
-    public sealed class FixedPickupSourcePositionResolver :
-        IPickupSourcePositionResolver
+    public sealed class FixedOrigin : ILootOrigin
     {
-        private readonly PickupSourcePosition value;
+        private readonly LootOrigin value;
 
-        public FixedPickupSourcePositionResolver(
-            PickupSourcePosition value)
+        public FixedOrigin(LootOrigin value)
         {
             this.value = value ?? throw new ArgumentNullException(nameof(value));
         }
 
         public bool TryResolve(
-            out PickupSourcePosition position,
+            out LootOrigin position,
             out string diagnostic)
         {
             position = value;
@@ -152,11 +149,11 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
         }
     }
 
-    public interface IPickupAdmissionLive
+    public interface ILootLive
     {
         bool TryRegisterPosition(
             LootDropSourceFact source,
-            PickupSourcePosition position,
+            LootOrigin position,
             out string diagnostic);
 
         RunLootRealizationResult Realize(
@@ -166,14 +163,13 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
             StableId roomStableId);
     }
 
-    internal sealed class UnityPickupAdmissionLive :
-        IPickupAdmissionLive
+    internal sealed class LootLive : ILootLive
     {
         private readonly RunLootPositions sourcePositions;
         private readonly PendingLootDropPickupConsumer pickupConsumer;
         private readonly RunLootView presenter;
 
-        public UnityPickupAdmissionLive(
+        public LootLive(
             RunLootPositions sourcePositions,
             PendingLootDropPickupConsumer pickupConsumer,
             RunLootView presenter)
@@ -188,7 +184,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
 
         public bool TryRegisterPosition(
             LootDropSourceFact source,
-            PickupSourcePosition position,
+            LootOrigin position,
             out string diagnostic)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
@@ -221,17 +217,16 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
     /// Retained transactional delivery queue. Temporary context and presentation failures retry;
     /// malformed, conflicting, stale or otherwise impossible facts are quarantined exactly once.
     /// </summary>
-    public sealed class PendingAdmissionPickupBridge :
-        IPendingLootDropAdmissionConsumer
+    public sealed class LootBridge : IPendingLootDropAdmissionConsumer
     {
         private sealed class SourceBinding
         {
-            public SourceBinding(IPickupSourcePositionResolver resolver)
+            public SourceBinding(ILootOrigin resolver)
             {
                 Resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
             }
 
-            public IPickupSourcePositionResolver Resolver { get; }
+            public ILootOrigin Resolver { get; }
         }
 
         private sealed class DeliveryRecord
@@ -244,9 +239,9 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
             public PendingLootDropAdmissionResult Admission { get; }
         }
 
-        private sealed class QuarantineRecord
+        private sealed class BadRecord
         {
-            public QuarantineRecord(
+            public BadRecord(
                 PendingLootDropAdmissionResult admission,
                 string diagnostic)
             {
@@ -276,10 +271,9 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
             new Dictionary<StableId, DeliveryRecord>();
         private readonly Dictionary<StableId, string> completedByOperation =
             new Dictionary<StableId, string>();
-        private readonly Dictionary<StableId, QuarantineRecord>
-            quarantinedByOperation =
-                new Dictionary<StableId, QuarantineRecord>();
-        private IPickupAdmissionLive runtime;
+        private readonly Dictionary<StableId, BadRecord> quarantinedByOperation =
+            new Dictionary<StableId, BadRecord>();
+        private ILootLive runtime;
 
         public int PendingCount
         {
@@ -307,13 +301,24 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
 
         public string LastDiagnostic { get; private set; } = string.Empty;
 
-        public void ConfigureRuntime(IPickupAdmissionLive runtime)
+        public void ConfigureRuntime(ILootLive runtime)
         {
             lock (gate)
             {
                 this.runtime = runtime
                     ?? throw new ArgumentNullException(nameof(runtime));
             }
+        }
+
+        public void ConfigureRuntime(
+            RunLootPositions sourcePositions,
+            PendingLootDropPickupConsumer pickupConsumer,
+            RunLootView presenter)
+        {
+            ConfigureRuntime(new LootLive(
+                sourcePositions,
+                pickupConsumer,
+                presenter));
         }
 
         public void ReleaseRuntime()
@@ -326,7 +331,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
             long lifecycleGeneration,
             StableId sourceEntityStableId,
             StableId sourcePlacementStableId,
-            IPickupSourcePositionResolver resolver)
+            ILootOrigin resolver)
         {
             if (runStableId == null
                 || lifecycleGeneration <= 0L
@@ -360,7 +365,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
                 lifecycleGeneration,
                 sourceEntityStableId,
                 sourcePlacementStableId,
-                new TransformPickupSourcePositionResolver(
+                new TransformOrigin(
                     roomStableId,
                     sourceTransform,
                     terminalEventStableId));
@@ -380,8 +385,8 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
                 lifecycleGeneration,
                 sourceEntityStableId,
                 sourcePlacementStableId,
-                new FixedPickupSourcePositionResolver(
-                    new PickupSourcePosition(
+                new FixedOrigin(
+                    new LootOrigin(
                         roomStableId,
                         position,
                         fingerprint)));
@@ -392,7 +397,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
             TryEnqueue(admission);
         }
 
-        public PickupDeliveryResult TryEnqueue(
+        public LootSendResult TryEnqueue(
             PendingLootDropAdmissionResult admission)
         {
             lock (gate)
@@ -411,7 +416,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
                             ? "pickup-admission-not-accepted"
                             : admission.Diagnostic;
                     return Result(
-                        PickupDeliveryDisposition.Rejected,
+                        LootSendState.Rejected,
                         admission,
                         LastDiagnostic);
                 }
@@ -430,13 +435,13 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
                         : "pickup-admission-completed-conflict";
                     return Result(
                         exact
-                            ? PickupDeliveryDisposition.ExactReplay
-                            : PickupDeliveryDisposition.ConflictingDuplicate,
+                            ? LootSendState.ExactReplay
+                            : LootSendState.ConflictingDuplicate,
                         admission,
                         LastDiagnostic);
                 }
 
-                QuarantineRecord quarantined;
+                BadRecord quarantined;
                 if (quarantinedByOperation.TryGetValue(
                     admission.OperationStableId,
                     out quarantined))
@@ -451,8 +456,8 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
                         : "pickup-admission-quarantine-conflict";
                     return Result(
                         exact
-                            ? PickupDeliveryDisposition.Rejected
-                            : PickupDeliveryDisposition.ConflictingDuplicate,
+                            ? LootSendState.Rejected
+                            : LootSendState.ConflictingDuplicate,
                         admission,
                         LastDiagnostic);
                 }
@@ -473,8 +478,8 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
                         : "pickup-admission-pending-conflict";
                     return Result(
                         exact
-                            ? PickupDeliveryDisposition.ExactReplay
-                            : PickupDeliveryDisposition.ConflictingDuplicate,
+                            ? LootSendState.ExactReplay
+                            : LootSendState.ConflictingDuplicate,
                         admission,
                         LastDiagnostic);
                 }
@@ -483,9 +488,85 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
                     admission.OperationStableId,
                     new DeliveryRecord(admission));
                 return Result(
-                    PickupDeliveryDisposition.Applied,
+                    LootSendState.Applied,
                     admission,
                     string.Empty);
+            }
+        }
+
+        /// <summary>
+        /// Compensates a newly accepted admission only while it is still retained in this
+        /// bridge's pending queue. A realized/completed or quarantined delivery is never
+        /// silently rewound.
+        /// </summary>
+        public bool TryRollbackAccepted(
+            PendingLootDropAdmissionResult admission,
+            out string diagnostic)
+        {
+            lock (gate)
+            {
+                diagnostic = string.Empty;
+                if (admission == null
+                    || admission.Status
+                        != PendingLootDropAdmissionStatus.Accepted
+                    || admission.OperationStableId == null
+                    || string.IsNullOrWhiteSpace(admission.BatchFingerprint))
+                {
+                    diagnostic = "pickup-admission-rollback-input-invalid";
+                    return false;
+                }
+
+                string completed;
+                if (completedByOperation.TryGetValue(
+                        admission.OperationStableId,
+                        out completed))
+                {
+                    diagnostic = string.Equals(
+                            completed,
+                            admission.BatchFingerprint,
+                            StringComparison.Ordinal)
+                        ? "pickup-admission-rollback-already-completed"
+                        : "pickup-admission-rollback-completed-conflict";
+                    return false;
+                }
+
+                BadRecord quarantined;
+                if (quarantinedByOperation.TryGetValue(
+                        admission.OperationStableId,
+                        out quarantined))
+                {
+                    diagnostic = quarantined != null
+                        && string.Equals(
+                            quarantined.Fingerprint,
+                            admission.BatchFingerprint,
+                            StringComparison.Ordinal)
+                        ? "pickup-admission-rollback-quarantined"
+                        : "pickup-admission-rollback-quarantine-conflict";
+                    return false;
+                }
+
+                DeliveryRecord pending;
+                if (!pendingByOperation.TryGetValue(
+                        admission.OperationStableId,
+                        out pending))
+                {
+                    diagnostic = "pickup-admission-rollback-pending-missing";
+                    return false;
+                }
+                if (pending == null
+                    || pending.Admission == null
+                    || !string.Equals(
+                        pending.Admission.BatchFingerprint,
+                        admission.BatchFingerprint,
+                        StringComparison.Ordinal))
+                {
+                    diagnostic = "pickup-admission-rollback-pending-conflict";
+                    return false;
+                }
+
+                pendingByOperation.Remove(admission.OperationStableId);
+                LastDiagnostic = string.Empty;
+                return true;
             }
         }
 
@@ -536,7 +617,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
                         continue;
                     }
 
-                    PickupSourcePosition position;
+                    LootOrigin position;
                     string diagnostic;
                     bool resolved;
                     try
@@ -692,7 +773,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
                     pendingByOperation.Remove(removePending[index]);
 
                 var removeQuarantined = new List<StableId>();
-                foreach (KeyValuePair<StableId, QuarantineRecord> pair in
+                foreach (KeyValuePair<StableId, BadRecord> pair in
                     quarantinedByOperation)
                 {
                     LootDropSourceFact source = SourceOf(
@@ -742,7 +823,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
             {
                 quarantinedByOperation.Add(
                     operation,
-                    new QuarantineRecord(admission, diagnostic));
+                    new BadRecord(admission, diagnostic));
             }
             LastDiagnostic = quarantinedByOperation[operation].Diagnostic;
         }
@@ -794,12 +875,12 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
                 && source.RunLifecycleGeneration == lifecycleGeneration;
         }
 
-        private static PickupDeliveryResult Result(
-            PickupDeliveryDisposition disposition,
+        private static LootSendResult Result(
+            LootSendState disposition,
             PendingLootDropAdmissionResult admission,
             string diagnostic)
         {
-            return new PickupDeliveryResult(
+            return new LootSendResult(
                 disposition,
                 admission,
                 diagnostic);
@@ -823,7 +904,7 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
         }
     }
 
-    internal static class PickupBridgeFingerprint
+    internal static class LootHash
     {
         public static string Hash(string value)
         {
