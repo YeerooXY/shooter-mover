@@ -99,7 +99,7 @@ namespace ShooterMover.UI.Game
             var livePorts = new LevelPorts(rooms, graph);
             var source = new CharacterRunSessionStartSource(
                 coordinator,
-                new PlayableLevelStatInputResolver(
+                new LevelStats(
                     level,
                     frozenProgression),
                 livePorts);
@@ -231,12 +231,6 @@ namespace ShooterMover.UI.Game
         }
     }
 
-    /// <summary>
-    /// Coordinates run-owned pacing/outbox state with scene-local pending admission.
-    /// A failed attempt restores the exact run reward snapshot and compensates both the
-    /// pending-generation authority and the retained physical-pickup delivery queue.
-    /// A successful attempt retains its consumer so exact redelivery reuses the same ledger.
-    /// </summary>
     internal sealed class LootTxn : IEnemyDropFactConsumer
     {
         private readonly object gate = new object();
