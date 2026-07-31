@@ -25,7 +25,7 @@ namespace ShooterMover.UI.Game
     /// </summary>
     [DefaultExecutionOrder(-1000)]
     [DisallowMultipleComponent]
-    public sealed class RunRewardSceneSetup : MonoBehaviour
+    public sealed class RunRewards : MonoBehaviour
     {
         private static readonly StableId SoloPlayModeId =
             StableId.Parse("play-mode.solo");
@@ -37,8 +37,8 @@ namespace ShooterMover.UI.Game
         private LevelRooms rooms;
         private RoomEnemies spawner;
         private RunLoot runtime;
-        private RunRewardCompletion completion;
-        private PendingAdmissionPickupBridge pickupBridge;
+        private RunFinish completion;
+        private LootBridge pickupBridge;
         private RunLootPositions pickupPositions;
         private RunLootLiveSetup pickupLiveSetup;
         private RunLootSession pickupSession;
@@ -184,7 +184,7 @@ namespace ShooterMover.UI.Game
                     "The selected level enemy catalog did not import successfully.");
             }
 
-            pickupBridge = new PendingAdmissionPickupBridge();
+            pickupBridge = new LootBridge();
             runtime = RunLoot.Create(
                 level,
                 CampaignRewardGameModeId,
@@ -196,7 +196,7 @@ namespace ShooterMover.UI.Game
             ComposePhysicalPickupRuntime();
 
             IEnemyDropFactConsumer physicalDropConsumer =
-                new EnemyRunLootDropConsumer(
+                new LootDropper(
                     spawner,
                     runtime.Run,
                     pickupBridge,
@@ -207,7 +207,7 @@ namespace ShooterMover.UI.Game
                 physicalDropConsumer,
                 runtime.KillStatisticsConsumer);
 
-            completion = new RunRewardCompletion(
+            completion = new RunFinish(
                 runtime,
                 graph,
                 coordinator);
