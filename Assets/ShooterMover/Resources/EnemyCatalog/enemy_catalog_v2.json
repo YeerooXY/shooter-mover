@@ -143,7 +143,7 @@
             "interruption_policy": "cancel-pending-on-lifecycle-end"
           },
           "projectile_payload": {
-            "profile": "projectile.enemy-turret-shell",
+            "profile": "projectile.enemy-rocket",
             "speed": 10.0,
             "maximum_travel_distance": 24.0,
             "collision_radius": 0.2,
