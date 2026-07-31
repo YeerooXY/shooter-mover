@@ -6,6 +6,7 @@ using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Application.Rewards.Application;
 using ShooterMover.Application.Rewards.CollectedRunTransfers;
+using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Application.Runs.Session;
 using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Contracts.Rewards;
