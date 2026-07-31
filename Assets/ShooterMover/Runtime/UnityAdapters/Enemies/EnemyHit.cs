@@ -28,6 +28,10 @@ namespace ShooterMover.UnityAdapters.Enemies
         public StableId ContactStableId { get; }
         public EnemyAttackEffectEmission Emission { get; }
         public StableId ProjectileStableId { get { return Emission.EmissionStableId; } }
+        public StableId ProjectileProfileStableId
+        {
+            get { return Emission.Projectile.Payload.ProjectileProfileId; }
+        }
         public StableId AttackOperationStableId
         {
             get { return Emission.Execution.OperationStableId; }
