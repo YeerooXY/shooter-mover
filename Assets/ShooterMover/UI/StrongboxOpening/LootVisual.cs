@@ -236,12 +236,12 @@ namespace ShooterMover.UI.StrongboxOpening
 
             Sprite sprite;
             string diagnostic;
-            StrongboxTierSpriteCatalog.TryResolve(
+            BoxSprites.TryResolve(
                 value.ContentStableId,
                 out sprite,
                 out diagnostic);
             return sprite == null
-                ? StrongboxTierSpriteCatalog.GetFallbackSprite()
+                ? BoxSprites.GetFallbackSprite()
                 : sprite;
         }
 
@@ -314,8 +314,6 @@ namespace ShooterMover.UI.StrongboxOpening
                 return new Color(0.48f, 0.53f, 0.57f, 1f);
             }
 
-            // Presentation-only procedural palette. The production catalogue remains
-            // the sole tier list, so adding a tier cannot require a second UI table.
             float ordinal = tierNumber - 2f;
             float hue = Mathf.Repeat(0.055f + ordinal * 0.117f, 1f);
             float saturation = Mathf.Clamp01(0.64f + ordinal * 0.025f);
