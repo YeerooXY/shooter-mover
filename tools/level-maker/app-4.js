@@ -10,15 +10,12 @@ function drawDoor(d){
   const w=1.5*state.editor.zoom,h=.35*state.editor.zoom;ctx.fillStyle="#ffd166";ctx.strokeStyle=isSelected(d.id)?"#fff":"#6b5724";ctx.lineWidth=isSelected(d.id)?3:1;ctx.fillRect(-w/2,-h/2,w,h);ctx.strokeRect(-w/2,-h/2,w,h)
  });labelEntity(d);
 }
-function drawWallPreview(){
- const a=pointer.wallStart,b=snapPoint(screenToWorld(pointer.last)),dx=b[0]-a[0],dy=b[1]-a[1],e={position:[(a[0]+b[0])/2,(a[1]+b[1])/2],rotation:Math.atan2(dy,dx)*180/Math.PI,length:Math.hypot(dx,dy),thickness:.5};
- ctx.globalAlpha=.65;drawWall(e);ctx.globalAlpha=1;
-}
 function hitTest(screen){
  const p=screenToWorld(screen),r=currentRoom(),candidates=[...r.doors,...r.entities].reverse(),z=state.editor.zoom;
  for(const e of candidates){
   const dx=p[0]-e.position[0],dy=p[1]-e.position[1],a=-deg2rad(e.rotation||0),lx=dx*Math.cos(a)-dy*Math.sin(a),ly=dx*Math.sin(a)+dy*Math.cos(a);
   if(e.kind==="wall"){if(Math.abs(lx)<=((e.length||1)/2+.2)&&Math.abs(ly)<=((e.thickness||.5)/2+.25))return e}
+  else if(e.object==="prop.wall-1x1"||e.object==="prop.wall-2x2"){const half=e.object.endsWith("2x2")?1:.5;if(Math.abs(lx)<=half&&Math.abs(ly)<=half)return e}
   else if(Math.hypot(dx,dy)<=Math.max(.5,16/z))return e;
  }
  return null;
@@ -54,12 +51,15 @@ function setTool(t){
 function assetForTool(tool){
  const a=state.catalog.find(x=>x.id===state.editor.selectedAssetId);
  if(tool==="enemy"&&a?.type==="enemy")return a;
- if((tool==="prop"||tool==="wall")&&a?.type==="prop")return a;
+ if(tool==="prop"&&a?.type==="prop")return a;
+ if(tool==="wall")return a?.type==="prop"&&a.id.startsWith("prop.wall-")
+  ?a
+  :state.catalog.find(x=>x.id==="prop.wall-1x1");
  if(tool==="door"&&a?.type==="door")return a;
  if(tool==="tile"&&a?.type==="floor")return a;
  return null;
 }
 function placementKey(pos,tool=state.editor.tool){
- if(tool==="prop"){const p=snapToRoomCellCenter(currentRoom(),pos);return `cell:${p[0]},${p[1]}`}
+ if(tool==="prop"||tool==="wall"){const p=snapToRoomCellCenter(currentRoom(),pos);return `cell:${p[0]},${p[1]}`}
  const p=snapPoint(pos),s=state.editor.snapSize||1;return `${Math.round(p[0]/s)},${Math.round(p[1]/s)}`
 }

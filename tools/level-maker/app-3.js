@@ -53,7 +53,7 @@ function renderCanvas(){
  if(!ctx)return;const rect=canvas.getBoundingClientRect();ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,rect.width,rect.height);
  drawGrid(rect);
  if(state.editor.viewMode==="map")drawLevelMap();
- else{drawRoom(currentRoom());if(pointer.wallStart&&pointer.down&&state.editor.tool==="wall")drawWallPreview()}
+ else drawRoom(currentRoom())
 }
 function drawGrid(rect){
  const z=viewScale(),s=Math.max(.25,state.editor.snapSize||1),step=z*s;
@@ -187,12 +187,12 @@ function drawPlayer(p){
 function isSelected(id){return state.editor.selectedId===id}
 function drawEntity(e){
  withTransform(e,()=>{
-  const z=state.editor.zoom,sz=clamp(z*.35,8,18);
+  const z=state.editor.zoom,wallSize=e.object==="prop.wall-2x2"?2:e.object==="prop.wall-1x1"?1:0,sz=wallSize?z*wallSize*.5:clamp(z*.35,8,18);
   ctx.fillStyle=e.kind==="enemy"?"#ff737f":e.kind==="teleporter"?"#b784ff":"#68bdf3";
   ctx.strokeStyle=isSelected(e.id)?"#fff":"#16202b";ctx.lineWidth=isSelected(e.id)?3:1;
   if(e.kind==="enemy"){ctx.beginPath();ctx.moveTo(sz,0);ctx.lineTo(-sz*.7,-sz*.7);ctx.lineTo(-sz*.7,sz*.7);ctx.closePath();ctx.fill();ctx.stroke()}
   else if(e.kind==="teleporter"){ctx.lineWidth=isSelected(e.id)?4:3;ctx.beginPath();ctx.arc(0,0,sz,0,Math.PI*2);ctx.stroke()}
-  else{ctx.beginPath();ctx.rect(-sz,-sz*.7,sz*2,sz*1.4);ctx.fill();ctx.stroke()}
+  else{ctx.beginPath();ctx.rect(-sz,wallSize?-sz:-sz*.7,sz*2,wallSize?sz*2:sz*1.4);ctx.fill();ctx.stroke()}
  });
  labelEntity(e);
 }

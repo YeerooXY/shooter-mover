@@ -48,7 +48,9 @@ Connections are written to `map.json`.
   press `F`, then click and drag across the room.
 - **Paint** stamps enemies and props across visited cells.
 - Props snap to the nearest tile center when placed, painted, or dragged.
-- Walls are drag-drawn segments.
+- Indestructible walls are reusable 1x1 and 2x2 prop pieces. They have collision
+  but no health or destruction behavior.
+- Select a wall and press `Delete` or `Backspace` to erase it.
 - Doors are constrained to the nearest room edge when placed or dragged.
 - Enemy placements choose tier 1–4. Runtime health multipliers are
   `1× / 2× / 4× / 8×`; damage multipliers are `1× / 1.5× / 2× / 3×`.
