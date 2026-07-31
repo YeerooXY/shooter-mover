@@ -222,8 +222,9 @@ namespace ShooterMover.Application.Enemies.Foundation
                         && dto.Explode == null,
                     path);
                 MeleeDto value = dto.Melee;
+                string detailPath = path + ".melee";
                 return Build(
-                    path,
+                    detailPath,
                     delegate
                     {
                         return new MeleeAttack(
@@ -233,8 +234,8 @@ namespace ShooterMover.Application.Enemies.Foundation
                             value.Active,
                             value.Recovery,
                             MapEffects(
-                                Need(value.Effects, path + ".effects"),
-                                path + ".effects"));
+                                Need(value.Effects, detailPath + ".effects"),
+                                detailPath + ".effects"));
                     });
             }
 
@@ -248,8 +249,9 @@ namespace ShooterMover.Application.Enemies.Foundation
                         && dto.Explode == null,
                     path);
                 ChargeDto value = dto.Charge;
+                string detailPath = path + ".charge";
                 return Build(
-                    path,
+                    detailPath,
                     delegate
                     {
                         return new ChargeAttack(
@@ -259,8 +261,8 @@ namespace ShooterMover.Application.Enemies.Foundation
                             value.WindUp,
                             value.Recovery,
                             MapEffects(
-                                Need(value.Effects, path + ".effects"),
-                                path + ".effects"));
+                                Need(value.Effects, detailPath + ".effects"),
+                                detailPath + ".effects"));
                     });
             }
 
@@ -274,16 +276,17 @@ namespace ShooterMover.Application.Enemies.Foundation
                         && dto.Explode != null,
                     path);
                 ExplodeDto value = dto.Explode;
+                string detailPath = path + ".explode";
                 return Build(
-                    path,
+                    detailPath,
                     delegate
                     {
                         return new ExplodeAttack(
                             id,
                             value.WindUp,
                             MapEffects(
-                                Need(value.Effects, path + ".effects"),
-                                path + ".effects"));
+                                Need(value.Effects, detailPath + ".effects"),
+                                detailPath + ".effects"));
                     });
             }
 
