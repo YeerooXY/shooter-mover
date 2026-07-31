@@ -53,44 +53,19 @@ namespace ShooterMover.Application.Guns.Execution
                 hash *= Prime;
             }
 
+            hash = Avalanche(hash);
             double unit = (hash >> 11) * Unit53;
             double offsetDegrees = (unit - 0.5d) * spreadDegrees;
             return baseDirection.Normalized.RotateDegrees(offsetDegrees).Normalized;
         }
 
-        public static GunVector2 DirectionFor(
-            GunVector2 baseDirection,
-            double spreadDegrees,
-            ulong seed,
-            FireOperationId operationId,
-            EquipmentInstanceId equipmentId,
-            long shotSequence,
-            int projectileCount,
-            ProjectileOrdinal ordinal)
+        private static ulong Avalanche(ulong value)
         {
-            if (projectileCount < 1)
-            {
-                throw new ArgumentOutOfRangeException(nameof(projectileCount));
-            }
-            if (ordinal == null || ordinal.Value >= projectileCount)
-            {
-                throw new ArgumentOutOfRangeException(nameof(ordinal));
-            }
-            if (projectileCount == 1)
-            {
-                return DirectionFor(
-                    baseDirection,
-                    spreadDegrees,
-                    seed,
-                    operationId,
-                    equipmentId,
-                    shotSequence,
-                    ordinal);
-            }
-
-            double lane = ordinal.Value / (projectileCount - 1d);
-            double offsetDegrees = (lane - 0.5d) * spreadDegrees;
-            return baseDirection.Normalized.RotateDegrees(offsetDegrees).Normalized;
+            value ^= value >> 30;
+            value *= 0xbf58476d1ce4e5b9UL;
+            value ^= value >> 27;
+            value *= 0x94d049bb133111ebUL;
+            return value ^ (value >> 31);
         }
     }
 
@@ -138,7 +113,6 @@ namespace ShooterMover.Application.Guns.Execution
                 context.Command.FireOperationId,
                 context.Command.EquipmentInstanceId,
                 context.ShotSequence,
-                context.Profile.ProjectileCount,
                 new ProjectileOrdinal(index));
         }
     }
@@ -168,7 +142,6 @@ namespace ShooterMover.Application.Guns.Execution
                     context.Command.FireOperationId,
                     context.Command.EquipmentInstanceId,
                     context.ShotSequence,
-                    context.Profile.ProjectileCount,
                     new ProjectileOrdinal(index));
                 effects.Add(
                     new ExplosiveProjectileEffect(
@@ -213,7 +186,6 @@ namespace ShooterMover.Application.Guns.Execution
                     context.Command.FireOperationId,
                     context.Command.EquipmentInstanceId,
                     context.ShotSequence,
-                    context.Profile.ProjectileCount,
                     new ProjectileOrdinal(index));
                 effects.Add(
                     new DamageOverTimeProjectileEffect(
