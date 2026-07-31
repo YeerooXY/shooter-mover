@@ -47,7 +47,7 @@ namespace ShooterMover.Content.Definitions.Enemies
                     "presentation.enemy-hybrid-sentinel"),
                 Ids(
                     "projectile.enemy-blaster",
-                    "projectile.enemy-turret-shell"),
+                    "projectile.enemy-rocket"),
                 Ids(
                     "damage.kinetic",
                     "damage.impact",
