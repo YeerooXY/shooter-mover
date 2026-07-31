@@ -11,7 +11,7 @@
     "ShooterMover.PlayerRuntime",
     "ShooterMover.TerminalDropBinding",
     "ShooterMover.RunLoot",
-    "ShooterMover.RunLootUnity",
+    "ShooterMover.RunPickupUnity",
     "ShooterMover.UnityAdapters",
     "ShooterMover.UI.Hub",
     "ShooterMover.UI.InventoryLoadout",
