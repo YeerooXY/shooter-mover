@@ -95,6 +95,7 @@ namespace ShooterMover.UI.Game
         private MonoBehaviour receiverBehaviour;
         private IPlayablePlayerDamageReceiver receiver;
         private float nextReconcileAt;
+        private bool started;
         private bool defeated;
         private bool destroying;
         private string lastDiagnostic = string.Empty;
@@ -102,8 +103,17 @@ namespace ShooterMover.UI.Game
         public int PendingTickCount { get { return pending.Count; } }
         public string LastDiagnostic { get { return lastDiagnostic; } }
 
+        private void OnEnable()
+        {
+            if (started && !destroying && !defeated)
+            {
+                Reconcile();
+            }
+        }
+
         private void Start()
         {
+            started = true;
             Reconcile();
         }
 
@@ -111,7 +121,7 @@ namespace ShooterMover.UI.Game
         {
             if (destroying || defeated) return;
 
-            if (!BindingsAreCurrent()
+            if (!PublisherBindingsAreCurrent()
                 || Time.unscaledTime >= nextReconcileAt)
             {
                 Reconcile();
@@ -126,6 +136,7 @@ namespace ShooterMover.UI.Game
             Scene scene = gameObject.scene;
             if (!scene.IsValid() || !scene.isLoaded)
             {
+                ClearReceiver(true);
                 return;
             }
 
@@ -134,22 +145,25 @@ namespace ShooterMover.UI.Game
             if (!TryResolvePlayer(scene, out resolvedMarker, out resolvedReceiver))
             {
                 subscriptions.Clear();
+                ClearReceiver(true);
                 return;
             }
 
             if (!ReferenceEquals(receiver, resolvedReceiver.Receiver))
             {
-                if (receiver != null)
-                {
-                    receiver.Defeated -= HandleDefeated;
-                }
+                ClearReceiver(true);
                 playerMarker = resolvedMarker;
                 receiverBehaviour = resolvedReceiver.Behaviour;
                 receiver = resolvedReceiver.Receiver;
-                receiver.Defeated += HandleDefeated;
-                pending.Clear();
-                acceptedContacts.Clear();
             }
+            else
+            {
+                playerMarker = resolvedMarker;
+                receiverBehaviour = resolvedReceiver.Behaviour;
+            }
+
+            receiver.Defeated -= HandleDefeated;
+            receiver.Defeated += HandleDefeated;
 
             List<EnemyAttack> publishers = FindActiveComponents<EnemyAttack>(scene);
             var ready = new List<EnemyAttack>();
@@ -189,7 +203,7 @@ namespace ShooterMover.UI.Game
                 return;
             }
 
-            if (!BindingsAreCurrent()
+            if (!ReceiverIsCurrent()
                 || hit.ContactStableId == null
                 || hit.TargetEntityStableId == null
                 || hit.SourceEntityStableId == null
@@ -246,7 +260,7 @@ namespace ShooterMover.UI.Game
 
         private void ApplyTick(PendingTick tick)
         {
-            if (!BindingsAreCurrent())
+            if (!ReceiverIsCurrent())
             {
                 pending.Clear();
                 return;
@@ -287,7 +301,13 @@ namespace ShooterMover.UI.Game
             }
         }
 
-        private bool BindingsAreCurrent()
+        private bool PublisherBindingsAreCurrent()
+        {
+            return ReceiverIsCurrent()
+                && subscriptions.AllCurrent(gameObject.scene);
+        }
+
+        private bool ReceiverIsCurrent()
         {
             return playerMarker != null
                 && playerMarker.gameObject.scene == gameObject.scene
@@ -297,7 +317,23 @@ namespace ShooterMover.UI.Game
                 && receiver != null
                 && receiver.CharacterInstanceStableId
                     == playerMarker.CharacterInstanceStableId
-                && subscriptions.AllCurrent(gameObject.scene);
+                && !receiver.IsDefeated;
+        }
+
+        private void ClearReceiver(bool clearEffects)
+        {
+            if (receiver != null)
+            {
+                receiver.Defeated -= HandleDefeated;
+            }
+            receiver = null;
+            receiverBehaviour = null;
+            playerMarker = null;
+            if (clearEffects)
+            {
+                pending.Clear();
+                acceptedContacts.Clear();
+            }
         }
 
         private static bool TryResolvePlayer(
@@ -421,25 +457,14 @@ namespace ShooterMover.UI.Game
         private void OnDisable()
         {
             subscriptions.Clear();
-            if (receiver != null)
-            {
-                receiver.Defeated -= HandleDefeated;
-            }
+            ClearReceiver(true);
         }
 
         private void OnDestroy()
         {
             destroying = true;
             subscriptions.Clear();
-            if (receiver != null)
-            {
-                receiver.Defeated -= HandleDefeated;
-            }
-            pending.Clear();
-            acceptedContacts.Clear();
-            receiver = null;
-            receiverBehaviour = null;
-            playerMarker = null;
+            ClearReceiver(true);
         }
 
         private static bool IsFatal(Exception exception)
