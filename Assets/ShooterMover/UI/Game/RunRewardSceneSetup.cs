@@ -1,23 +1,26 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using ShooterMover.Application.Enemies.Catalog;
 using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Missions.Rooms.Content;
 using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Contracts.Flow.Session;
+using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
+using ShooterMover.EnemyRuntimeComposition;
 using ShooterMover.UI.LevelSelection;
+using ShooterMover.UI.StrongboxOpening;
+using ShooterMover.RunLoot;
 using ShooterMover.UnityAdapters.Enemies;
 using ShooterMover.UnityAdapters.Missions.Rooms;
+using ShooterMover.UnityAdapters.Rewards.RunLoots;
 using UnityEngine;
 
 namespace ShooterMover.UI.Game
 {
     /// <summary>
-    /// Scene-owned bridge that composes the selected-character Run Session synchronously
-    /// at the accepted room-build boundary. Enemy downstream ports are therefore frozen
-    /// before the production controller performs its first enemy synchronization.
+    /// Scene-owned bridge that composes the selected-character Run Session and the existing
+    /// physical RunLoot architecture at the accepted room-build boundary.
     /// </summary>
     [DefaultExecutionOrder(-1000)]
     [DisallowMultipleComponent]
@@ -33,6 +36,16 @@ namespace ShooterMover.UI.Game
         private LevelRooms rooms;
         private RoomEnemies spawner;
         private RunLoot runtime;
+        private PendingAdmissionPickupBridge pickupBridge;
+        private RunLootPositions pickupPositions;
+        private RunLootLiveSetup pickupLiveSetup;
+        private RunLootSession pickupSession;
+        private RunLootViews pickupViews;
+        private RunLootView pickupView;
+        private GameObject pickupCompositionRoot;
+        private GameObject pickupPresentationPrefab;
+        private RunLootCollector collector;
+        private long observedLifecycleGeneration;
         private string diagnostic = string.Empty;
 
         public string Diagnostic { get { return diagnostic; } }
@@ -51,9 +64,39 @@ namespace ShooterMover.UI.Game
             }
 
             roomBootstrap.BuildAccepted += HandleRoomBuildAccepted;
+            rooms.CurrentRoomPresentationRebuilt +=
+                HandleRoomPresentationRebuilt;
             if (roomBootstrap.IsBuilt && roomBootstrap.ImportedBundle != null)
             {
                 HandleRoomBuildAccepted(roomBootstrap.ImportedBundle);
+            }
+        }
+
+        private void Update()
+        {
+            if (runtime == null
+                || pickupBridge == null
+                || pickupView == null)
+            {
+                return;
+            }
+
+            TryBindPlayerCollector();
+
+            long generation = runtime.Run.LifecycleGeneration;
+            if (generation != observedLifecycleGeneration)
+            {
+                pickupBridge.RetireOtherLifecycles(
+                    runtime.RunStableId,
+                    generation);
+                observedLifecycleGeneration = generation;
+                SynchronizeCurrentRoomPickups();
+            }
+
+            if (pickupBridge.PendingCount > 0)
+            {
+                pickupBridge.ProcessPending();
+                SynchronizeCurrentRoomPickups();
             }
         }
 
@@ -139,33 +182,171 @@ namespace ShooterMover.UI.Game
                     "The selected level enemy catalog did not import successfully.");
             }
 
+            pickupBridge = new PendingAdmissionPickupBridge();
             runtime = RunLoot.Create(
                 level,
                 CampaignRewardGameModeId,
                 graph,
                 coordinator,
                 rooms,
-                imported.Catalog);
+                imported.Catalog,
+                pickupBridge);
+            ComposePhysicalPickupRuntime();
+
+            IEnemyDropFactConsumer physicalDropConsumer =
+                new EnemyRunLootDropConsumer(
+                    spawner,
+                    runtime.Run,
+                    pickupBridge,
+                    runtime.DropConsumer);
             spawner.ConfigureRunDownstream(
                 runtime.RunStableId,
                 runtime.ExperienceConsumer,
-                runtime.DropConsumer,
+                physicalDropConsumer,
                 runtime.KillStatisticsConsumer);
+
+            observedLifecycleGeneration = runtime.Run.LifecycleGeneration;
+            pickupBridge.RetireOtherLifecycles(
+                runtime.RunStableId,
+                observedLifecycleGeneration);
+            pickupBridge.ProcessPending();
+            SynchronizeCurrentRoomPickups();
             diagnostic = string.Empty;
         }
 
-        private void OnGUI()
+        private void ComposePhysicalPickupRuntime()
+        {
+            pickupCompositionRoot = new GameObject(
+                "Production Run Loot Composition");
+            pickupCompositionRoot.transform.SetParent(transform, false);
+
+            pickupPositions = new RunLootPositions();
+            pickupLiveSetup = RunLootLiveSetup.Create(
+                runtime.Run,
+                pickupPositions);
+
+            pickupSession =
+                pickupCompositionRoot.AddComponent<RunLootSession>();
+            pickupSession.Configure(pickupLiveSetup.Authority);
+
+            pickupViews =
+                pickupCompositionRoot.AddComponent<RunLootViews>();
+            pickupPresentationPrefab = CreatePickupPresentationPrefab(
+                pickupCompositionRoot.transform);
+            pickupViews.Configure(CreatePresentationEntries(
+                pickupPresentationPrefab));
+
+            pickupView =
+                pickupCompositionRoot.AddComponent<RunLootView>();
+            pickupView.Configure(
+                pickupSession,
+                pickupViews,
+                pickupCompositionRoot.transform);
+
+            pickupBridge.ConfigureRuntime(
+                pickupPositions,
+                pickupLiveSetup.PendingConsumer,
+                pickupView);
+        }
+
+        private static GameObject CreatePickupPresentationPrefab(
+            Transform owner)
+        {
+            var prefab = new GameObject(
+                "Runtime Loot Pickup Presentation");
+            prefab.transform.SetParent(owner, false);
+            prefab.AddComponent<LootVisual>();
+            prefab.AddComponent<LootRunView>();
+            prefab.SetActive(false);
+            return prefab;
+        }
+
+        private static IEnumerable<RunLootPresentationEntry>
+            CreatePresentationEntries(GameObject prefab)
+        {
+            return new[]
+            {
+                CreatePresentationEntry(
+                    RewardGrantKind.Money,
+                    prefab,
+                    "CREDITS"),
+                CreatePresentationEntry(
+                    RewardGrantKind.Scrap,
+                    prefab,
+                    "SCRAP"),
+                CreatePresentationEntry(
+                    RewardGrantKind.Strongbox,
+                    prefab,
+                    "STRONGBOX"),
+            };
+        }
+
+        private static RunLootPresentationEntry CreatePresentationEntry(
+            RewardGrantKind kind,
+            GameObject prefab,
+            string label)
+        {
+            var entry = new RunLootPresentationEntry();
+            entry.Configure(
+                kind,
+                null,
+                prefab,
+                null,
+                Vector3.one,
+                0.75f,
+                label);
+            return entry;
+        }
+
+        private void TryBindPlayerCollector()
+        {
+            if (collector != null
+                || !controller.IsConfigured
+                || pickupLiveSetup == null)
+            {
+                return;
+            }
+
+            PlayerMarker player =
+                controller.GetComponentInChildren<PlayerMarker>(true);
+            if (player == null
+                || player.CharacterInstanceStableId
+                    != controller.CharacterInstanceStableId)
+            {
+                return;
+            }
+
+            collector = player.GetComponent<RunLootCollector>()
+                ?? player.gameObject.AddComponent<RunLootCollector>();
+            collector.Configure(
+                pickupLiveSetup.RunSessionPort.PlayerActorStableId,
+                pickupLiveSetup.RunSessionPort.PlayerParticipantStableId);
+        }
+
+        private void HandleRoomPresentationRebuilt()
         {
             if (runtime == null) return;
-            PendingRunRewardView projection = runtime.ExportPendingProjection();
-            if (projection.AcceptedAdmissionCount < 1) return;
+            pickupBridge.ProcessPending();
+            SynchronizeCurrentRoomPickups();
+        }
 
-            GUI.Box(new Rect(16f, 16f, 190f, 108f), string.Empty);
-            GUI.Label(new Rect(28f, 24f, 170f, 22f), "Pending rewards:");
-            GUI.Label(new Rect(28f, 48f, 170f, 20f), "Cash: " + projection.Cash);
-            GUI.Label(new Rect(28f, 68f, 170f, 20f), "Scrap: " + projection.Scrap);
-            GUI.Label(new Rect(28f, 88f, 170f, 20f),
-                "Strongboxes: " + projection.Strongboxes);
+        private void SynchronizeCurrentRoomPickups()
+        {
+            if (pickupView == null
+                || rooms == null
+                || !rooms.IsBuilt)
+            {
+                return;
+            }
+
+            RunLootPresentationSyncResult result =
+                pickupView.Synchronize(rooms.CurrentRoomStableId);
+            if (result != null && !result.Succeeded)
+            {
+                diagnostic = string.IsNullOrWhiteSpace(result.Diagnostic)
+                    ? "run-pickup-presentation-sync-rejected"
+                    : result.Diagnostic;
+            }
         }
 
         private void OnDestroy()
@@ -174,6 +355,35 @@ namespace ShooterMover.UI.Game
             {
                 roomBootstrap.BuildAccepted -= HandleRoomBuildAccepted;
             }
+            if (rooms != null)
+            {
+                rooms.CurrentRoomPresentationRebuilt -=
+                    HandleRoomPresentationRebuilt;
+            }
+
+            if (pickupBridge != null)
+            {
+                pickupBridge.ProcessPending();
+                if (pickupView != null && rooms != null && rooms.IsBuilt)
+                {
+                    pickupView.Synchronize(rooms.CurrentRoomStableId);
+                }
+                pickupBridge.ReleaseRuntime();
+                pickupBridge.ClearAll();
+            }
+            if (pickupCompositionRoot != null)
+            {
+                Destroy(pickupCompositionRoot);
+            }
+
+            collector = null;
+            pickupPresentationPrefab = null;
+            pickupView = null;
+            pickupViews = null;
+            pickupSession = null;
+            pickupLiveSetup = null;
+            pickupPositions = null;
+            pickupBridge = null;
             runtime = null;
         }
     }
