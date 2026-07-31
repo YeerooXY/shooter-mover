@@ -159,9 +159,13 @@ namespace ShooterMover.UI.StrongboxOpening
                 && y >= 12 && y <= 47;
             bool inner = x >= 11 && x <= 52
                 && y >= 16 && y <= 43;
-            bool lowerFace = x >= 10 && x <= 53
-                && y >= 18 && y <= 42;
-            return (outer && !inner) || lowerFace;
+            bool bottomBand = x >= 10 && x <= 53
+                && y >= 16 && y <= 19;
+            bool upperSeam = x >= 10 && x <= 53
+                && y >= 40 && y <= 43;
+            return (outer && !inner)
+                || bottomBand
+                || upperSeam;
         }
 
         private static bool IsLid(int x, int y)
@@ -188,8 +192,7 @@ namespace ShooterMover.UI.StrongboxOpening
                 return false;
             }
 
-            int normalized = tierNumber;
-            int row = y - 20;
+            int row = y - 21;
             int column = x - 17;
             if (row < 0 || row >= 6 || column < 0 || column >= 30)
             {
@@ -203,7 +206,7 @@ namespace ShooterMover.UI.StrongboxOpening
             }
 
             int bitIndex = row < 3 ? pip : pip + 5;
-            bool enabled = (normalized & (1 << bitIndex)) != 0;
+            bool enabled = (tierNumber & (1 << bitIndex)) != 0;
             if (!enabled)
             {
                 return false;
