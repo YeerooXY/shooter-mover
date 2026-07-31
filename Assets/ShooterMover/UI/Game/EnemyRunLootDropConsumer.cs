@@ -16,7 +16,7 @@ namespace ShooterMover.UI.Game
     /// generation and realizes accepted admissions through the existing pickup bridge.
     /// Exact death-event retries reuse the cached position and never read the Transform.
     /// </summary>
-    internal sealed class EnemyRunLootDropConsumer :
+    internal sealed class LootDropper :
         IEnemyDropFactConsumer
     {
         private sealed class TerminalSource
@@ -74,15 +74,15 @@ namespace ShooterMover.UI.Game
         private readonly object gate = new object();
         private readonly RoomEnemies enemies;
         private readonly RunSessionAggregate run;
-        private readonly PendingAdmissionPickupBridge pickupBridge;
+        private readonly LootBridge pickupBridge;
         private readonly IEnemyDropFactConsumer inner;
         private readonly Dictionary<StableId, TerminalSource> sourcesByDeath =
             new Dictionary<StableId, TerminalSource>();
 
-        public EnemyRunLootDropConsumer(
+        public LootDropper(
             RoomEnemies enemies,
             RunSessionAggregate run,
-            PendingAdmissionPickupBridge pickupBridge,
+            LootBridge pickupBridge,
             IEnemyDropFactConsumer inner)
         {
             this.enemies = enemies
