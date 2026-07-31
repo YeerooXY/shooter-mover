@@ -36,11 +36,13 @@ Validated references:
 
 It loads a catalog snapshot, opens existing packages, validates the model, previews JSON, and exports `<enemy-id>.enemy.json`.
 
+The tool does not expose gun-owned damage, projectile count, spread, speed, range, guidance, explosion, or status values.
+
 ## Gun boundary
 
 `GunAttack` stores only a gun ID and `ShotPlan`.
 
-`ShotPlan` owns mount choice and timing only. It has no damage, projectile count, spread, speed, range, guidance, explosion, or status values.
+`ShotPlan` owns mount choice and timing only.
 
 ## Compatibility
 
