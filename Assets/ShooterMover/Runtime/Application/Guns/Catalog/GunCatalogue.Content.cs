@@ -31,6 +31,7 @@ namespace ShooterMover.Application.Guns.Catalog
             Prismata = 4,
             Crownfall = 5,
             Nullstar = 6,
+            Baller = 7,
         }
 
         private sealed class ProvisionalCombatProfile
@@ -103,6 +104,13 @@ namespace ShooterMover.Application.Guns.Catalog
                     "epic",
                     new[] { 64, 84, 99 },
                     ProvisionalGunTestProfile.Prismata,
+                    true),
+                BuildFamily(
+                    "baller",
+                    "Baller",
+                    "epic",
+                    new[] { 15, 40, 65 },
+                    ProvisionalGunTestProfile.Baller,
                     true),
                 BuildFamily(
                     "crownfall",
@@ -237,6 +245,8 @@ namespace ShooterMover.Application.Guns.Catalog
                     return CrownfallProfile(mark);
                 case ProvisionalGunTestProfile.Nullstar:
                     return NullstarProfile(mark);
+                case ProvisionalGunTestProfile.Baller:
+                    return BallerProfile(mark);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(profile));
             }
@@ -392,6 +402,42 @@ namespace ShooterMover.Application.Guns.Catalog
                 StandardTravellingImpact(),
                 GunEffects.None(),
                 "orb-chemical");
+        }
+
+        private static ProvisionalCombatProfile BallerProfile(int mark)
+        {
+            double damage;
+            switch (mark)
+            {
+                case 1:
+                    damage = 10d;
+                    break;
+                case 2:
+                    damage = 15d;
+                    break;
+                case 3:
+                    damage = 20d;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mark));
+            }
+
+            return TravellingProfile(
+                FireSettings.Automatic(3d),
+                GunShotPattern.Canonical(1, 0d),
+                damage,
+                GunDamageCategory.Energy,
+                null,
+                3,
+                0d,
+                30d,
+                GunDeliveryType.Orb,
+                10d,
+                0.5d,
+                GunGuidanceSpec.Unguided(),
+                StandardTravellingImpact(),
+                GunEffects.None(),
+                "orb-energy");
         }
 
         private static ProvisionalCombatProfile CrownfallProfile(int mark)
@@ -577,6 +623,7 @@ namespace ShooterMover.Application.Guns.Catalog
                         "gun-category",
                         "seeking-projectile");
                 case ProvisionalGunTestProfile.Prismata:
+                case ProvisionalGunTestProfile.Baller:
                     return StableId.Create("gun-category", "orb");
                 case ProvisionalGunTestProfile.Crownfall:
                     return StableId.Create("gun-category", "rocket");
