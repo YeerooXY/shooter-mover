@@ -11,7 +11,7 @@ namespace ShooterMover.UI.StrongboxOpening
     /// ContentStableId. It derives its roster exclusively from StrongboxCatalog and
     /// returns a safe silhouette whenever an authored/runtime sprite is unavailable.
     /// </summary>
-    public static class StrongboxTierSpriteCatalog
+    public static class BoxSprites
     {
         private const int TextureSize = 64;
         private static readonly Dictionary<StableId, Sprite> Sprites =
@@ -107,8 +107,6 @@ namespace ShooterMover.UI.StrongboxOpening
                         return true;
                     }
 
-                    // The exact canonical tier number controls the face emblem. This is
-                    // presentation-only and never duplicates the strongbox tier roster.
                     return IsTierEmblem(
                         x,
                         y,
