@@ -43,8 +43,8 @@ namespace ShooterMover.UI.Game
                 return;
             }
 
-            GameObject[] roots = scene.GetRootGameObjects();
             LevelGame controller = null;
+            GameObject[] roots = scene.GetRootGameObjects();
             for (int index = 0; index < roots.Length; index++)
             {
                 if (roots[index].GetComponentInChildren<
@@ -58,9 +58,7 @@ namespace ShooterMover.UI.Game
                 if (candidate == null) continue;
                 if (controller != null && !ReferenceEquals(controller, candidate))
                 {
-                    Debug.LogError(
-                        "enemy-rocket-dot-controller-duplicated",
-                        candidate);
+                    Debug.LogError("enemy-rocket-dot-controller-duplicated", candidate);
                     return;
                 }
                 controller = candidate;
@@ -74,9 +72,9 @@ namespace ShooterMover.UI.Game
     }
 
     /// <summary>
-    /// Applies the content-owned enemy rocket burn after the normal impact damage has already
-    /// gone through EnemyPlayerDamageIntegration. Two deterministic one-damage thermal ticks
-    /// are delivered over two gameplay seconds. Exact contact replay cannot schedule it twice.
+    /// Adds the built-in rocket burn after the normal enemy-hit integration applies impact
+    /// damage. Each accepted rocket contact schedules two one-damage thermal ticks at one and
+    /// two seconds. Distinct rocket hits stack; exact contact replay does not duplicate ticks.
     /// </summary>
     [DefaultExecutionOrder(710)]
     [DisallowMultipleComponent]
@@ -91,37 +89,24 @@ namespace ShooterMover.UI.Game
         private readonly HashSet<StableId> acceptedContacts =
             new HashSet<StableId>();
 
-        private PlayerMarker playerMarker;
-        private MonoBehaviour receiverBehaviour;
-        private IPlayablePlayerDamageReceiver receiver;
+        private PlayerHUD receiver;
         private float nextReconcileAt;
-        private bool started;
         private bool defeated;
-        private bool destroying;
         private string lastDiagnostic = string.Empty;
 
         public int PendingTickCount { get { return pending.Count; } }
         public string LastDiagnostic { get { return lastDiagnostic; } }
 
-        private void OnEnable()
-        {
-            if (started && !destroying && !defeated)
-            {
-                Reconcile();
-            }
-        }
-
         private void Start()
         {
-            started = true;
             Reconcile();
         }
 
         private void Update()
         {
-            if (destroying || defeated) return;
+            if (defeated) return;
 
-            if (!PublisherBindingsAreCurrent()
+            if (!ReceiverIsCurrent()
                 || Time.unscaledTime >= nextReconcileAt)
             {
                 Reconcile();
@@ -134,42 +119,27 @@ namespace ShooterMover.UI.Game
         {
             nextReconcileAt = Time.unscaledTime + ReconcileIntervalSeconds;
             Scene scene = gameObject.scene;
-            if (!scene.IsValid() || !scene.isLoaded)
+            List<PlayerHUD> receivers = FindActive<PlayerHUD>(scene);
+            if (receivers.Count != 1)
             {
-                ClearReceiver(true);
-                return;
-            }
-
-            ReceiverBinding resolvedReceiver;
-            PlayerMarker resolvedMarker;
-            if (!TryResolvePlayer(scene, out resolvedMarker, out resolvedReceiver))
-            {
+                ClearReceiverAndEffects();
                 subscriptions.Clear();
-                ClearReceiver(true);
                 return;
             }
 
-            if (!ReferenceEquals(receiver, resolvedReceiver.Receiver))
+            PlayerHUD nextReceiver = receivers[0];
+            if (!ReferenceEquals(receiver, nextReceiver))
             {
-                ClearReceiver(true);
-                playerMarker = resolvedMarker;
-                receiverBehaviour = resolvedReceiver.Behaviour;
-                receiver = resolvedReceiver.Receiver;
-            }
-            else
-            {
-                playerMarker = resolvedMarker;
-                receiverBehaviour = resolvedReceiver.Behaviour;
+                ClearReceiverAndEffects();
+                receiver = nextReceiver;
+                receiver.Defeated += HandleDefeated;
             }
 
-            receiver.Defeated -= HandleDefeated;
-            receiver.Defeated += HandleDefeated;
-
-            List<EnemyAttack> publishers = FindActiveComponents<EnemyAttack>(scene);
+            List<EnemyAttack> discovered = FindActive<EnemyAttack>(scene);
             var ready = new List<EnemyAttack>();
-            for (int index = 0; index < publishers.Count; index++)
+            for (int index = 0; index < discovered.Count; index++)
             {
-                EnemyAttack publisher = publishers[index];
+                EnemyAttack publisher = discovered[index];
                 if (publisher.IsBound && !publisher.IsTerminalStopped)
                 {
                     ready.Add(publisher);
@@ -184,7 +154,8 @@ namespace ShooterMover.UI.Game
             {
                 if (IsFatal(exception)) throw;
                 subscriptions.Clear();
-                Report("enemy-rocket-dot-subscription-exception:"
+                Report(
+                    "enemy-rocket-dot-subscription-exception:"
                     + exception.GetType().Name);
                 Debug.LogException(exception, this);
             }
@@ -192,8 +163,7 @@ namespace ShooterMover.UI.Game
 
         private void HandleEnemyHit(EnemyAttack publisher, EnemyHit hit)
         {
-            if (destroying
-                || defeated
+            if (defeated
                 || publisher == null
                 || hit == null
                 || !subscriptions.Contains(publisher)
@@ -205,19 +175,15 @@ namespace ShooterMover.UI.Game
 
             if (!ReceiverIsCurrent()
                 || hit.ContactStableId == null
-                || hit.TargetEntityStableId == null
+                || hit.TargetEntityStableId != receiver.CharacterInstanceStableId
                 || hit.SourceEntityStableId == null
-                || hit.SourceRunParticipantStableId == null
-                || hit.TargetEntityStableId != receiver.CharacterInstanceStableId)
+                || hit.SourceRunParticipantStableId == null)
             {
                 Report("enemy-rocket-dot-hit-invalid");
                 return;
             }
 
-            if (!acceptedContacts.Add(hit.ContactStableId))
-            {
-                return;
-            }
+            if (!acceptedContacts.Add(hit.ContactStableId)) return;
             if (acceptedContacts.Count > MaximumRememberedContacts)
             {
                 acceptedContacts.Clear();
@@ -226,23 +192,23 @@ namespace ShooterMover.UI.Game
 
             int tickCount =
                 BuiltInEnemyProjectileProfiles.RocketDamageOverTimeTickCount;
-            double totalDamage =
-                BuiltInEnemyProjectileProfiles.RocketDamageOverTimeTotalDamage;
+            double tickDamage =
+                BuiltInEnemyProjectileProfiles.RocketDamageOverTimeTotalDamage
+                / tickCount;
             double duration =
                 BuiltInEnemyProjectileProfiles.RocketDamageOverTimeDurationSeconds;
-            double tickDamage = totalDamage / tickCount;
             double now = Time.timeAsDouble;
 
-            for (int tick = 1; tick <= tickCount; tick++)
+            for (int ordinal = 1; ordinal <= tickCount; ordinal++)
             {
                 pending.Add(new PendingTick(
-                    BuildTickEventId(hit.ContactStableId, tick),
+                    BuildTickEventId(hit.ContactStableId, ordinal),
                     hit.TargetEntityStableId,
                     hit.SourceEntityStableId,
                     hit.SourceRunParticipantStableId,
                     hit.DamageChannelStableId,
                     tickDamage,
-                    now + (duration * tick / tickCount)));
+                    now + (duration * ordinal / tickCount)));
             }
             pending.Sort(PendingTick.Compare);
         }
@@ -301,73 +267,31 @@ namespace ShooterMover.UI.Game
             }
         }
 
-        private bool PublisherBindingsAreCurrent()
-        {
-            return ReceiverIsCurrent()
-                && subscriptions.AllCurrent(gameObject.scene);
-        }
-
         private bool ReceiverIsCurrent()
         {
-            return playerMarker != null
-                && playerMarker.gameObject.scene == gameObject.scene
-                && receiverBehaviour != null
-                && receiverBehaviour.gameObject.scene == gameObject.scene
-                && receiverBehaviour.isActiveAndEnabled
-                && receiver != null
-                && receiver.CharacterInstanceStableId
-                    == playerMarker.CharacterInstanceStableId
+            return receiver != null
+                && receiver.gameObject.scene == gameObject.scene
+                && receiver.isActiveAndEnabled
+                && receiver.IsBound
                 && !receiver.IsDefeated;
         }
 
-        private void ClearReceiver(bool clearEffects)
+        private void ClearReceiverAndEffects()
         {
             if (receiver != null)
             {
                 receiver.Defeated -= HandleDefeated;
             }
             receiver = null;
-            receiverBehaviour = null;
-            playerMarker = null;
-            if (clearEffects)
-            {
-                pending.Clear();
-                acceptedContacts.Clear();
-            }
+            pending.Clear();
+            acceptedContacts.Clear();
         }
 
-        private static bool TryResolvePlayer(
-            Scene scene,
-            out PlayerMarker marker,
-            out ReceiverBinding receiverBinding)
-        {
-            marker = null;
-            receiverBinding = default(ReceiverBinding);
-
-            List<PlayerMarker> markers = FindActiveComponents<PlayerMarker>(scene);
-            List<ReceiverBinding> receivers = FindActiveReceivers(scene);
-            if (markers.Count != 1 || receivers.Count != 1)
-            {
-                return false;
-            }
-
-            if (markers[0].gameObject != receivers[0].Behaviour.gameObject
-                || markers[0].CharacterInstanceStableId == null
-                || receivers[0].Receiver.CharacterInstanceStableId
-                    != markers[0].CharacterInstanceStableId)
-            {
-                return false;
-            }
-
-            marker = markers[0];
-            receiverBinding = receivers[0];
-            return true;
-        }
-
-        private static List<T> FindActiveComponents<T>(Scene scene)
-            where T : MonoBehaviour
+        private static List<T> FindActive<T>(Scene scene) where T : MonoBehaviour
         {
             var result = new List<T>();
+            if (!scene.IsValid() || !scene.isLoaded) return result;
+
             GameObject[] roots = scene.GetRootGameObjects();
             for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
             {
@@ -380,31 +304,6 @@ namespace ShooterMover.UI.Game
                         && value.isActiveAndEnabled)
                     {
                         result.Add(value);
-                    }
-                }
-            }
-            return result;
-        }
-
-        private static List<ReceiverBinding> FindActiveReceivers(Scene scene)
-        {
-            var result = new List<ReceiverBinding>();
-            GameObject[] roots = scene.GetRootGameObjects();
-            for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
-            {
-                MonoBehaviour[] values = roots[rootIndex]
-                    .GetComponentsInChildren<MonoBehaviour>(true);
-                for (int index = 0; index < values.Length; index++)
-                {
-                    MonoBehaviour value = values[index];
-                    IPlayablePlayerDamageReceiver candidate =
-                        value as IPlayablePlayerDamageReceiver;
-                    if (value != null
-                        && candidate != null
-                        && value.gameObject.scene == scene
-                        && value.isActiveAndEnabled)
-                    {
-                        result.Add(new ReceiverBinding(value, candidate));
                     }
                 }
             }
@@ -457,14 +356,13 @@ namespace ShooterMover.UI.Game
         private void OnDisable()
         {
             subscriptions.Clear();
-            ClearReceiver(true);
+            ClearReceiverAndEffects();
         }
 
         private void OnDestroy()
         {
-            destroying = true;
             subscriptions.Clear();
-            ClearReceiver(true);
+            ClearReceiverAndEffects();
         }
 
         private static bool IsFatal(Exception exception)
@@ -472,20 +370,6 @@ namespace ShooterMover.UI.Game
             return exception is OutOfMemoryException
                 || exception is StackOverflowException
                 || exception is AccessViolationException;
-        }
-
-        private readonly struct ReceiverBinding
-        {
-            public ReceiverBinding(
-                MonoBehaviour behaviour,
-                IPlayablePlayerDamageReceiver receiver)
-            {
-                Behaviour = behaviour;
-                Receiver = receiver;
-            }
-
-            public MonoBehaviour Behaviour { get; }
-            public IPlayablePlayerDamageReceiver Receiver { get; }
         }
 
         private sealed class PendingTick
@@ -518,9 +402,6 @@ namespace ShooterMover.UI.Game
 
             public static int Compare(PendingTick left, PendingTick right)
             {
-                if (ReferenceEquals(left, right)) return 0;
-                if (left == null) return -1;
-                if (right == null) return 1;
                 int due = left.DueAtSeconds.CompareTo(right.DueAtSeconds);
                 return due != 0
                     ? due
