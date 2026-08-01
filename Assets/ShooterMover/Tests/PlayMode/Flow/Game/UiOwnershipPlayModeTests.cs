@@ -1,8 +1,11 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 using ShooterMover.Application.Flow.Game;
+using ShooterMover.Contracts.Flow.Session;
+using ShooterMover.Domain.Common;
 using ShooterMover.UI.Game;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -46,6 +49,58 @@ namespace ShooterMover.Tests.PlayMode.Flow.Game
 
             UnityEngine.Object.DestroyImmediate(host);
             yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator VolatileDamageSelectsActiveArmorReceiverOnly()
+        {
+            Scene scene = SceneManager.CreateScene(
+                "Volatile damage receiver test " + Guid.NewGuid().ToString("N"));
+            var player = new GameObject("Armored player");
+            SceneManager.MoveGameObjectToScene(player, scene);
+
+            PlayerMarker marker = player.AddComponent<PlayerMarker>();
+            StableId characterId = StableId.Parse(
+                "character.volatile-damage-receiver-test");
+            marker.Bind(
+                characterId,
+                StableId.Parse("class.volatile-damage-receiver-test"),
+                PlayerRouteProfilePayload.Create(
+                    characterId,
+                    StableId.Parse("loadout.volatile-damage-receiver-test"),
+                    new StableId[PlayerRouteProfilePayload.GunSlotCount]),
+                new object(),
+                new object());
+
+            Rigidbody2D body = player.AddComponent<Rigidbody2D>();
+            TopDownMovement movement = player.AddComponent<TopDownMovement>();
+            PlayerHUD baseReceiver = player.AddComponent<PlayerHUD>();
+            baseReceiver.Bind(marker, body, movement);
+            SkillArmor armorReceiver = player.AddComponent<SkillArmor>();
+            armorReceiver.Bind(baseReceiver, 0.25f);
+
+            Type volatileDamage = typeof(PlayerHUD).Assembly.GetType(
+                "ShooterMover.UI.Game.VolatileDamage",
+                true);
+            MethodInfo findPlayer = volatileDamage.GetMethod(
+                "TryFindPlayer",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.That(findPlayer, Is.Not.Null);
+
+            object[] arguments = { scene, null, null };
+            bool resolved = (bool)findPlayer.Invoke(null, arguments);
+
+            Assert.That(resolved, Is.True, arguments[2] as string);
+            Assert.That(arguments[1], Is.Not.Null);
+            object selectedReceiver = arguments[1].GetType()
+                .GetProperty("Receiver")
+                .GetValue(arguments[1]);
+            Assert.That(selectedReceiver, Is.SameAs(armorReceiver));
+            Assert.That(baseReceiver.isActiveAndEnabled, Is.False);
+
+            UnityEngine.Object.DestroyImmediate(player);
+            AsyncOperation unload = SceneManager.UnloadSceneAsync(scene);
+            while (unload != null && !unload.isDone) yield return null;
         }
 
         [UnityTest]

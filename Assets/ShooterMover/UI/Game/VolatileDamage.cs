@@ -136,7 +136,9 @@ namespace ShooterMover.UI.Game
             for (int index = 0; index < views.Length; index++)
             {
                 MonoBehaviour view = views[index];
-                if (view == null || view.gameObject.scene != scene)
+                if (view == null
+                    || view.gameObject.scene != scene
+                    || !view.isActiveAndEnabled)
                 {
                     continue;
                 }
