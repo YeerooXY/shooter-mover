@@ -1,0 +1,26 @@
+{
+  "name": "Rattler",
+  "category": "normal-firearm",
+  "rarity": "common",
+  "projectileType": "bullet",
+  "damageType": "physical",
+  "shot": {
+    "projectiles": 1,
+    "spread": 0
+  },
+  "projectile": {
+    "speed": 20,
+    "radius": 0.1,
+    "range": 25
+  },
+  "impact": {
+    "pierce": 1,
+    "ricochet": 0,
+    "knockback": 0
+  },
+  "art": {
+    "delivery": "gun-delivery-art.normal-physical.v1",
+    "trail": "gun-trail-art.normal-physical.v1",
+    "impact": "gun-impact-art.normal-physical.v1"
+  }
+}
