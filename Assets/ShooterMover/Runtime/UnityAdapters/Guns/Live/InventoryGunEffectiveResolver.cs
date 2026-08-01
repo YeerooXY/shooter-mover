@@ -101,11 +101,10 @@ namespace ShooterMover.UnityAdapters.Guns.Live
     }
 
     /// <summary>
-    /// Compatibility-named production resolver. Empty equipment remains allocation-free, while the
-    /// three canonical built-in augments resolve through GunAugmentCatalog. Any unknown installed
-    /// augment still fails closed rather than silently losing its combat effect.
+    /// Resolves installed gun augments into immutable combat modifiers. Empty equipment remains
+    /// allocation-free, while unknown installed augments fail closed.
     /// </summary>
-    public sealed class UnaugmentedGunModifierSetResolver :
+    public sealed class GunAugmentResolver :
         IGunAugmentModifierSetResolver
     {
         private static readonly ReadOnlyCollection<GunAugmentModifierSet> Empty =
@@ -138,7 +137,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                  index++)
             {
                 GunAugmentModifierSet modifierSet;
-                if (!GunAugmentCatalog.TryCreateModifierSet(
+                if (!GunAugments.TryResolve(
                         equipmentCatalog,
                         equipmentInstance.Augments[index],
                         out modifierSet,
