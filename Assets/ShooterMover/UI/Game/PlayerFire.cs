@@ -8,6 +8,7 @@ using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Common.Random;
 using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Guns;
 using ShooterMover.Domain.Guns.Catalog;
 using ShooterMover.Domain.Guns.Execution;
 using ShooterMover.UnityAdapters.Guns.Live;
