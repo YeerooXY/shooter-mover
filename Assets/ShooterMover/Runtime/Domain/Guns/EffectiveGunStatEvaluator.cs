@@ -183,7 +183,7 @@ namespace ShooterMover.Domain.Guns
                 case GunEffectiveStat.RicochetTenths:
                     if (!SupportsRicochet(blueprint))
                     {
-                        reason = "the authored gun structure cannot execute ricochet";
+                        reason = "the authored gun has no executable fixed-point ricochet structure";
                     }
                     break;
 
@@ -325,7 +325,8 @@ namespace ShooterMover.Domain.Guns
 
         private static bool SupportsRicochet(Gun blueprint)
         {
-            if (blueprint.Impact.Ricochet == null)
+            GunRicochetSpec ricochet = blueprint.Impact.Ricochet;
+            if (ricochet == null || !ricochet.HasCanonicalFixedPointBudget)
             {
                 return false;
             }
