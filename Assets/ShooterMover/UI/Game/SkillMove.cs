@@ -479,6 +479,12 @@ namespace ShooterMover.UI.Game
 
         private void HandleDefeated(PlayablePlayerDefeatedFact fact)
         {
+            SkillMove skills = GetComponent<SkillMove>();
+            if (skills != null)
+            {
+                skills.enabled = false;
+            }
+
             Action<PlayablePlayerDefeatedFact> handlers = Defeated;
             if (handlers != null)
             {
