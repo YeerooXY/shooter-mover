@@ -194,7 +194,6 @@ namespace ShooterMover.UI.Game
         private const float BaseDashSpeed = 18f;
         private const float BaseDashSeconds = 0.18f;
         private const float BaseRechargeSeconds = 2f;
-        private const int BaseCharges = 2;
 
         private readonly List<float> rechargeEnds = new List<float>();
 
@@ -212,7 +211,7 @@ namespace ShooterMover.UI.Game
         private int speedRank;
         private int recoveryRank;
         private int efficiencyRank;
-        private int maximumCharges = BaseCharges;
+        private int maximumCharges;
         private bool dashing;
         private bool bound;
 
@@ -259,8 +258,13 @@ namespace ShooterMover.UI.Game
                 0.25f,
                 BaseRechargeSeconds / recovery + milestone);
 
-            maximumCharges = BaseCharges
-                + (recoveryRank >= 8 && efficiencyRank >= 8 ? 1 : 0);
+            bool striker = IsClass(allocation.ClassId, "striker")
+                || IsClass(allocation.ClassId, "aggressive");
+            maximumCharges = BaseChargeCount(allocation.ClassId);
+            if (striker && recoveryRank >= 8 && efficiencyRank >= 8)
+            {
+                maximumCharges++;
+            }
             bound = true;
         }
 
@@ -276,7 +280,7 @@ namespace ShooterMover.UI.Game
             }
 
             Keyboard keyboard = Keyboard.current;
-            if (keyboard == null) return;
+            if (keyboard == null || maximumCharges <= 0) return;
 
             Vector2 direction = ReadDirection(keyboard);
             if (direction.sqrMagnitude > 0.001f)
@@ -313,14 +317,21 @@ namespace ShooterMover.UI.Game
         private void OnGUI()
         {
             if (!bound) return;
-            string text = "THRUSTER "
-                + AvailableCharges + "/" + maximumCharges;
-            float next = NextRechargeSeconds();
-            if (next > 0f)
+            string text;
+            if (maximumCharges <= 0)
             {
-                text += "  " + next.ToString("0.0") + "s";
+                text = "THRUSTER DISABLED";
             }
-            text += "  [SHIFT / SPACE]";
+            else
+            {
+                text = "THRUSTER " + AvailableCharges + "/" + maximumCharges;
+                float next = NextRechargeSeconds();
+                if (next > 0f)
+                {
+                    text += "  " + next.ToString("0.0") + "s";
+                }
+                text += "  [SHIFT / SPACE]";
+            }
             GUI.Label(new Rect(16f, Screen.height - 34f, 330f, 24f), text);
 
             string ranks = "SKILLS  Armor " + armorRank
@@ -350,6 +361,28 @@ namespace ShooterMover.UI.Game
                 earliest = Mathf.Min(earliest, rechargeEnds[index]);
             }
             return Mathf.Max(0f, earliest - Time.time);
+        }
+
+        private static int BaseChargeCount(string classId)
+        {
+            if (IsClass(classId, "juggernaut")) return 0;
+            if (IsClass(classId, "medic")) return 1;
+            if (IsClass(classId, "striker")
+                || IsClass(classId, "aggressive"))
+            {
+                return 2;
+            }
+
+            Debug.LogError("skill-move-class-unsupported:" + classId);
+            return 0;
+        }
+
+        private static bool IsClass(string classId, string className)
+        {
+            return !string.IsNullOrWhiteSpace(classId)
+                && classId.IndexOf(
+                    className,
+                    StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static Vector2 ReadDirection(Keyboard keyboard)
