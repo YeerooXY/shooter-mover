@@ -8,7 +8,9 @@
     "ShooterMover.UnityAdapters",
     "ShooterMover.RunLoot",
     "ShooterMover.RunPickupUnity",
-    "Unity.InputSystem"
+    "ShooterMover.UI.Common",
+    "Unity.InputSystem",
+    "Unity.ugui"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
