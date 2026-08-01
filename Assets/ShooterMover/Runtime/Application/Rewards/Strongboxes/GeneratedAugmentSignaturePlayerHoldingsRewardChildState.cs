@@ -15,7 +15,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
     /// <summary>
     /// RAP holdings child that commits generated augment metadata only after the exact
     /// equipment grant is confirmed applied. Durable BOX staging and transient Shop
-    /// previews share the same compensated holdings transaction without allowing preview
+    /// offers share the same compensated holdings transaction without allowing offer
     /// metadata to masquerade as character-owned state before purchase.
     /// </summary>
     public sealed class
@@ -25,7 +25,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
         private readonly PlayerHoldingsActions holdings;
         private readonly PlayerHoldingsRewardChildState inner;
         private readonly GeneratedEquipmentAugmentSignatureState signatures;
-        private readonly GeneratedEquipmentAugmentSignatureState previews;
+        private readonly GeneratedEquipmentAugmentSignatureState offerAugments;
 
         public GeneratedAugmentSignaturePlayerHoldingsRewardChildState(
             PlayerHoldingsActions holdings,
@@ -43,7 +43,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             PlayerHoldingsActions holdings,
             IEquipmentInstanceValidator equipmentValidator,
             GeneratedEquipmentAugmentSignatureState signatures,
-            GeneratedEquipmentAugmentSignatureState previews)
+            GeneratedEquipmentAugmentSignatureState offerAugments)
         {
             this.holdings = holdings
                 ?? throw new ArgumentNullException(nameof(holdings));
@@ -53,7 +53,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                     ?? throw new ArgumentNullException(nameof(equipmentValidator)));
             this.signatures = signatures
                 ?? throw new ArgumentNullException(nameof(signatures));
-            this.previews = previews;
+            this.offerAugments = offerAugments;
         }
 
         public StableId AuthorityStableId
@@ -105,14 +105,12 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                     }
 
                     GeneratedEquipmentAugmentSignature signature;
-                    bool fromPreview;
+                    bool fromOffer;
                     if (!TryResolveSignature(
                             command.InstanceStableId,
                             out signature,
-                            out fromPreview))
+                            out fromOffer))
                     {
-                        // Non-hybrid equipment grants share this RAP authority and do not
-                        // require generated augment metadata.
                         facts.Add(fact);
                         continue;
                     }
@@ -147,11 +145,11 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 }
 
                 GeneratedEquipmentAugmentSignature signature;
-                bool fromPreview;
+                bool fromOffer;
                 if (!TryResolveSignature(
                         command.InstanceStableId,
                         out signature,
-                        out fromPreview))
+                        out fromOffer))
                 {
                     return inner.Apply(command);
                 }
@@ -176,8 +174,8 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 }
 
                 string diagnostic;
-                bool committed = fromPreview
-                    ? TryCommitPreview(signature, out diagnostic)
+                bool committed = fromOffer
+                    ? TryCommitOffer(signature, out diagnostic)
                     : TryCommitStaged(signature, out diagnostic);
                 if (committed)
                 {
@@ -222,7 +220,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
         private bool TryResolveSignature(
             StableId equipmentInstanceStableId,
             out GeneratedEquipmentAugmentSignature signature,
-            out bool fromPreview)
+            out bool fromOffer)
         {
             bool committed;
             if (signatures.TryGetStagedOrCommitted(
@@ -230,20 +228,20 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                     out signature,
                     out committed))
             {
-                fromPreview = false;
+                fromOffer = false;
                 return true;
             }
-            if (previews != null
-                && previews.TryGetStagedOrCommitted(
+            if (offerAugments != null
+                && offerAugments.TryGetStagedOrCommitted(
                     equipmentInstanceStableId,
                     out signature,
                     out committed))
             {
-                fromPreview = true;
+                fromOffer = true;
                 return true;
             }
             signature = null;
-            fromPreview = false;
+            fromOffer = false;
             return false;
         }
 
@@ -259,7 +257,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 out diagnostic);
         }
 
-        private bool TryCommitPreview(
+        private bool TryCommitOffer(
             GeneratedEquipmentAugmentSignature signature,
             out string diagnostic)
         {
