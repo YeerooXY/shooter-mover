@@ -1,0 +1,87 @@
+.weapon-qol-controls {
+  grid-column: 1 / -1;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(87, 199, 255, .05);
+}
+.weapon-qol-title { font-weight: 750; margin-bottom: 8px; }
+.weapon-qol-buttons { display: flex; flex-wrap: wrap; gap: 7px; }
+.weapon-qol-controls .gameplay-note { margin-top: 8px; }
+.weapon-qol-controls .gameplay-note.error { color: var(--bad); }
+
+.weapon-dps-summary { display: grid; gap: 9px; }
+.dps-mark-card {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #111821;
+}
+.dps-mark-card.on-target { border-color: rgba(108, 229, 164, .65); }
+.dps-mark-card.over-target { border-color: rgba(255, 122, 136, .65); }
+.dps-mark-card.under-target { border-color: rgba(247, 201, 103, .65); }
+.dps-mark-head,
+.dps-main-row,
+.dps-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.dps-mark-head { margin-bottom: 7px; }
+.dps-mark-head span,
+.dps-row span { color: var(--muted); }
+.dps-main-row { font-size: 15px; margin-bottom: 4px; }
+.dps-breakdown,
+.dps-utility {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.dps-utility { color: #c9d5e2; }
+.dps-mark-card button { width: 100%; margin-top: 8px; }
+.dps-build-rows {
+  display: grid;
+  gap: 3px;
+  padding-top: 7px;
+  margin-top: 7px;
+  border-top: 1px solid rgba(48, 59, 75, .65);
+  font-size: 12px;
+}
+
+.dps-target-editor { margin-top: 10px; border-top: 1px solid var(--line); }
+.dps-target-editor > summary {
+  padding: 10px 0;
+  cursor: pointer;
+  font-weight: 700;
+}
+.dps-target-body { display: grid; gap: 12px; }
+.dps-config-group {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0e141c;
+}
+.dps-config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.dps-config-grid.compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.dps-config-result {
+  padding: 8px;
+  border-radius: 7px;
+  background: rgba(87, 199, 255, .07);
+  color: #c9d5e2;
+  font-size: 12px;
+}
+.dps-target-actions { display: grid; gap: 7px; }
+
+@media (max-width: 760px) {
+  .weapon-qol-buttons { display: grid; grid-template-columns: 1fr; }
+  .dps-config-grid,
+  .dps-config-grid.compact { grid-template-columns: 1fr; }
+}
