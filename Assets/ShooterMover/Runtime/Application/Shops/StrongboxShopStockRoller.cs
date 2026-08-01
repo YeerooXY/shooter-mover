@@ -105,9 +105,6 @@ namespace ShooterMover.Application.Shops
             StableId commitmentId = Strongbox.DeriveId(
                 "shopcommit",
                 boxId.ToString());
-            StableId operationId = Strongbox.DeriveId(
-                "shoprollop",
-                boxId.ToString());
             StableId grantId = Strongbox.DeriveId(
                 "shoprollgrant",
                 boxId.ToString());
@@ -128,6 +125,8 @@ namespace ShooterMover.Application.Shops
                     SourceStableId,
                     collectionId,
                     definition.Fingerprint);
+            string contextFingerprint = Strongbox.Fingerprint(
+                context.ToCanonicalString());
             string contentFingerprint =
                 ShooterMover.Domain.Shops.Shop.Fingerprint(
                     "schema=shop-virtual-strongbox-roll-v1"
@@ -135,9 +134,9 @@ namespace ShooterMover.Application.Shops
                     + "\nrun_id=" + request.RunStableId
                     + "\nslot=" + slot
                     + "\ntier_id=" + tierId
-                    + "\ncontext=" + context.Fingerprint);
+                    + "\ncontext=" + contextFingerprint);
             RewardOperationRequest operation = RewardOperationRequest.Create(
-                operationId,
+                request.RunStableId,
                 request.Definition.ShopStableId,
                 sourceOperationId,
                 commitmentId,
@@ -186,7 +185,7 @@ namespace ShooterMover.Application.Shops
                 ShooterMover.Domain.Shops.Shop.Fingerprint(
                     "schema=shop-strongbox-stock-result-v1"
                     + "\ntier_id=" + tierId
-                    + "\nbox_context=" + context.Fingerprint
+                    + "\nbox_context=" + contextFingerprint
                     + "\nequipment=" + equipment[0].Fingerprint
                     + "\naugment_signature=" + signature.Fingerprint);
             result = new ShopStockRollResult(
