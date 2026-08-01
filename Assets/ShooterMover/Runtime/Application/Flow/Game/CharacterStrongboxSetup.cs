@@ -90,9 +90,10 @@ namespace ShooterMover.Application.Flow.Game
                 new MoneyRewardChildState(money),
                 new ScrapRewardChildState(scrap),
                 new GeneratedAugmentSignaturePlayerHoldingsRewardChildState(
-                    loadout.LegacyHoldings,
+                    loadout.Holdings,
                     loadout.CatalogBridge,
-                    augmentSignatures));
+                    augmentSignatures,
+                    loadout.GunInventory));
 
             RewardClaimTransferLiveRegistry
                 .BindRewardApplication(

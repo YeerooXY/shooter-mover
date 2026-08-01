@@ -40,6 +40,7 @@ namespace ShooterMover.Application.Flow.Game
             StrongboxDefinitionCatalog strongboxCatalog,
             StrongboxOpeningActions strongboxAuthority,
             IStrongboxOpeningRecoveryPort strongboxRecovery,
+            GeneratedEquipmentAugmentSignatureState augmentSignatures,
             IEnumerable<ISavePart> saveAdapters)
         {
             this.character = character
@@ -64,6 +65,8 @@ namespace ShooterMover.Application.Flow.Game
                 ?? throw new ArgumentNullException(nameof(strongboxAuthority));
             StrongboxRecovery = strongboxRecovery
                 ?? throw new ArgumentNullException(nameof(strongboxRecovery));
+            AugmentSignatures = augmentSignatures
+                ?? throw new ArgumentNullException(nameof(augmentSignatures));
             if (string.IsNullOrWhiteSpace(skillProfileId))
             {
                 throw new ArgumentException(
@@ -102,6 +105,10 @@ namespace ShooterMover.Application.Flow.Game
         public StrongboxDefinitionCatalog StrongboxCatalog { get; }
         public StrongboxOpeningActions StrongboxAuthority { get; }
         public IStrongboxOpeningRecoveryPort StrongboxRecovery { get; }
+        public GeneratedEquipmentAugmentSignatureState AugmentSignatures
+        {
+            get;
+        }
         public IReadOnlyList<ISavePart> SaveAdapters { get; }
         public bool IsDisposed { get; private set; }
 
@@ -355,6 +362,7 @@ namespace ShooterMover.Application.Flow.Game
                 strongboxes.Catalog,
                 strongboxes.Authority,
                 strongboxes.Recovery,
+                strongboxes.AugmentSignatures,
                 adapters);
             if (additionalAdapterFactory == null)
             {
@@ -381,6 +389,7 @@ namespace ShooterMover.Application.Flow.Game
                 strongboxes.Catalog,
                 strongboxes.Authority,
                 strongboxes.Recovery,
+                strongboxes.AugmentSignatures,
                 adapters);
         }
 

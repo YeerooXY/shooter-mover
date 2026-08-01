@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Text;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Application.Rewards.Strongboxes.Persistence;
 using ShooterMover.Application.Guns.Presentation;
@@ -115,7 +116,10 @@ namespace ShooterMover.UI.StrongboxOpening
                 instanceStableId,
                 quantity,
                 detail,
-                null)
+                null,
+                -1,
+                -1,
+                -1)
         {
         }
 
@@ -127,6 +131,31 @@ namespace ShooterMover.UI.StrongboxOpening
             long quantity,
             string detail,
             string gunArtReferenceId)
+            : this(
+                kind,
+                title,
+                contentStableId,
+                instanceStableId,
+                quantity,
+                detail,
+                gunArtReferenceId,
+                -1,
+                -1,
+                -1)
+        {
+        }
+
+        public StrongboxRewardRevealItem(
+            StrongboxRewardPresentationKind kind,
+            string title,
+            string contentStableId,
+            string instanceStableId,
+            long quantity,
+            string detail,
+            string gunArtReferenceId,
+            int augmentSlotCapacity,
+            int augmentSharedLevel,
+            int installedAugmentCount)
         {
             if (!Enum.IsDefined(typeof(StrongboxRewardPresentationKind), kind))
             {
@@ -140,6 +169,19 @@ namespace ShooterMover.UI.StrongboxOpening
             {
                 throw new ArgumentOutOfRangeException(nameof(quantity));
             }
+            bool hasAugmentRoll = augmentSlotCapacity >= 0;
+            if ((hasAugmentRoll
+                    && (augmentSlotCapacity > 4
+                        || augmentSharedLevel < 0
+                        || installedAugmentCount < 0
+                        || installedAugmentCount > augmentSlotCapacity))
+                || (!hasAugmentRoll
+                    && (augmentSharedLevel != -1
+                        || installedAugmentCount != -1)))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(augmentSlotCapacity));
+            }
 
             Kind = kind;
             Title = title.Trim();
@@ -148,6 +190,9 @@ namespace ShooterMover.UI.StrongboxOpening
             Quantity = quantity;
             Detail = detail ?? string.Empty;
             GunArtReferenceId = gunArtReferenceId ?? string.Empty;
+            AugmentSlotCapacity = augmentSlotCapacity;
+            AugmentSharedLevel = augmentSharedLevel;
+            InstalledAugmentCount = installedAugmentCount;
         }
 
         public StrongboxRewardPresentationKind Kind { get; }
@@ -157,7 +202,48 @@ namespace ShooterMover.UI.StrongboxOpening
         public long Quantity { get; }
         public string Detail { get; }
         public string GunArtReferenceId { get; }
+        public int AugmentSlotCapacity { get; }
+        public int AugmentSharedLevel { get; }
+        public int InstalledAugmentCount { get; }
         public bool IsUniqueInstance { get { return InstanceStableId.Length > 0; } }
+        public bool HasAugmentRoll { get { return AugmentSlotCapacity >= 0; } }
+        public string AugmentSlotMeter
+        {
+            get
+            {
+                if (!HasAugmentRoll) return string.Empty;
+                var meter = new StringBuilder();
+                for (int index = 0; index < 4; index++)
+                {
+                    meter.Append(index < AugmentSlotCapacity
+                        ? "[O]"
+                        : "[-]");
+                }
+                return meter.ToString();
+            }
+        }
+        public string AugmentSummary
+        {
+            get
+            {
+                return !HasAugmentRoll
+                    ? string.Empty
+                    : "AUGMENT SLOTS  " + AugmentSlotMeter + "  "
+                        + AugmentSlotCapacity.ToString(
+                            CultureInfo.InvariantCulture)
+                        + "/4"
+                        + "    INSTALLED "
+                        + InstalledAugmentCount.ToString(
+                            CultureInfo.InvariantCulture)
+                        + "/"
+                        + AugmentSlotCapacity.ToString(
+                            CultureInfo.InvariantCulture)
+                        + "\nAUGMENT LEVEL  "
+                        + AugmentSharedLevel.ToString(
+                            CultureInfo.InvariantCulture)
+                        + " (shared by every slot)";
+            }
+        }
         public bool HasGunArtReference
         {
             get { return GunArtReferenceId.Length > 0; }
@@ -284,6 +370,15 @@ namespace ShooterMover.UI.StrongboxOpening
             EquipmentCatalog equipmentCatalog,
             GunCatalog gunCatalog)
         {
+            return Project(result, equipmentCatalog, gunCatalog, null);
+        }
+
+        public static StrongboxOpeningPresentationResult Project(
+            StrongboxOpeningResultLive result,
+            EquipmentCatalog equipmentCatalog,
+            GunCatalog gunCatalog,
+            GeneratedEquipmentAugmentSignatureState augmentSignatures)
+        {
             if (result == null)
             {
                 return StrongboxOpeningPresentationResult.Rejected(
@@ -311,7 +406,8 @@ namespace ShooterMover.UI.StrongboxOpening
             IReadOnlyList<StrongboxRewardRevealItem> items = ProjectPayloads(
                 result.GeneratedOutcome.Payloads,
                 equipmentCatalog,
-                gunCatalog);
+                gunCatalog,
+                augmentSignatures);
             return StrongboxOpeningPresentationResult.Success(
                 items,
                 result.Status == StrongboxOpeningLiveStatus.ExactDuplicateNoChange,
@@ -332,6 +428,19 @@ namespace ShooterMover.UI.StrongboxOpening
             IEnumerable<RewardGrantApplicationPayload> payloads,
             EquipmentCatalog equipmentCatalog,
             GunCatalog gunCatalog)
+        {
+            return ProjectPayloads(
+                payloads,
+                equipmentCatalog,
+                gunCatalog,
+                null);
+        }
+
+        public static IReadOnlyList<StrongboxRewardRevealItem> ProjectPayloads(
+            IEnumerable<RewardGrantApplicationPayload> payloads,
+            EquipmentCatalog equipmentCatalog,
+            GunCatalog gunCatalog,
+            GeneratedEquipmentAugmentSignatureState augmentSignatures)
         {
             if (payloads == null)
             {
@@ -359,7 +468,8 @@ namespace ShooterMover.UI.StrongboxOpening
                             items,
                             payload,
                             equipmentCatalog,
-                            gunCatalog);
+                            gunCatalog,
+                            augmentSignatures);
                         break;
                     case RewardGrantKind.PremiumAmmo:
                         items.Add(ValueItem(StrongboxRewardPresentationKind.Miscellaneous, "PREMIUM AMMUNITION", payload));
@@ -406,7 +516,8 @@ namespace ShooterMover.UI.StrongboxOpening
             ICollection<StrongboxRewardRevealItem> items,
             RewardGrantApplicationPayload payload,
             EquipmentCatalog equipmentCatalog,
-            GunCatalog gunCatalog)
+            GunCatalog gunCatalog,
+            GeneratedEquipmentAugmentSignatureState augmentSignatures)
         {
             for (int index = 0; index < payload.EquipmentInstances.Count; index++)
             {
@@ -416,9 +527,16 @@ namespace ShooterMover.UI.StrongboxOpening
                     : equipmentCatalog.FindEquipmentDefinition(instance.DefinitionId);
                 bool armor = definition != null && definition.CategoryId == EquipmentCategoryIds.Armor;
                 string title = definition == null ? instance.DefinitionId.ToString() : definition.DisplayName;
-                string detail = "Item level " + instance.ItemLevel.ToString(CultureInfo.InvariantCulture)
-                    + "  |  Quality " + instance.QualityId
-                    + "  |  Augments " + instance.Augments.Count.ToString(CultureInfo.InvariantCulture);
+                string detail = "ITEM LEVEL "
+                    + instance.ItemLevel.ToString(CultureInfo.InvariantCulture)
+                    + "    QUALITY " + instance.QualityId;
+                GeneratedEquipmentAugmentSignature signature = null;
+                bool signatureCommitted;
+                bool hasSignature = augmentSignatures != null
+                    && augmentSignatures.TryGetStagedOrCommitted(
+                        instance.InstanceId,
+                        out signature,
+                        out signatureCommitted);
                 GunArtReferenceView artProjection;
                 string artRejection;
                 string artReferenceId =
@@ -437,7 +555,10 @@ namespace ShooterMover.UI.StrongboxOpening
                     instance.InstanceId.ToString(),
                     1L,
                     detail,
-                    artReferenceId));
+                    artReferenceId,
+                    hasSignature ? signature.Capacity : -1,
+                    hasSignature ? signature.SharedLevel : -1,
+                    hasSignature ? instance.Augments.Count : -1));
             }
         }
     }
@@ -586,6 +707,7 @@ namespace ShooterMover.UI.StrongboxOpening
         private StrongboxOpeningLivePort runtimePort;
         private EquipmentCatalog equipmentCatalog;
         private GunCatalog gunCatalog;
+        private GeneratedEquipmentAugmentSignatureState augmentSignatures;
         private readonly Dictionary<string, GunArtSpriteResolution>
             preloadedGunArt =
                 new Dictionary<string, GunArtSpriteResolution>(
@@ -700,11 +822,22 @@ namespace ShooterMover.UI.StrongboxOpening
             EquipmentCatalog catalog,
             GunCatalog guns)
         {
+            BindRuntime(service, command, catalog, guns, null);
+        }
+
+        public void BindRuntime(
+            StrongboxOpeningActions service,
+            StrongboxOpenCommand command,
+            EquipmentCatalog catalog,
+            GunCatalog guns,
+            GeneratedEquipmentAugmentSignatureState signatures)
+        {
             runtimePort = new StrongboxOpeningLivePort(
                 service ?? throw new ArgumentNullException(nameof(service)),
                 command ?? throw new ArgumentNullException(nameof(command)));
             equipmentCatalog = catalog;
             gunCatalog = guns;
+            augmentSignatures = signatures;
             preloadedGunArt.Clear();
             previewOnly = false;
             session = new StrongboxOpeningSceneSession(
@@ -740,6 +873,25 @@ namespace ShooterMover.UI.StrongboxOpening
             MissionRunStrongboxResult selectedStrongbox,
             IStrongboxDurableOpeningExecutor durableExecutor)
         {
+            BindDurableRuntime(
+                service,
+                command,
+                catalog,
+                guns,
+                selectedStrongbox,
+                durableExecutor,
+                null);
+        }
+
+        public void BindDurableRuntime(
+            StrongboxOpeningActions service,
+            StrongboxOpenCommand command,
+            EquipmentCatalog catalog,
+            GunCatalog guns,
+            MissionRunStrongboxResult selectedStrongbox,
+            IStrongboxDurableOpeningExecutor durableExecutor,
+            GeneratedEquipmentAugmentSignatureState signatures)
+        {
             if (service == null) throw new ArgumentNullException(nameof(service));
             if (command == null) throw new ArgumentNullException(nameof(command));
             if (selectedStrongbox == null)
@@ -754,6 +906,7 @@ namespace ShooterMover.UI.StrongboxOpening
             runtimePort = null;
             equipmentCatalog = catalog;
             gunCatalog = guns;
+            augmentSignatures = signatures;
             preloadedGunArt.Clear();
             previewOnly = false;
             session = new StrongboxOpeningSceneSession(
@@ -767,7 +920,8 @@ namespace ShooterMover.UI.StrongboxOpening
                             service,
                             command),
                         equipmentCatalog,
-                        gunCatalog);
+                        gunCatalog,
+                        augmentSignatures);
                     PreloadGunArt(presentation);
                     return presentation;
                 });
@@ -781,6 +935,7 @@ namespace ShooterMover.UI.StrongboxOpening
             runtimePort = null;
             equipmentCatalog = null;
             gunCatalog = null;
+            augmentSignatures = null;
             preloadedGunArt.Clear();
             previewOnly = isPreviewOnly;
             session = new StrongboxOpeningSceneSession(
@@ -938,6 +1093,10 @@ namespace ShooterMover.UI.StrongboxOpening
                     + identity
                     + (item.Detail.Length == 0 ? string.Empty : "\n" + item.Detail),
                     rewardStyle);
+                if (item.HasAugmentRoll)
+                {
+                    GUILayout.Label(item.AugmentSummary, bodyStyle);
+                }
                 GUILayout.EndHorizontal();
                 GUILayout.Space(6f);
             }
@@ -979,7 +1138,8 @@ namespace ShooterMover.UI.StrongboxOpening
                 StrongboxRewardRevealProjector.Project(
                     runtimePort.OpenOrContinue(),
                     equipmentCatalog,
-                    gunCatalog);
+                    gunCatalog,
+                    augmentSignatures);
             PreloadGunArt(presentation);
             return presentation;
         }

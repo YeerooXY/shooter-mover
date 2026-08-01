@@ -3,6 +3,7 @@ using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Guns.Catalog;
+using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Equipment;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Holdings;
@@ -27,6 +28,7 @@ namespace ShooterMover.UI.InventoryLoadout
         private InventoryLoadoutState canonicalLoadoutAuthority;
         private GunSlots canonicalMountLayout;
         private GunCatalog canonicalGunCatalog;
+        private GeneratedEquipmentAugmentSignatureState augmentSignatures;
         private InventoryLoadoutScreenActions legacyService;
         private InventoryMenuActions canonicalService;
         private Action<PlayerRouteProfilePayload> returnToHub;
@@ -175,6 +177,12 @@ namespace ShooterMover.UI.InventoryLoadout
             }
         }
 
+        public void ConfigureAugmentPresentation(
+            GeneratedEquipmentAugmentSignatureState signatures)
+        {
+            augmentSignatures = signatures;
+        }
+
         public void ConfigureDisconnected(
             Action<PlayerRouteProfilePayload> returnToHub)
         {
@@ -185,6 +193,7 @@ namespace ShooterMover.UI.InventoryLoadout
             canonicalLoadoutAuthority = null;
             canonicalMountLayout = null;
             canonicalGunCatalog = null;
+            augmentSignatures = null;
             legacyService = null;
             canonicalService = null;
             this.returnToHub = returnToHub
@@ -593,6 +602,18 @@ namespace ShooterMover.UI.InventoryLoadout
                     ? "Equipped on " + card.EquippedMountId
                     : "Unequipped",
                 smallStyle);
+            GeneratedEquipmentAugmentSignature augmentRoll;
+            if (TryGetAugmentRoll(
+                    card.Instance.InstanceId,
+                    out augmentRoll))
+            {
+                GUILayout.Label(
+                    "Augment slots "
+                    + FormatSlotMeter(augmentRoll.Capacity)
+                    + "  " + augmentRoll.Capacity + "/4"
+                    + "    Level " + augmentRoll.SharedLevel,
+                    smallStyle);
+            }
             if (GUILayout.Button(
                 "SELECT THIS INSTANCE",
                 GUILayout.MinHeight(34f)))
@@ -626,8 +647,36 @@ namespace ShooterMover.UI.InventoryLoadout
                     : card.Family),
                 bodyStyle);
             GUILayout.Space(8f);
-            GUILayout.Label("AUGMENTS", headingStyle);
-            DrawAssignments(card.Instance.AugmentAssignments, "No augments assigned");
+            GeneratedEquipmentAugmentSignature augmentRoll;
+            if (TryGetAugmentRoll(
+                    card.Instance.InstanceId,
+                    out augmentRoll))
+            {
+                GUILayout.Label(
+                    "AUGMENTS  "
+                    + card.Instance.AugmentAssignments.Count
+                    + "/" + augmentRoll.Capacity,
+                    headingStyle);
+                GUILayout.Label(
+                    "SLOT CAPACITY  "
+                    + FormatSlotMeter(augmentRoll.Capacity)
+                    + "  " + augmentRoll.Capacity + "/4",
+                    bodyStyle);
+                GUILayout.Label(
+                    "SHARED AUGMENT LEVEL  "
+                    + augmentRoll.SharedLevel,
+                    bodyStyle);
+                DrawAugmentSlots(
+                    card.Instance.AugmentAssignments,
+                    augmentRoll);
+            }
+            else
+            {
+                GUILayout.Label("AUGMENTS", headingStyle);
+                DrawAssignments(
+                    card.Instance.AugmentAssignments,
+                    "No augments assigned");
+            }
             GUILayout.Label("OVERCLOCKS", headingStyle);
             DrawAssignments(
                 card.Instance.OverclockAssignments,
@@ -766,6 +815,51 @@ namespace ShooterMover.UI.InventoryLoadout
             {
                 GUILayout.Label("• " + assignments[index]);
             }
+        }
+
+        private bool TryGetAugmentRoll(
+            StableId equipmentInstanceStableId,
+            out GeneratedEquipmentAugmentSignature signature)
+        {
+            signature = null;
+            return augmentSignatures != null
+                && augmentSignatures.TryGet(
+                    equipmentInstanceStableId,
+                    out signature)
+                && signature != null;
+        }
+
+        private static void DrawAugmentSlots(
+            System.Collections.Generic.IReadOnlyList<StableId> assignments,
+            GeneratedEquipmentAugmentSignature signature)
+        {
+            for (int index = 0; index < signature.Capacity; index++)
+            {
+                StableId assignment = assignments != null
+                    && index < assignments.Count
+                        ? assignments[index]
+                        : null;
+                GUILayout.Label(
+                    "SLOT " + (index + 1)
+                    + "  [LV " + signature.SharedLevel + "]  "
+                    + (assignment == null
+                        ? "EMPTY"
+                        : assignment.ToString()));
+            }
+            if (signature.Capacity == 0)
+            {
+                GUILayout.Label("No augment slots rolled.");
+            }
+        }
+
+        private static string FormatSlotMeter(int capacity)
+        {
+            string result = string.Empty;
+            for (int index = 0; index < 4; index++)
+            {
+                result += index < capacity ? "[O]" : "[-]";
+            }
+            return result;
         }
 
         private void DrawLastDiagnostic()

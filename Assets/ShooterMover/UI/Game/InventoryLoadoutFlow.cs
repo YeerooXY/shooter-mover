@@ -1,6 +1,7 @@
 using System;
 using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Persistence.Composition;
+using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.UI.InventoryLoadout;
 using UnityEngine;
@@ -22,6 +23,7 @@ namespace ShooterMover.UI.Game
         private GameFlow coordinator;
         private FlowProfileRecord currentProfile;
         private PlayerLoadoutLive runtime;
+        private GeneratedEquipmentAugmentSignatureState augmentSignatures;
         private InventoryMenu boundController;
         private string boundPayloadFingerprint = string.Empty;
 
@@ -160,6 +162,7 @@ namespace ShooterMover.UI.Game
                 runtime,
                 graph.LoadoutRuntime);
             runtime = graph.LoadoutRuntime;
+            augmentSignatures = graph.AugmentSignatures;
             currentProfile = profile;
             if (graphChanged)
             {
@@ -267,6 +270,8 @@ namespace ShooterMover.UI.Game
             controller.ConfigureGunPresentation(
                 runtime.EquipmentCatalog,
                 runtime.GunCatalog);
+            controller.ConfigureAugmentPresentation(
+                augmentSignatures);
             controller.Present(HubRoute.Inventory, payload);
 
             controller.Confirmed -= HandleConfirmed;
@@ -278,6 +283,7 @@ namespace ShooterMover.UI.Game
         private void Clear()
         {
             runtime = null;
+            augmentSignatures = null;
             currentProfile = null;
             DetachBoundController();
             boundPayloadFingerprint = string.Empty;

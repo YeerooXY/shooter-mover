@@ -8,6 +8,7 @@ using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Application.Progression.Skills;
+using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Application.Shops.Presentation;
 using ShooterMover.Application.Skills.Presentation;
 using ShooterMover.Content.Definitions.Characters.Selection;
@@ -433,6 +434,18 @@ namespace ShooterMover.UI.Game
                 {
                     GunCatalog gunCatalog = ResolveGunCatalog(
                         strongboxBinding.GunCatalog);
+                    GeneratedEquipmentAugmentSignatureState
+                        augmentSignatures = null;
+                    CharacterLiveGraph graph;
+                    FlowProfileRecord activeProfile;
+                    if (CharacterSave.TryResolveCurrent(
+                            out graph,
+                            out activeProfile)
+                        && graph != null
+                        && !graph.IsDisposed)
+                    {
+                        augmentSignatures = graph.AugmentSignatures;
+                    }
                     if (strongboxBinding.DurableOpeningExecutor != null)
                     {
                         controller.BindDurableRuntime(
@@ -441,7 +454,8 @@ namespace ShooterMover.UI.Game
                             strongboxBinding.EquipmentCatalog,
                             gunCatalog,
                             strongboxBinding.SelectedStrongbox,
-                            strongboxBinding.DurableOpeningExecutor);
+                            strongboxBinding.DurableOpeningExecutor,
+                            augmentSignatures);
                     }
                     else
                     {
@@ -449,7 +463,8 @@ namespace ShooterMover.UI.Game
                             strongboxBinding.OpeningService,
                             strongboxBinding.Command,
                             strongboxBinding.EquipmentCatalog,
-                            gunCatalog);
+                            gunCatalog,
+                            augmentSignatures);
                     }
                     controller.ContinueOrBackRequested -=
                         ReturnFromStrongboxOpening;

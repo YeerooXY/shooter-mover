@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Holdings;
 using ShooterMover.Application.Rewards.Application;
 using ShooterMover.Contracts.Equipment;
@@ -22,14 +23,16 @@ namespace ShooterMover.Application.Rewards.Strongboxes
         GeneratedAugmentSignaturePlayerHoldingsRewardChildState :
         IRewardChildState
     {
-        private readonly PlayerHoldingsActions holdings;
+        private readonly IPlayerHoldingsState holdings;
         private readonly PlayerHoldingsRewardChildState inner;
         private readonly GeneratedEquipmentAugmentSignatureState signatures;
+        private readonly GunInventoryState gunInventory;
 
         public GeneratedAugmentSignaturePlayerHoldingsRewardChildState(
-            PlayerHoldingsActions holdings,
+            IPlayerHoldingsState holdings,
             IEquipmentInstanceValidator equipmentValidator,
-            GeneratedEquipmentAugmentSignatureState signatures)
+            GeneratedEquipmentAugmentSignatureState signatures,
+            GunInventoryState gunInventory = null)
         {
             this.holdings = holdings
                 ?? throw new ArgumentNullException(nameof(holdings));
@@ -39,6 +42,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                     ?? throw new ArgumentNullException(nameof(equipmentValidator)));
             this.signatures = signatures
                 ?? throw new ArgumentNullException(nameof(signatures));
+            this.gunInventory = gunInventory;
         }
 
         public StableId AuthorityStableId
@@ -142,9 +146,13 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 }
 
                 PlayerHoldingsSnapshot before;
+                GunInventorySnapshot gunsBefore;
                 try
                 {
                     before = holdings.ExportSnapshot();
+                    gunsBefore = gunInventory == null
+                        ? null
+                        : gunInventory.ExportSnapshot();
                 }
                 catch (Exception exception)
                 {
@@ -172,9 +180,15 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 }
 
                 PlayerHoldingsImportResult compensation;
+                GunInventoryImportResult gunCompensation = null;
                 try
                 {
                     compensation = holdings.ImportSnapshot(before);
+                    if (gunInventory != null)
+                    {
+                        gunCompensation = gunInventory.ImportSnapshot(
+                            gunsBefore);
+                    }
                 }
                 catch (Exception exception)
                 {
@@ -186,7 +200,12 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                         + ";holdings-compensation-exception="
                         + exception.GetType().Name.ToLowerInvariant());
                 }
-                if (compensation == null || !compensation.Succeeded)
+                bool holdingsRestored = compensation != null
+                    && compensation.Succeeded;
+                bool gunsRestored = gunInventory == null
+                    || gunCompensation != null
+                    && gunCompensation.Succeeded;
+                if (!holdingsRestored || !gunsRestored)
                 {
                     return Rejected(
                         command,
@@ -196,7 +215,13 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                         + ";holdings-compensation="
                         + (compensation == null
                             ? "result-null"
-                            : compensation.RejectionCode));
+                            : compensation.RejectionCode)
+                        + ";gun-inventory-compensation="
+                        + (gunInventory == null
+                            ? "not-required"
+                            : gunCompensation == null
+                                ? "result-null"
+                                : gunCompensation.RejectionCode));
                 }
                 return Rejected(
                     command,

@@ -5,6 +5,7 @@ using System.Linq;
 using NUnit.Framework;
 using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Flow.Game;
+using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Accounts;
 using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Application.Rewards.Application;
@@ -16,6 +17,8 @@ using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Economy.Money;
+using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Guns;
 using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Rewards.Model;
@@ -219,6 +222,8 @@ namespace ShooterMover.Tests.PlayMode.CollectedRunRewards
                 MoneyWalletIds.AuthorityStableId,
                 restored.ScrapWallet.AuthorityStableId,
                 restored.LoadoutRuntime.Holdings.AuthorityStableId);
+            int gunsBeforeOpening = restored.LoadoutRuntime.GunInventory
+                .ExportSnapshot().Instances.Count;
             StrongboxOpeningResultLive opened =
                 restored.StrongboxAuthority.Open(open);
             StrongboxOpeningResultLive openingReplay =
@@ -237,7 +242,124 @@ namespace ShooterMover.Tests.PlayMode.CollectedRunRewards
                         == pickup.GeneratedRewardChildStableId),
                 Is.False);
 
+            var generated = opened.GeneratedOutcome.Payloads
+                .SelectMany(payload => payload.EquipmentInstances)
+                .Single();
+            Assert.That(
+                restored.LoadoutRuntime.GunInventory.Contains(
+                    generated.InstanceId),
+                Is.True,
+                "The opened strongbox gun must enter canonical inventory.");
+            Assert.That(
+                restored.LoadoutRuntime.GunInventory.ExportSnapshot()
+                    .Instances.Count,
+                Is.EqualTo(gunsBeforeOpening + 1),
+                "Opening replay must not duplicate the generated gun.");
+            GeneratedEquipmentAugmentSignature augmentSignature;
+            Assert.That(
+                restored.AugmentSignatures.TryGet(
+                    generated.InstanceId,
+                    out augmentSignature),
+                Is.True);
+            Assert.That(augmentSignature.Capacity, Is.InRange(0, 4));
+            Assert.That(augmentSignature.SharedLevel, Is.GreaterThanOrEqualTo(0));
+
+            LoadoutRegistry.Register(
+                restored.LoadoutRuntime.GunInventory,
+                restored.LoadoutRuntime.MountLoadoutAuthority);
+            var inventory = new InventoryMenuActions(
+                restored.LoadoutRuntime.CurrentRoutePayload,
+                restored.LoadoutRuntime.Holdings,
+                restored.LoadoutRuntime.GunInventory,
+                restored.LoadoutRuntime.LoadoutAuthority,
+                restored.LoadoutRuntime.MountLayout,
+                restored.LoadoutRuntime.GunCatalog);
+            StableId firstActiveSlot = restored.LoadoutRuntime.MountLayout
+                .Positions.First(position => position.IsActive)
+                .LoadoutSlotStableId;
+            InventoryLoadoutScreenStatus selectionStatus =
+                inventory.SelectGun(generated.InstanceId).Status;
+            Assert.That(
+                selectionStatus
+                    == InventoryLoadoutScreenStatus.SelectionChanged
+                    || selectionStatus
+                    == InventoryLoadoutScreenStatus.NoChange,
+                Is.True);
+            Assert.That(
+                inventory.Snapshot.SelectedInstanceId,
+                Is.EqualTo(generated.InstanceId));
+            Assert.That(
+                inventory.EquipSelected(firstActiveSlot).Status,
+                Is.EqualTo(InventoryLoadoutScreenStatus.SelectionChanged));
+            Assert.That(
+                inventory.Confirm().Status,
+                Is.EqualTo(InventoryLoadoutScreenStatus.Confirmed));
+
+            PlayerAccountSnapshot afterOpening = Account(restored);
+            Assert.That(
+                GameSaveRules.Validate(
+                    afterOpening,
+                    tier => tier == definition.TierStableId
+                        ? definition.Fingerprint
+                        : null).Succeeded,
+                Is.True);
+            string afterOpeningEncoded =
+                PlayerAccountFileCodec.Encode(afterOpening);
+            PlayerAccountSnapshot afterOpeningDecoded;
+            Assert.That(
+                PlayerAccountFileCodec.TryDecode(
+                    afterOpeningEncoded,
+                    out afterOpeningDecoded,
+                    out rejection),
+                Is.True,
+                rejection);
+
             restored.Dispose();
+            CharacterLiveGraph replayable = CreateGraph(suffix);
+            PlayerAccountRestoreResult replayableResult =
+                new PlayerAccountRestoreFlow(
+                    validateAggregate: account => GameSaveRules.Validate(
+                        account,
+                        tier => tier == definition.TierStableId
+                            ? definition.Fingerprint
+                            : null))
+                .Restore(
+                    afterOpeningDecoded,
+                    new[]
+                    {
+                        new CharacterSaveRestoreBinding(
+                            0,
+                            replayable.Character.CharacterInstanceStableId,
+                            replayable.SaveAdapters),
+                    });
+            Assert.That(
+                replayableResult.Succeeded,
+                Is.True,
+                replayableResult.RejectionCode);
+            Assert.That(
+                replayable.LoadoutRuntime.GunInventory.Contains(
+                    generated.InstanceId),
+                Is.True,
+                "The opened gun must remain owned after save and reload.");
+            GeneratedEquipmentAugmentSignature restoredSignature;
+            Assert.That(
+                replayable.AugmentSignatures.TryGet(
+                    generated.InstanceId,
+                    out restoredSignature),
+                Is.True,
+                "The augment slot and level roll must survive reload.");
+            Assert.That(
+                restoredSignature.Fingerprint,
+                Is.EqualTo(augmentSignature.Fingerprint));
+            GunItem equipped;
+            Assert.That(
+                replayable.LoadoutRuntime.TryResolveFirstActiveEquippedGun(
+                    out equipped,
+                    out rejection),
+                Is.True,
+                rejection);
+            Assert.That(equipped.InstanceId, Is.EqualTo(generated.InstanceId));
+            replayable.Dispose();
             yield return null;
         }
 

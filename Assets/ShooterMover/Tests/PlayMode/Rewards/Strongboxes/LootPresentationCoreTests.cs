@@ -177,6 +177,28 @@ namespace ShooterMover.Tests.PlayMode.Rewards.Strongboxes
             Assert.That(calls, Is.EqualTo(1));
         }
 
+        [Test]
+        public void GeneratedGunPresentationShowsRolledSlotsAndSharedLevel()
+        {
+            var item = new StrongboxRewardRevealItem(
+                StrongboxRewardPresentationKind.Equipment,
+                "RATTLER",
+                "equipment.gun.rattler",
+                "boxequipment.presentation-test",
+                1L,
+                "ITEM LEVEL 21    QUALITY quality.rare",
+                string.Empty,
+                3,
+                27,
+                0);
+
+            Assert.That(item.HasAugmentRoll, Is.True);
+            Assert.That(item.AugmentSlotMeter, Is.EqualTo("[O][O][O][-]"));
+            Assert.That(item.AugmentSummary, Does.Contain("3/4"));
+            Assert.That(item.AugmentSummary, Does.Contain("INSTALLED 0/3"));
+            Assert.That(item.AugmentSummary, Does.Contain("AUGMENT LEVEL  27"));
+        }
+
 
         private static RunSessionCollectedReward CollectedReward(
             string suffix,

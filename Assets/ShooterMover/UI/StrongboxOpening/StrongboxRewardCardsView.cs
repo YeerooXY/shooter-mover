@@ -72,6 +72,12 @@ namespace ShooterMover.UI.StrongboxOpening
                         item.Detail,
                         bodyStyle ?? GUI.skin.label);
                 }
+                if (item.HasAugmentRoll)
+                {
+                    GUILayout.Label(
+                        item.AugmentSummary,
+                        bodyStyle ?? GUI.skin.label);
+                }
                 GUILayout.EndVertical();
             }
             GUILayout.EndScrollView();
