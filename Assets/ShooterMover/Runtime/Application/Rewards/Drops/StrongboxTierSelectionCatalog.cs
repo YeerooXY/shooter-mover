@@ -17,6 +17,7 @@ namespace ShooterMover.Application.Rewards.Drops
         public static readonly StableId BossSourceProfileId = StableId.Parse("strongbox-tier-profile.boss-source");
         public static readonly StableId TreasureSourceProfileId = StableId.Parse("strongbox-tier-profile.treasure-source");
         public static readonly StableId CompletionMinimumProfileId = StableId.Parse("strongbox-tier-profile.run-minimum");
+        public static readonly StableId ShopSourceProfileId = StableId.Parse("strongbox-tier-profile.shop-source");
         private static readonly StableId TierRollPurposeId = StableId.Parse("reward-rng.strongbox-tier-v1");
         private static readonly ReadOnlyCollection<StrongboxTierSelectionProfile> ProfilesValue = new ReadOnlyCollection<StrongboxTierSelectionProfile>(new List<StrongboxTierSelectionProfile>
         {
@@ -26,6 +27,10 @@ namespace ShooterMover.Application.Rewards.Drops
             Profile(BossSourceProfileId, 50000,150000,240000,230000,160000,90000,45000,22000,9000,3000,1000),
             Profile(TreasureSourceProfileId, 10000,70000,170000,230000,220000,150000,80000,40000,20000,8000,2000),
             Profile(CompletionMinimumProfileId, 350000,300000,180000,90000,45000,20000,9000,3500,1500,650,350),
+            // Six shop slots conceptually open virtual boxes. The first-pass authored
+            // curve keeps Steel at the requested 55%, then tapers through all canonical
+            // tiers without introducing a shop-only item or rarity raffle.
+            Profile(ShopSourceProfileId, 550000,250000,120000,50000,20000,7000,2000,700,200,70,30),
         });
         public static IReadOnlyList<StrongboxTierSelectionProfile> Profiles { get { return ProfilesValue; } }
         public static bool TryResolve(StableId profileStableId, out StrongboxTierSelectionProfile profile) { for (int index = 0; index < ProfilesValue.Count; index++) if (ProfilesValue[index].ProfileStableId == profileStableId) { profile = ProfilesValue[index]; return true; } profile = null; return false; }
