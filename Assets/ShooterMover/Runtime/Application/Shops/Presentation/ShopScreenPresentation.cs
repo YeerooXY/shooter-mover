@@ -50,6 +50,13 @@ namespace ShooterMover.Application.Shops.Presentation
             PlayerRouteProfilePayload payload);
     }
 
+    public interface IShopScreenPersistencePort
+    {
+        bool Persist(
+            string mutationFingerprint,
+            out string rejectionCode);
+    }
+
     public sealed class ShopScreenPurchaseInput
     {
         public ShopScreenPurchaseInput(
@@ -81,6 +88,39 @@ namespace ShooterMover.Application.Shops.Presentation
             long price,
             ShopStockEntryState state,
             StableId purchaseTransactionStableId)
+            : this(
+                stockEntryStableId,
+                definitionStableId,
+                equipmentInstanceStableId,
+                displayName,
+                categoryLabel,
+                qualityLabel,
+                itemLevel,
+                augmentCount,
+                augmentCount,
+                0,
+                false,
+                price,
+                state,
+                purchaseTransactionStableId)
+        {
+        }
+
+        public ShopScreenStockCard(
+            StableId stockEntryStableId,
+            StableId definitionStableId,
+            StableId equipmentInstanceStableId,
+            string displayName,
+            string categoryLabel,
+            string qualityLabel,
+            int itemLevel,
+            int augmentCount,
+            int augmentCapacity,
+            int augmentSharedLevel,
+            bool hasGeneratedAugmentSignature,
+            long price,
+            ShopStockEntryState state,
+            StableId purchaseTransactionStableId)
         {
             StockEntryStableId = stockEntryStableId
                 ?? throw new ArgumentNullException(nameof(stockEntryStableId));
@@ -98,9 +138,11 @@ namespace ShooterMover.Application.Shops.Presentation
                 throw new ArgumentOutOfRangeException(nameof(itemLevel));
             }
 
-            if (augmentCount < 0)
+            if (augmentCount < 0
+                || augmentCapacity < augmentCount
+                || augmentSharedLevel < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(augmentCount));
+                throw new ArgumentOutOfRangeException();
             }
 
             if (price < 1L)
@@ -115,6 +157,9 @@ namespace ShooterMover.Application.Shops.Presentation
 
             ItemLevel = itemLevel;
             AugmentCount = augmentCount;
+            AugmentCapacity = augmentCapacity;
+            AugmentSharedLevel = augmentSharedLevel;
+            HasGeneratedAugmentSignature = hasGeneratedAugmentSignature;
             Price = price;
             State = state;
             PurchaseTransactionStableId = purchaseTransactionStableId;
@@ -135,6 +180,12 @@ namespace ShooterMover.Application.Shops.Presentation
         public int ItemLevel { get; }
 
         public int AugmentCount { get; }
+
+        public int AugmentCapacity { get; }
+
+        public int AugmentSharedLevel { get; }
+
+        public bool HasGeneratedAugmentSignature { get; }
 
         public long Price { get; }
 
@@ -178,6 +229,35 @@ namespace ShooterMover.Application.Shops.Presentation
             ShopScreenFeedbackKind feedbackKind,
             string feedbackText,
             string feedbackCode)
+            : this(
+                routePayload,
+                runStableId,
+                shopStableId,
+                refreshOrdinal,
+                inventoryFingerprint,
+                moneyBalance,
+                stock,
+                null,
+                status,
+                feedbackKind,
+                feedbackText,
+                feedbackCode)
+        {
+        }
+
+        public ShopScreenView(
+            PlayerRouteProfilePayload routePayload,
+            StableId runStableId,
+            StableId shopStableId,
+            int refreshOrdinal,
+            string inventoryFingerprint,
+            long moneyBalance,
+            IEnumerable<ShopScreenStockCard> stock,
+            DateTime? refreshesAtUtc,
+            ShopScreenActionStatus status,
+            ShopScreenFeedbackKind feedbackKind,
+            string feedbackText,
+            string feedbackCode)
         {
             RoutePayload = routePayload
                 ?? throw new ArgumentNullException(nameof(routePayload));
@@ -205,12 +285,21 @@ namespace ShooterMover.Application.Shops.Presentation
                 throw new ArgumentOutOfRangeException(nameof(feedbackKind));
             }
 
+            if (refreshesAtUtc.HasValue
+                && refreshesAtUtc.Value.Kind != DateTimeKind.Utc)
+            {
+                throw new ArgumentException(
+                    "Shop refresh time must be UTC.",
+                    nameof(refreshesAtUtc));
+            }
+
             RefreshOrdinal = refreshOrdinal;
             InventoryFingerprint = inventoryFingerprint ?? string.Empty;
             MoneyBalance = moneyBalance;
             this.stock = new ReadOnlyCollection<ShopScreenStockCard>(
                 new List<ShopScreenStockCard>(
                     stock ?? Array.Empty<ShopScreenStockCard>()));
+            RefreshesAtUtc = refreshesAtUtc;
             Status = status;
             FeedbackKind = feedbackKind;
             FeedbackText = feedbackText ?? string.Empty;
@@ -233,6 +322,8 @@ namespace ShooterMover.Application.Shops.Presentation
         {
             get { return stock; }
         }
+
+        public DateTime? RefreshesAtUtc { get; }
 
         public ShopScreenActionStatus Status { get; }
 
