@@ -5,6 +5,18 @@ using System.Globalization;
 
 namespace ShooterMover.EnemyRuntimeComposition
 {
+    public sealed partial class EnemyInstance
+    {
+        private bool traitsRolled;
+
+        internal bool TraitsRolled { get { return traitsRolled; } }
+
+        internal void MarkTraitsRolled()
+        {
+            traitsRolled = true;
+        }
+    }
+
     public sealed class EnemyTraitWeight
     {
         public EnemyTraitWeight(EnemyTrait trait, int weight)
@@ -185,9 +197,14 @@ namespace ShooterMover.EnemyRuntimeComposition
         {
             if (enemy == null) throw new ArgumentNullException(nameof(enemy));
             if (table == null) throw new ArgumentNullException(nameof(table));
+            if (enemy.TraitsRolled) return 0;
 
             int maximum = table.MaximumTraits(enemy.Tier);
-            if (enemy.Traits.Count >= maximum) return 0;
+            if (enemy.Traits.Count >= maximum)
+            {
+                enemy.MarkTraitsRolled();
+                return 0;
+            }
 
             var random = new EnemyTraitRandom(BuildSeed(enemy));
             int added = 0;
@@ -202,6 +219,8 @@ namespace ShooterMover.EnemyRuntimeComposition
                 if (!TryPick(enemy, table.Weights, random, out trait)) break;
                 if (enemy.AssignTrait(trait)) added++;
             }
+
+            enemy.MarkTraitsRolled();
             return added;
         }
 
