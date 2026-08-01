@@ -189,6 +189,9 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 "canonical-player-gun-"
                 + Hash64(
                     stack.Key
+                    + "|" + identity.FireOperationId
+                    + "|" + identity.ShotSequence.ToString(
+                        CultureInfo.InvariantCulture)
                     + "|" + targetId
                     + "|" + targetLife.ToString(
                         CultureInfo.InvariantCulture)
@@ -287,6 +290,11 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 hash *= prime;
             }
             return hash.ToString("x16", CultureInfo.InvariantCulture);
+        }
+
+        private void OnDisable()
+        {
+            Clear();
         }
 
         private void OnDestroy()
