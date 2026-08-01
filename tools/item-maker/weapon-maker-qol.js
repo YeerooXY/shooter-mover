@@ -44,13 +44,15 @@
       renderQolNotice("Set a valid weapon key before filling art IDs.", true);
       return;
     }
+
+    setControl("settings.mountedOwnership", "mark");
+    gameplayUpdateVisibility();
     for (let mark = 1; mark <= 3; mark += 1) {
       setControl(`mark.${mark}.art.side`, `gun-art.${folder}.mk${mark}.side-v1`);
-      const mounted = gameplayControl(`mark.${mark}.art.mounted`);
-      if (mounted) mounted.value = `gun-art.${folder}.mk${mark}.mounted-top-v1`;
+      setControl(`mark.${mark}.art.mounted`, `gun-art.${folder}.mk${mark}.mounted-top-v1`);
     }
     gameplayApply();
-    renderQolNotice("Filled MK1–MK3 side and mounted art IDs.");
+    renderQolNotice("Filled MK1–MK3 side and mounted art IDs and set mounted art to Different by Mark.");
   }
 
   function renderQolNotice(message, error = false) {
