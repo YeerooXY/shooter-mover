@@ -49,7 +49,7 @@ namespace ShooterMover.Application.Guns.Catalog
 
             EquipmentCatalogBuildResult result = EquipmentCatalog.Build(
                 definitions,
-                Array.Empty<AugmentDefinition>());
+                GunAugments.Definitions);
             if (!result.IsValid || result.Catalog == null)
             {
                 throw new InvalidOperationException(

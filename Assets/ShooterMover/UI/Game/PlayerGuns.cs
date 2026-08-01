@@ -524,7 +524,7 @@ namespace ShooterMover.UI.Game
                     stagedSpawner,
                     ticksPerSecond,
                     resolver,
-                    new UnaugmentedGunModifierSetResolver());
+                    new GunAugmentResolver());
                 stagedRuntime = new InventoryGunLiveSetup(
                     stagedActor,
                     mounts,

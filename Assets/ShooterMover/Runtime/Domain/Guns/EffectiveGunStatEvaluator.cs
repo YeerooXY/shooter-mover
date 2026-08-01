@@ -63,7 +63,7 @@ namespace ShooterMover.Domain.Guns
             GunAttackDistance maximumAttackDistance =
                 BuildMaximumAttackDistance(blueprint, accumulators);
             PierceValue pierce = BuildPierce(blueprint, accumulators);
-            RicochetValue ricochet = BuildRicochet(blueprint);
+            RicochetValue ricochet = BuildRicochet(blueprint, accumulators);
             double movementPenaltyPercent = BuildMovementPenalty(blueprint);
 
             FireSettings fireSettings = BuildFireSettings(blueprint, accumulators);
@@ -74,7 +74,7 @@ namespace ShooterMover.Domain.Guns
                 maximumAttackDistance,
                 pierce);
             GunGuidanceSpec guidance = BuildGuidance(blueprint, accumulators);
-            GunImpactSpec impact = BuildImpact(blueprint, accumulators);
+            GunImpactSpec impact = BuildImpact(blueprint, accumulators, ricochet);
             GunDamageSpec damage = BuildDamage(blueprint, accumulators);
             GunEffects effects = BuildEffects(blueprint, accumulators);
 
@@ -108,6 +108,10 @@ namespace ShooterMover.Domain.Guns
                 {
                     GunStatModifier modifier = modifierSet.Modifiers[index];
                     ValidateStructuralCompatibility(blueprint, modifierSet, modifier.Stat);
+                    if (modifier.Stat == GunEffectiveStat.RicochetTenths)
+                    {
+                        ValidateRicochetModifier(modifierSet, modifier);
+                    }
 
                     ModifierAccumulator accumulator;
                     if (!result.TryGetValue(modifier.Stat, out accumulator))
@@ -173,6 +177,13 @@ namespace ShooterMover.Domain.Guns
                     if (!SupportsPierce(blueprint))
                     {
                         reason = "the delivery does not declare reusable canonical Pierce semantics";
+                    }
+                    break;
+
+                case GunEffectiveStat.RicochetTenths:
+                    if (!SupportsRicochet(blueprint))
+                    {
+                        reason = "the authored gun has no executable fixed-point ricochet structure";
                     }
                     break;
 
@@ -265,6 +276,25 @@ namespace ShooterMover.Domain.Guns
             }
         }
 
+        private static void ValidateRicochetModifier(
+            GunAugmentModifierSet modifierSet,
+            GunStatModifier modifier)
+        {
+            if (modifier.Operation == GunModifierOperation.FlatAddition
+                && modifier.Value >= 0d
+                && modifier.Value <= int.MaxValue
+                && modifier.Value == Math.Truncate(modifier.Value))
+            {
+                return;
+            }
+
+            throw new IncompatibleGunAugmentException(
+                modifierSet.Instance.InstanceId,
+                modifierSet.Definition.DefinitionId,
+                modifier.Stat,
+                "RicochetTenths accepts only non-negative whole-tenth flat additions");
+        }
+
         private static bool SupportsProjectileSpeed(Gun blueprint)
         {
             return blueprint.IsTransitionalCatalogProjection
@@ -291,6 +321,21 @@ namespace ShooterMover.Domain.Guns
                 ? blueprint.Projectile != null
                 : blueprint.Delivery != null
                     && blueprint.Delivery.SupportsCanonicalPierceModifiers;
+        }
+
+        private static bool SupportsRicochet(Gun blueprint)
+        {
+            GunRicochetSpec ricochet = blueprint.Impact.Ricochet;
+            if (ricochet == null || !ricochet.HasCanonicalFixedPointBudget)
+            {
+                return false;
+            }
+            if (blueprint.Projectile != null)
+            {
+                return true;
+            }
+            return blueprint.Delivery != null
+                && blueprint.Delivery.Type == GunDeliveryType.Laser;
         }
 
         private static GunAttackDistance BuildMaximumAttackDistance(
@@ -334,22 +379,35 @@ namespace ShooterMover.Domain.Guns
                     GunEffectiveStat.PierceTenths));
         }
 
-        private static RicochetValue BuildRicochet(Gun blueprint)
+        private static RicochetValue BuildRicochet(
+            Gun blueprint,
+            IDictionary<GunEffectiveStat, ModifierAccumulator> accumulators)
         {
+            RicochetValue authored;
             if (blueprint.BaseStats != null)
             {
-                return blueprint.BaseStats.Ricochet;
+                authored = blueprint.BaseStats.Ricochet;
             }
-            if (blueprint.Impact.Ricochet == null)
+            else if (blueprint.Impact.Ricochet == null)
             {
-                return new RicochetValue(0);
+                authored = new RicochetValue(0);
             }
-            if (blueprint.Impact.Ricochet.FixedPointBudget.HasValue)
+            else if (blueprint.Impact.Ricochet.FixedPointBudget.HasValue)
             {
-                return blueprint.Impact.Ricochet.FixedPointBudget.Value;
+                authored = blueprint.Impact.Ricochet.FixedPointBudget.Value;
             }
-            return new RicochetValue(
-                checked(blueprint.Impact.Ricochet.MaximumSuccessfulBounces * 10));
+            else
+            {
+                authored = new RicochetValue(
+                    checked(blueprint.Impact.Ricochet.MaximumSuccessfulBounces * 10));
+            }
+
+            ModifierAccumulator accumulator;
+            return accumulators.TryGetValue(
+                    GunEffectiveStat.RicochetTenths,
+                    out accumulator)
+                ? new RicochetValue(accumulator.ApplyWholeAddition(authored.Tenths))
+                : authored;
         }
 
         private static double BuildMovementPenalty(Gun blueprint)
@@ -498,7 +556,8 @@ namespace ShooterMover.Domain.Guns
 
         private static GunImpactSpec BuildImpact(
             Gun blueprint,
-            IDictionary<GunEffectiveStat, ModifierAccumulator> accumulators)
+            IDictionary<GunEffectiveStat, ModifierAccumulator> accumulators,
+            RicochetValue effectiveRicochet)
         {
             GunImpactSpec authored = blueprint.Impact;
             GunRicochetSpec ricochet = null;
@@ -530,7 +589,7 @@ namespace ShooterMover.Domain.Guns
                 if (authored.Ricochet.FixedPointBudget.HasValue)
                 {
                     ricochet = new GunRicochetSpec(
-                        authored.Ricochet.FixedPointBudget.Value,
+                        effectiveRicochet,
                         retainedSpeed,
                         randomAngle,
                         authored.Ricochet.PostBounceHomingPauseSeconds);
@@ -788,6 +847,7 @@ namespace ShooterMover.Domain.Guns
         {
             private readonly GunEffectiveStat stat;
             private double flatAddition;
+            private int wholeAddition;
             private double additivePercentage;
             private double multiplier = 1d;
             private bool hasOverride;
@@ -804,7 +864,15 @@ namespace ShooterMover.Domain.Guns
                 switch (modifier.Operation)
                 {
                     case GunModifierOperation.FlatAddition:
-                        flatAddition += modifier.Value;
+                        if (stat == GunEffectiveStat.RicochetTenths)
+                        {
+                            wholeAddition = checked(
+                                wholeAddition + checked((int)modifier.Value));
+                        }
+                        else
+                        {
+                            flatAddition += modifier.Value;
+                        }
                         break;
                     case GunModifierOperation.AdditivePercentage:
                         additivePercentage += modifier.Value;
@@ -848,6 +916,21 @@ namespace ShooterMover.Domain.Guns
 
                 RequireFinite(result, stat);
                 return result;
+            }
+
+            public int ApplyWholeAddition(int authoredValue)
+            {
+                if (stat != GunEffectiveStat.RicochetTenths
+                    || flatAddition != 0d
+                    || additivePercentage != 0d
+                    || multiplier != 1d
+                    || hasOverride)
+                {
+                    throw new InvalidOperationException(
+                        "RicochetTenths must remain a whole flat-addition stat.");
+                }
+
+                return checked(authoredValue + wholeAddition);
             }
         }
     }

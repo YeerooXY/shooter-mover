@@ -101,11 +101,10 @@ namespace ShooterMover.UnityAdapters.Guns.Live
     }
 
     /// <summary>
-    /// Default prototype composition for unaugmented equipment. Installed augments are rejected
-    /// until the caller supplies the canonical application policy that maps each exact augment
-    /// instance to one GunAugmentModifierSet.
+    /// Resolves installed gun augments into immutable combat modifiers. Empty equipment remains
+    /// allocation-free, while unknown installed augments fail closed.
     /// </summary>
-    public sealed class UnaugmentedGunModifierSetResolver :
+    public sealed class GunAugmentResolver :
         IGunAugmentModifierSetResolver
     {
         private static readonly ReadOnlyCollection<GunAugmentModifierSet> Empty =
@@ -124,13 +123,38 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 rejectionCode = "gun-live-augment-resolution-input-invalid";
                 return false;
             }
-            if (equipmentInstance.Augments.Count != 0)
+            if (equipmentInstance.Augments.Count == 0)
             {
-                rejectionCode = "gun-live-augment-policy-missing";
-                return false;
+                modifierSets = Empty;
+                rejectionCode = string.Empty;
+                return true;
             }
 
-            modifierSets = Empty;
+            var resolved = new List<GunAugmentModifierSet>(
+                equipmentInstance.Augments.Count);
+            for (int index = 0;
+                 index < equipmentInstance.Augments.Count;
+                 index++)
+            {
+                GunAugmentModifierSet modifierSet;
+                if (!GunAugments.TryResolve(
+                        equipmentCatalog,
+                        equipmentInstance.Augments[index],
+                        out modifierSet,
+                        out rejectionCode)
+                    || modifierSet == null)
+                {
+                    if (string.IsNullOrWhiteSpace(rejectionCode))
+                    {
+                        rejectionCode = "gun-live-augment-policy-missing";
+                    }
+                    return false;
+                }
+                resolved.Add(modifierSet);
+            }
+
+            modifierSets = new ReadOnlyCollection<GunAugmentModifierSet>(
+                resolved);
             rejectionCode = string.Empty;
             return true;
         }

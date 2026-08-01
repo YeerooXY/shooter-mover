@@ -11,6 +11,7 @@ namespace ShooterMover.Domain.Guns
     /// Structural kinds and feature presence are intentionally not modifier targets.
     /// RateOfFire is projectile-only and maps to FireSettings.ShotsPerSecond;
     /// continuous damage ticks and damage-over-time ticks are separate concepts.
+    /// RicochetTenths uses the canonical fixed-point budget: one unit equals 0.1 ricochet.
     /// </summary>
     public enum GunEffectiveStat
     {
@@ -36,6 +37,7 @@ namespace ShooterMover.Domain.Guns
         ChainMaximumTargets = 20,
         ChainAcquisitionRange = 21,
         ChainRetainedDamagePerJump = 22,
+        RicochetTenths = 23,
     }
 
     public enum GunModifierOperation

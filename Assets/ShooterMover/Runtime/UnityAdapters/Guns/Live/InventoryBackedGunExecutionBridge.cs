@@ -134,7 +134,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 simulationTicksPerSecond,
                 new GunMappingPolicyRegistry(
                     new GunCatalogBlueprintMappingIntent[0]),
-                new UnaugmentedGunModifierSetResolver(),
+                new GunAugmentResolver(),
                 behaviorRegistry)
         {
             // The legacy selector argument is intentionally ignored. Behavior selection is derived

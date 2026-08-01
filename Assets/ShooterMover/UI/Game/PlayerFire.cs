@@ -501,7 +501,7 @@ namespace ShooterMover.UI.Game
                 loadout.EquipmentCatalog,
                 loadout.GunCatalog,
                 blueprint,
-                new UnaugmentedGunModifierSetResolver());
+                new GunAugmentResolver());
 
             for (int index = 0; index < equipped.Count; index++)
             {

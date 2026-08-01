@@ -235,7 +235,7 @@ namespace ShooterMover.UnityAdapters.Players
                 simulationTicksPerSecond,
                 new GunMappingPolicyRegistry(
                     new GunCatalogBlueprintMappingIntent[0]),
-                new UnaugmentedGunModifierSetResolver(),
+                new GunAugmentResolver(),
                 initialSlotIndex);
         }
 
