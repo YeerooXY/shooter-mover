@@ -1,0 +1,8 @@
+{
+  "peakLevel": 1,
+  "damage": 1,
+  "art": {
+    "side": "gun-art.rattler.mk1.side-v1",
+    "mounted": "gun-art.rattler.mk1.mounted-top-v1"
+  }
+}
