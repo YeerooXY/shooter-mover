@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using ShooterMover.Application.Economy.Money;
+using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Application.Shops;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
@@ -25,6 +26,9 @@ namespace ShooterMover.Application.Shops.Presentation
         private readonly ShopDefinition definition;
         private readonly EquipmentCatalog catalog;
         private readonly ProgressionContext progressionContext;
+        private readonly GeneratedEquipmentAugmentSignatureState augmentSignatures;
+        private readonly DateTime? refreshesAtUtc;
+        private readonly IShopScreenPersistencePort persistence;
 
         private ShopInventoryView inventory;
         private ShopScreenView currentProjection;
@@ -39,6 +43,33 @@ namespace ShooterMover.Application.Shops.Presentation
             ShopDefinition definition,
             EquipmentCatalog catalog,
             ProgressionContext progressionContext)
+            : this(
+                routePayload,
+                runStableId,
+                claimantStableId,
+                shopRuntime,
+                moneyWallet,
+                definition,
+                catalog,
+                progressionContext,
+                null,
+                null,
+                null)
+        {
+        }
+
+        public ShopScreenSession(
+            PlayerRouteProfilePayload routePayload,
+            StableId runStableId,
+            StableId claimantStableId,
+            ShopLiveActions shopRuntime,
+            MoneyWalletActions moneyWallet,
+            ShopDefinition definition,
+            EquipmentCatalog catalog,
+            ProgressionContext progressionContext,
+            GeneratedEquipmentAugmentSignatureState augmentSignatures,
+            DateTime? refreshesAtUtc,
+            IShopScreenPersistencePort persistence)
         {
             this.routePayload = routePayload
                 ?? throw new ArgumentNullException(nameof(routePayload));
@@ -63,6 +94,16 @@ namespace ShooterMover.Application.Shops.Presentation
                 ?? throw new ArgumentNullException(nameof(catalog));
             this.progressionContext = progressionContext
                 ?? throw new ArgumentNullException(nameof(progressionContext));
+            if (refreshesAtUtc.HasValue
+                && refreshesAtUtc.Value.Kind != DateTimeKind.Utc)
+            {
+                throw new ArgumentException(
+                    "Shop refresh time must be UTC.",
+                    nameof(refreshesAtUtc));
+            }
+            this.augmentSignatures = augmentSignatures;
+            this.refreshesAtUtc = refreshesAtUtc;
+            this.persistence = persistence;
         }
 
         public PlayerRouteProfilePayload RoutePayload
@@ -127,8 +168,12 @@ namespace ShooterMover.Application.Shops.Presentation
                 ShopScreenActionStatus.Ready,
                 ShopScreenFeedbackKind.Information,
                 opened.Status == ShopInventoryOpenStatus.Generated
-                    ? "DETERMINISTIC STOCK GENERATED FOR THIS RUN"
-                    : "DETERMINISTIC STOCK RESTORED — NO REROLL",
+                    ? refreshesAtUtc.HasValue
+                        ? "NEW 6-HOUR STOCK GENERATED"
+                        : "DETERMINISTIC STOCK GENERATED FOR THIS RUN"
+                    : refreshesAtUtc.HasValue
+                        ? "CURRENT 6-HOUR STOCK RESTORED — NO REROLL"
+                        : "DETERMINISTIC STOCK RESTORED — NO REROLL",
                 string.Empty);
             return currentProjection;
         }
@@ -208,11 +253,29 @@ namespace ShooterMover.Application.Shops.Presentation
             ShopScreenFeedbackKind kind;
             string feedback;
             BuildFeedback(fact, entry, out kind, out feedback);
+            string feedbackCode = fact.RejectionCode;
+            if (fact.Status == ShopPurchaseStatus.Applied
+                && persistence != null)
+            {
+                string persistenceRejection;
+                if (!persistence.Persist(
+                        fact.CommandFingerprint,
+                        out persistenceRejection))
+                {
+                    kind = ShopScreenFeedbackKind.Error;
+                    feedback =
+                        "PURCHASE APPLIED — CHARACTER SAVE FAILED";
+                    feedbackCode = string.IsNullOrWhiteSpace(
+                            persistenceRejection)
+                        ? "shop-purchase-persist-rejected"
+                        : persistenceRejection;
+                }
+            }
             currentProjection = Project(
                 status,
                 kind,
                 feedback,
-                fact.RejectionCode);
+                feedbackCode);
             return new ShopScreenActionResult(
                 status,
                 fact,
