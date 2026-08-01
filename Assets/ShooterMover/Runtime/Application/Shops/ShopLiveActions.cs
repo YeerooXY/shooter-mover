@@ -25,6 +25,8 @@ namespace ShooterMover.Application.Shops
         private readonly StableId scrapAuthorityStableId;
         private readonly StableId holdingsAuthorityStableId;
         private readonly IShopLockCapacityExtension lockCapacityExtension;
+        private readonly IShopStockRoller stockRoller;
+        private readonly ShopPurchaseLedger purchaseLedger;
         private readonly Dictionary<string, ShopState> shops = new Dictionary<string, ShopState>();
         private readonly Dictionary<StableId, PurchaseRecord> purchases = new Dictionary<StableId, PurchaseRecord>();
         private readonly Dictionary<StableId, RefreshRecord> refreshes = new Dictionary<StableId, RefreshRecord>();
@@ -35,7 +37,9 @@ namespace ShooterMover.Application.Shops
             RewardApplicationActions rewardApplication,
             StableId scrapAuthorityStableId,
             StableId holdingsAuthorityStableId,
-            IShopLockCapacityExtension lockCapacityExtension = null)
+            IShopLockCapacityExtension lockCapacityExtension = null,
+            IShopStockRoller stockRoller = null,
+            ShopPurchaseLedger purchaseLedger = null)
         {
             this.generator = generator ?? throw new ArgumentNullException(nameof(generator));
             this.money = money ?? throw new ArgumentNullException(nameof(money));
@@ -46,6 +50,8 @@ namespace ShooterMover.Application.Shops
             this.holdingsAuthorityStableId = holdingsAuthorityStableId
                 ?? throw new ArgumentNullException(nameof(holdingsAuthorityStableId));
             this.lockCapacityExtension = lockCapacityExtension;
+            this.stockRoller = stockRoller;
+            this.purchaseLedger = purchaseLedger;
         }
 
         public ShopInventoryOpenResult Open(
@@ -100,6 +106,7 @@ namespace ShooterMover.Application.Shops
                     }
 
                     existing.Bind(definition, catalog);
+                    ApplyPurchaseReceipts(existing);
                     return new ShopInventoryOpenResult(
                         ShopInventoryOpenStatus.ExistingNoChange,
                         existing.ToView(),
@@ -135,6 +142,7 @@ namespace ShooterMover.Application.Shops
                     0,
                     seed,
                     entries);
+                ApplyPurchaseReceipts(created);
                 shops.Add(key, created);
                 return new ShopInventoryOpenResult(
                     ShopInventoryOpenStatus.Generated,
@@ -260,6 +268,9 @@ namespace ShooterMover.Application.Shops
                 RewardApplicationResult claimed = rewardApplication.Claim(claim);
                 if (IsRewardApplied(claimed.Status))
                 {
+                    RecordPurchaseReceipt(
+                        entry.StockEntryStableId,
+                        command.TransactionStableId);
                     state.SetEntry(entry.WithPurchaseState(
                         ShopStockEntryState.SoldOut,
                         command.TransactionStableId));
