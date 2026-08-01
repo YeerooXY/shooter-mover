@@ -35,7 +35,8 @@ namespace ShooterMover.Application.Flow.Game
             StableId scrapCurrencyId,
             RankedSkillAllocationState skills,
             string skillProfileId,
-            CharacterStrongboxLive strongboxes)
+            CharacterStrongboxLive strongboxes,
+            CharacterShopLive shop)
         {
             var adapters = new List<ISavePart>
             {
@@ -54,6 +55,8 @@ namespace ShooterMover.Application.Flow.Game
                 Loadout(loadout),
                 GunAugmentSavePart.CreateAdapter(
                     strongboxes.AugmentSignatures),
+                ShopPurchaseSavePart.CreateAdapter(
+                    shop.Receipts),
                 Strongboxes(strongboxes),
             };
             adapters.AddRange(

@@ -1,7 +1,6 @@
 using System;
-using System.Collections.Generic;
 using ShooterMover.Application.Economy.Money;
-using ShooterMover.Application.Shops;
+using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
@@ -10,21 +9,19 @@ using ShooterMover.Domain.Shops;
 
 namespace ShooterMover.Application.Shops.Presentation
 {
-    /// <summary>
-    /// Thin presentation boundary over SHOP/MON/INV/RAP. It retains only immutable
-    /// projections and input identities; stock, sold state, prices, money, and grants
-    /// remain owned by the existing authorities.
-    /// </summary>
     public sealed partial class ShopScreenSession
     {
         private readonly PlayerRouteProfilePayload routePayload;
-        private readonly StableId runStableId;
+        private readonly StableId stockId;
         private readonly StableId claimantStableId;
         private readonly ShopLiveActions shopRuntime;
         private readonly MoneyWalletActions moneyWallet;
         private readonly ShopDefinition definition;
         private readonly EquipmentCatalog catalog;
         private readonly ProgressionContext progressionContext;
+        private readonly GeneratedEquipmentAugmentSignatureState offerAugments;
+        private readonly DateTime? refreshesAtUtc;
+        private readonly IShopSave save;
 
         private ShopInventoryView inventory;
         private ShopScreenView currentProjection;
@@ -39,6 +36,33 @@ namespace ShooterMover.Application.Shops.Presentation
             ShopDefinition definition,
             EquipmentCatalog catalog,
             ProgressionContext progressionContext)
+            : this(
+                routePayload,
+                runStableId,
+                claimantStableId,
+                shopRuntime,
+                moneyWallet,
+                definition,
+                catalog,
+                progressionContext,
+                null,
+                null,
+                null)
+        {
+        }
+
+        public ShopScreenSession(
+            PlayerRouteProfilePayload routePayload,
+            StableId stockId,
+            StableId claimantStableId,
+            ShopLiveActions shopRuntime,
+            MoneyWalletActions moneyWallet,
+            ShopDefinition definition,
+            EquipmentCatalog catalog,
+            ProgressionContext progressionContext,
+            GeneratedEquipmentAugmentSignatureState offerAugments,
+            DateTime? refreshesAtUtc,
+            IShopSave save)
         {
             this.routePayload = routePayload
                 ?? throw new ArgumentNullException(nameof(routePayload));
@@ -49,8 +73,8 @@ namespace ShooterMover.Application.Shops.Presentation
                     nameof(routePayload));
             }
 
-            this.runStableId = runStableId
-                ?? throw new ArgumentNullException(nameof(runStableId));
+            this.stockId = stockId
+                ?? throw new ArgumentNullException(nameof(stockId));
             this.claimantStableId = claimantStableId
                 ?? throw new ArgumentNullException(nameof(claimantStableId));
             this.shopRuntime = shopRuntime
@@ -63,6 +87,16 @@ namespace ShooterMover.Application.Shops.Presentation
                 ?? throw new ArgumentNullException(nameof(catalog));
             this.progressionContext = progressionContext
                 ?? throw new ArgumentNullException(nameof(progressionContext));
+            if (refreshesAtUtc.HasValue
+                && refreshesAtUtc.Value.Kind != DateTimeKind.Utc)
+            {
+                throw new ArgumentException(
+                    "Shop refresh time must be UTC.",
+                    nameof(refreshesAtUtc));
+            }
+            this.offerAugments = offerAugments;
+            this.refreshesAtUtc = refreshesAtUtc;
+            this.save = save;
         }
 
         public PlayerRouteProfilePayload RoutePayload
@@ -72,7 +106,12 @@ namespace ShooterMover.Application.Shops.Presentation
 
         public StableId RunStableId
         {
-            get { return runStableId; }
+            get { return stockId; }
+        }
+
+        public StableId StockId
+        {
+            get { return stockId; }
         }
 
         public StableId ShopStableId
@@ -108,7 +147,7 @@ namespace ShooterMover.Application.Shops.Presentation
             }
 
             ShopInventoryOpenResult opened = shopRuntime.Open(
-                runStableId,
+                stockId,
                 definition,
                 catalog,
                 progressionContext);
@@ -127,8 +166,12 @@ namespace ShooterMover.Application.Shops.Presentation
                 ShopScreenActionStatus.Ready,
                 ShopScreenFeedbackKind.Information,
                 opened.Status == ShopInventoryOpenStatus.Generated
-                    ? "DETERMINISTIC STOCK GENERATED FOR THIS RUN"
-                    : "DETERMINISTIC STOCK RESTORED — NO REROLL",
+                    ? refreshesAtUtc.HasValue
+                        ? "NEW 6-HOUR STOCK GENERATED"
+                        : "DETERMINISTIC STOCK GENERATED FOR THIS RUN"
+                    : refreshesAtUtc.HasValue
+                        ? "CURRENT 6-HOUR STOCK RESTORED — NO REROLL"
+                        : "DETERMINISTIC STOCK RESTORED — NO REROLL",
                 string.Empty);
             return currentProjection;
         }
@@ -178,7 +221,8 @@ namespace ShooterMover.Application.Shops.Presentation
                     unavailable);
             }
 
-            ShopStockEntry entry = inventory.FindEntry(input.StockEntryStableId);
+            ShopStockEntry entry = inventory.FindEntry(
+                input.StockEntryStableId);
             if (entry == null)
             {
                 ShopScreenView invalid = Project(
@@ -191,6 +235,29 @@ namespace ShooterMover.Application.Shops.Presentation
                     ShopScreenActionStatus.InvalidRequest,
                     null,
                     invalid);
+            }
+
+            ICompensatingShopSave compensatingSave =
+                save as ICompensatingShopSave;
+            if (compensatingSave != null)
+            {
+                string preparationRejection;
+                if (!compensatingSave.Prepare(
+                        out preparationRejection))
+                {
+                    ShopScreenView rejected = Project(
+                        ShopScreenActionStatus.PurchaseRejected,
+                        ShopScreenFeedbackKind.Error,
+                        "PURCHASE CHECKPOINT FAILED — NOTHING CHANGED",
+                        string.IsNullOrWhiteSpace(preparationRejection)
+                            ? "shop-purchase-checkpoint-rejected"
+                            : preparationRejection);
+                    currentProjection = rejected;
+                    return new ShopScreenActionResult(
+                        ShopScreenActionStatus.PurchaseRejected,
+                        null,
+                        rejected);
+                }
             }
 
             ShopPurchaseCommand command = ShopPurchaseCommand.Create(
@@ -208,16 +275,51 @@ namespace ShooterMover.Application.Shops.Presentation
             ShopScreenFeedbackKind kind;
             string feedback;
             BuildFeedback(fact, entry, out kind, out feedback);
+            string feedbackCode = fact.RejectionCode;
+            if (fact.Status == ShopPurchaseStatus.Applied
+                && save != null)
+            {
+                string persistenceRejection;
+                if (!save.Persist(
+                        fact.CommandFingerprint,
+                        out persistenceRejection))
+                {
+                    string persistenceCode = string.IsNullOrWhiteSpace(
+                        persistenceRejection)
+                            ? "shop-purchase-persist-rejected"
+                            : persistenceRejection;
+                    string restoreRejection = null;
+                    bool restored = compensatingSave != null
+                        && compensatingSave.Restore(
+                            out restoreRejection);
+                    RefreshProjectionInventory();
+                    kind = restored
+                        ? ShopScreenFeedbackKind.Error
+                        : ShopScreenFeedbackKind.Pending;
+                    status = restored
+                        ? ShopScreenActionStatus.PurchaseRejected
+                        : ShopScreenActionStatus.CompensationPending;
+                    feedback = restored
+                        ? "PURCHASE SAVE FAILED — MONEY AND ITEM RESTORED"
+                        : "PURCHASE SAVE FAILED — RECOVERY REQUIRED";
+                    feedbackCode = restored
+                        ? persistenceCode + ";compensated"
+                        : persistenceCode
+                            + ";restore="
+                            + (string.IsNullOrWhiteSpace(restoreRejection)
+                                ? "unavailable"
+                                : restoreRejection);
+                }
+            }
             currentProjection = Project(
                 status,
                 kind,
                 feedback,
-                fact.RejectionCode);
+                feedbackCode);
             return new ShopScreenActionResult(
                 status,
                 fact,
                 currentProjection);
         }
-
     }
 }

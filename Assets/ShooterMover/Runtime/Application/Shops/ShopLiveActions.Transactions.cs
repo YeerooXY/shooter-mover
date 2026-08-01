@@ -20,7 +20,8 @@ namespace ShooterMover.Application.Shops
     {
         private ShopPurchaseFact ResumePendingPurchase(PurchaseRecord record)
         {
-            if (record.Fact.OriginalStatus == ShopPurchaseStatus.CompensationPending)
+            if (record.Fact.OriginalStatus
+                == ShopPurchaseStatus.CompensationPending)
             {
                 MoneyWalletChangeFact refund = money.Grant(
                     RefundTransaction(record.Command.TransactionStableId),
@@ -55,6 +56,11 @@ namespace ShooterMover.Application.Shops
                 record.State.SetEntry(record.Entry.WithPurchaseState(
                     ShopStockEntryState.SoldOut,
                     record.Command.TransactionStableId));
+                string receiptDiagnostic;
+                RecordReceipt(
+                    record.Entry.StockEntryStableId,
+                    record.Command.TransactionStableId,
+                    out receiptDiagnostic);
                 record.Fact = new ShopPurchaseFact(
                     record.Command.TransactionStableId,
                     record.Command.Fingerprint,
@@ -65,7 +71,7 @@ namespace ShooterMover.Application.Shops
                     record.Fact.MoneyBalanceBefore,
                     money.Balance,
                     true,
-                    null);
+                    receiptDiagnostic);
                 return record.Fact;
             }
 
@@ -87,13 +93,16 @@ namespace ShooterMover.Application.Shops
                 command.Fingerprint,
                 status,
                 status,
-                entry == null ? command.StockEntryStableId : entry.StockEntryStableId,
+                entry == null
+                    ? command.StockEntryStableId
+                    : entry.StockEntryStableId,
                 price,
                 balanceBefore,
                 balanceAfter,
                 equipmentConfirmed,
                 rejectionCode);
-            purchases.Add(command.TransactionStableId,
+            purchases.Add(
+                command.TransactionStableId,
                 new PurchaseRecord(command, fact, null, entry, null));
             return fact;
         }
@@ -105,7 +114,9 @@ namespace ShooterMover.Application.Shops
             string rejectionCode)
         {
             int ordinal = state == null ? -1 : state.RefreshOrdinal;
-            string fingerprint = state == null ? null : state.InventoryFingerprint;
+            string fingerprint = state == null
+                ? null
+                : state.InventoryFingerprint;
             ShopRefreshFact fact = new ShopRefreshFact(
                 command.TransactionStableId,
                 command.Fingerprint,
@@ -116,25 +127,27 @@ namespace ShooterMover.Application.Shops
                 fingerprint,
                 fingerprint,
                 rejectionCode);
-            refreshes.Add(command.TransactionStableId, new RefreshRecord(command, fact));
+            refreshes.Add(
+                command.TransactionStableId,
+                new RefreshRecord(command, fact));
             return fact;
         }
 
         private bool TryGenerateInventory(
-            StableId runStableId,
+            StableId stockId,
             ShopDefinition definition,
             EquipmentCatalog catalog,
             ProgressionContext context,
-            int refreshOrdinal,
+            int revision,
             IReadOnlyList<ShopStockEntry> lockedEntries,
             out ulong inventorySeed,
             out List<ShopStockEntry> entries,
             out string rejectionCode)
         {
             inventorySeed = Shop.DeriveInventorySeed(
-                runStableId,
+                stockId,
                 definition.ShopStableId,
-                refreshOrdinal,
+                revision,
                 definition.AlgorithmVersion);
             entries = new List<ShopStockEntry>();
             rejectionCode = null;
@@ -143,8 +156,13 @@ namespace ShooterMover.Application.Shops
                 entries.Add(lockedEntries[index]);
             }
 
-            EquipmentGenerationPolicy policy;
-            if (!TryBuildRestrictedPolicy(definition, catalog, out policy, out rejectionCode))
+            EquipmentGenerationPolicy policy = null;
+            if (offerRoller == null
+                && !TryBuildRestrictedPolicy(
+                    definition,
+                    catalog,
+                    out policy,
+                    out rejectionCode))
             {
                 return false;
             }
@@ -153,43 +171,84 @@ namespace ShooterMover.Application.Shops
                 slotIndex < definition.InventorySize;
                 slotIndex++)
             {
-                string ordinal = refreshOrdinal.ToString(CultureInfo.InvariantCulture);
-                string slot = slotIndex.ToString(CultureInfo.InvariantCulture);
-                StableId operationId = Shop.DeriveStableId(
-                    "shopgenop",
-                    runStableId.ToString(),
-                    definition.ShopStableId.ToString(),
-                    ordinal,
-                    slot,
-                    definition.AlgorithmVersion.ToString(CultureInfo.InvariantCulture));
-                StableId equipmentInstanceId = Shop.DeriveStableId(
-                    "shopequipment",
-                    runStableId.ToString(),
-                    definition.ShopStableId.ToString(),
-                    ordinal,
-                    slot,
-                    definition.AlgorithmVersion.ToString(CultureInfo.InvariantCulture));
-                EquipmentGenerationResult generated = generator.GenerateEquipment(
-                    EquipmentGenerationRequest.Create(
-                        operationId,
-                        equipmentInstanceId,
-                        policy,
-                        catalog,
-                        context,
-                        inventorySeed,
-                        definition.AlgorithmVersion));
-                if (!generated.IsSuccess || generated.Equipment == null)
+                string ordinal = revision.ToString(
+                    CultureInfo.InvariantCulture);
+                string slot = slotIndex.ToString(
+                    CultureInfo.InvariantCulture);
+                EquipmentInstance equipment;
+                string generationFingerprint;
+
+                if (offerRoller != null)
                 {
-                    rejectionCode = string.IsNullOrEmpty(generated.FailureReason)
-                        ? "shop-generator-rejected"
-                        : "shop-generator-rejected:" + generated.FailureReason;
-                    return false;
+                    ShopOfferRoll rolled;
+                    if (!offerRoller.TryRoll(
+                            new ShopOfferRequest(
+                                stockId,
+                                definition,
+                                catalog,
+                                context,
+                                inventorySeed,
+                                revision,
+                                slotIndex),
+                            out rolled,
+                            out rejectionCode)
+                        || rolled == null
+                        || rolled.Equipment == null)
+                    {
+                        if (string.IsNullOrWhiteSpace(rejectionCode))
+                        {
+                            rejectionCode = "shop-offer-roller-rejected";
+                        }
+                        return false;
+                    }
+                    equipment = rolled.Equipment;
+                    generationFingerprint = rolled.Fingerprint;
+                }
+                else
+                {
+                    StableId operationId = Shop.DeriveStableId(
+                        "shopgenop",
+                        stockId.ToString(),
+                        definition.ShopStableId.ToString(),
+                        ordinal,
+                        slot,
+                        definition.AlgorithmVersion.ToString(
+                            CultureInfo.InvariantCulture));
+                    StableId equipmentInstanceId = Shop.DeriveStableId(
+                        "shopequipment",
+                        stockId.ToString(),
+                        definition.ShopStableId.ToString(),
+                        ordinal,
+                        slot,
+                        definition.AlgorithmVersion.ToString(
+                            CultureInfo.InvariantCulture));
+                    EquipmentGenerationResult generated =
+                        generator.GenerateEquipment(
+                            EquipmentGenerationRequest.Create(
+                                operationId,
+                                equipmentInstanceId,
+                                policy,
+                                catalog,
+                                context,
+                                inventorySeed,
+                                definition.AlgorithmVersion));
+                    if (!generated.IsSuccess || generated.Equipment == null)
+                    {
+                        rejectionCode = string.IsNullOrEmpty(
+                                generated.FailureReason)
+                            ? "shop-generator-rejected"
+                            : "shop-generator-rejected:"
+                                + generated.FailureReason;
+                        return false;
+                    }
+                    equipment = generated.Equipment;
+                    generationFingerprint = generated.ResultFingerprint;
                 }
 
                 long price;
                 string priceFailure;
                 if (!definition.PricingPolicy.TryCalculatePrice(
-                    generated.Equipment,
+                    equipment,
                     catalog,
                     out price,
                     out priceFailure))
@@ -200,16 +259,17 @@ namespace ShooterMover.Application.Shops
 
                 StableId entryId = Shop.DeriveStableId(
                     "shopstock",
-                    runStableId.ToString(),
+                    stockId.ToString(),
                     definition.ShopStableId.ToString(),
                     ordinal,
                     slot,
-                    definition.AlgorithmVersion.ToString(CultureInfo.InvariantCulture));
+                    definition.AlgorithmVersion.ToString(
+                        CultureInfo.InvariantCulture));
                 entries.Add(new ShopStockEntry(
                     entryId,
-                    generated.Equipment,
+                    equipment,
                     price,
-                    generated.ResultFingerprint,
+                    generationFingerprint,
                     ShopStockEntryState.Available,
                     null));
             }
@@ -224,13 +284,17 @@ namespace ShooterMover.Application.Shops
             out EquipmentGenerationPolicy result,
             out string rejectionCode)
         {
-            List<EquipmentGenerationCandidate> candidates = new List<EquipmentGenerationCandidate>();
+            var candidates = new List<EquipmentGenerationCandidate>();
             EquipmentGenerationPolicy source = definition.GenerationPolicy;
-            for (int index = 0; index < source.EquipmentCandidates.Count; index++)
+            for (int index = 0;
+                 index < source.EquipmentCandidates.Count;
+                 index++)
             {
-                EquipmentGenerationCandidate candidate = source.EquipmentCandidates[index];
-                EquipmentDefinition equipment = catalog.FindEquipmentDefinition(
-                    candidate.EquipmentDefinitionId);
+                EquipmentGenerationCandidate candidate =
+                    source.EquipmentCandidates[index];
+                EquipmentDefinition equipment =
+                    catalog.FindEquipmentDefinition(
+                        candidate.EquipmentDefinitionId);
                 if (equipment != null && definition.Allows(equipment))
                 {
                     candidates.Add(candidate);
@@ -240,7 +304,8 @@ namespace ShooterMover.Application.Shops
             if (candidates.Count == 0)
             {
                 result = null;
-                rejectionCode = "shop-no-candidate-after-category-tag-restrictions";
+                rejectionCode =
+                    "shop-no-candidate-after-category-tag-restrictions";
                 return false;
             }
 
@@ -267,19 +332,25 @@ namespace ShooterMover.Application.Shops
             ShopState state,
             ShopStockEntry entry)
         {
-            StableId commitment = CommitmentIdentity(command.TransactionStableId);
-            StableId sourceOperation = SourceOperationIdentity(command.TransactionStableId);
+            StableId commitment = CommitmentIdentity(
+                command.TransactionStableId);
+            StableId sourceOperation = SourceOperationIdentity(
+                command.TransactionStableId);
             StableId profile = Shop.DeriveStableId(
                 "shopprofile",
                 state.ShopStableId.ToString(),
                 state.DefinitionFingerprint);
             string contentFingerprint = Shop.Fingerprint(
                 "schema=shop-purchase-content-v1"
-                + "\ndefinition_fingerprint=" + state.DefinitionFingerprint
-                + "\ninventory_fingerprint=" + state.InventoryFingerprint
+                + "\ndefinition_fingerprint="
+                + state.DefinitionFingerprint
+                + "\ninventory_fingerprint="
+                + state.InventoryFingerprint
                 + "\nentry_id=" + entry.StockEntryStableId
-                + "\nequipment_fingerprint=" + entry.Equipment.Fingerprint
-                + "\nprice=" + entry.Price.ToString(CultureInfo.InvariantCulture));
+                + "\nequipment_fingerprint="
+                + entry.Equipment.Fingerprint
+                + "\nprice="
+                + entry.Price.ToString(CultureInfo.InvariantCulture));
             RewardOperationRequest operation = RewardOperationRequest.Create(
                 command.RunStableId,
                 command.ShopStableId,
@@ -322,65 +393,86 @@ namespace ShooterMover.Application.Shops
                 holdingsAuthorityStableId);
         }
 
-        private static bool IsCommitAccepted(RewardApplicationResultStatus status)
+        private static bool IsCommitAccepted(
+            RewardApplicationResultStatus status)
         {
             return status == RewardApplicationResultStatus.Generated
-                || status == RewardApplicationResultStatus.ExactDuplicateNoChange;
+                || status
+                    == RewardApplicationResultStatus.ExactDuplicateNoChange;
         }
 
-        private static bool IsRewardApplied(RewardApplicationResultStatus status)
+        private static bool IsRewardApplied(
+            RewardApplicationResultStatus status)
         {
             return status == RewardApplicationResultStatus.Applied
-                || status == RewardApplicationResultStatus.AlreadyAppliedNoChange;
+                || status
+                    == RewardApplicationResultStatus.AlreadyAppliedNoChange;
         }
 
         private static bool IsMoneyApplied(MoneyWalletChangeFact fact)
         {
             return fact != null
                 && (fact.Status == MoneyWalletTransactionStatus.Applied
-                    || (fact.Status == MoneyWalletTransactionStatus.DuplicateNoChange
-                        && fact.OriginalStatus == MoneyWalletTransactionStatus.Applied));
+                    || (fact.Status
+                            == MoneyWalletTransactionStatus.DuplicateNoChange
+                        && fact.OriginalStatus
+                            == MoneyWalletTransactionStatus.Applied));
         }
 
-        private static string Key(StableId runStableId, StableId shopStableId)
+        private static string Key(
+            StableId stockId,
+            StableId shopId)
         {
-            return runStableId + "|" + shopStableId;
+            return stockId + "|" + shopId;
         }
 
         private static StableId SpendTransaction(StableId purchaseId)
         {
-            return Shop.DeriveStableId("shopspend", purchaseId.ToString());
+            return Shop.DeriveStableId(
+                "shopspend",
+                purchaseId.ToString());
         }
 
         private static StableId SpendOperation(StableId purchaseId)
         {
-            return Shop.DeriveStableId("shopspendop", purchaseId.ToString());
+            return Shop.DeriveStableId(
+                "shopspendop",
+                purchaseId.ToString());
         }
 
         private static StableId RefundTransaction(StableId purchaseId)
         {
-            return Shop.DeriveStableId("shoprefund", purchaseId.ToString());
+            return Shop.DeriveStableId(
+                "shoprefund",
+                purchaseId.ToString());
         }
 
         private static StableId RefundOperation(StableId purchaseId)
         {
-            return Shop.DeriveStableId("shoprefundop", purchaseId.ToString());
+            return Shop.DeriveStableId(
+                "shoprefundop",
+                purchaseId.ToString());
         }
 
         private static StableId SourceOperationIdentity(StableId purchaseId)
         {
-            return Shop.DeriveStableId("shopsourceop", purchaseId.ToString());
+            return Shop.DeriveStableId(
+                "shopsourceop",
+                purchaseId.ToString());
         }
 
         private static StableId CommitmentIdentity(StableId purchaseId)
         {
-            return Shop.DeriveStableId("shopcommit", purchaseId.ToString());
+            return Shop.DeriveStableId(
+                "shopcommit",
+                purchaseId.ToString());
         }
 
         private static StableId ClaimIdentity(StableId purchaseId)
         {
-            return Shop.DeriveStableId("shopclaim", purchaseId.ToString());
+            return Shop.DeriveStableId(
+                "shopclaim",
+                purchaseId.ToString());
         }
-
     }
 }

@@ -9,6 +9,7 @@ using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Application.Progression.Skills;
 using ShooterMover.Application.Rewards.Strongboxes;
+using ShooterMover.Application.Shops;
 using ShooterMover.Application.Shops.Presentation;
 using ShooterMover.Application.Skills.Presentation;
 using ShooterMover.Content.Definitions.Characters.Selection;
@@ -348,9 +349,12 @@ namespace ShooterMover.UI.Game
                     Find<ShopMenu>(scene);
                 if (controller != null)
                 {
-                    controller.ConfigureDisconnected(
-                        transitions.Navigation.Payload,
-                        new ShopNavigationBridge(this));
+                    if (!ConfigureProductionShop(controller))
+                    {
+                        controller.ConfigureDisconnected(
+                            transitions.Navigation.Payload,
+                            new ShopNavigationBridge(this));
+                    }
                     controller.ConfigureMoneyPresentation(
                         ResolveSelectedMoneyBalance);
                     ConfigureShopGunPresentation(controller);
@@ -641,6 +645,54 @@ namespace ShooterMover.UI.Game
                     runtime.EquipmentCatalog,
                     runtime.GunCatalog);
             }
+        }
+
+        private bool ConfigureProductionShop(ShopMenu controller)
+        {
+            CharacterLiveGraph graph;
+            FlowProfileRecord authoritativeProfile;
+            CharacterSetupFlow composition;
+            if (controller == null
+                || !CharacterSave.TryResolveCurrent(
+                    out graph,
+                    out authoritativeProfile,
+                    out composition)
+                || graph == null
+                || graph.IsDisposed
+                || graph.Character == null
+                || graph.RoutePayload == null
+                || graph.ExperienceAuthority == null
+                || graph.LoadoutRuntime == null
+                || graph.Shop == null
+                || authoritativeProfile == null
+                || composition == null)
+            {
+                return false;
+            }
+
+            CharacterShopLive shop = graph.Shop;
+            ShopRefreshWindow window = ShopRefreshSchedule.Resolve(
+                DateTime.UtcNow);
+            StableId characterId =
+                graph.Character.CharacterInstanceStableId;
+            var session = new ShopScreenSession(
+                graph.RoutePayload,
+                window.StockId(
+                    characterId,
+                    shop.Definition.ShopStableId),
+                characterId,
+                shop.Authority,
+                graph.MoneyWallet,
+                shop.Definition,
+                graph.LoadoutRuntime.EquipmentCatalog,
+                graph.ExperienceAuthority.CurrentContext,
+                shop.OfferAugments,
+                window.RefreshesAtUtc,
+                new CharacterShopSave(graph));
+            controller.Configure(
+                session,
+                new ShopNavigationBridge(this));
+            return true;
         }
 
         private long? ResolveSelectedMoneyBalance()
@@ -1143,6 +1195,137 @@ namespace ShooterMover.UI.Game
                 {
                     owner.ReturnToHub(payload);
                 }
+            }
+        }
+
+        private sealed class CharacterShopSave : ICompensatingShopSave
+        {
+            private readonly CharacterLiveGraph graph;
+            private ShooterMover.Domain.Economy.Money.MoneyWalletSnapshot money;
+            private ShooterMover.Contracts.Holdings.PlayerHoldingsSnapshot holdings;
+            private GunInventorySnapshot guns;
+            private GeneratedEquipmentAugmentSignatureSnapshot augments;
+            private GeneratedEquipmentAugmentSignatureSnapshot offerAugments;
+            private ShopReceiptSnapshot receipts;
+            private ShopLiveSnapshot shop;
+            private ShooterMover.Contracts.Rewards.Application.RewardApplicationSnapshot
+                purchaseRewards;
+            private bool prepared;
+
+            public CharacterShopSave(CharacterLiveGraph graph)
+            {
+                this.graph = graph
+                    ?? throw new ArgumentNullException(nameof(graph));
+            }
+
+            public bool Prepare(out string rejectionCode)
+            {
+                try
+                {
+                    money = graph.MoneyWallet.CurrentSnapshot;
+                    holdings = graph.LoadoutRuntime.Holdings.ExportSnapshot();
+                    guns = graph.LoadoutRuntime.GunInventory.ExportSnapshot();
+                    augments = graph.AugmentSignatures.ExportDurableSnapshot();
+                    offerAugments = graph.Shop.OfferAugments
+                        .ExportDurableSnapshot();
+                    receipts = graph.Shop.Receipts.ExportSnapshot();
+                    shop = graph.Shop.Authority.ExportSnapshot();
+                    purchaseRewards = graph.Shop.PurchaseRewards.ExportSnapshot();
+                    prepared = true;
+                    rejectionCode = string.Empty;
+                    return true;
+                }
+                catch (Exception exception)
+                {
+                    prepared = false;
+                    rejectionCode = "shop-purchase-checkpoint-exception-"
+                        + exception.GetType().Name.ToLowerInvariant();
+                    return false;
+                }
+            }
+
+            public bool Persist(
+                string mutationFingerprint,
+                out string rejectionCode)
+            {
+                CharacterSetupResult result =
+                    CharacterSave.PersistCurrent(
+                        "shop-purchase",
+                        mutationFingerprint);
+                if (result != null && result.Succeeded)
+                {
+                    rejectionCode = string.Empty;
+                    return true;
+                }
+
+                rejectionCode = result == null
+                    ? "shop-purchase-save-result-null"
+                    : string.IsNullOrWhiteSpace(result.Diagnostic)
+                        ? "shop-purchase-save-rejected"
+                        : result.Diagnostic;
+                return false;
+            }
+
+            public bool Restore(out string rejectionCode)
+            {
+                if (!prepared)
+                {
+                    rejectionCode = "shop-purchase-checkpoint-missing";
+                    return false;
+                }
+
+                var failures = new List<string>();
+                try
+                {
+                    if (!graph.MoneyWallet.ImportSnapshot(money).Succeeded)
+                    {
+                        failures.Add("money");
+                    }
+                    if (!graph.LoadoutRuntime.Holdings
+                        .ImportSnapshot(holdings).Succeeded)
+                    {
+                        failures.Add("holdings");
+                    }
+                    if (!graph.LoadoutRuntime.GunInventory
+                        .ImportSnapshot(guns).Succeeded)
+                    {
+                        failures.Add("gun-inventory");
+                    }
+                    graph.AugmentSignatures.RestoreDurableSnapshot(augments);
+                    graph.Shop.OfferAugments.RestoreDurableSnapshot(
+                        offerAugments);
+                    string receiptRejection;
+                    if (!graph.Shop.Receipts.TryImportSnapshot(
+                        receipts,
+                        out receiptRejection))
+                    {
+                        failures.Add("receipts:" + receiptRejection);
+                    }
+                    string shopRejection;
+                    if (!graph.Shop.Authority.TryImportSnapshot(
+                        shop,
+                        out shopRejection))
+                    {
+                        failures.Add("shop:" + shopRejection);
+                    }
+                    if (!graph.Shop.PurchaseRewards.ImportSnapshot(
+                        purchaseRewards).Succeeded)
+                    {
+                        failures.Add("reward-application");
+                    }
+                }
+                catch (Exception exception)
+                {
+                    failures.Add(
+                        "exception-"
+                        + exception.GetType().Name.ToLowerInvariant());
+                }
+
+                prepared = false;
+                rejectionCode = failures.Count == 0
+                    ? string.Empty
+                    : string.Join(",", failures);
+                return failures.Count == 0;
             }
         }
 

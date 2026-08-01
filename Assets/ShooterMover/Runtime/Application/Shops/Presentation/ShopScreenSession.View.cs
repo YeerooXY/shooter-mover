@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using ShooterMover.Contracts.Flow.Session;
+using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Shops;
@@ -36,7 +36,7 @@ namespace ShooterMover.Application.Shops.Presentation
             }
 
             ShopInventoryOpenResult opened = shopRuntime.Open(
-                runStableId,
+                stockId,
                 definition,
                 catalog,
                 progressionContext);
@@ -52,7 +52,7 @@ namespace ShooterMover.Application.Shops.Presentation
         private void RefreshProjectionInventory()
         {
             ShopInventoryOpenResult opened = shopRuntime.Open(
-                runStableId,
+                stockId,
                 definition,
                 catalog,
                 progressionContext);
@@ -75,7 +75,9 @@ namespace ShooterMover.Application.Shops.Presentation
             {
                 refreshOrdinal = inventory.RefreshOrdinal;
                 fingerprint = inventory.InventoryFingerprint;
-                for (int index = 0; index < inventory.Entries.Count; index++)
+                for (int index = 0;
+                     index < inventory.Entries.Count;
+                     index++)
                 {
                     cards.Add(ProjectCard(inventory.Entries[index]));
                 }
@@ -83,12 +85,13 @@ namespace ShooterMover.Application.Shops.Presentation
 
             return new ShopScreenView(
                 routePayload,
-                runStableId,
+                stockId,
                 definition.ShopStableId,
                 refreshOrdinal,
                 fingerprint,
                 moneyWallet.Balance,
                 cards,
+                refreshesAtUtc,
                 status,
                 feedbackKind,
                 feedbackText,
@@ -103,10 +106,33 @@ namespace ShooterMover.Application.Shops.Presentation
                 ? entry.Equipment.DefinitionId.ToString()
                 : equipmentDefinition.DisplayName;
             string categoryLabel = CategoryLabel(
-                equipmentDefinition == null ? null : equipmentDefinition.CategoryId);
+                equipmentDefinition == null
+                    ? null
+                    : equipmentDefinition.CategoryId);
             string qualityLabel = QualityLabel(
                 equipmentDefinition,
                 entry.Equipment.QualityId);
+
+            int augmentCount = entry.Equipment.Augments.Count;
+            int augmentCapacity = augmentCount;
+            int augmentSharedLevel = 0;
+            bool hasGeneratedSignature = false;
+            GeneratedEquipmentAugmentSignature signature;
+            bool committed;
+            if (offerAugments != null
+                && offerAugments.TryGetStagedOrCommitted(
+                    entry.Equipment.InstanceId,
+                    out signature,
+                    out committed)
+                && signature != null)
+            {
+                augmentCapacity = Math.Max(
+                    augmentCount,
+                    signature.Capacity);
+                augmentSharedLevel = signature.SharedLevel;
+                hasGeneratedSignature = true;
+            }
+
             return new ShopScreenStockCard(
                 entry.StockEntryStableId,
                 entry.Equipment.DefinitionId,
@@ -115,7 +141,10 @@ namespace ShooterMover.Application.Shops.Presentation
                 categoryLabel,
                 qualityLabel,
                 entry.Equipment.ItemLevel,
-                entry.Equipment.Augments.Count,
+                augmentCount,
+                augmentCapacity,
+                augmentSharedLevel,
+                hasGeneratedSignature,
                 entry.Price,
                 entry.State,
                 entry.PurchaseTransactionStableId);
@@ -144,10 +173,14 @@ namespace ShooterMover.Application.Shops.Presentation
         {
             if (definition != null)
             {
-                for (int index = 0; index < definition.QualityTiers.Count; index++)
+                for (int index = 0;
+                     index < definition.QualityTiers.Count;
+                     index++)
                 {
-                    EquipmentQualityTier quality = definition.QualityTiers[index];
-                    if (quality != null && quality.QualityId == qualityStableId)
+                    EquipmentQualityTier quality =
+                        definition.QualityTiers[index];
+                    if (quality != null
+                        && quality.QualityId == qualityStableId)
                     {
                         return quality.Label;
                     }
@@ -192,13 +225,21 @@ namespace ShooterMover.Application.Shops.Presentation
             switch (fact.Status)
             {
                 case ShopPurchaseStatus.Applied:
+                    if (!string.IsNullOrWhiteSpace(fact.RejectionCode))
+                    {
+                        kind = ShopScreenFeedbackKind.Error;
+                        feedback =
+                            "PURCHASE COMPLETE — RECEIPT INCONSISTENCY";
+                        return;
+                    }
                     kind = ShopScreenFeedbackKind.Success;
                     feedback = "PURCHASE COMPLETE — INSTANCE "
                         + entry.Equipment.InstanceId;
                     return;
                 case ShopPurchaseStatus.ExactDuplicateNoChange:
                     kind = ShopScreenFeedbackKind.Information;
-                    feedback = "DUPLICATE INPUT REPLAYED — NO ADDITIONAL MONEY OR EQUIPMENT";
+                    feedback =
+                        "DUPLICATE INPUT REPLAYED — NO ADDITIONAL MONEY OR EQUIPMENT";
                     return;
                 case ShopPurchaseStatus.ConflictingDuplicate:
                     kind = ShopScreenFeedbackKind.Error;
@@ -222,7 +263,8 @@ namespace ShooterMover.Application.Shops.Presentation
                     return;
                 case ShopPurchaseStatus.StaleInventoryFingerprint:
                     kind = ShopScreenFeedbackKind.Error;
-                    feedback = "SHOP STOCK CHANGED — REOPEN THE CURRENT AUTHORITY VIEW";
+                    feedback =
+                        "SHOP STOCK CHANGED — REOPEN THE CURRENT AUTHORITY VIEW";
                     return;
                 case ShopPurchaseStatus.PriceMismatch:
                     kind = ShopScreenFeedbackKind.Error;

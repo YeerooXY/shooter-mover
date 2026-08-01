@@ -42,6 +42,39 @@ namespace ShooterMover.Application.Flow.Game
             IStrongboxOpeningRecoveryPort strongboxRecovery,
             GeneratedEquipmentAugmentSignatureState augmentSignatures,
             IEnumerable<ISavePart> saveAdapters)
+            : this(
+                character,
+                routePayload,
+                loadoutRuntime,
+                experienceAuthority,
+                moneyWallet,
+                scrapWallet,
+                skillAuthority,
+                skillProfileId,
+                strongboxCatalog,
+                strongboxAuthority,
+                strongboxRecovery,
+                null,
+                augmentSignatures,
+                saveAdapters)
+        {
+        }
+
+        public CharacterLiveGraph(
+            CharacterInstanceSnapshot character,
+            PlayerRouteProfilePayload routePayload,
+            PlayerLoadoutLive loadoutRuntime,
+            PlayerExperience experienceAuthority,
+            MoneyWalletActions moneyWallet,
+            ScrapWalletActions scrapWallet,
+            RankedSkillAllocationState skillAuthority,
+            string skillProfileId,
+            StrongboxDefinitionCatalog strongboxCatalog,
+            StrongboxOpeningActions strongboxAuthority,
+            IStrongboxOpeningRecoveryPort strongboxRecovery,
+            CharacterShopLive shop,
+            GeneratedEquipmentAugmentSignatureState augmentSignatures,
+            IEnumerable<ISavePart> saveAdapters)
         {
             this.character = character
                 ?? throw new ArgumentNullException(nameof(character));
@@ -65,6 +98,7 @@ namespace ShooterMover.Application.Flow.Game
                 ?? throw new ArgumentNullException(nameof(strongboxAuthority));
             StrongboxRecovery = strongboxRecovery
                 ?? throw new ArgumentNullException(nameof(strongboxRecovery));
+            Shop = shop;
             AugmentSignatures = augmentSignatures
                 ?? throw new ArgumentNullException(nameof(augmentSignatures));
             if (string.IsNullOrWhiteSpace(skillProfileId))
@@ -105,6 +139,7 @@ namespace ShooterMover.Application.Flow.Game
         public StrongboxDefinitionCatalog StrongboxCatalog { get; }
         public StrongboxOpeningActions StrongboxAuthority { get; }
         public IStrongboxOpeningRecoveryPort StrongboxRecovery { get; }
+        public CharacterShopLive Shop { get; }
         public GeneratedEquipmentAugmentSignatureState AugmentSignatures
         {
             get;
@@ -336,6 +371,11 @@ namespace ShooterMover.Application.Flow.Game
                     loadout,
                     money,
                     scrap);
+            CharacterShopLive shop = CharacterShopSetup.Create(
+                loadout,
+                money,
+                scrap,
+                strongboxes.AugmentSignatures);
             List<ISavePart> adapters =
                 CharacterStateAdapters.Create(
                     loadout,
@@ -348,7 +388,8 @@ namespace ShooterMover.Application.Flow.Game
                     scrapCurrencyId,
                     skills,
                     skillProfileId,
-                    strongboxes);
+                    strongboxes,
+                    shop);
 
             var core = new CharacterLiveGraph(
                 character,
@@ -362,6 +403,7 @@ namespace ShooterMover.Application.Flow.Game
                 strongboxes.Catalog,
                 strongboxes.Authority,
                 strongboxes.Recovery,
+                shop,
                 strongboxes.AugmentSignatures,
                 adapters);
             if (additionalAdapterFactory == null)
@@ -389,6 +431,7 @@ namespace ShooterMover.Application.Flow.Game
                 strongboxes.Catalog,
                 strongboxes.Authority,
                 strongboxes.Recovery,
+                shop,
                 strongboxes.AugmentSignatures,
                 adapters);
         }

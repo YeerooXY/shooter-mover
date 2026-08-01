@@ -26,6 +26,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
         private readonly IPlayerHoldingsState holdings;
         private readonly PlayerHoldingsRewardChildState inner;
         private readonly GeneratedEquipmentAugmentSignatureState signatures;
+        private readonly GeneratedEquipmentAugmentSignatureState offerAugments;
         private readonly GunInventoryState gunInventory;
 
         public GeneratedAugmentSignaturePlayerHoldingsRewardChildState(
@@ -33,6 +34,21 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             IEquipmentInstanceValidator equipmentValidator,
             GeneratedEquipmentAugmentSignatureState signatures,
             GunInventoryState gunInventory = null)
+            : this(
+                holdings,
+                equipmentValidator,
+                signatures,
+                null,
+                gunInventory)
+        {
+        }
+
+        public GeneratedAugmentSignaturePlayerHoldingsRewardChildState(
+            IPlayerHoldingsState holdings,
+            IEquipmentInstanceValidator equipmentValidator,
+            GeneratedEquipmentAugmentSignatureState signatures,
+            GeneratedEquipmentAugmentSignatureState offerAugments,
+            GunInventoryState gunInventory)
         {
             this.holdings = holdings
                 ?? throw new ArgumentNullException(nameof(holdings));
@@ -42,6 +58,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                     ?? throw new ArgumentNullException(nameof(equipmentValidator)));
             this.signatures = signatures
                 ?? throw new ArgumentNullException(nameof(signatures));
+            this.offerAugments = offerAugments;
             this.gunInventory = gunInventory;
         }
 
@@ -94,11 +111,11 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                     }
 
                     GeneratedEquipmentAugmentSignature signature;
-                    bool committed;
-                    if (!signatures.TryGetStagedOrCommitted(
+                    bool fromOffer;
+                    if (!TryResolveSignature(
                             command.InstanceStableId,
                             out signature,
-                            out committed))
+                            out fromOffer))
                     {
                         // Non-hybrid equipment grants share this RAP authority and do not
                         // require generated augment metadata.
@@ -136,11 +153,11 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 }
 
                 GeneratedEquipmentAugmentSignature signature;
-                bool alreadyCommitted;
-                if (!signatures.TryGetStagedOrCommitted(
+                bool fromOffer;
+                if (!TryResolveSignature(
                         command.InstanceStableId,
                         out signature,
-                        out alreadyCommitted))
+                        out fromOffer))
                 {
                     return inner.Apply(command);
                 }
@@ -168,13 +185,11 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                     return applied;
                 }
 
-                GeneratedEquipmentAugmentSignature committed;
                 string diagnostic;
-                if (signatures.TryCommitStaged(
-                        command.InstanceStableId,
-                        signature.Fingerprint,
-                        out committed,
-                        out diagnostic))
+                bool committed = fromOffer
+                    ? TryCommitOffer(signature, out diagnostic)
+                    : TryCommitStaged(signature, out diagnostic);
+                if (committed)
                 {
                     return applied;
                 }
@@ -229,6 +244,58 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                         ? "generated-augment-signature-commit-rejected-compensated"
                         : diagnostic + ";holdings-compensated");
             }
+        }
+
+        private bool TryResolveSignature(
+            StableId equipmentInstanceStableId,
+            out GeneratedEquipmentAugmentSignature signature,
+            out bool fromOffer)
+        {
+            bool committed;
+            if (signatures.TryGetStagedOrCommitted(
+                    equipmentInstanceStableId,
+                    out signature,
+                    out committed))
+            {
+                fromOffer = false;
+                return true;
+            }
+            if (offerAugments != null
+                && offerAugments.TryGetStagedOrCommitted(
+                    equipmentInstanceStableId,
+                    out signature,
+                    out committed))
+            {
+                fromOffer = true;
+                return true;
+            }
+            signature = null;
+            fromOffer = false;
+            return false;
+        }
+
+        private bool TryCommitStaged(
+            GeneratedEquipmentAugmentSignature signature,
+            out string diagnostic)
+        {
+            GeneratedEquipmentAugmentSignature committed;
+            return signatures.TryCommitStaged(
+                signature.EquipmentInstanceStableId,
+                signature.Fingerprint,
+                out committed,
+                out diagnostic);
+        }
+
+        private bool TryCommitOffer(
+            GeneratedEquipmentAugmentSignature signature,
+            out string diagnostic)
+        {
+            IReadOnlyList<
+                GeneratedEquipmentAugmentSignatureRecordResult> results;
+            return signatures.TryRecordBatch(
+                new[] { signature },
+                out results,
+                out diagnostic);
         }
 
         private static RewardChildApplyResult Rejected(

@@ -1,12 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
-using ShooterMover.Application.Shops.Presentation;
+using System.Text;
 using ShooterMover.Application.Guns.Presentation;
+using ShooterMover.Application.Shops.Presentation;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
-using ShooterMover.Domain.Shops;
 using ShooterMover.Domain.Guns.Catalog;
+using ShooterMover.Domain.Shops;
 using ShooterMover.UnityAdapters.Presentation.Guns;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -19,6 +21,9 @@ namespace ShooterMover.UI.Shop
     {
         [SerializeField] private Texture2D shopTemplate;
 
+        private readonly Dictionary<string, GunArtSpriteResolution>
+            gunArtCache = new Dictionary<string, GunArtSpriteResolution>(
+                StringComparer.Ordinal);
         private ShopScreenSession session;
         private Func<long?> moneyBalanceProvider;
         private IShopScreenRouteBridge routeAdapter;
@@ -26,32 +31,28 @@ namespace ShooterMover.UI.Shop
         private ShopScreenView projection;
         private ShopScreenActionResult lastAction;
         private ShopScreenRouteResult lastRoute;
+        private EquipmentCatalog presentationEquipmentCatalog;
+        private GunCatalog presentationGunCatalog;
         private int purchaseInputOrdinal;
         private bool explicitlyConfigured;
         private bool disconnectedReturnDispatched;
-        private EquipmentCatalog presentationEquipmentCatalog;
-        private GunCatalog presentationGunCatalog;
-        private readonly System.Collections.Generic.Dictionary<
-            string,
-            GunArtSpriteResolution> gunArtCache =
-                new System.Collections.Generic.Dictionary<
-                    string,
-                    GunArtSpriteResolution>(
-                        StringComparer.Ordinal);
         private Vector2 stockScroll;
         private GUIStyle titleStyle;
         private GUIStyle balanceStyle;
         private GUIStyle sectionStyle;
         private GUIStyle cardTitleStyle;
         private GUIStyle bodyStyle;
-        private GUIStyle detailStyle;
+        private GUIStyle augmentStyle;
         private GUIStyle feedbackStyle;
 
         public ShopScreenView Projection { get { return projection; } }
         public ShopScreenActionResult LastAction { get { return lastAction; } }
         public ShopScreenRouteResult LastRoute { get { return lastRoute; } }
         public bool IsBound { get { return session != null; } }
-        public bool IsDisconnected { get { return session == null && disconnectedPayload != null; } }
+        public bool IsDisconnected
+        {
+            get { return session == null && disconnectedPayload != null; }
+        }
         public Texture2D ShopTemplate { get { return shopTemplate; } }
         public long? DisplayedMoneyBalance
         {
@@ -79,7 +80,10 @@ namespace ShooterMover.UI.Shop
                     || Keyboard.current.backspaceKey.wasPressedThisFrame);
             back |= Gamepad.current != null
                 && Gamepad.current.buttonEast.wasPressedThisFrame;
-            if (back) NavigateBack();
+            if (back)
+            {
+                NavigateBack();
+            }
         }
 
         private void OnGUI()
@@ -94,55 +98,34 @@ namespace ShooterMover.UI.Shop
             float height = Mathf.Min(
                 900f,
                 Mathf.Max(420f, Screen.height - 32f));
-            GUILayout.BeginArea(
-                new Rect(
-                    (Screen.width - width) * 0.5f,
-                    (Screen.height - height) * 0.5f,
-                    width,
-                    height));
+            GUILayout.BeginArea(new Rect(
+                (Screen.width - width) * 0.5f,
+                (Screen.height - height) * 0.5f,
+                width,
+                height));
             GUILayout.BeginVertical(GUI.skin.window);
             GUILayout.Label("HUB SHOP", titleStyle);
 
             if (session == null || projection == null)
             {
-                DrawAvailableMoneyBalance();
-                GUILayout.FlexibleSpace();
-                GUILayout.Label(
-                    disconnectedPayload == null
-                        ? "SHOP RUNTIME NOT BOUND"
-                        : "AWAITING SHOP AUTHORITY COMPOSITION",
-                    feedbackStyle);
-                GUILayout.Label(
-                    disconnectedPayload == null
-                        ? "Prepare an authority-backed ShopScreenSession."
-                        : "The real Shop screen and artwork are active. No fallback "
-                            + "stock, wallet, inventory or reward authority was created.",
-                    bodyStyle);
-                if (disconnectedPayload != null
-                    && GUILayout.Button(
-                        "BACK TO HUB",
-                        GUILayout.MinHeight(48f)))
-                {
-                    NavigateBack();
-                }
-                GUILayout.FlexibleSpace();
+                DrawDisconnected();
                 GUILayout.EndVertical();
                 GUILayout.EndArea();
                 return;
             }
 
             DrawHeader();
-            GUILayout.Space(10f);
+            GUILayout.Space(8f);
             DrawFeedback();
-            GUILayout.Space(10f);
+            GUILayout.Space(8f);
 
             stockScroll = GUILayout.BeginScrollView(stockScroll);
-            DrawCategory("GUNS", "GUN");
+            DrawCategory("WEAPONS", "GUN");
             DrawCategory("ARMOR", "ARMOR");
             DrawCategory("OTHER EQUIPMENT", null);
             GUILayout.EndScrollView();
 
-            GUILayout.Space(10f);
+            GUILayout.Space(8f);
             if (GUILayout.Button(
                 "BACK TO HUB",
                 GUILayout.MinHeight(48f)))
@@ -164,7 +147,10 @@ namespace ShooterMover.UI.Shop
             routeAdapter = adapter
                 ?? throw new ArgumentNullException(nameof(adapter));
             disconnectedPayload = null;
-            if (backplate != null) shopTemplate = backplate;
+            if (backplate != null)
+            {
+                shopTemplate = backplate;
+            }
             purchaseInputOrdinal = 0;
             lastAction = null;
             lastRoute = null;
@@ -180,10 +166,10 @@ namespace ShooterMover.UI.Shop
             gunArtCache.Clear();
         }
 
-        public void ConfigureMoneyPresentation(
-            Func<long?> balanceProvider)
+        public void ConfigureMoneyPresentation(Func<long?> balanceProvider)
         {
-            moneyBalanceProvider = balanceProvider;
+            moneyBalanceProvider = balanceProvider
+                ?? throw new ArgumentNullException(nameof(balanceProvider));
         }
 
         public void ConfigureDisconnected(
@@ -199,7 +185,6 @@ namespace ShooterMover.UI.Shop
                     "The Shop route payload is invalid.",
                     nameof(payload));
             }
-
             routeAdapter = adapter
                 ?? throw new ArgumentNullException(nameof(adapter));
             session = null;
@@ -212,7 +197,10 @@ namespace ShooterMover.UI.Shop
         public ShopScreenView OpenScreen()
         {
             EnsureInitialized();
-            if (session == null) return null;
+            if (session == null)
+            {
+                return null;
+            }
             projection = session.Open();
             return projection;
         }
@@ -221,16 +209,20 @@ namespace ShooterMover.UI.Shop
             StableId stockEntryStableId)
         {
             EnsureInitialized();
-            if (session == null || stockEntryStableId == null) return null;
+            if (session == null || stockEntryStableId == null)
+            {
+                return null;
+            }
             purchaseInputOrdinal++;
-            StableId inputStableId = global::ShooterMover.Domain.Shops.Shop.DeriveStableId(
-                "shop-screen-input",
-                session.RunStableId.ToString(),
-                session.ShopStableId.ToString(),
-                stockEntryStableId.ToString(),
-                purchaseInputOrdinal.ToString(
-                    "D8",
-                    CultureInfo.InvariantCulture));
+            StableId inputStableId =
+                global::ShooterMover.Domain.Shops.Shop.DeriveStableId(
+                    "shop-screen-input",
+                    session.RunStableId.ToString(),
+                    session.ShopStableId.ToString(),
+                    stockEntryStableId.ToString(),
+                    purchaseInputOrdinal.ToString(
+                        "D8",
+                        CultureInfo.InvariantCulture));
             return SubmitPurchase(inputStableId, stockEntryStableId);
         }
 
@@ -244,10 +236,12 @@ namespace ShooterMover.UI.Shop
             {
                 return null;
             }
-
             ShopScreenStockCard card = projection.FindCard(
                 stockEntryStableId);
-            if (card == null || !card.CanRetry) return null;
+            if (card == null || !card.CanRetry)
+            {
+                return null;
+            }
             return SubmitPurchase(
                 card.PurchaseTransactionStableId,
                 stockEntryStableId);
@@ -264,7 +258,6 @@ namespace ShooterMover.UI.Shop
             {
                 return null;
             }
-
             lastAction = session.SubmitPurchase(
                 new ShopScreenPurchaseInput(
                     inputStableId,
@@ -327,23 +320,44 @@ namespace ShooterMover.UI.Shop
             }
         }
 
+        private void DrawDisconnected()
+        {
+            DrawAvailableMoneyBalance();
+            GUILayout.FlexibleSpace();
+            GUILayout.Label(
+                disconnectedPayload == null
+                    ? "SHOP RUNTIME NOT BOUND"
+                    : "AWAITING SHOP AUTHORITY COMPOSITION",
+                feedbackStyle);
+            GUILayout.Label(
+                disconnectedPayload == null
+                    ? "Prepare an authority-backed ShopScreenSession."
+                    : "The Shop never creates fallback stock, money or inventory.",
+                bodyStyle);
+            if (disconnectedPayload != null
+                && GUILayout.Button(
+                    "BACK TO HUB",
+                    GUILayout.MinHeight(48f)))
+            {
+                NavigateBack();
+            }
+            GUILayout.FlexibleSpace();
+        }
+
         private void DrawHeader()
         {
             GUILayout.BeginHorizontal(GUI.skin.box);
+            long balance = DisplayedMoneyBalance
+                ?? projection.MoneyBalance;
             GUILayout.Label(
                 "MONEY  "
-                + projection.MoneyBalance.ToString(
+                + balance.ToString(
                     "N0",
                     CultureInfo.InvariantCulture),
                 balanceStyle,
                 GUILayout.MinWidth(220f));
             GUILayout.FlexibleSpace();
-            GUILayout.Label(
-                "RUN " + ShortId(projection.RunStableId)
-                + "   STOCK REV "
-                + projection.RefreshOrdinal.ToString(
-                    CultureInfo.InvariantCulture),
-                detailStyle);
+            GUILayout.Label(RefreshLabel(), balanceStyle);
             GUILayout.EndHorizontal();
         }
 
@@ -362,29 +376,55 @@ namespace ShooterMover.UI.Shop
             GUILayout.Space(10f);
         }
 
+        private string RefreshLabel()
+        {
+            if (!projection.RefreshesAtUtc.HasValue)
+            {
+                return "STOCK REV "
+                    + projection.RefreshOrdinal.ToString(
+                        CultureInfo.InvariantCulture);
+            }
+
+            TimeSpan remaining =
+                projection.RefreshesAtUtc.Value - DateTime.UtcNow;
+            if (remaining < TimeSpan.Zero)
+            {
+                remaining = TimeSpan.Zero;
+            }
+            return "NEW STOCK IN  "
+                + ((int)remaining.TotalHours).ToString(
+                    "00",
+                    CultureInfo.InvariantCulture)
+                + ":"
+                + remaining.Minutes.ToString(
+                    "00",
+                    CultureInfo.InvariantCulture)
+                + ":"
+                + remaining.Seconds.ToString(
+                    "00",
+                    CultureInfo.InvariantCulture);
+        }
+
         private void DrawFeedback()
         {
-            if (projection == null
-                || projection.FeedbackKind
-                    == ShopScreenFeedbackKind.None)
+            if (projection.FeedbackKind == ShopScreenFeedbackKind.None)
             {
                 return;
             }
-
             GUILayout.BeginVertical(GUI.skin.box);
             GUILayout.Label(projection.FeedbackText, feedbackStyle);
             if (!string.IsNullOrWhiteSpace(projection.FeedbackCode))
             {
-                GUILayout.Label(projection.FeedbackCode, detailStyle);
+                GUILayout.Label(projection.FeedbackCode, bodyStyle);
             }
             GUILayout.EndVertical();
         }
 
-        private void DrawCategory(string heading, string categoryLabel)
+        private void DrawCategory(
+            string heading,
+            string categoryLabel)
         {
-            var matching =
-                new System.Collections.Generic.List<
-                    ShopScreenStockCard>();
+            var matching = new List<ShopScreenStockCard>();
             for (int index = 0; index < projection.Stock.Count; index++)
             {
                 ShopScreenStockCard card = projection.Stock[index];
@@ -395,10 +435,15 @@ namespace ShooterMover.UI.Shop
                         card.CategoryLabel,
                         categoryLabel,
                         StringComparison.Ordinal);
-                if (match) matching.Add(card);
+                if (match)
+                {
+                    matching.Add(card);
+                }
             }
-
-            if (matching.Count == 0) return;
+            if (matching.Count == 0)
+            {
+                return;
+            }
 
             GUILayout.Label(heading, sectionStyle);
             int columns = Screen.width >= 1200
@@ -433,23 +478,13 @@ namespace ShooterMover.UI.Shop
             DrawGunArt(card);
             GUILayout.Label(card.DisplayName, cardTitleStyle);
             GUILayout.Label(
-                card.CategoryLabel
-                + "  ·  " + card.QualityLabel
+                card.QualityLabel
                 + "  ·  LEVEL "
                 + card.ItemLevel.ToString(
                     CultureInfo.InvariantCulture),
                 bodyStyle);
-            GUILayout.Label(
-                "Augments: "
-                + card.AugmentCount.ToString(
-                    CultureInfo.InvariantCulture),
-                bodyStyle);
-            GUILayout.Label(
-                "Definition: " + card.DefinitionStableId,
-                detailStyle);
-            GUILayout.Label(
-                "Instance: " + card.EquipmentInstanceStableId,
-                detailStyle);
+            DrawAugments(card);
+            GUILayout.Space(4f);
             GUILayout.Label(
                 "PRICE  "
                 + card.Price.ToString(
@@ -481,17 +516,63 @@ namespace ShooterMover.UI.Shop
                 }
                 GUI.enabled = true;
             }
-
             GUILayout.EndVertical();
+        }
+
+        private void DrawAugments(ShopScreenStockCard card)
+        {
+            if (card.HasGeneratedAugmentSignature)
+            {
+                GUILayout.Label(
+                    "AUGMENTS  ·  LV "
+                    + card.AugmentSharedLevel.ToString(
+                        CultureInfo.InvariantCulture),
+                    augmentStyle);
+                GUILayout.Label(
+                    BuildAugmentPips(
+                        card.AugmentCapacity,
+                        card.AugmentCount),
+                    augmentStyle);
+                return;
+            }
+
+            GUILayout.Label(
+                card.AugmentCapacity == 0
+                    ? "NO AUGMENT SLOTS"
+                    : "AUGMENTS  "
+                        + card.AugmentCount.ToString(
+                            CultureInfo.InvariantCulture)
+                        + "/"
+                        + card.AugmentCapacity.ToString(
+                            CultureInfo.InvariantCulture),
+                augmentStyle);
+        }
+
+        private static string BuildAugmentPips(
+            int capacity,
+            int installed)
+        {
+            if (capacity <= 0)
+            {
+                return "—";
+            }
+
+            var builder = new StringBuilder();
+            for (int index = 0; index < capacity; index++)
+            {
+                if (index > 0)
+                {
+                    builder.Append(' ');
+                }
+                builder.Append(index < installed ? '◆' : '◇');
+            }
+            return builder.ToString();
         }
 
         private void DrawGunArt(ShopScreenStockCard card)
         {
             if (card == null
-                || !string.Equals(
-                    card.CategoryLabel,
-                    "GUN",
-                    StringComparison.Ordinal))
+                || card.CategoryLabel != "GUN")
             {
                 return;
             }
@@ -527,9 +608,9 @@ namespace ShooterMover.UI.Shop
 
             Rect artRect = GUILayoutUtility.GetRect(
                 250f,
-                96f,
+                112f,
                 GUILayout.ExpandWidth(true),
-                GUILayout.Height(96f));
+                GUILayout.Height(112f));
             GUI.DrawTexture(
                 artRect,
                 resolution.Sprite.texture,
@@ -565,7 +646,10 @@ namespace ShooterMover.UI.Shop
 
         private void EnsureStyles()
         {
-            if (titleStyle != null) return;
+            if (titleStyle != null)
+            {
+                return;
+            }
             titleStyle = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.MiddleCenter,
@@ -600,10 +684,11 @@ namespace ShooterMover.UI.Shop
                 fontSize = 14,
                 wordWrap = true,
             };
-            detailStyle = new GUIStyle(GUI.skin.label)
+            augmentStyle = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.MiddleCenter,
-                fontSize = 11,
+                fontSize = 16,
+                fontStyle = FontStyle.Bold,
                 wordWrap = true,
             };
             feedbackStyle = new GUIStyle(GUI.skin.label)
@@ -613,16 +698,6 @@ namespace ShooterMover.UI.Shop
                 fontStyle = FontStyle.Bold,
                 wordWrap = true,
             };
-        }
-
-        private static string ShortId(StableId value)
-        {
-            string text = value == null
-                ? string.Empty
-                : value.ToString();
-            return text.Length <= 24
-                ? text
-                : text.Substring(0, 24);
         }
     }
 }

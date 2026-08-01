@@ -74,6 +74,38 @@ namespace ShooterMover.Tests.PlayMode.Flow.Shop
         }
 
         [UnityTest]
+        public IEnumerator RejectedPersistenceRestoresMoneyAndAvailableStock()
+        {
+            Fixture fixture = new Fixture(10000L);
+            var save = new RejectingCompensatingSave(fixture);
+            var host = new GameObject("Shop compensated save rejection test");
+            ShopMenu controller = host.AddComponent<ShopMenu>();
+            controller.Configure(
+                fixture.Session("run.shopui-save-rejection", save),
+                new RecordingShopScreenRouteBridge());
+            yield return null;
+
+            ShopScreenStockCard card = controller.Projection.Stock[0];
+            long balanceBefore = fixture.Money.Balance;
+            ShopScreenActionResult result = controller.Purchase(
+                card.StockEntryStableId);
+
+            Assert.That(
+                result.Status,
+                Is.EqualTo(ShopScreenActionStatus.PurchaseRejected));
+            Assert.That(fixture.Money.Balance, Is.EqualTo(balanceBefore));
+            Assert.That(
+                controller.Projection.FindCard(
+                    card.StockEntryStableId).IsSold,
+                Is.False);
+            Assert.That(save.PrepareCalls, Is.EqualTo(1));
+            Assert.That(save.PersistCalls, Is.EqualTo(1));
+            Assert.That(save.RestoreCalls, Is.EqualTo(1));
+
+            UnityEngine.Object.DestroyImmediate(host);
+        }
+
+        [UnityTest]
         public IEnumerator ControllerExposesExactDuplicateInputReplay()
         {
             Fixture fixture = new Fixture(10000L);

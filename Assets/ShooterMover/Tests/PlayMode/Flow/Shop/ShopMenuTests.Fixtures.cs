@@ -159,7 +159,9 @@ namespace ShooterMover.Tests.PlayMode.Flow.Shop
             public ShopLiveActions Runtime { get; }
             public PlayerRouteProfilePayload RoutePayload { get; }
 
-            public ShopScreenSession Session(string runId)
+            public ShopScreenSession Session(
+                string runId,
+                IShopSave save = null)
             {
                 return new ShopScreenSession(
                     RoutePayload,
@@ -174,7 +176,61 @@ namespace ShooterMover.Tests.PlayMode.Flow.Shop
                         1,
                         Id("difficulty.normal"),
                         1,
-                        Array.Empty<StableId>()));
+                        Array.Empty<StableId>()),
+                    null,
+                    null,
+                    save);
+            }
+        }
+
+        private sealed class RejectingCompensatingSave :
+            ICompensatingShopSave
+        {
+            private readonly Fixture fixture;
+            private ShooterMover.Domain.Economy.Money.MoneyWalletSnapshot
+                money;
+            private ShopLiveSnapshot shop;
+
+            public RejectingCompensatingSave(Fixture fixture)
+            {
+                this.fixture = fixture;
+            }
+
+            public int PrepareCalls { get; private set; }
+            public int PersistCalls { get; private set; }
+            public int RestoreCalls { get; private set; }
+
+            public bool Prepare(out string rejectionCode)
+            {
+                PrepareCalls++;
+                money = fixture.Money.CurrentSnapshot;
+                shop = fixture.Runtime.ExportSnapshot();
+                rejectionCode = string.Empty;
+                return true;
+            }
+
+            public bool Persist(
+                string mutationFingerprint,
+                out string rejectionCode)
+            {
+                PersistCalls++;
+                rejectionCode = "test-save-rejected";
+                return false;
+            }
+
+            public bool Restore(out string rejectionCode)
+            {
+                RestoreCalls++;
+                bool moneyRestored = fixture.Money
+                    .ImportSnapshot(money).Succeeded;
+                string shopRejection;
+                bool shopRestored = fixture.Runtime.TryImportSnapshot(
+                    shop,
+                    out shopRejection);
+                rejectionCode = moneyRestored && shopRestored
+                    ? string.Empty
+                    : "test-restore-rejected:" + shopRejection;
+                return moneyRestored && shopRestored;
             }
         }
 
