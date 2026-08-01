@@ -255,7 +255,10 @@ namespace ShooterMover.UI.Game
 
         public bool IsBound { get { return bound; } }
         public int GunCount { get { return guns.Count; } }
-        public int BulletCount { get { return bullets == null ? 0 : bullets.ActiveCount; } }
+        public int BulletCount
+        {
+            get { return bullets == null ? 0 : bullets.ActiveCount; }
+        }
 
         internal static void ResetRuns()
         {
@@ -306,14 +309,18 @@ namespace ShooterMover.UI.Game
 
             long newRun = checked(++nextRun);
             BulletSpawn spawn = GetComponent<BulletSpawn>();
-            if (spawn == null) spawn = gameObject.AddComponent<BulletSpawn>();
+            if (spawn == null)
+            {
+                spawn = gameObject.AddComponent<BulletSpawn>();
+            }
 
             graph = currentGraph;
             source = playerSource;
             camera = gameCamera;
             bullets = spawn;
             runNo = newRun;
-            actorId = new GunActorInstanceId(playerSource.CharacterInstanceId);
+            actorId = new GunActorInstanceId(
+                playerSource.CharacterInstanceId);
             runId = new LifecycleGeneration(newRun);
             playerId = new RunParticipantId(
                 StableId.Create(
@@ -344,7 +351,8 @@ namespace ShooterMover.UI.Game
             screen.z = Mathf.Abs(
                 camera.transform.position.z - transform.position.z);
             Vector3 world = camera.ScreenToWorldPoint(screen);
-            Vector2 candidate = (Vector2)world - (Vector2)transform.position;
+            Vector2 candidate = (Vector2)world
+                - (Vector2)transform.position;
             if (candidate.sqrMagnitude > 0.000001f)
             {
                 aim = candidate.normalized;
@@ -369,7 +377,9 @@ namespace ShooterMover.UI.Game
                     now);
                 if (shots > 0 && !TryShoot(gun))
                 {
-                    Report("player-fire-shot-failed:" + gun.Gun.DefinitionId);
+                    Report(
+                        "player-fire-shot-failed:"
+                        + gun.Gun.DefinitionId);
                 }
             }
         }
@@ -391,18 +401,23 @@ namespace ShooterMover.UI.Game
             var shotId = new FireOperationId(
                 StableId.Create(
                     "shot",
-                    "r" + runNo.ToString(CultureInfo.InvariantCulture)
-                    + "-g" + gun.Index.ToString(CultureInfo.InvariantCulture)
-                    + "-s" + shotNo.ToString(CultureInfo.InvariantCulture)));
+                    "r" + runNo.ToString(
+                        CultureInfo.InvariantCulture)
+                    + "-g" + gun.Index.ToString(
+                        CultureInfo.InvariantCulture)
+                    + "-s" + shotNo.ToString(
+                        CultureInfo.InvariantCulture)));
             ulong seed = ShotSeed(runNo, gun.Index, shotNo);
             GunVector2 direction = new GunVector2(aim.x, aim.y);
-            GunVector2 origin = GunOrigin(gun.Source.Mount.LateralOffset);
+            GunVector2 origin =
+                GunOrigin(gun.Source.Mount.LateralOffset);
             int count = gun.Gun.ShotPattern.ProjectilesPerShot;
             var effects = new List<ProjectileLaunchEffect>(count);
 
             for (int index = 0; index < count; index++)
             {
-                ProjectileOrdinal ordinal = new ProjectileOrdinal(index);
+                ProjectileOrdinal ordinal =
+                    new ProjectileOrdinal(index);
                 var identity = new GunEffectIdentity(
                     actorId,
                     playerId,
@@ -412,24 +427,27 @@ namespace ShooterMover.UI.Game
                     runId,
                     shotNo,
                     ordinal);
-                var bulletId = new ProjectileExecutionIdentity(identity);
-                DeterministicRandom random = DeterministicRandom.CreateSubstream(
-                    seed,
-                    DeterministicRandom.CurrentAlgorithmVersion,
-                    BulletRandomPurpose,
-                    checked((ulong)index));
+                var bulletId =
+                    new ProjectileExecutionIdentity(identity);
+                DeterministicRandom random =
+                    DeterministicRandom.CreateSubstream(
+                        seed,
+                        DeterministicRandom.CurrentAlgorithmVersion,
+                        BulletRandomPurpose,
+                        checked((ulong)index));
                 var life = new ProjectileLifecycleContext(
                     bulletId,
                     tick,
                     random);
-                GunVector2 shotDirection = GunDeterministicSpread.DirectionFor(
-                    direction,
-                    gun.Gun.ShotPattern.SpreadDegrees,
-                    seed,
-                    shotId,
-                    gun.Gun.EquipmentInstanceId,
-                    shotNo,
-                    ordinal);
+                GunVector2 shotDirection =
+                    GunDeterministicSpread.DirectionFor(
+                        direction,
+                        gun.Gun.ShotPattern.SpreadDegrees,
+                        seed,
+                        shotId,
+                        gun.Gun.EquipmentInstanceId,
+                        shotNo,
+                        ordinal);
                 var request = new ProjectileLaunchRequest(
                     life,
                     gun.Bullet,
@@ -446,7 +464,8 @@ namespace ShooterMover.UI.Game
 
         private GunVector2 GunOrigin(double side)
         {
-            Vector2 baseOrigin = (Vector2)transform.position + (aim * 0.55f);
+            Vector2 baseOrigin = (Vector2)transform.position
+                + (aim * 0.55f);
             Vector2 right = new Vector2(-aim.y, aim.x);
             Vector2 value = baseOrigin + (right * (float)side);
             return new GunVector2(value.x, value.y);
@@ -460,7 +479,10 @@ namespace ShooterMover.UI.Game
         {
             result = new List<GunPlay>();
             List<EquippedGun> equipped;
-            if (!TryResolveEquippedGuns(loadout, out equipped, out error))
+            if (!TryResolveEquippedGuns(
+                    loadout,
+                    out equipped,
+                    out error))
             {
                 return false;
             }
@@ -497,7 +519,10 @@ namespace ShooterMover.UI.Game
 
                 EffectiveGun gun;
                 string gunError;
-                if (!resolver.TryResolve(item, out gun, out gunError)
+                if (!resolver.TryResolve(
+                        item,
+                        out gun,
+                        out gunError)
                     || gun == null)
                 {
                     error = string.IsNullOrWhiteSpace(gunError)
@@ -505,9 +530,10 @@ namespace ShooterMover.UI.Game
                         : gunError;
                     return false;
                 }
-                if (!IsSupported(gun))
+                if (!GunPlayRules.Supports(gun))
                 {
-                    error = "player-fire-gun-not-supported:" + gun.DefinitionId;
+                    error = "player-fire-gun-not-supported:"
+                        + gun.DefinitionId;
                     return false;
                 }
 
@@ -519,42 +545,21 @@ namespace ShooterMover.UI.Game
                 catch (Exception exception)
                 {
                     if (GunLiveExceptionPolicy.IsFatal(exception)) throw;
-                    error = "player-fire-bullet-invalid:" + exception.Message;
+                    error = "player-fire-bullet-invalid:"
+                        + exception.Message;
                     return false;
                 }
 
-                result.Add(new GunPlay(index, selected, gun, bullet, now));
+                result.Add(new GunPlay(
+                    index,
+                    selected,
+                    gun,
+                    bullet,
+                    now));
             }
 
             error = string.Empty;
             return result.Count > 0;
-        }
-
-        private static bool IsSupported(EffectiveGun gun)
-        {
-            return gun != null
-                && gun.UsesCanonicalAuthoredDefinition
-                && gun.Projectile != null
-                && (gun.Projectile.Kind == GunProjectileKind.RegularProjectile
-                    || gun.Projectile.Kind == GunProjectileKind.Orb)
-                && gun.Projectile.TerminationBehavior
-                    == GunProjectileTerminationBehavior.StopWhenPierceIsSpent
-                && gun.Guidance != null
-                && gun.Guidance.Mode == GunGuidanceMode.Unguided
-                && gun.Impact != null
-                && gun.Impact.HandlesEnemyImpact
-                && gun.Impact.HandlesWallImpact
-                && gun.Impact.HandlesRangeExpiry
-                && gun.Impact.HandlesTermination
-                && gun.Impact.Ricochet == null
-                && gun.Damage != null
-                && gun.Damage.DirectDamage > 0d
-                && !gun.Damage.HasAreaDamage
-                && !gun.Damage.HasDamageOverTime
-                && gun.Effects != null
-                && gun.Effects.Explosion == null
-                && gun.Effects.DamageOverTime == null
-                && gun.Effects.ChainArc == null;
         }
 
         private static bool TryResolveEquippedGuns(
@@ -582,21 +587,28 @@ namespace ShooterMover.UI.Game
             }
 
             var itemIds = new HashSet<StableId>();
-            for (int index = 0; index < loadout.MountLayout.Positions.Count; index++)
+            for (int index = 0;
+                 index < loadout.MountLayout.Positions.Count;
+                 index++)
             {
-                GunSlot slot = loadout.MountLayout.Positions[index];
+                GunSlot slot =
+                    loadout.MountLayout.Positions[index];
                 if (slot == null || !slot.IsActive) continue;
 
                 ShooterMover.Application.Flow.Game.EquippedGun binding =
                     snapshot.Find(slot.MountStableId);
-                if (binding == null || binding.InstanceId == null) continue;
+                if (binding == null || binding.InstanceId == null)
+                {
+                    continue;
+                }
                 if (!itemIds.Add(binding.InstanceId))
                 {
                     error = "player-fire-gun-duplicated";
                     return false;
                 }
 
-                GunItem item = loadout.GunInventory.Find(binding.InstanceId);
+                GunItem item =
+                    loadout.GunInventory.Find(binding.InstanceId);
                 if (item == null
                     || item.InstanceId != binding.InstanceId
                     || item.GunDefinitionId == null)
@@ -632,7 +644,10 @@ namespace ShooterMover.UI.Game
         private void Report(string error)
         {
             if (string.IsNullOrWhiteSpace(error)
-                || string.Equals(error, lastError, StringComparison.Ordinal))
+                || string.Equals(
+                    error,
+                    lastError,
+                    StringComparison.Ordinal))
             {
                 return;
             }
@@ -644,9 +659,12 @@ namespace ShooterMover.UI.Game
         {
             unchecked
             {
-                return ((ulong)(run + 1L) * 11400714819323198485UL)
-                    ^ ((ulong)(gun + 1) * 14029467366897019727UL)
-                    ^ ((ulong)(shot + 1L) * 1609587929392839161UL);
+                return ((ulong)(run + 1L)
+                        * 11400714819323198485UL)
+                    ^ ((ulong)(gun + 1)
+                        * 14029467366897019727UL)
+                    ^ ((ulong)(shot + 1L)
+                        * 1609587929392839161UL);
             }
         }
 

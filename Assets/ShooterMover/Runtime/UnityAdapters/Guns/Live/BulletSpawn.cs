@@ -17,6 +17,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
         private readonly HashSet<Bullet> active = new HashSet<Bullet>();
         private Texture2D texture;
         private Sprite sprite;
+        private GunTargets targets;
 
         public int ActiveCount { get { return active.Count; } }
 
@@ -34,6 +35,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
             try
             {
                 EnsureSprite();
+                EnsureTargets(owner);
                 for (int index = 0; index < effects.Count; index++)
                 {
                     ProjectileLaunchEffect effect = effects[index];
@@ -59,6 +61,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                             effect,
                             sprite,
                             owner,
+                            targets,
                             HandleFinished))
                     {
                         throw new InvalidOperationException(
@@ -98,6 +101,19 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 if (bullet != null) bullet.RemoveFromGame();
             }
             active.Clear();
+        }
+
+        private void EnsureTargets(Transform owner)
+        {
+            if (targets == null)
+            {
+                targets = GetComponent<GunTargets>();
+                if (targets == null)
+                {
+                    targets = gameObject.AddComponent<GunTargets>();
+                }
+            }
+            targets.Configure(owner);
         }
 
         private void HandleFinished(Bullet bullet)
@@ -146,6 +162,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
         private void OnDestroy()
         {
             Clear();
+            targets = null;
             if (sprite != null) Destroy(sprite);
             if (texture != null) Destroy(texture);
         }

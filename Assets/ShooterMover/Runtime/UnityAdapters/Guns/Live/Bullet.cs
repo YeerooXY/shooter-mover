@@ -5,6 +5,7 @@ using ShooterMover.Application.Guns.Execution;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Guns;
 using ShooterMover.Domain.Guns.Execution;
+using ShooterMover.Domain.Guns.Guidance;
 using ShooterMover.UnityAdapters.Combat;
 using UnityEngine;
 
@@ -22,12 +23,14 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 new SharedDeterministicRandomFractionalPierceRoller());
         private readonly ProjectileEffectEmitter effectEmitter =
             new ProjectileEffectEmitter();
+        private readonly Homing homing = new Homing();
+        private readonly GunImpact impacts = new GunImpact();
         private readonly HashSet<string> impactedTargets =
             new HashSet<string>(StringComparer.Ordinal);
 
-        private ProjectileLaunchEffect effect;
         private ProjectileLifecycleState state;
         private Transform sourceOwner;
+        private GunTargets targets;
         private Rigidbody2D body;
         private CircleCollider2D trigger;
         private Action<Bullet> finishedCallback;
@@ -42,6 +45,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
             ProjectileLaunchEffect configuredEffect,
             Sprite bulletSprite,
             Transform configuredSourceOwner,
+            GunTargets configuredTargets,
             Action<Bullet> onFinished)
         {
             if (configured
@@ -49,14 +53,15 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 || configuredEffect.InitialState == null
                 || bulletSprite == null
                 || configuredSourceOwner == null
+                || configuredTargets == null
                 || onFinished == null)
             {
                 return false;
             }
 
-            effect = configuredEffect;
             state = configuredEffect.InitialState;
             sourceOwner = configuredSourceOwner;
+            targets = configuredTargets;
             finishedCallback = onFinished;
             Vector2 direction = ToUnity(state.Direction);
             if (!state.IsActive
@@ -69,17 +74,8 @@ namespace ShooterMover.UnityAdapters.Guns.Live
 
             Vector2 position = ToUnity(state.Position);
             transform.position = new Vector3(position.x, position.y, 0f);
-            transform.rotation = Quaternion.Euler(
-                0f,
-                0f,
-                Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg);
-            GameObject visualObject = new GameObject("Visual");
-            visualObject.transform.SetParent(transform, false);
-            visualObject.transform.localScale = new Vector3(0.28f, 0.1f, 1f);
-            SpriteRenderer renderer = visualObject.AddComponent<SpriteRenderer>();
-            renderer.sprite = bulletSprite;
-            renderer.color = new Color(1f, 0.82f, 0.2f, 1f);
-            renderer.sortingOrder = 100;
+            SetFacing(direction);
+            CreateVisual(bulletSprite, state.Profile.Projectile.Kind);
 
             body = gameObject.AddComponent<Rigidbody2D>();
             body.bodyType = RigidbodyType2D.Kinematic;
@@ -89,7 +85,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
             body.simulated = false;
             trigger = gameObject.AddComponent<CircleCollider2D>();
             trigger.isTrigger = true;
-            trigger.radius = 0.12f;
+            trigger.radius = ColliderRadius(state.Profile.Projectile.Kind);
             configured = true;
             return true;
         }
@@ -129,6 +125,25 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 return;
             }
 
+            try
+            {
+                GunGuidanceDecision guidance = homing.Decide(
+                    state.Profile.Guidance,
+                    state.Guidance,
+                    state.Position,
+                    Time.fixedDeltaTime,
+                    targets);
+                state = state.WithGuidance(guidance.NextState);
+                SetFacing(ToUnity(state.Direction));
+            }
+            catch (Exception exception)
+            {
+                if (GunLiveExceptionPolicy.IsFatal(exception)) throw;
+                Report("player-bullet-guidance-failed:" + exception.Message);
+                Complete();
+                return;
+            }
+
             double distance = Math.Min(
                 state.Speed * Time.fixedDeltaTime,
                 state.RemainingRange);
@@ -140,8 +155,8 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 state.DistanceTravelled + distance);
             body.MovePosition(ToUnity(state.Position));
 
-            // MovePosition is simulated after FixedUpdate. Defer canonical range expiry until the
-            // following fixed tick so the final swept segment can still report a target or wall hit.
+            // MovePosition is simulated after FixedUpdate. Defer range expiry so the final
+            // swept segment may still report an exact enemy or wall contact.
             if (state.RemainingRange <= 0.0000001d)
             {
                 rangeExpiryPending = true;
@@ -161,8 +176,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 return;
             }
 
-            Damageable target =
-                other.GetComponentInParent<Damageable>();
+            Damageable target = other.GetComponentInParent<Damageable>();
             if (target != null)
             {
                 if (target.CanTakeDamage) ResolveDamageableImpact(target);
@@ -191,17 +205,18 @@ namespace ShooterMover.UnityAdapters.Guns.Live
             {
                 var targetReference = new GunTargetReference(
                     new GunActorInstanceId(target.DamageableStableId),
-                    new LifecycleGeneration(target.DamageableLifecycleGeneration));
+                    new LifecycleGeneration(
+                        target.DamageableLifecycleGeneration));
                 ProjectileImpactDecision decision = impactResolver.Resolve(
                     state,
-                    ProjectileContact.Enemy(targetReference, state.Position));
-                ProjectileEffectEmission emission = FindSingleDirectDamageEmission(
-                    effectEmitter.Emit(decision),
-                    targetReference);
+                    ProjectileContact.Enemy(
+                        targetReference,
+                        state.Position));
+                ProjectileEmissionResult emissions =
+                    effectEmitter.Emit(decision);
                 if (!decision.Handled
                     || !decision.EnemyImpactApplied
-                    || decision.StateAfter == null
-                    || emission == null)
+                    || decision.StateAfter == null)
                 {
                     throw new InvalidOperationException(
                         "canonical-projectile-damageable-impact-invalid");
@@ -211,20 +226,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 impactCommitted = true;
                 state = decision.StateAfter;
                 StopTravel();
-
-                Hit hit = BuildDamageHit(emission, target);
-                try
-                {
-                    HitDelivery.Deliver(target, hit);
-                }
-                catch (Exception exception)
-                {
-                    if (GunLiveExceptionPolicy.IsFatal(exception)) throw;
-                    Report(
-                        "canonical-projectile-target-hit-failed:"
-                        + exception.Message);
-                }
-
+                impacts.ApplyEnemy(emissions, target, targets);
                 CompleteResolvedImpact();
             }
             catch (Exception exception)
@@ -235,80 +237,6 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                     + exception.Message);
                 TerminateRejectedImpact();
             }
-        }
-
-        private static Hit BuildDamageHit(
-            ProjectileEffectEmission emission,
-            Damageable target)
-        {
-            if (emission == null
-                || emission.Kind != ProjectileEffectEmissionKind.EnemyImpact
-                || emission.Lifecycle == null
-                || emission.Damage == null
-                || target == null
-                || target.DamageableStableId == null
-                || target.DamageableLifecycleGeneration <= 0L)
-            {
-                throw new InvalidOperationException(
-                    "canonical-projectile-direct-damage-emission-invalid");
-            }
-
-            GunEffectIdentity identity =
-                emission.Lifecycle.Identity.SourceIdentity;
-            StableId eventId = StableId.Create(
-                "direct-damage-operation",
-                "canonical-player-projectile-"
-                + Hash64(
-                    emission.ToCanonicalString()
-                    + "|" + target.DamageableStableId
-                    + "|" + target.DamageableLifecycleGeneration.ToString(
-                        CultureInfo.InvariantCulture)));
-            long order = checked(
-                emission.Lifecycle.LaunchSimulationTick * 4096L
-                + emission.EventOrdinal);
-            return new Hit(
-                eventId,
-                identity.ActorId.Value,
-                identity.ParticipantId.Value,
-                target.DamageableStableId,
-                target.DamageableLifecycleGeneration,
-                order,
-                (int)emission.Damage.Category,
-                emission.Damage.DirectDamage,
-                Time.fixedTimeAsDouble);
-        }
-
-        private static ProjectileEffectEmission FindSingleDirectDamageEmission(
-            ProjectileEmissionResult result,
-            GunTargetReference expectedTarget)
-        {
-            if (result == null || expectedTarget == null) return null;
-            ProjectileEffectEmission selected = null;
-            for (int index = 0; index < result.Emissions.Count; index++)
-            {
-                ProjectileEffectEmission emission = result.Emissions[index];
-                if (emission.Kind == ProjectileEffectEmissionKind.EnemyImpact)
-                {
-                    if (selected != null
-                        || emission.Target == null
-                        || !emission.Target.Equals(expectedTarget)
-                        || emission.Damage == null
-                        || emission.Damage.DirectDamage <= 0d
-                        || emission.Damage.HasAreaDamage
-                        || emission.Damage.HasDamageOverTime)
-                    {
-                        return null;
-                    }
-                    selected = emission;
-                }
-                else if (emission.Kind != ProjectileEffectEmissionKind.Termination
-                    || emission.ExplosionTriggerReasons
-                        != GunExplosionTriggerReason.None)
-                {
-                    return null;
-                }
-            }
-            return selected;
         }
 
         private void CompleteResolvedImpact()
@@ -336,17 +264,19 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 ProjectileImpactDecision decision = impactResolver.Resolve(
                     state,
                     ProjectileContact.RangeExpiry(state.Position));
-                ProjectileEmissionResult emissions = effectEmitter.Emit(decision);
+                ProjectileEmissionResult emissions =
+                    effectEmitter.Emit(decision);
                 if (!decision.Handled
                     || decision.StateAfter == null
-                    || !decision.StateAfter.IsTerminated
-                    || ContainsUnsupportedEmission(
-                        emissions,
-                        ProjectileEffectEmissionKind.RangeExpiry))
+                    || !decision.StateAfter.IsTerminated)
                 {
                     throw new InvalidOperationException(
                         "canonical-projectile-range-resolution-invalid");
                 }
+                impacts.ApplyEnd(
+                    emissions,
+                    ProjectileEffectEmissionKind.RangeExpiry,
+                    targets);
                 state = decision.StateAfter;
             }
             catch (Exception exception)
@@ -370,7 +300,9 @@ namespace ShooterMover.UnityAdapters.Guns.Live
             {
                 ProjectileImpactDecision pending = impactResolver.Resolve(
                     state,
-                    ProjectileContact.Wall(BlockingWallId, state.Position));
+                    ProjectileContact.Wall(
+                        BlockingWallId,
+                        state.Position));
                 if (pending == null || !pending.RequiresWallImpactResolution)
                 {
                     throw new InvalidOperationException(
@@ -380,18 +312,20 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                     impactResolver.ApplyWallResolution(
                         pending,
                         ProjectileWallImpactResolution.BlockingImpact(
-                            GunExplosionTriggerReason.None));
-                ProjectileEmissionResult emissions = effectEmitter.Emit(resolved);
+                            WallExplosionReasons()));
+                ProjectileEmissionResult emissions =
+                    effectEmitter.Emit(resolved);
                 if (resolved == null
                     || resolved.StateAfter == null
-                    || !resolved.StateAfter.IsTerminated
-                    || ContainsUnsupportedEmission(
-                        emissions,
-                        ProjectileEffectEmissionKind.WallImpact))
+                    || !resolved.StateAfter.IsTerminated)
                 {
                     throw new InvalidOperationException(
                         "canonical-projectile-wall-resolution-invalid");
                 }
+                impacts.ApplyEnd(
+                    emissions,
+                    ProjectileEffectEmissionKind.WallImpact,
+                    targets);
                 state = resolved.StateAfter;
             }
             catch (Exception exception)
@@ -409,26 +343,29 @@ namespace ShooterMover.UnityAdapters.Guns.Live
             Complete();
         }
 
-        private static bool ContainsUnsupportedEmission(
-            ProjectileEmissionResult result,
-            ProjectileEffectEmissionKind allowed)
+        private GunExplosionTriggerReason WallExplosionReasons()
         {
-            if (result == null) return true;
-            for (int index = 0; index < result.Emissions.Count; index++)
+            GunExplosionTriggerSpec triggerSpec = state == null
+                || state.Profile == null
+                || state.Profile.Impact == null
+                    ? null
+                    : state.Profile.Impact.ExplosionTrigger;
+            if (triggerSpec == null)
             {
-                ProjectileEffectEmission emission = result.Emissions[index];
-                if (emission.Kind != allowed
-                    && emission.Kind != ProjectileEffectEmissionKind.Termination)
-                {
-                    return true;
-                }
-                if (emission.ExplosionTriggerReasons
-                    != GunExplosionTriggerReason.None)
-                {
-                    return true;
-                }
+                return GunExplosionTriggerReason.None;
             }
-            return false;
+
+            GunExplosionTriggerReason reasons =
+                GunExplosionTriggerReason.None;
+            if (triggerSpec.OnWallImpact)
+            {
+                reasons |= GunExplosionTriggerReason.WallImpact;
+            }
+            if (triggerSpec.OnTermination)
+            {
+                reasons |= GunExplosionTriggerReason.Termination;
+            }
+            return reasons;
         }
 
         private void TerminateRejectedImpact()
@@ -460,8 +397,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
             rangeExpiryPending = false;
             impactedTargets.Clear();
             StopTravel();
-            Action<Bullet> callback =
-                finishedCallback;
+            Action<Bullet> callback = finishedCallback;
             finishedCallback = null;
             if (callback != null) callback(this);
             Destroy(gameObject);
@@ -473,6 +409,77 @@ namespace ShooterMover.UnityAdapters.Guns.Live
             Transform colliderTransform = other.transform;
             return colliderTransform == sourceOwner
                 || colliderTransform.IsChildOf(sourceOwner);
+        }
+
+        private void CreateVisual(
+            Sprite bulletSprite,
+            GunProjectileKind kind)
+        {
+            GameObject visualObject = new GameObject("Visual");
+            visualObject.transform.SetParent(transform, false);
+            SpriteRenderer renderer =
+                visualObject.AddComponent<SpriteRenderer>();
+            renderer.sprite = bulletSprite;
+            renderer.sortingOrder = 100;
+
+            switch (kind)
+            {
+                case GunProjectileKind.Orb:
+                    visualObject.transform.localScale =
+                        new Vector3(0.38f, 0.38f, 1f);
+                    renderer.color = new Color(0.3f, 0.85f, 1f, 1f);
+                    break;
+
+                case GunProjectileKind.Rocket:
+                    visualObject.transform.localScale =
+                        new Vector3(0.36f, 0.12f, 1f);
+                    renderer.color = new Color(1f, 0.4f, 0.12f, 1f);
+                    CreateExhaust(bulletSprite);
+                    break;
+
+                default:
+                    visualObject.transform.localScale =
+                        new Vector3(0.28f, 0.1f, 1f);
+                    renderer.color = new Color(1f, 0.82f, 0.2f, 1f);
+                    break;
+            }
+        }
+
+        private void CreateExhaust(Sprite bulletSprite)
+        {
+            GameObject exhaustObject = new GameObject("Exhaust");
+            exhaustObject.transform.SetParent(transform, false);
+            exhaustObject.transform.localPosition =
+                new Vector3(-0.23f, 0f, 0f);
+            exhaustObject.transform.localScale =
+                new Vector3(0.16f, 0.07f, 1f);
+            SpriteRenderer exhaust =
+                exhaustObject.AddComponent<SpriteRenderer>();
+            exhaust.sprite = bulletSprite;
+            exhaust.color = new Color(1f, 0.85f, 0.2f, 0.9f);
+            exhaust.sortingOrder = 99;
+        }
+
+        private static float ColliderRadius(GunProjectileKind kind)
+        {
+            switch (kind)
+            {
+                case GunProjectileKind.Orb:
+                    return 0.2f;
+                case GunProjectileKind.Rocket:
+                    return 0.14f;
+                default:
+                    return 0.12f;
+            }
+        }
+
+        private void SetFacing(Vector2 direction)
+        {
+            if (direction.sqrMagnitude < 0.000001f) return;
+            float angle = Mathf.Atan2(direction.y, direction.x)
+                * Mathf.Rad2Deg;
+            transform.rotation = Quaternion.Euler(0f, 0f, angle);
+            if (body != null) body.rotation = angle;
         }
 
         private void Report(string diagnostic)
@@ -492,20 +499,6 @@ namespace ShooterMover.UnityAdapters.Guns.Live
         private static Vector2 ToUnity(GunVector2 value)
         {
             return new Vector2((float)value.X, (float)value.Y);
-        }
-
-        private static string Hash64(string value)
-        {
-            const ulong offset = 14695981039346656037UL;
-            const ulong prime = 1099511628211UL;
-            ulong hash = offset;
-            string text = value ?? string.Empty;
-            for (int index = 0; index < text.Length; index++)
-            {
-                hash ^= text[index];
-                hash *= prime;
-            }
-            return hash.ToString("x16", CultureInfo.InvariantCulture);
         }
     }
 }
