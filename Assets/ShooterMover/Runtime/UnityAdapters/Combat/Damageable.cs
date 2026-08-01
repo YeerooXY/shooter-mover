@@ -1,5 +1,6 @@
 using System;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Guns;
 using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Combat
@@ -56,6 +57,10 @@ namespace ShooterMover.UnityAdapters.Combat
         public long TargetLifecycleGeneration { get; }
         public long Order { get; }
         public int ChannelValue { get; }
+        public GunDamageCategory DamageCategory
+        {
+            get { return (GunDamageCategory)ChannelValue; }
+        }
         public double Amount { get; }
         public double OccurredAtSeconds { get; }
     }
