@@ -75,13 +75,4 @@ namespace ShooterMover.Application.Shops
             out ShopStockRollResult result,
             out string rejectionCode);
     }
-
-    public interface IShopPurchasePreparer
-    {
-        bool TryPreparePurchase(
-            EquipmentInstance equipment,
-            out string rejectionCode);
-
-        void CompletePurchase(EquipmentInstance equipment);
-    }
 }
