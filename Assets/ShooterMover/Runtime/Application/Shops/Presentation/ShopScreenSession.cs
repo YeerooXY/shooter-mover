@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Generic;
 using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Rewards.Strongboxes;
-using ShooterMover.Application.Shops;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
@@ -11,24 +9,19 @@ using ShooterMover.Domain.Shops;
 
 namespace ShooterMover.Application.Shops.Presentation
 {
-    /// <summary>
-    /// Thin presentation boundary over SHOP/MON/INV/RAP. It retains only immutable
-    /// projections and input identities; stock, sold state, prices, money, and grants
-    /// remain owned by the existing authorities.
-    /// </summary>
     public sealed partial class ShopScreenSession
     {
         private readonly PlayerRouteProfilePayload routePayload;
-        private readonly StableId runStableId;
+        private readonly StableId stockId;
         private readonly StableId claimantStableId;
         private readonly ShopLiveActions shopRuntime;
         private readonly MoneyWalletActions moneyWallet;
         private readonly ShopDefinition definition;
         private readonly EquipmentCatalog catalog;
         private readonly ProgressionContext progressionContext;
-        private readonly GeneratedEquipmentAugmentSignatureState augmentSignatures;
+        private readonly GeneratedEquipmentAugmentSignatureState offerAugments;
         private readonly DateTime? refreshesAtUtc;
-        private readonly IShopScreenPersistencePort persistence;
+        private readonly IShopSave save;
 
         private ShopInventoryView inventory;
         private ShopScreenView currentProjection;
@@ -60,16 +53,16 @@ namespace ShooterMover.Application.Shops.Presentation
 
         public ShopScreenSession(
             PlayerRouteProfilePayload routePayload,
-            StableId runStableId,
+            StableId stockId,
             StableId claimantStableId,
             ShopLiveActions shopRuntime,
             MoneyWalletActions moneyWallet,
             ShopDefinition definition,
             EquipmentCatalog catalog,
             ProgressionContext progressionContext,
-            GeneratedEquipmentAugmentSignatureState augmentSignatures,
+            GeneratedEquipmentAugmentSignatureState offerAugments,
             DateTime? refreshesAtUtc,
-            IShopScreenPersistencePort persistence)
+            IShopSave save)
         {
             this.routePayload = routePayload
                 ?? throw new ArgumentNullException(nameof(routePayload));
@@ -80,8 +73,8 @@ namespace ShooterMover.Application.Shops.Presentation
                     nameof(routePayload));
             }
 
-            this.runStableId = runStableId
-                ?? throw new ArgumentNullException(nameof(runStableId));
+            this.stockId = stockId
+                ?? throw new ArgumentNullException(nameof(stockId));
             this.claimantStableId = claimantStableId
                 ?? throw new ArgumentNullException(nameof(claimantStableId));
             this.shopRuntime = shopRuntime
@@ -101,9 +94,9 @@ namespace ShooterMover.Application.Shops.Presentation
                     "Shop refresh time must be UTC.",
                     nameof(refreshesAtUtc));
             }
-            this.augmentSignatures = augmentSignatures;
+            this.offerAugments = offerAugments;
             this.refreshesAtUtc = refreshesAtUtc;
-            this.persistence = persistence;
+            this.save = save;
         }
 
         public PlayerRouteProfilePayload RoutePayload
@@ -113,7 +106,12 @@ namespace ShooterMover.Application.Shops.Presentation
 
         public StableId RunStableId
         {
-            get { return runStableId; }
+            get { return stockId; }
+        }
+
+        public StableId StockId
+        {
+            get { return stockId; }
         }
 
         public StableId ShopStableId
@@ -149,7 +147,7 @@ namespace ShooterMover.Application.Shops.Presentation
             }
 
             ShopInventoryOpenResult opened = shopRuntime.Open(
-                runStableId,
+                stockId,
                 definition,
                 catalog,
                 progressionContext);
@@ -223,7 +221,8 @@ namespace ShooterMover.Application.Shops.Presentation
                     unavailable);
             }
 
-            ShopStockEntry entry = inventory.FindEntry(input.StockEntryStableId);
+            ShopStockEntry entry = inventory.FindEntry(
+                input.StockEntryStableId);
             if (entry == null)
             {
                 ShopScreenView invalid = Project(
@@ -255,10 +254,10 @@ namespace ShooterMover.Application.Shops.Presentation
             BuildFeedback(fact, entry, out kind, out feedback);
             string feedbackCode = fact.RejectionCode;
             if (fact.Status == ShopPurchaseStatus.Applied
-                && persistence != null)
+                && save != null)
             {
                 string persistenceRejection;
-                if (!persistence.Persist(
+                if (!save.Persist(
                         fact.CommandFingerprint,
                         out persistenceRejection))
                 {
@@ -281,6 +280,5 @@ namespace ShooterMover.Application.Shops.Presentation
                 fact,
                 currentProjection);
         }
-
     }
 }
