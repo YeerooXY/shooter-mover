@@ -38,7 +38,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             if (source == null || explosion == null) return;
             try
             {
-                Spawn(explosion);
+                Spawn(explosion, source);
             }
             catch (Exception exception)
             {
@@ -49,14 +49,30 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
 
         public static EnemyTraitBurst Spawn(EnemyVolatileExplosion explosion)
         {
+            return Spawn(explosion, null);
+        }
+
+        private static EnemyTraitBurst Spawn(
+            EnemyVolatileExplosion explosion,
+            Enemy source)
+        {
             if (explosion == null) throw new ArgumentNullException(nameof(explosion));
+            ResolveSorting(source, out int sortingLayerId, out int sortingOrder);
             GameObject burstObject = new GameObject("Volatile Trait Burst");
             EnemyTraitBurst burst = burstObject.AddComponent<EnemyTraitBurst>();
-            burst.Configure(explosion.Position, (float)explosion.Radius);
+            burst.Configure(
+                explosion.Position,
+                (float)explosion.Radius,
+                sortingLayerId,
+                sortingOrder);
             return burst;
         }
 
-        private void Configure(Vector2 position, float maximumRadius)
+        private void Configure(
+            Vector2 position,
+            float maximumRadius,
+            int sortingLayerId,
+            int sortingOrder)
         {
             if (maximumRadius <= 0f
                 || float.IsNaN(maximumRadius)
@@ -68,8 +84,18 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             center = position;
             radius = maximumRadius;
             transform.position = new Vector3(center.x, center.y, 0f);
-            ring = CreateLine("Burst Ring", RingPoints, 0.09f, 500);
-            star = CreateLine("Burst Star", StarPoints, 0.055f, 501);
+            ring = CreateLine(
+                "Burst Ring",
+                RingPoints,
+                0.09f,
+                sortingLayerId,
+                sortingOrder);
+            star = CreateLine(
+                "Burst Star",
+                StarPoints,
+                0.055f,
+                sortingLayerId,
+                sortingOrder + 1);
             startedAt = Time.unscaledTime;
             configured = true;
             Tick(0f);
@@ -116,6 +142,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             string lineName,
             int pointCount,
             float width,
+            int sortingLayerId,
             int sortingOrder)
         {
             GameObject lineObject = new GameObject(lineName);
@@ -129,8 +156,34 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             line.endWidth = width;
             line.numCapVertices = 2;
             line.numCornerVertices = 2;
+            line.sortingLayerID = sortingLayerId;
             line.sortingOrder = sortingOrder;
             return line;
+        }
+
+        private static void ResolveSorting(
+            Enemy source,
+            out int sortingLayerId,
+            out int sortingOrder)
+        {
+            sortingLayerId = 0;
+            sortingOrder = 500;
+            if (source == null) return;
+
+            SpriteRenderer[] renderers =
+                source.GetComponentsInChildren<SpriteRenderer>(true);
+            if (renderers.Length == 0) return;
+
+            sortingLayerId = renderers[0].sortingLayerID;
+            int highest = renderers[0].sortingOrder;
+            for (int index = 1; index < renderers.Length; index++)
+            {
+                if (renderers[index].sortingLayerID == sortingLayerId)
+                {
+                    highest = Mathf.Max(highest, renderers[index].sortingOrder);
+                }
+            }
+            sortingOrder = highest + 50;
         }
 
         private static void SetCircle(
