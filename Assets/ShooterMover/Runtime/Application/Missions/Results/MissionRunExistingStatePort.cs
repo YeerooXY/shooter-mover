@@ -41,15 +41,6 @@ namespace ShooterMover.Application.Missions.Results
             {
                 return MissionRunCollectionVerification.Reject("run-holdings-snapshot-null");
             }
-            if (holdingsAuthority.Sequence != command.ExpectedHoldingsSequence)
-            {
-                return MissionRunCollectionVerification.Reject("run-holdings-sequence-stale");
-            }
-            if (!string.Equals(holdings.Fingerprint, command.ExpectedHoldingsFingerprint, StringComparison.Ordinal))
-            {
-                return MissionRunCollectionVerification.Reject("run-holdings-fingerprint-stale");
-            }
-
             UniqueHoldingSnapshot holding = FindStrongbox(holdings, command.InstanceStableId);
             if (holding == null)
             {
@@ -91,23 +82,6 @@ namespace ShooterMover.Application.Missions.Results
             {
                 return MissionRunStrongboxView.Reject("run-external-snapshot-null");
             }
-            if (holdingsAuthority.Sequence != command.ExpectedHoldingsSequence)
-            {
-                return MissionRunStrongboxView.Reject("run-holdings-sequence-stale");
-            }
-            if (!string.Equals(holdings.Fingerprint, command.ExpectedHoldingsFingerprint, StringComparison.Ordinal))
-            {
-                return MissionRunStrongboxView.Reject("run-holdings-fingerprint-stale");
-            }
-            if (openings.Sequence != command.ExpectedStrongboxOpeningSequence)
-            {
-                return MissionRunStrongboxView.Reject("run-box-opening-sequence-stale");
-            }
-            if (!string.Equals(openings.Fingerprint, command.ExpectedStrongboxOpeningFingerprint, StringComparison.Ordinal))
-            {
-                return MissionRunStrongboxView.Reject("run-box-opening-fingerprint-stale");
-            }
-
             List<MissionRunStrongboxResult> results =
                 new List<MissionRunStrongboxResult>(collectedStrongboxes.Count);
             for (int index = 0; index < collectedStrongboxes.Count; index++)

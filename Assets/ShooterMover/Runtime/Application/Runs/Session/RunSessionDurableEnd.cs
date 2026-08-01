@@ -269,21 +269,11 @@ namespace ShooterMover.Application.Runs.Session
                             existingResult == null
                                 ? "mission-result-port-null"
                                 : existingResult.RejectionCode);
-                    var retryPolicy = RuntimePorts.MissionResults
-                        as IRunMissionResultEndRetryPolicy;
-                    bool retryable = existingResult != null
-                        && retryPolicy != null
-                        && retryPolicy.IsRetryableEndFailure(
-                            command,
-                            existingResult);
-                    if (!retryable)
-                    {
-                        endReplay.Add(
-                            command.OperationStableId,
-                            new EndReplayRecord(
-                                command.Fingerprint,
-                                rejected));
-                    }
+                    endReplay.Add(
+                        command.OperationStableId,
+                        new EndReplayRecord(
+                            command.Fingerprint,
+                            rejected));
                     return rejected;
                 }
 

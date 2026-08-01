@@ -212,25 +212,15 @@ namespace ShooterMover.UI.Game
                     continue;
                 }
 
-                StableId operation = StableId.Create(
-                    "operation",
-                    "run-result-box-"
-                    + RunFingerprint.Hash(
-                        reward.CollectionOperationStableId
-                        + "|"
-                        + reward.GeneratedRewardChildStableId
-                        + "|"
-                        + reward.Fingerprint)
-                        .Substring(0, 32));
                 MissionRunStateResult recorded =
                     runtime.Run.RecordCollectedStrongbox(
                         new RunStrongboxCollectionRequest(
-                            operation,
+                            reward.CollectionOperationStableId,
                             reward.RunStableId,
                             reward.RunLifecycleGeneration,
                             reward.ContentStableId,
                             reward.GeneratedRewardChildStableId,
-                            reward.SourceGrantStableId,
+                            reward.GeneratedRewardChildStableId,
                             reward.DropOperationStableId));
                 if (recorded == null || !recorded.Succeeded)
                 {

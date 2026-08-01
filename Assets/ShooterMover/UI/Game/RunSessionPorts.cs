@@ -87,9 +87,7 @@ namespace ShooterMover.UI.Game
             if (graph == null) throw new ArgumentNullException(nameof(graph));
             missionProjection = new RunJournal(graph);
             missionResults = new ExistingMissionResultRunPort(
-                new MissionRunResultState(missionProjection),
-                graph.LoadoutRuntime.Holdings,
-                graph.StrongboxAuthority.ExportSnapshot);
+                new MissionRunResultState(missionProjection));
         }
 
         public void BindRun(RunSessionAggregate run)

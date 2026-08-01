@@ -48,16 +48,6 @@ namespace ShooterMover.UI.Game
                 return MissionRunCollectionVerification.Reject(
                     "run-journal-strongbox-command-null");
             }
-            string contextRejection = ValidateExternalSnapshots(
-                command.ExpectedHoldingsSequence,
-                command.ExpectedHoldingsFingerprint,
-                null,
-                null);
-            if (!string.IsNullOrEmpty(contextRejection))
-            {
-                return MissionRunCollectionVerification.Reject(contextRejection);
-            }
-
             RunSessionCollectedReward exact = FindStrongbox(
                 command.RunStableId,
                 command.InstanceStableId);
@@ -67,7 +57,7 @@ namespace ShooterMover.UI.Game
                     "run-journal-strongbox-not-collected");
             }
             if (exact.ContentStableId != command.DefinitionStableId
-                || exact.SourceGrantStableId != command.GrantStableId
+                || exact.GeneratedRewardChildStableId != command.GrantStableId
                 || exact.DropOperationStableId != command.SourceStableId)
             {
                 return MissionRunCollectionVerification.Reject(
@@ -98,16 +88,6 @@ namespace ShooterMover.UI.Game
 
             StrongboxOpeningSnapshot openings =
                 graph.StrongboxAuthority.ExportSnapshot();
-            string contextRejection = ValidateExternalSnapshots(
-                command.ExpectedHoldingsSequence,
-                command.ExpectedHoldingsFingerprint,
-                command.ExpectedStrongboxOpeningSequence,
-                command.ExpectedStrongboxOpeningFingerprint);
-            if (!string.IsNullOrEmpty(contextRejection))
-            {
-                return MissionRunStrongboxView.Reject(contextRejection);
-            }
-
             List<MissionRunStrongboxResult> results;
             string projectionRejection;
             if (!TryProject(
@@ -199,7 +179,8 @@ namespace ShooterMover.UI.Game
                     collection.InstanceStableId);
                 if (exact == null
                     || exact.ContentStableId != collection.DefinitionStableId
-                    || exact.SourceGrantStableId != collection.GrantStableId
+                    || exact.GeneratedRewardChildStableId
+                        != collection.GrantStableId
                     || exact.DropOperationStableId != collection.SourceStableId)
                 {
                     rejection =
@@ -260,41 +241,6 @@ namespace ShooterMover.UI.Game
                 found = reward;
             }
             return found;
-        }
-
-        private string ValidateExternalSnapshots(
-            long expectedHoldingsSequence,
-            string expectedHoldingsFingerprint,
-            long? expectedOpeningSequence,
-            string expectedOpeningFingerprint)
-        {
-            PlayerHoldingsSnapshot holdings =
-                graph.LoadoutRuntime.Holdings.ExportSnapshot();
-            if (holdings == null
-                || graph.LoadoutRuntime.Holdings.Sequence
-                    != expectedHoldingsSequence
-                || !string.Equals(
-                    holdings.Fingerprint,
-                    expectedHoldingsFingerprint,
-                    StringComparison.Ordinal))
-            {
-                return "run-journal-holdings-snapshot-stale";
-            }
-            if (expectedOpeningSequence.HasValue)
-            {
-                StrongboxOpeningSnapshot openings =
-                    graph.StrongboxAuthority.ExportSnapshot();
-                if (openings == null
-                    || openings.Sequence != expectedOpeningSequence.Value
-                    || !string.Equals(
-                        openings.Fingerprint,
-                        expectedOpeningFingerprint,
-                        StringComparison.Ordinal))
-                {
-                    return "run-journal-opening-snapshot-stale";
-                }
-            }
-            return string.Empty;
         }
 
         private static StrongboxOpeningRecordSnapshot FindOpened(

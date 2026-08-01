@@ -12,7 +12,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         public void AcceptedOperationId_IsGlobalAcrossConcreteEquipmentInstances()
         {
             GunDefinitionData definition = Definition(
-                "gun.rifle",
+                "rifle.mk1",
                 1,
                 0d,
                 5d);
@@ -58,9 +58,9 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         private static GunDefinitionData SupportedDamageOverTimeDefinition()
         {
             return new GunDefinitionData(
-                "gun.flamethrower",
+                "flamethrower.mk1",
                 "Flamethrower",
-                "test-family",
+                "flamethrower",
                 1,
                 "Thermal",
                 "Test",

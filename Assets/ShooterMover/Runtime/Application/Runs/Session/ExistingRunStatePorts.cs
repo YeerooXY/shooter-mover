@@ -5,9 +5,7 @@ using System.Globalization;
 using System.Text;
 using ShooterMover.Application.Missions.Results;
 using ShooterMover.Application.Modifiers.StatusEffects;
-using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Flow.Session;
-using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Modifiers.StatusEffects;
@@ -104,24 +102,14 @@ namespace ShooterMover.Application.Runs.Session
     }
 
     public sealed class ExistingMissionResultRunPort :
-        IRunMissionResultPort,
-        IRunMissionStrongboxSnapshotSource
+        IRunMissionResultPort
     {
         private readonly MissionRunResultState authority;
-        private readonly IPlayerHoldingsState holdings;
-        private readonly Func<StrongboxOpeningSnapshot> openingExporter;
 
-        public ExistingMissionResultRunPort(
-            MissionRunResultState authority,
-            IPlayerHoldingsState holdings,
-            Func<StrongboxOpeningSnapshot> openingExporter)
+        public ExistingMissionResultRunPort(MissionRunResultState authority)
         {
             this.authority = authority
                 ?? throw new ArgumentNullException(nameof(authority));
-            this.holdings = holdings
-                ?? throw new ArgumentNullException(nameof(holdings));
-            this.openingExporter = openingExporter
-                ?? throw new ArgumentNullException(nameof(openingExporter));
         }
 
         public long Sequence
@@ -136,17 +124,6 @@ namespace ShooterMover.Application.Runs.Session
             return authority.TryGetRun(runStableId, out runPayload);
         }
 
-        public PlayerHoldingsSnapshot ExportCollectedStrongboxHoldings()
-        {
-            return holdings.ExportSnapshot();
-        }
-
-        public StrongboxOpeningSnapshot
-            ExportCollectedStrongboxRegistrations()
-        {
-            return openingExporter();
-        }
-
         public MissionRunStateResult RecordCollectedStrongbox(
             RunStrongboxCollectionRequest request,
             PlayerRouteProfilePayload routePayload)
@@ -158,14 +135,6 @@ namespace ShooterMover.Application.Runs.Session
                     request == null ? string.Empty : request.Fingerprint,
                     "run-mission-collection-input-null");
             }
-            PlayerHoldingsSnapshot snapshot = holdings.ExportSnapshot();
-            if (snapshot == null)
-            {
-                return Invalid(
-                    request.OperationStableId,
-                    request.Fingerprint,
-                    "run-mission-holdings-snapshot-null");
-            }
             return authority.RecordCollectedStrongbox(
                 MissionRunCollectStrongboxCommand.Create(
                     request.OperationStableId,
@@ -175,9 +144,7 @@ namespace ShooterMover.Application.Runs.Session
                     request.InstanceStableId,
                     request.GrantStableId,
                     request.SourceStableId,
-                    authority.Sequence,
-                    holdings.Sequence,
-                    snapshot.Fingerprint));
+                    authority.Sequence));
         }
 
         public MissionRunStateResult EndRun(
@@ -191,26 +158,13 @@ namespace ShooterMover.Application.Runs.Session
                     command == null ? string.Empty : command.Fingerprint,
                     "run-mission-end-input-null");
             }
-            PlayerHoldingsSnapshot holdingsSnapshot = holdings.ExportSnapshot();
-            StrongboxOpeningSnapshot openingSnapshot = openingExporter();
-            if (holdingsSnapshot == null || openingSnapshot == null)
-            {
-                return Invalid(
-                    command.OperationStableId,
-                    command.Fingerprint,
-                    "run-mission-external-snapshot-null");
-            }
             return authority.EndRun(
                 EndMissionRunCommand.Create(
                     command.OperationStableId,
                     command.RunStableId,
                     routePayload,
                     command.CompletionState,
-                    authority.Sequence,
-                    holdings.Sequence,
-                    holdingsSnapshot.Fingerprint,
-                    openingSnapshot.Sequence,
-                    openingSnapshot.Fingerprint));
+                    authority.Sequence));
         }
 
         private MissionRunStateResult Invalid(

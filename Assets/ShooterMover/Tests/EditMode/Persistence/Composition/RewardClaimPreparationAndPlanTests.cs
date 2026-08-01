@@ -93,6 +93,41 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                     == uncollected.GeneratedRewardChildStableId), Is.False);
         }
 
+        [TestCase(MissionRunCompletionState.Failed)]
+        [TestCase(MissionRunCompletionState.Abandoned)]
+        public void IncompleteRunCannotPrepareCollectedStrongboxTransfer(
+            MissionRunCompletionState completionState)
+        {
+            Fixture fixture = Fixture.Create(
+                "incomplete-" + completionState.ToString().ToLowerInvariant());
+            RunSessionCollectedReward box = fixture.Reward(
+                "box",
+                RewardGrantKind.Strongbox,
+                fixture.StrongboxTier,
+                1L,
+                1L);
+            var incompleteEnd = new EndRunSessionCommand(
+                Id("operation.incomplete-" + completionState
+                    .ToString().ToLowerInvariant()),
+                fixture.RunStableId,
+                fixture.Lifecycle,
+                completionState,
+                100L);
+
+            RewardClaimPreparedTransfer awaiting;
+            string diagnostic = fixture.TryCreateAwaiting(
+                incompleteEnd,
+                new[] { box },
+                out awaiting);
+
+            Assert.That(awaiting, Is.Null);
+            Assert.That(diagnostic,
+                Is.EqualTo("collected-run-transfer-requires-completed-end"));
+            Assert.That(
+                fixture.PreparedTransfers.ExportSnapshot().Records,
+                Is.Empty);
+        }
+
         [Test]
         public void WrongRunOrLifecycleIsRejectedBeforeAcceptedEnd()
         {
@@ -483,10 +518,18 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 IReadOnlyList<RunSessionCollectedReward> journal,
                 out RewardClaimPreparedTransfer awaiting)
             {
+                return TryCreateAwaiting(EndCommand, journal, out awaiting);
+            }
+
+            public string TryCreateAwaiting(
+                EndRunSessionCommand endCommand,
+                IReadOnlyList<RunSessionCollectedReward> journal,
+                out RewardClaimPreparedTransfer awaiting)
+            {
                 string diagnostic;
                 bool accepted = RewardClaimTransferPreparationFactory
                     .TryCreateAwaitingAcceptedEnd(
-                        EndCommand,
+                        endCommand,
                         journal,
                         Graph,
                         RewardApplication,

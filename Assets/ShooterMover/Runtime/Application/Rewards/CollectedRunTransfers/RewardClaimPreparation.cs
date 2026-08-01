@@ -130,6 +130,13 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                     "collected-run-transfer-preparation-context-missing";
                 return false;
             }
+            if (endCommand.CompletionState
+                != MissionRunCompletionState.Completed)
+            {
+                diagnostic =
+                    "collected-run-transfer-requires-completed-end";
+                return false;
+            }
             CharacterInstanceSnapshot character = graph.Character;
             if (character == null)
             {

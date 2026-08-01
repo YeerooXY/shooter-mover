@@ -170,13 +170,77 @@ namespace ShooterMover.Tests.EditMode.Persistence.SaveParts
         }
 
         [Test]
+        public void CanonicalCollectedRunBoxAcceptsRewardInstanceGrantAndPickupContext()
+        {
+            var fixture = new AcceptedStrongboxFixture();
+            StableId boxId = fixture.UnopenedBoxId;
+            fixture.AddBox(
+                boxId,
+                "unopened",
+                grantId: boxId,
+                sourceId: Id("operation.collected-run-transfer"));
+            fixture.Register(
+                boxId,
+                "unopened",
+                Id("operation.pickup-collection"),
+                Id("operation.original-drop"));
+
+            SavePartValidationResult result =
+                GameSaveRules.ValidateCharacter(
+                    Character(
+                        fixture.Holdings.ExportSnapshot(),
+                        fixture.Service.ExportSnapshot()),
+                    fixture.ExpectedDefinitionFingerprint);
+
+            Assert.That(result.Succeeded, Is.True, result.RejectionCode);
+        }
+
+        [Test]
+        public void HistoricalBoxAcceptsGrantAsCollectionWithMatchingSource()
+        {
+            var fixture = new AcceptedStrongboxFixture();
+            fixture.AddAndRegister(fixture.UnopenedBoxId, "unopened");
+
+            SavePartValidationResult result =
+                GameSaveRules.ValidateCharacter(
+                    Character(
+                        fixture.Holdings.ExportSnapshot(),
+                        fixture.Service.ExportSnapshot()),
+                    fixture.ExpectedDefinitionFingerprint);
+
+            Assert.That(result.Succeeded, Is.True, result.RejectionCode);
+        }
+
+        [Test]
+        public void MixedCollectedRunAndHistoricalProvenanceRejects()
+        {
+            var fixture = new AcceptedStrongboxFixture();
+            fixture.AddBox(
+                fixture.UnopenedBoxId,
+                "unopened",
+                grantId: Id("grant.neither-instance-nor-collection"),
+                sourceId: Id("operation.collected-run-transfer"));
+            fixture.Register(
+                fixture.UnopenedBoxId,
+                "unopened",
+                Id("operation.pickup-collection"),
+                Id("operation.original-drop"));
+
+            AssertRejected(
+                fixture.Holdings.ExportSnapshot(),
+                fixture.Service.ExportSnapshot(),
+                fixture,
+                "held-strongbox-provenance-conflict");
+        }
+
+        [Test]
         public void TierAndProvenanceConflictsReject()
         {
             var tierFixture = new AcceptedStrongboxFixture();
             tierFixture.AddBox(
                 tierFixture.UnopenedBoxId,
                 "unopened",
-                Id("strongbox.tier.conflicting"));
+                Id("strongbox-tier.conflicting"));
             tierFixture.Register(tierFixture.UnopenedBoxId, "unopened");
             AssertRejected(
                 tierFixture.Holdings.ExportSnapshot(),
@@ -314,14 +378,14 @@ namespace ShooterMover.Tests.EditMode.Persistence.SaveParts
             private static readonly StableId RapAuthority =
                 Id("authority.accepted-strongbox-rap");
             private static readonly StableId TierId =
-                Id("strongbox.tier.accepted-save");
+                Id("strongbox-tier.accepted-save");
             private static readonly StableId EquipmentDefinition =
                 Id("equipment-definition.accepted-save");
 
             public AcceptedStrongboxFixture()
             {
-                UnopenedBoxId = Id("strongbox.instance.accepted-unopened");
-                OpenedBoxId = Id("strongbox.instance.accepted-opened");
+                UnopenedBoxId = Id("strongbox-instance.accepted-unopened");
+                OpenedBoxId = Id("strongbox-instance.accepted-opened");
                 Definition = CreateDefinition();
                 Catalog = new StrongboxDefinitionCatalog(
                     new[] { Definition });
@@ -394,18 +458,20 @@ namespace ShooterMover.Tests.EditMode.Persistence.SaveParts
             public void AddBox(
                 StableId boxId,
                 string suffix,
-                StableId tierId = null)
+                StableId tierId = null,
+                StableId grantId = null,
+                StableId sourceId = null)
             {
                 PlayerHoldingsMutationResult result = Holdings.Apply(
                     PlayerHoldingsCommand.AddStrongbox(
-                        Id("transaction.box." + suffix),
-                        Id("operation.box." + suffix),
+                        Id("transaction-box." + suffix),
+                        Id("operation-box." + suffix),
                         HoldingsAuthority,
                         tierId ?? TierId,
                         boxId,
                         HoldingProvenance.Create(
-                            GrantId(suffix),
-                            Id("source.box." + suffix)),
+                            grantId ?? GrantId(suffix),
+                            sourceId ?? Id("source-box." + suffix)),
                         Holdings.Sequence));
                 Assert.That(result.Status,
                     Is.EqualTo(PlayerHoldingsMutationStatus.Applied));
@@ -414,7 +480,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.SaveParts
             public void Register(
                 StableId boxId,
                 string suffix,
-                StableId collectionProvenance = null)
+                StableId collectionProvenance = null,
+                StableId sourceContext = null)
             {
                 StrongboxRegistrationResult result = Service.RegisterInstance(
                     StrongboxInstanceContext.Create(
@@ -427,7 +494,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.SaveParts
                             2,
                             Id("difficulty.normal"),
                             1),
-                        Id("source-context.box." + suffix),
+                        sourceContext ?? Id("source-box." + suffix),
                         collectionProvenance ?? GrantId(suffix),
                         Definition.Fingerprint));
                 Assert.That(result.Status,
@@ -531,7 +598,7 @@ namespace ShooterMover.Tests.EditMode.Persistence.SaveParts
 
             private static StableId GrantId(string suffix)
             {
-                return Id("grant.box." + suffix);
+                return Id("grant-box." + suffix);
             }
 
             private static StrongboxDefinition CreateDefinition()

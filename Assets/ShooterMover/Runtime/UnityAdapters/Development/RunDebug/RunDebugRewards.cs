@@ -293,11 +293,7 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
                 runStableId,
                 routePayload,
                 completionState,
-                runAuthority.Sequence,
-                holdingsAuthority.Sequence,
-                holdings.Fingerprint,
-                openings.Sequence,
-                openings.Fingerprint);
+                runAuthority.Sequence);
 
             endRunAuthorityCallCount++;
             MissionRunStateResult result = runAuthority.EndRun(command);
@@ -452,9 +448,7 @@ namespace ShooterMover.UnityAdapters.Development.RunDebug
                     entry.Fact.InstanceStableId,
                     entry.Fact.GrantStableId,
                     entry.Fact.SourceOperationStableId,
-                    runAuthority.Sequence,
-                    holdingsAuthority.Sequence,
-                    holdings.Fingerprint);
+                    runAuthority.Sequence);
             MissionRunStateResult result = runAuthority.RecordCollectedStrongbox(command);
             if (result != null
                 && result.Succeeded

@@ -100,8 +100,8 @@ namespace ShooterMover.Tests.PlayMode.Guns.Live
                 Assert.That(projected.InstanceId, Is.EqualTo(replacement));
                 Assert.That(
                     runtime.EquipmentCatalog.FindEquipmentDefinition(
-                        projected.DefinitionId).RuntimeGunReferenceId.ToString(),
-                    Is.EqualTo(exact.GunDefinitionId.Value));
+                        projected.DefinitionId).RuntimeGunReferenceId,
+                    Is.EqualTo(exact.GunDefinitionId.ToRuntimeReference()));
             }
             finally
             {

@@ -95,11 +95,7 @@ namespace ShooterMover.Tests.PlayMode.Missions.Results
                 Id("run", "play-conflict-run"),
                 route,
                 MissionRunCompletionState.Failed,
-                1L,
-                port.HoldingsSequence,
-                port.HoldingsFingerprint,
-                port.OpeningSequence,
-                port.OpeningFingerprint);
+                1L);
             MissionRunStateResult rejected = authority.EndRun(conflict);
 
             Assert.That(first.Status, Is.EqualTo(MissionRunStateStatus.RunEnded));
@@ -139,9 +135,7 @@ namespace ShooterMover.Tests.PlayMode.Missions.Results
                 instance,
                 Id("reward-grant", operation),
                 Id("reward-source", operation),
-                expectedRunSequence,
-                port.HoldingsSequence,
-                port.HoldingsFingerprint);
+                expectedRunSequence);
         }
 
         private static EndMissionRunCommand CreateEnd(
@@ -156,11 +150,7 @@ namespace ShooterMover.Tests.PlayMode.Missions.Results
                 Id("run", run),
                 route,
                 MissionRunCompletionState.Completed,
-                expectedRunSequence,
-                port.HoldingsSequence,
-                port.HoldingsFingerprint,
-                port.OpeningSequence,
-                port.OpeningFingerprint);
+                expectedRunSequence);
         }
 
         private static StableId Id(string namespaceName, string value)

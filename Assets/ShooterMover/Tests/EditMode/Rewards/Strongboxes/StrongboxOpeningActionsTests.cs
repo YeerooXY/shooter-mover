@@ -85,7 +85,13 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
             PlayerRouteProfilePayload route = PlayerRouteProfilePayload.Create(
                 Id("character.run-scope"),
                 Id("loadout.run-scope"),
-                new[] { Id("equipment.run-scope") });
+                new[]
+                {
+                    Id("equipment.run-scope-1"),
+                    Id("equipment.run-scope-2"),
+                    Id("equipment.run-scope-3"),
+                    Id("equipment.run-scope-4"),
+                });
             MissionResultPayload before = MissionResultPayload.Create(
                 Id("run.run-scope"),
                 route,
@@ -551,7 +557,7 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
             StableId instanceStableId)
         {
             return new MissionRunStrongboxCollection(
-                Id("strongbox.definition." + suffix),
+                Id("strongbox-definition." + suffix),
                 instanceStableId,
                 Id("grant." + suffix),
                 Id("source." + suffix),
@@ -745,16 +751,17 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
             {
                 StableId definitionId = tierId ?? Definition.TierStableId;
                 StableId strongboxInstanceStableId = instanceStableId ?? BoxId;
+                string identity = strongboxInstanceStableId.Value;
                 PlayerHoldingsMutationResult result = Holdings.Apply(
                     PlayerHoldingsCommand.AddStrongbox(
-                        Id("holdtx.add-box"),
-                        Id("holdop.add-box"),
+                        StableId.Create("holdtx", "add-" + identity),
+                        StableId.Create("holdop", "add-" + identity),
                         HoldingsAuthority,
                         definitionId,
                         strongboxInstanceStableId,
                         HoldingProvenance.Create(
-                            Id("grant.add-box"),
-                            Id("source.add-box"))));
+                            StableId.Create("grant", "add-" + identity),
+                            StableId.Create("source", "add-" + identity))));
                 Assert.That(result.Status, Is.EqualTo(PlayerHoldingsMutationStatus.Applied));
             }
 

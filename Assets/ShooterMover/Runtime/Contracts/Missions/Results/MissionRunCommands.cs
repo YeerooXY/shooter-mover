@@ -18,9 +18,7 @@ namespace ShooterMover.Contracts.Missions.Results
             StableId instanceStableId,
             StableId grantStableId,
             StableId sourceStableId,
-            long expectedRunSequence,
-            long expectedHoldingsSequence,
-            string expectedHoldingsFingerprint)
+            long expectedRunSequence)
         {
             OperationStableId = operationStableId ?? throw new ArgumentNullException(nameof(operationStableId));
             RunStableId = runStableId ?? throw new ArgumentNullException(nameof(runStableId));
@@ -31,14 +29,7 @@ namespace ShooterMover.Contracts.Missions.Results
             GrantStableId = grantStableId ?? throw new ArgumentNullException(nameof(grantStableId));
             SourceStableId = sourceStableId ?? throw new ArgumentNullException(nameof(sourceStableId));
             if (expectedRunSequence < 0L) throw new ArgumentOutOfRangeException(nameof(expectedRunSequence));
-            if (expectedHoldingsSequence < 0L) throw new ArgumentOutOfRangeException(nameof(expectedHoldingsSequence));
-            if (!MissionRun.IsFingerprint(expectedHoldingsFingerprint))
-            {
-                throw new ArgumentException("Expected holdings fingerprint must be canonical.", nameof(expectedHoldingsFingerprint));
-            }
             ExpectedRunSequence = expectedRunSequence;
-            ExpectedHoldingsSequence = expectedHoldingsSequence;
-            ExpectedHoldingsFingerprint = expectedHoldingsFingerprint;
 
             StringBuilder builder = new StringBuilder();
             MissionRun.AppendToken(builder, "operation_stable_id", OperationStableId.ToString());
@@ -50,8 +41,6 @@ namespace ShooterMover.Contracts.Missions.Results
             MissionRun.AppendToken(builder, "grant_stable_id", GrantStableId.ToString());
             MissionRun.AppendToken(builder, "source_stable_id", SourceStableId.ToString());
             MissionRun.AppendToken(builder, "expected_run_sequence", ExpectedRunSequence.ToString(CultureInfo.InvariantCulture));
-            MissionRun.AppendToken(builder, "expected_holdings_sequence", ExpectedHoldingsSequence.ToString(CultureInfo.InvariantCulture));
-            MissionRun.AppendToken(builder, "expected_holdings_fingerprint", ExpectedHoldingsFingerprint);
             canonicalText = builder.ToString();
             Fingerprint = MissionRun.Fingerprint(canonicalText);
         }
@@ -64,8 +53,6 @@ namespace ShooterMover.Contracts.Missions.Results
         public StableId GrantStableId { get; }
         public StableId SourceStableId { get; }
         public long ExpectedRunSequence { get; }
-        public long ExpectedHoldingsSequence { get; }
-        public string ExpectedHoldingsFingerprint { get; }
         public string Fingerprint { get; }
 
         public static MissionRunCollectStrongboxCommand Create(
@@ -76,9 +63,7 @@ namespace ShooterMover.Contracts.Missions.Results
             StableId instanceStableId,
             StableId grantStableId,
             StableId sourceStableId,
-            long expectedRunSequence,
-            long expectedHoldingsSequence,
-            string expectedHoldingsFingerprint)
+            long expectedRunSequence)
         {
             return new MissionRunCollectStrongboxCommand(
                 operationStableId,
@@ -88,9 +73,7 @@ namespace ShooterMover.Contracts.Missions.Results
                 instanceStableId,
                 grantStableId,
                 sourceStableId,
-                expectedRunSequence,
-                expectedHoldingsSequence,
-                expectedHoldingsFingerprint);
+                expectedRunSequence);
         }
 
         public string ToCanonicalString() { return canonicalText; }
@@ -112,11 +95,7 @@ namespace ShooterMover.Contracts.Missions.Results
             StableId runStableId,
             PlayerRouteProfilePayload routePayload,
             MissionRunCompletionState completionState,
-            long expectedRunSequence,
-            long expectedHoldingsSequence,
-            string expectedHoldingsFingerprint,
-            long expectedStrongboxOpeningSequence,
-            string expectedStrongboxOpeningFingerprint)
+            long expectedRunSequence)
         {
             OperationStableId = operationStableId ?? throw new ArgumentNullException(nameof(operationStableId));
             RunStableId = runStableId ?? throw new ArgumentNullException(nameof(runStableId));
@@ -127,22 +106,8 @@ namespace ShooterMover.Contracts.Missions.Results
                 throw new ArgumentOutOfRangeException(nameof(completionState));
             }
             if (expectedRunSequence < 0L) throw new ArgumentOutOfRangeException(nameof(expectedRunSequence));
-            if (expectedHoldingsSequence < 0L) throw new ArgumentOutOfRangeException(nameof(expectedHoldingsSequence));
-            if (expectedStrongboxOpeningSequence < 0L) throw new ArgumentOutOfRangeException(nameof(expectedStrongboxOpeningSequence));
-            if (!MissionRun.IsFingerprint(expectedHoldingsFingerprint))
-            {
-                throw new ArgumentException("Expected holdings fingerprint must be canonical.", nameof(expectedHoldingsFingerprint));
-            }
-            if (!MissionRun.IsFingerprint(expectedStrongboxOpeningFingerprint))
-            {
-                throw new ArgumentException("Expected strongbox-opening fingerprint must be canonical.", nameof(expectedStrongboxOpeningFingerprint));
-            }
             CompletionState = completionState;
             ExpectedRunSequence = expectedRunSequence;
-            ExpectedHoldingsSequence = expectedHoldingsSequence;
-            ExpectedHoldingsFingerprint = expectedHoldingsFingerprint;
-            ExpectedStrongboxOpeningSequence = expectedStrongboxOpeningSequence;
-            ExpectedStrongboxOpeningFingerprint = expectedStrongboxOpeningFingerprint;
 
             StringBuilder intentBuilder = new StringBuilder();
             MissionRun.AppendToken(intentBuilder, "run_stable_id", RunStableId.ToString());
@@ -155,10 +120,6 @@ namespace ShooterMover.Contracts.Missions.Results
             MissionRun.AppendToken(builder, "operation_stable_id", OperationStableId.ToString());
             MissionRun.AppendToken(builder, "intent", intentBuilder.ToString());
             MissionRun.AppendToken(builder, "expected_run_sequence", ExpectedRunSequence.ToString(CultureInfo.InvariantCulture));
-            MissionRun.AppendToken(builder, "expected_holdings_sequence", ExpectedHoldingsSequence.ToString(CultureInfo.InvariantCulture));
-            MissionRun.AppendToken(builder, "expected_holdings_fingerprint", ExpectedHoldingsFingerprint);
-            MissionRun.AppendToken(builder, "expected_strongbox_opening_sequence", ExpectedStrongboxOpeningSequence.ToString(CultureInfo.InvariantCulture));
-            MissionRun.AppendToken(builder, "expected_strongbox_opening_fingerprint", ExpectedStrongboxOpeningFingerprint);
             canonicalText = builder.ToString();
             Fingerprint = MissionRun.Fingerprint(canonicalText);
         }
@@ -168,10 +129,6 @@ namespace ShooterMover.Contracts.Missions.Results
         public PlayerRouteProfilePayload RoutePayload { get; }
         public MissionRunCompletionState CompletionState { get; }
         public long ExpectedRunSequence { get; }
-        public long ExpectedHoldingsSequence { get; }
-        public string ExpectedHoldingsFingerprint { get; }
-        public long ExpectedStrongboxOpeningSequence { get; }
-        public string ExpectedStrongboxOpeningFingerprint { get; }
         public string IntentFingerprint { get; }
         public string Fingerprint { get; }
 
@@ -180,22 +137,14 @@ namespace ShooterMover.Contracts.Missions.Results
             StableId runStableId,
             PlayerRouteProfilePayload routePayload,
             MissionRunCompletionState completionState,
-            long expectedRunSequence,
-            long expectedHoldingsSequence,
-            string expectedHoldingsFingerprint,
-            long expectedStrongboxOpeningSequence,
-            string expectedStrongboxOpeningFingerprint)
+            long expectedRunSequence)
         {
             return new EndMissionRunCommand(
                 operationStableId,
                 runStableId,
                 routePayload,
                 completionState,
-                expectedRunSequence,
-                expectedHoldingsSequence,
-                expectedHoldingsFingerprint,
-                expectedStrongboxOpeningSequence,
-                expectedStrongboxOpeningFingerprint);
+                expectedRunSequence);
         }
 
         public string ToCanonicalString() { return canonicalText; }

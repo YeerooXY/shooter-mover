@@ -54,9 +54,7 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
                 return "durable-opening-strongbox-not-held";
             }
             if (held.DefinitionStableId != collection.DefinitionStableId
-                || held.Provenance == null
-                || held.Provenance.GrantStableId != collection.GrantStableId
-                || held.Provenance.SourceStableId != collection.SourceStableId)
+                || held.Provenance == null)
             {
                 return "durable-opening-holdings-provenance-mismatch";
             }
@@ -66,10 +64,21 @@ namespace ShooterMover.Application.Rewards.Strongboxes.Persistence
                     == selected.InstanceStableId);
             if (context == null
                 || context.TierStableId != collection.DefinitionStableId
-                || context.CollectionProvenanceStableId != collection.GrantStableId
                 || context.SourceContextStableId != collection.SourceStableId)
             {
                 return "durable-opening-registration-context-mismatch";
+            }
+
+            bool canonicalCollectedRun =
+                held.Provenance.GrantStableId == selected.InstanceStableId;
+            bool historicalMissionResult =
+                held.Provenance.GrantStableId == collection.GrantStableId
+                && held.Provenance.SourceStableId == collection.SourceStableId
+                && context.CollectionProvenanceStableId
+                    == collection.GrantStableId;
+            if (!canonicalCollectedRun && !historicalMissionResult)
+            {
+                return "durable-opening-provenance-representation-invalid";
             }
             return string.Empty;
         }

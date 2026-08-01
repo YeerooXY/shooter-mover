@@ -40,9 +40,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Results
                 Id("box-instance", instance),
                 Id("reward-grant", operation),
                 Id("reward-source", operation),
-                expectedRunSequence,
-                port.HoldingsSequence,
-                port.HoldingsFingerprint);
+                expectedRunSequence);
         }
 
         internal static EndMissionRunCommand CreateEnd(
@@ -58,11 +56,7 @@ namespace ShooterMover.Tests.EditMode.Missions.Results
                 Id("run", run),
                 route,
                 completionState,
-                expectedRunSequence,
-                port.HoldingsSequence,
-                port.HoldingsFingerprint,
-                port.OpeningSequence,
-                port.OpeningFingerprint);
+                expectedRunSequence);
         }
 
         internal static StableId Id(string namespaceName, string value)

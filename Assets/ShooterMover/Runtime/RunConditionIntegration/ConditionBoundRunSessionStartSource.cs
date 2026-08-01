@@ -11,8 +11,8 @@ namespace ShooterMover.RunConditionIntegration
     /// <summary>
     /// Canonical production entry point for freezing one selected account-backed
     /// character into a run whose conditional lifecycle is backed by the merged
-    /// ConditionLiveState. Terminal mission results are decorated downstream
-    /// so accepted unopened strongboxes are durable before Run Session reports Ended.
+    /// ConditionLiveState. Terminal rewards are persisted by the collected-run atomic
+    /// transfer after Run Session produces its immutable accepted result.
     /// </summary>
     public sealed class ConditionBoundRunSessionStartSource :
         IRunSessionStartSource
@@ -36,13 +36,9 @@ namespace ShooterMover.RunConditionIntegration
             {
                 throw new ArgumentNullException(nameof(baseRuntimeFactory));
             }
-            var persistentFactory =
-                new StrongboxPersistentNonConditionLivePortFactory(
-                    composition,
-                    baseRuntimeFactory);
             var conditionFactory =
                 new ConditionBoundRunSessionLivePortFactory(
-                    persistentFactory,
+                    baseRuntimeFactory,
                     definitionProvider,
                     participantProvider,
                     adapters);

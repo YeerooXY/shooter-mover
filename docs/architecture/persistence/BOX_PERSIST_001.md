@@ -6,7 +6,9 @@ Launch SHA: `7b21fcf66d69a60b25b305b617af24a909054613`
 
 This change completes the existing CHARACTER-COMPOSITION-001 strongbox path. It does not add a second holdings, BOX, reward, run, or persistence authority.
 
-The canonical production run entry point remains `ConditionBoundRunSessionStartSource`. Its non-condition runtime factory is decorated downstream with durable terminal-result application; condition clock, lifecycle, status-effect ownership, and condition facts are unchanged.
+The canonical production run entry point remains `ConditionBoundRunSessionStartSource`. Its condition-bound composition uses the underlying mission-result port directly; condition clock, lifecycle, status-effect ownership, and condition facts are unchanged.
+
+`RewardClaimTransferPreparationFactory` and the collected-run prepared-custody/receipt flow are the single live mission-end persistence owner for money, scrap, equipment, and strongboxes. The former strongbox-only mission-result coordinator and run-port decorator are retired.
 
 ## Ownership
 
@@ -19,14 +21,16 @@ The canonical production run entry point remains `ConditionBoundRunSessionStartS
 
 ## Terminal transfer sequence
 
-1. The existing mission-result port freezes the immutable terminal result from exact run-local holdings and BOX snapshots.
-2. `PersistentMissionResultRunPort` resolves those exact source snapshots and submits one typed `StrongboxMissionResultApplicationCommand`.
-3. `StrongboxMissionResultApplicationFlow` validates the run/result/route/character/account revisions, complete unopened set, unique identities, source holdings provenance, BOX registration context, and absence of conflicting opening state before mutation.
-4. It captures exact target holdings and BOX snapshots.
-5. Every exact box is reconciled into the selected character with existing holdings and BOX commands.
-6. The complete selected-character adapter graph is exported and persisted by `CharacterSetupFlow` through the existing atomic account store.
-7. Run Session receives a successful terminal result only after durable persistence succeeds.
-8. Any holdings, registration, or save failure imports the exact pre-transfer holdings and BOX snapshots and returns a stable rejection. A later distinct valid retry remains possible.
+1. Physical pickup records one exact collected-run reward child and its pickup collection operation.
+2. Before Run End, `RewardClaimTransferPreparationFactory` freezes the complete collected journal, exact payloads, unopened BOX contexts, and authority fingerprints into durable awaiting custody.
+3. The accepted immutable mission result promotes that same custody to a prepared atomic plan; it does not create a second strongbox transfer.
+4. The collected-run atomic state applies RAP grants, BOX registrations, transfer receipt, and prepared-custody state as one compensated batch.
+5. `CharacterSetupFlow` publishes the complete selected-character component graph in one terminal durable account save.
+6. Rejected-before-replacement persistence restores the captured in-memory state. Durable uncertainty retains prepared custody for exact recovery and never reports completion.
+
+Canonical collected-run strongboxes use the generated reward-child ID as both holding instance ID and holding grant provenance. The BOX context retains the exact pickup collection-operation ID and original drop operation. Save validation also accepts the historical representation where holding grant provenance equals BOX collection provenance; that alternate form is compatibility for existing saves only and is not a live transfer path. Tier, instance, registration, definition fingerprint, and provenance combinations outside those two forms reject.
+
+Prepared transfers are immutable. Recovery rebuilds only the already-frozen plan. A transfer whose frozen holdings still match can continue through canonical validation without a duplicate grant. `frozen-authority-mismatch:holdings` remains quarantined unless an exact receipt proves completion; recovery never rebases fingerprints, guesses authority state, or silently grants or deletes rewards.
 
 Operation IDs are deterministic from the run, terminal result, selected character, and lifecycle generation. Exact operation replay returns the original immutable result; changed facts under the same operation ID reject as a conflicting duplicate.
 
@@ -51,15 +55,16 @@ All authoritative opening mutations occur in memory before the single atomic acc
 
 Equipment generation remains inside the existing BOX/GEN/RAP path. Separate box/opening operation identities yield separate concrete equipment-instance IDs even when deterministic generation chooses the same equipment definition.
 
-The transfer and opening coordinators bind commands to the exact selected character and active slot. Character switches, stale commands, wrong holdings authorities, wrong BOX authorities, or mismatched collection provenance reject. All other account slots remain untouched and unknown optional components remain opaque and retained by the existing account aggregate.
+The collected-run transfer and opening coordinator bind commands to the exact selected character and active slot. Character switches, stale commands, wrong holdings authorities, wrong BOX authorities, or mismatched collection provenance reject. All other account slots remain untouched and unknown optional components remain opaque and retained by the existing account aggregate.
 
 ## Focused tests
 
-`StrongboxPersistenceFlowTests` covers:
+Collected-run, save-rule, and durable-opening suites cover:
 
-- exact one-box transfer, durable restore, and exact replay;
+- exact one-box collected-run transfer, durable restore, and exact replay;
+- canonical, historical, and invalid mixed provenance validation;
 - complete-batch rejection when one box lacks source authority facts;
-- save-failure compensation and repaired retry;
+- save-failure compensation and exact prepared-custody retry;
 - durable opening, restart, and no-second-award replay;
 - full component-graph restore after terminal-save failure;
 - two same-tier boxes producing the same definition with distinct equipment instances;

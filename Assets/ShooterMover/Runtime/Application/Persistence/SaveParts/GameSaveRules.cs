@@ -308,8 +308,14 @@ namespace ShooterMover.Application.Persistence.SaveParts
                     return SavePartValidationResult.Reject(
                         "held-strongbox-tier-conflict:" + pair.Key);
                 }
-                if (context.CollectionProvenanceStableId
-                    != pair.Value.Provenance.GrantStableId)
+                bool canonicalCollectedRun =
+                    pair.Value.Provenance.GrantStableId == pair.Key;
+                bool historicalMissionResult =
+                    pair.Value.Provenance.GrantStableId
+                        == context.CollectionProvenanceStableId
+                    && pair.Value.Provenance.SourceStableId
+                        == context.SourceContextStableId;
+                if (!canonicalCollectedRun && !historicalMissionResult)
                 {
                     return SavePartValidationResult.Reject(
                         "held-strongbox-provenance-conflict:" + pair.Key);

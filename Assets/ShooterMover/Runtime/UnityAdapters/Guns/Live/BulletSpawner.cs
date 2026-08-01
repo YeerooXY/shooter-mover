@@ -97,6 +97,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
         private StableId firstSourceMountStableId;
         private Texture2D texture;
         private Sprite sprite;
+        private GunTargets targets;
         private bool sourceBound;
         private bool retired;
 
@@ -276,6 +277,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
             try
             {
                 EnsureBulletSprite();
+                EnsureTargets();
                 for (int index = 0; index < effects.Count; index++)
                 {
                     ProjectileLaunchEffect effect = effects[index];
@@ -313,6 +315,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                             effect,
                             sprite,
                             transform,
+                            targets,
                             HandleBulletFinished))
                     {
                         throw new InvalidOperationException(
@@ -522,6 +525,19 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 new Vector2(0.5f, 0.5f),
                 1f);
             sprite.name = "Bullet Sprite";
+        }
+
+        private void EnsureTargets()
+        {
+            if (targets == null)
+            {
+                targets = GetComponent<GunTargets>();
+                if (targets == null)
+                {
+                    targets = gameObject.AddComponent<GunTargets>();
+                }
+            }
+            targets.Configure(transform);
         }
 
         private void OnDisable()

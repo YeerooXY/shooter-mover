@@ -187,10 +187,14 @@ namespace ShooterMover.Contracts.Rewards.Application
                                 "Equipment and retained instance identities must match.");
                         }
 
-                        if (equipment.DefinitionId != Grant.ContentStableId)
+                        bool exactDefinition = equipment.DefinitionId
+                            == Grant.ContentStableId;
+                        bool resolvedGunCategory = Grant.ContentStableId
+                            == EquipmentCategoryIds.Gun;
+                        if (!exactDefinition && !resolvedGunCategory)
                         {
                             throw new ArgumentException(
-                                "Equipment definition must match the generated grant content identity.");
+                                "Equipment definition must match the generated grant content identity or its explicit gun-category placeholder.");
                         }
                     }
 

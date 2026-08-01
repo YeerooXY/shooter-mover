@@ -20,7 +20,8 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
             RecordingSink sink = null)
         {
             StableId runtimeReference = runtimeReferenceId
-                ?? StableId.Parse(definition.DefinitionId);
+                ?? new GunDefinitionId(definition.DefinitionId)
+                    .ToRuntimeReference();
             EquipmentQualityTier quality = EquipmentQualityTier.Create(
                 QualityStableId,
                 "Common",
@@ -101,7 +102,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
                 0d,
                 1d);
             GunFamilyDefinition family = new GunFamilyDefinition(
-                "test-family",
+                definition.FamilyId,
                 "Test Family",
                 "Test",
                 definition.DamageType,
@@ -145,10 +146,14 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
             double dotDps = 0d,
             int burstCount = 1)
         {
+            int markSeparator = id.LastIndexOf(".mk", StringComparison.Ordinal);
+            string familyId = markSeparator > 0
+                ? id.Substring(0, markSeparator)
+                : id;
             return new GunDefinitionData(
                 id,
                 id,
-                "test-family",
+                familyId,
                 1,
                 "Kinetic",
                 "Test",

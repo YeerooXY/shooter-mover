@@ -22,7 +22,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         [Test]
         public void ExactEquipmentIdentity_IsForwardedIntoEveryEffect()
         {
-            GunDefinitionData definition = Definition("gun.shotgun", 7, 18d, 2d);
+            GunDefinitionData definition = Definition("shotgun.mk1", 7, 18d, 2d);
             EquipmentInstance equipment = Equipment("equipment-instance.shotgun-a");
             Harness harness = HarnessFor(definition, new[] { equipment });
 
@@ -45,12 +45,12 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         [Test]
         public void UnknownGunDefinition_FailsClosedWithoutFallback()
         {
-            GunDefinitionData definition = Definition("gun.known", 1, 0d, 5d);
+            GunDefinitionData definition = Definition("known.mk1", 1, 0d, 5d);
             EquipmentInstance equipment = Equipment("equipment-instance.unknown");
             Harness harness = HarnessFor(
                 definition,
                 new[] { equipment },
-                runtimeReferenceId: StableId.Parse("gun.unknown"));
+                runtimeReferenceId: StableId.Parse("gun.unknown-mk1"));
 
             GunExecutionResult result = harness.Core.TryExecute(
                 Command(equipment, "fire.unknown", 0L));
@@ -64,7 +64,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         [Test]
         public void MissingEquippedEquipment_IsRejected()
         {
-            GunDefinitionData definition = Definition("gun.rifle", 1, 0d, 5d);
+            GunDefinitionData definition = Definition("rifle.mk1", 1, 0d, 5d);
             EquipmentInstance equipment = Equipment("equipment-instance.missing");
             Harness harness = HarnessFor(definition, new EquipmentInstance[0]);
 
@@ -79,7 +79,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         [Test]
         public void InvalidAim_IsRejected()
         {
-            GunDefinitionData definition = Definition("gun.rifle", 1, 0d, 5d);
+            GunDefinitionData definition = Definition("rifle.mk1", 1, 0d, 5d);
             EquipmentInstance equipment = Equipment("equipment-instance.invalid-aim");
             Harness harness = HarnessFor(definition, new[] { equipment });
 
@@ -100,7 +100,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         public void PreviewOnlyDefinition_FailsClosed()
         {
             GunDefinitionData definition = Definition(
-                "gun.preview",
+                "preview.mk1",
                 1,
                 0d,
                 5d,
@@ -120,7 +120,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         public void UnsupportedEffect_FailsClosed()
         {
             GunDefinitionData definition = Definition(
-                "gun.dot",
+                "dot.mk1",
                 1,
                 0d,
                 5d,
@@ -139,7 +139,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         [Test]
         public void InvalidTuning_FailsClosed()
         {
-            GunDefinitionData definition = Definition("gun.invalid", 1, 0d, 0d);
+            GunDefinitionData definition = Definition("invalid.mk1", 1, 0d, 0d);
             EquipmentInstance equipment = Equipment("equipment-instance.invalid");
             Harness harness = HarnessFor(definition, new[] { equipment });
 
@@ -154,7 +154,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         [Test]
         public void DeterministicSpread_RejectedRetryBuildsEquivalentBatch()
         {
-            GunDefinitionData definition = Definition("gun.shotgun", 7, 24d, 2d);
+            GunDefinitionData definition = Definition("shotgun.mk1", 7, 24d, 2d);
             EquipmentInstance equipment = Equipment("equipment-instance.deterministic");
             RecordingSink sink = new RecordingSink { Reject = true };
             Harness harness = HarnessFor(
@@ -181,7 +181,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         [Test]
         public void Shotgun_CountAndShotSequenceVaryDeterministically()
         {
-            GunDefinitionData definition = Definition("gun.shotgun", 7, 24d, 10d);
+            GunDefinitionData definition = Definition("shotgun.mk1", 7, 24d, 10d);
             EquipmentInstance equipment = Equipment("equipment-instance.sequence");
             Harness harness = HarnessFor(definition, new[] { equipment });
 
@@ -203,7 +203,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         [Test]
         public void AtomicRejection_AllowsExactRetry()
         {
-            GunDefinitionData definition = Definition("gun.shotgun", 7, 20d, 2d);
+            GunDefinitionData definition = Definition("shotgun.mk1", 7, 20d, 2d);
             EquipmentInstance equipment = Equipment("equipment-instance.atomic-reject");
             RecordingSink sink = new RecordingSink { Reject = true };
             Harness harness = HarnessFor(
@@ -231,7 +231,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         [Test]
         public void ExactReplayAfterAcceptance_DoesNotCallSinkTwice()
         {
-            GunDefinitionData definition = Definition("gun.rifle", 1, 0d, 5d);
+            GunDefinitionData definition = Definition("rifle.mk1", 1, 0d, 5d);
             EquipmentInstance equipment = Equipment("equipment-instance.replay");
             Harness harness = HarnessFor(definition, new[] { equipment });
             GunFireCommand command = Command(equipment, "fire.replay", 0L);
@@ -246,7 +246,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         [Test]
         public void AcceptedOperationId_WithChangedCommandFacts_IsConflictingDuplicate()
         {
-            GunDefinitionData definition = Definition("gun.rifle", 1, 0d, 5d);
+            GunDefinitionData definition = Definition("rifle.mk1", 1, 0d, 5d);
             EquipmentInstance equipment = Equipment("equipment-instance.conflict");
             Harness harness = HarnessFor(definition, new[] { equipment });
             const string operationId = "fire.conflict";
@@ -287,7 +287,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         [Test]
         public void ConcreteEquipmentInstances_HaveIndependentCooldowns()
         {
-            GunDefinitionData definition = Definition("gun.rifle", 1, 0d, 1d);
+            GunDefinitionData definition = Definition("rifle.mk1", 1, 0d, 1d);
             EquipmentInstance first = Equipment("equipment-instance.cooldown-a");
             EquipmentInstance second = Equipment("equipment-instance.cooldown-b");
             Harness harness = HarnessFor(definition, new[] { first, second });
@@ -309,7 +309,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         [Test]
         public void NewLifecycleGeneration_ResetsState()
         {
-            GunDefinitionData definition = Definition("gun.shotgun", 3, 15d, 1d);
+            GunDefinitionData definition = Definition("shotgun.mk1", 3, 15d, 1d);
             EquipmentInstance equipment = Equipment("equipment-instance.lifecycle");
             Harness harness = HarnessFor(definition, new[] { equipment });
 
@@ -329,7 +329,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         public void ExplosiveProfile_ProducesExplosiveDescription()
         {
             GunDefinitionData definition = Definition(
-                "gun.rocket",
+                "rocket.mk1",
                 1,
                 0d,
                 1d,
@@ -351,7 +351,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         public void ChainProfile_ProducesChainRequest()
         {
             GunDefinitionData definition = Definition(
-                "gun.arc",
+                "arc.mk1",
                 1,
                 0d,
                 2d,
@@ -373,7 +373,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
         public void FifthBehavior_RegistersWithoutCoreModification()
         {
             GunDefinitionData definition = Definition(
-                "gun.test-burst",
+                "testburst.mk1",
                 1,
                 0d,
                 5d);
@@ -385,7 +385,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Execution
             Harness harness = HarnessFor(
                 definition,
                 new[] { equipment },
-                selector: new ExactDefinitionSelector("gun.test-burst", behaviorId),
+                selector: new ExactDefinitionSelector("testburst.mk1", behaviorId),
                 registry: registry);
 
             GunExecutionResult result = harness.Core.TryExecute(

@@ -914,7 +914,9 @@ namespace ShooterMover.Application.Rewards.Application
                 claim.ClaimantStableId,
                 payload.Grant.GrantStableId,
                 payload.Grant.Kind,
-                payload.Grant.ContentStableId,
+                payload.Grant.Kind == RewardGrantKind.EquipmentReference
+                    ? equipmentInstance.DefinitionId
+                    : payload.Grant.ContentStableId,
                 quantity,
                 instanceStableId,
                 equipmentInstance,

@@ -25,9 +25,9 @@ namespace ShooterMover.Tests.EditMode.Guns
                 Is.EqualTo(new[]
                 {
                     "AugmentAssignments",
+                    "GunDefinitionId",
                     "InstanceId",
                     "OverclockAssignments",
-                    "GunDefinitionId",
                 }));
         }
 
