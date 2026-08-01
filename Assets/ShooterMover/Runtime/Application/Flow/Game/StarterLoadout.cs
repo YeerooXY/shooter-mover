@@ -45,6 +45,10 @@ namespace ShooterMover.Application.Flow.Game
     public static class StarterLoadout
     {
         public const string SweeperGunDefinitionId = "sweeper.mk1";
+        public const string VoltspikeGunDefinitionId = "voltspike.mk1";
+        public const string PrismataGunDefinitionId = "prismata.mk1";
+        public const string CrownfallGunDefinitionId = "crownfall.mk1";
+        public const string NullstarGunDefinitionId = "nullstar.mk1";
 
         private static readonly StableId HoldingsAuthorityStableId =
             StableId.Parse("authority.production-player-holdings");
@@ -84,6 +88,29 @@ namespace ShooterMover.Application.Flow.Game
                     "The authored Sweeper gun is missing.");
             }
 
+            string[] trialGunDefinitionIds =
+            {
+                VoltspikeGunDefinitionId,
+                PrismataGunDefinitionId,
+                CrownfallGunDefinitionId,
+                NullstarGunDefinitionId,
+            };
+            var trialGuns = new List<GunMark>(trialGunDefinitionIds.Length);
+            for (int index = 0; index < trialGunDefinitionIds.Length; index++)
+            {
+                GunMark trial;
+                if (!GunCatalogProvider.Current.TryGetMark(
+                        trialGunDefinitionIds[index],
+                        out trial)
+                    || trial == null)
+                {
+                    throw new InvalidOperationException(
+                        "The authored trial gun is missing: "
+                        + trialGunDefinitionIds[index]);
+                }
+                trialGuns.Add(trial);
+            }
+
             GunSlots layout =
                 GunMountPolicy.ResolveLayout(
                     classDefinitionStableId);
@@ -116,6 +143,15 @@ namespace ShooterMover.Application.Flow.Game
             owned.Add(GunItem.CreateUnmodified(
                 sweeperInstanceId,
                 sweeper.Blueprint.DefinitionId));
+
+            for (int index = 0; index < trialGuns.Count; index++)
+            {
+                StableId trialInstanceId = NextOpaqueId(factory, used);
+                used.Add(trialInstanceId);
+                owned.Add(GunItem.CreateUnmodified(
+                    trialInstanceId,
+                    trialGuns[index].Blueprint.DefinitionId));
+            }
 
             var mountBindings = new List<EquippedGun>(
                 layout.PhysicalPositions.Count);
