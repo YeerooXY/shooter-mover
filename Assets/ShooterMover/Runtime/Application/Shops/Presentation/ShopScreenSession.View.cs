@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
@@ -89,6 +90,7 @@ namespace ShooterMover.Application.Shops.Presentation
                 fingerprint,
                 moneyWallet.Balance,
                 cards,
+                refreshesAtUtc,
                 status,
                 feedbackKind,
                 feedbackText,
@@ -107,6 +109,27 @@ namespace ShooterMover.Application.Shops.Presentation
             string qualityLabel = QualityLabel(
                 equipmentDefinition,
                 entry.Equipment.QualityId);
+
+            int augmentCount = entry.Equipment.Augments.Count;
+            int augmentCapacity = augmentCount;
+            int augmentSharedLevel = 0;
+            bool hasGeneratedSignature = false;
+            GeneratedEquipmentAugmentSignature signature;
+            bool committed;
+            if (augmentSignatures != null
+                && augmentSignatures.TryGetStagedOrCommitted(
+                    entry.Equipment.InstanceId,
+                    out signature,
+                    out committed)
+                && signature != null)
+            {
+                augmentCapacity = Math.Max(
+                    augmentCount,
+                    signature.Capacity);
+                augmentSharedLevel = signature.SharedLevel;
+                hasGeneratedSignature = true;
+            }
+
             return new ShopScreenStockCard(
                 entry.StockEntryStableId,
                 entry.Equipment.DefinitionId,
@@ -115,7 +138,10 @@ namespace ShooterMover.Application.Shops.Presentation
                 categoryLabel,
                 qualityLabel,
                 entry.Equipment.ItemLevel,
-                entry.Equipment.Augments.Count,
+                augmentCount,
+                augmentCapacity,
+                augmentSharedLevel,
+                hasGeneratedSignature,
                 entry.Price,
                 entry.State,
                 entry.PurchaseTransactionStableId);
