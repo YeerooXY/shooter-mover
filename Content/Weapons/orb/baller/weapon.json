@@ -24,9 +24,8 @@
     "knockback": 0
   },
   "art": {
-    "mounted": "gun_baller_mounted",
-    "delivery": "gun_baller_orb",
-    "trail": "gun_baller_trail",
-    "impact": "gun_baller_impact"
+    "delivery": "gun-delivery-art.orb-energy.v1",
+    "trail": "gun-trail-art.orb-energy.v1",
+    "impact": "gun-impact-art.orb-energy.v1"
   }
 }

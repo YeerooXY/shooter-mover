@@ -2,6 +2,7 @@
   "peakLevel": 15,
   "damage": 10,
   "art": {
-    "side": "gun_baller_mk1_side"
+    "side": "gun-art.baller.mk1.side-v1",
+    "mounted": "gun-art.baller.mk1.mounted-top-v1"
   }
 }

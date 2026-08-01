@@ -81,7 +81,8 @@ function validateShared(weapon) {
   }
 
   const art = requireObject(weapon, "art", "weapon.json");
-  ["mounted", "delivery", "trail", "impact"].forEach(key => requireText(art, key, "weapon.json.art"));
+  ["delivery", "trail", "impact"].forEach(key => requireText(art, key, "weapon.json.art"));
+  if (has(art, "mounted")) requireText(art, "mounted", "weapon.json.art");
   if (has(weapon, "fire")) validateFire(requireObject(weapon, "fire", "weapon.json"), "weapon.json.fire");
 }
 
@@ -93,6 +94,7 @@ function validateMarks(weapon, marks) {
     if (!positive(mark.damage)) fail(`${label}.damage: positive number is required`);
     const art = requireObject(mark, "art", label);
     requireText(art, "side", `${label}.art`);
+    if (has(art, "mounted")) requireText(art, "mounted", `${label}.art`);
     if (has(mark, "fire")) validateFire(requireObject(mark, "fire", label), `${label}.fire`);
   });
 
@@ -103,6 +105,12 @@ function validateMarks(weapon, marks) {
     if (!shared && count !== 0 && count !== 3) fail(`${block}: when Mark-owned, all three Mark files must provide it`);
   });
   if (!has(weapon, "fire") && !marks.every(mark => has(mark, "fire"))) fail("fire: define it once in weapon.json or completely in all three Mark files");
+
+  const sharedArt = requireObject(weapon, "art", "weapon.json");
+  const sharedMounted = has(sharedArt, "mounted");
+  const mountedCount = marks.filter(mark => has(mark.art, "mounted")).length;
+  if (sharedMounted && mountedCount) fail("art.mounted: cannot be owned by both weapon.json and a Mark file");
+  if (!sharedMounted && mountedCount !== 3) fail("art.mounted: define it once in weapon.json or completely in all three Mark files");
 }
 
 function main() {
