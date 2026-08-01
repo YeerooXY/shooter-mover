@@ -8,6 +8,7 @@ using ShooterMover.Application.Shops;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Economy.Money;
 using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Rewards.Drops;
 using ShooterMover.Domain.Shops;
 
