@@ -5,12 +5,14 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { execFileSync } = require("child_process");
+const WeaponDps = require("./weapon-dps");
 
 const toolRoot = __dirname;
 const validator = path.join(toolRoot, "validate-weapon-folder.js");
 const gameplayScript = path.join(toolRoot, "weapon-gameplay-maker.js");
-
-function clone(value) { return JSON.parse(JSON.stringify(value)); }
+const qolScript = path.join(toolRoot, "weapon-maker-qol.js");
+const balanceScript = path.join(toolRoot, "weapon-balance.js");
+const targetFile = path.join(toolRoot, "..", "..", "Content", "Balance", "weapon-dps-targets.json");
 
 function baseWeapon(overrides = {}) {
   return {
@@ -67,7 +69,9 @@ function validateCase(name, weapon, marks, shouldPass = true) {
   else assert.ok(error, `${name} should fail`);
 }
 
-execFileSync(process.execPath, ["--check", gameplayScript], { stdio: "pipe" });
+[gameplayScript, qolScript, balanceScript].forEach(script => {
+  execFileSync(process.execPath, ["--check", script], { stdio: "pipe" });
+});
 
 validateCase("automatic weapon", baseWeapon(), baseMarks());
 
@@ -136,4 +140,37 @@ validateCase("automatic weapon", baseWeapon(), baseMarks());
   validateCase("impossible burst timing", weapon, baseMarks(), false);
 }
 
-console.log("Weapon Maker checks passed: syntax + 5 valid gameplay shapes + 1 rejected invalid burst.");
+assert.strictEqual(WeaponDps.calculate({ fire: { mode: "automatic", rate: 4 }, shot: { projectiles: 1 }, damage: 1 }).totalDps, 4);
+assert.strictEqual(WeaponDps.calculate({ fire: { mode: "automatic", rate: 2 }, shot: { projectiles: 3 }, damage: 1 }).totalDps, 6);
+assert.strictEqual(WeaponDps.calculate({ fire: { mode: "burst", rate: 4 / 3, shotsPerBurst: 3 }, shot: { projectiles: 1 }, damage: 1 }).totalDps, 4);
+
+{
+  const result = WeaponDps.calculate({
+    fire: { mode: "automatic", rate: 1 },
+    shot: { projectiles: 1 },
+    damage: 4,
+    dot: { damagePerSecond: 2, duration: 3, maxStacks: 3 }
+  }, 12);
+  assert.strictEqual(result.directDps, 4);
+  assert.strictEqual(result.dotDps, 6);
+  assert.strictEqual(result.totalDps, 10);
+  assert.strictEqual(result.suggestedDamage, 6);
+}
+
+{
+  const curve = WeaponDps.generateCurve(4, 114, 110, "linear");
+  assert.strictEqual(curve.targets["1"], 4);
+  assert.strictEqual(curve.targets["110"], 114);
+  assert.deepStrictEqual(WeaponDps.validateTargets(curve), []);
+}
+
+{
+  const curve = WeaponDps.generateCurve(4, 400, 110, "exponential");
+  assert.strictEqual(curve.targets["1"], 4);
+  assert.strictEqual(curve.targets["110"], 400);
+}
+
+const storedTargets = JSON.parse(fs.readFileSync(targetFile, "utf8"));
+assert.deepStrictEqual(WeaponDps.validateTargets(storedTargets), []);
+
+console.log("Weapon Maker checks passed: gameplay shapes, invalid burst rejection, DPS math, and 110-level target curves.");
