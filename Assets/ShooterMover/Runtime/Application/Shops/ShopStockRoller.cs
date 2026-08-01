@@ -75,4 +75,18 @@ namespace ShooterMover.Application.Shops
             out ShopStockRollResult result,
             out string rejectionCode);
     }
+
+    /// <summary>
+    /// Optional transaction seam for stock sources that must prepare external metadata
+    /// after payment and before RAP claim. The production strongbox-backed Shop does not
+    /// use it because its RAP holdings child commits transient preview metadata directly.
+    /// </summary>
+    public interface IShopPurchasePreparer
+    {
+        bool TryPreparePurchase(
+            EquipmentInstance equipment,
+            out string rejectionCode);
+
+        void CompletePurchase(EquipmentInstance equipment);
+    }
 }
