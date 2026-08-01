@@ -10,7 +10,7 @@ namespace ShooterMover.Domain.Guns
     /// <summary>
     /// Resolves the existing equipment and augment authorities, then creates one immutable
     /// effective profile without mutating any source definition or instance. Modifier sets are
-    /// resolved inputs; production composition must obtain them from one canonical application policy.
+    /// resolved inputs supplied by composition.
     /// </summary>
     public static class EffectiveGunFactory
     {
@@ -62,15 +62,7 @@ namespace ShooterMover.Domain.Guns
 
             Dictionary<StableId, GunAugmentModifierSet> modifiersByAugmentId =
                 ResolveModifierSets(equipmentCatalog, installedById, augmentModifierSets);
-            ValidateModifierSemantics(blueprint, modifiersByAugmentId);
-
-            Dictionary<StableId, GunAugmentModifierSet> numericModifierSets =
-                WithoutFixedPointRicochet(modifiersByAugmentId);
             EffectiveGunEvaluatedValues values = EffectiveGunStatEvaluator.Evaluate(
-                blueprint,
-                installedAugments,
-                numericModifierSets);
-            RicochetValue ricochet = EvaluateFixedPointRicochet(
                 blueprint,
                 installedAugments,
                 modifiersByAugmentId);
@@ -91,7 +83,7 @@ namespace ShooterMover.Domain.Guns
                 values.Effects,
                 values.MaximumAttackDistance,
                 values.Pierce,
-                ricochet,
+                values.Ricochet,
                 values.MovementPenaltyPercent);
         }
 
@@ -186,112 +178,6 @@ namespace ShooterMover.Domain.Guns
             }
 
             return result;
-        }
-
-        private static void ValidateModifierSemantics(
-            Gun blueprint,
-            IDictionary<StableId, GunAugmentModifierSet> modifiersByAugmentId)
-        {
-            if (!blueprint.FireSettings.IsContinuous)
-            {
-                return;
-            }
-
-            foreach (GunAugmentModifierSet modifierSet in modifiersByAugmentId.Values)
-            {
-                for (int index = 0; index < modifierSet.Modifiers.Count; index++)
-                {
-                    GunStatModifier modifier = modifierSet.Modifiers[index];
-                    if (modifier.Stat != GunEffectiveStat.RateOfFire)
-                    {
-                        continue;
-                    }
-
-                    throw new IncompatibleGunAugmentException(
-                        modifierSet.Instance.InstanceId,
-                        modifierSet.Definition.DefinitionId,
-                        modifier.Stat,
-                        "RateOfFire modifies projectile ShotsPerSecond only; continuous DamageTicksPerSecond is a separate authored cadence and has no modifier target in this task");
-                }
-            }
-        }
-
-        private static Dictionary<StableId, GunAugmentModifierSet>
-            WithoutFixedPointRicochet(
-                IDictionary<StableId, GunAugmentModifierSet> source)
-        {
-            var result = new Dictionary<StableId, GunAugmentModifierSet>();
-            foreach (KeyValuePair<StableId, GunAugmentModifierSet> pair in source)
-            {
-                GunAugmentModifierSet set = pair.Value;
-                var modifiers = new List<GunStatModifier>();
-                for (int index = 0; index < set.Modifiers.Count; index++)
-                {
-                    GunStatModifier modifier = set.Modifiers[index];
-                    if (modifier.Stat != GunEffectiveStat.RicochetTenths)
-                    {
-                        modifiers.Add(modifier);
-                    }
-                }
-                result.Add(
-                    pair.Key,
-                    GunAugmentModifierSet.Create(
-                        set.Definition,
-                        set.Instance,
-                        modifiers));
-            }
-            return result;
-        }
-
-        private static RicochetValue EvaluateFixedPointRicochet(
-            Gun blueprint,
-            IEnumerable<AugmentInstance> installedAugments,
-            IDictionary<StableId, GunAugmentModifierSet> modifiersByAugmentId)
-        {
-            int tenths = ResolveAuthoredRicochet(blueprint).Tenths;
-            foreach (AugmentInstance installed in installedAugments)
-            {
-                GunAugmentModifierSet set = modifiersByAugmentId[installed.InstanceId];
-                for (int index = 0; index < set.Modifiers.Count; index++)
-                {
-                    GunStatModifier modifier = set.Modifiers[index];
-                    if (modifier.Stat != GunEffectiveStat.RicochetTenths)
-                    {
-                        continue;
-                    }
-                    if (modifier.Operation != GunModifierOperation.FlatAddition
-                        || modifier.Value < 0d
-                        || Math.Abs(modifier.Value - Math.Round(modifier.Value))
-                            > 0.000000001d)
-                    {
-                        throw new IncompatibleGunAugmentException(
-                            set.Instance.InstanceId,
-                            set.Definition.DefinitionId,
-                            modifier.Stat,
-                            "RicochetTenths accepts only non-negative whole fixed-point additions");
-                    }
-                    tenths = checked(tenths + checked((int)Math.Round(modifier.Value)));
-                }
-            }
-            return new RicochetValue(tenths);
-        }
-
-        private static RicochetValue ResolveAuthoredRicochet(Gun blueprint)
-        {
-            if (blueprint.BaseStats != null)
-            {
-                return blueprint.BaseStats.Ricochet;
-            }
-            if (blueprint.Impact.Ricochet == null)
-            {
-                return new RicochetValue(0);
-            }
-            if (blueprint.Impact.Ricochet.FixedPointBudget.HasValue)
-            {
-                return blueprint.Impact.Ricochet.FixedPointBudget.Value;
-            }
-            return new RicochetValue(
-                checked(blueprint.Impact.Ricochet.MaximumSuccessfulBounces * 10));
         }
 
         private static string BuildEquipmentValidationMessage(
