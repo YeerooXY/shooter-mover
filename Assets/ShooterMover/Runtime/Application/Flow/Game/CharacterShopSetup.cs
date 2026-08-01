@@ -124,7 +124,7 @@ namespace ShooterMover.Application.Flow.Game
                 money,
                 rewardApplication,
                 scrap.AuthorityStableId,
-                loadout.Holdings.AuthorityStableId,
+                loadout.LegacyHoldings.AuthorityStableId,
                 null,
                 roller,
                 purchases);
