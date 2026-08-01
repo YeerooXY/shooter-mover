@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Guns;
 using ShooterMover.EnemyRuntimeComposition;
 using ShooterMover.UnityAdapters.Combat;
 using UnityEngine;
@@ -14,6 +16,10 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
     [DisallowMultipleComponent]
     public sealed class Enemy : Damageable
     {
+        private const double MinResistance = -1d;
+        private const double MaxResistance = 0.95d;
+        private readonly Dictionary<GunDamageCategory, double> resistances =
+            new Dictionary<GunDamageCategory, double>();
         private EnemyInstance runtime;
         private RoomEnemyDeathRelay legacyRelay;
         private bool legacyRelayEnabled;
@@ -75,6 +81,27 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             get { return IsBound && IsAlive; }
         }
 
+        public double Resistance(GunDamageCategory category)
+        {
+            double value;
+            if (!resistances.TryGetValue(category, out value)) return 0d;
+            return Math.Max(MinResistance, Math.Min(MaxResistance, value));
+        }
+
+        public void AddResistance(GunDamageCategory category, double amount)
+        {
+            if (!Enum.IsDefined(typeof(GunDamageCategory), category)
+                || double.IsNaN(amount)
+                || double.IsInfinity(amount))
+            {
+                throw new ArgumentOutOfRangeException();
+            }
+
+            double current;
+            resistances.TryGetValue(category, out current);
+            resistances[category] = current + amount;
+        }
+
         internal void Bind(EnemyInstance value)
         {
             if (value == null) throw new ArgumentNullException(nameof(value));
@@ -104,6 +131,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         public void Unbind()
         {
             runtime = null;
+            resistances.Clear();
             if (legacyRelayStateCaptured && legacyRelay != null)
             {
                 legacyRelay.enabled = legacyRelayEnabled;
@@ -141,7 +169,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                         runtime.LifecycleGeneration,
                         hit.Order,
                         hit.ChannelValue,
-                        hit.Amount),
+                        hit.Amount * (1d - Resistance(hit.DamageCategory))),
                     hit.OccurredAtSeconds);
             }
             finally
