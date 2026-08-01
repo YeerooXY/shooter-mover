@@ -54,6 +54,8 @@ namespace ShooterMover.Application.Flow.Game
                 Loadout(loadout),
                 GunAugmentSavePart.CreateAdapter(
                     strongboxes.AugmentSignatures),
+                ShopPurchaseSavePart.CreateAdapter(
+                    strongboxes.Shop.Purchases),
                 Strongboxes(strongboxes),
             };
             adapters.AddRange(
