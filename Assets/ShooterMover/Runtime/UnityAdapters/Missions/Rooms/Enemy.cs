@@ -64,7 +64,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
     {
         private const double MinResistance = -1d;
         private const double MaxResistance = 0.95d;
-        private static readonly TraitRolls Rolls = TraitRollDefaults.Create();
+        private static readonly TraitRules Rules = TraitRules.Default;
 
         private readonly Dictionary<GunDamageCategory, double> resistances =
             new Dictionary<GunDamageCategory, double>();
@@ -185,7 +185,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                     "A room enemy actor may only bind once per room presentation.");
             }
 
-            TraitRoller.Roll(value, Rolls);
+            TraitRoller.Roll(value, Rules);
 
             bool reactivateAfterDeath = terminalPresentationDisabled;
             legacyRelay = GetComponent<RoomEnemyDeathRelay>();
