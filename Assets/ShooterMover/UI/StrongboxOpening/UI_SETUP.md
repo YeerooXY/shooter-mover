@@ -142,10 +142,10 @@ Assets/ShooterMover/Art/UI/Common/augment_slot_filled_ai.png
 ```
 
 The grid is driven by the equipment's real augment capacity and installed count. It
-uses seven columns by default and wraps only when capacity exceeds seven. Fresh
-strongbox equipment therefore shows clean empty cells; no augment is invented by the
-presentation. Installed augment definitions can replace filled cells in a later
-projection update.
+uses four columns by default, matching the weapon maximum; gear can use three or
+fewer cells. Fresh strongbox equipment therefore shows clean empty cells; no augment
+is invented by the presentation. Installed augment definitions can replace filled
+cells in a later projection update.
 
 ## 6. Create the augment prefabs
 

@@ -17,7 +17,7 @@ namespace ShooterMover.UI.Common
         [SerializeField] private Image slotPrefab;
         [SerializeField] private Sprite emptySprite;
         [SerializeField] private Sprite filledSprite;
-        [SerializeField] private int columns = 7;
+        [SerializeField] private int columns = 4;
 
         private readonly List<Image> slots = new List<Image>();
 
