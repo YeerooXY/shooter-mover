@@ -17,7 +17,12 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             float pulseSpeed,
             int orbiters)
         {
-            if (radiusScale <= 0f
+            if (!IsFinite(radiusScale)
+                || !IsFinite(width)
+                || !IsFinite(spinDegreesPerSecond)
+                || !IsFinite(pulseAmount)
+                || !IsFinite(pulseSpeed)
+                || radiusScale <= 0f
                 || width <= 0f
                 || pulseAmount < 0f
                 || pulseSpeed < 0f
@@ -42,6 +47,11 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         public float PulseAmount { get; }
         public float PulseSpeed { get; }
         public int Orbiters { get; }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
+        }
     }
 
     /// <summary>
@@ -313,6 +323,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             }
 
             enemy = value;
+            enabled = true;
             if (bodyRadius <= 0f)
             {
                 float size = EnemyBounds.MeasureLargestDimension(transform);
@@ -337,7 +348,9 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             }
 
             ClearLayers();
-            ResolveSorting(out int sortingLayerId, out int sortingOrder);
+            int sortingLayerId;
+            int sortingOrder;
+            ResolveSorting(out sortingLayerId, out sortingOrder);
             for (int index = 0; index < traits.Count; index++)
             {
                 EnemyTrait trait = traits[index];
@@ -366,6 +379,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             ClearLayers();
             traitHash = 0;
             enemy = null;
+            enabled = false;
         }
 
         private void LateUpdate()
@@ -446,21 +460,27 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Reset()
         {
-            if (material != null)
+            if (material == null) return;
+            if (Application.isPlaying)
             {
                 UnityEngine.Object.Destroy(material);
-                material = null;
             }
+            else
+            {
+                UnityEngine.Object.DestroyImmediate(material);
+            }
+            material = null;
         }
 
         public static Material Get()
         {
             if (material != null) return material;
             Shader shader = Shader.Find("Sprites/Default");
+            if (shader == null) shader = Shader.Find("Hidden/Internal-Colored");
             if (shader == null)
             {
                 throw new InvalidOperationException(
-                    "enemy-trait-vfx-shader-missing");
+                    "No compatible enemy trait VFX shader is available.");
             }
             material = new Material(shader)
             {
