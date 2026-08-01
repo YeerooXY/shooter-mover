@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Globalization;
 
 namespace ShooterMover.EnemyRuntimeComposition
@@ -11,7 +10,7 @@ namespace ShooterMover.EnemyRuntimeComposition
 
         internal bool TraitsRolled { get { return traitsRolled; } }
 
-        internal void MarkTraitsRolled()
+        internal void CompleteTraitRoll()
         {
             traitsRolled = true;
         }
@@ -24,7 +23,6 @@ namespace ShooterMover.EnemyRuntimeComposition
             if (!Enum.IsDefined(typeof(EnemyTrait), trait))
                 throw new ArgumentOutOfRangeException(nameof(trait));
             if (weight < 1) throw new ArgumentOutOfRangeException(nameof(weight));
-
             Trait = trait;
             Weight = weight;
         }
@@ -33,118 +31,74 @@ namespace ShooterMover.EnemyRuntimeComposition
         public int Weight { get; }
     }
 
-    public sealed class EnemyTraitTierCap
-    {
-        public EnemyTraitTierCap(int minimumTier, int maximumTraits)
-        {
-            if (minimumTier < 1)
-                throw new ArgumentOutOfRangeException(nameof(minimumTier));
-            if (maximumTraits < 0)
-                throw new ArgumentOutOfRangeException(nameof(maximumTraits));
-
-            MinimumTier = minimumTier;
-            MaximumTraits = maximumTraits;
-        }
-
-        public int MinimumTier { get; }
-        public int MaximumTraits { get; }
-    }
-
-    /// <summary>
-    /// Immutable balance data for deterministic enemy trait rolls.
-    /// </summary>
+    /// <summary>Immutable balance data for deterministic enemy trait rolls.</summary>
     public sealed class EnemyTraitRollTable
     {
-        private readonly ReadOnlyCollection<EnemyTraitWeight> weights;
-        private readonly ReadOnlyCollection<EnemyTraitTierCap> tierCaps;
+        private readonly List<EnemyTraitWeight> weights;
+        private readonly List<int> maxTraitsByTier;
 
         public EnemyTraitRollTable(
-            double firstTraitChance,
-            double additionalTraitChance,
+            double firstChance,
+            double extraChance,
             IEnumerable<EnemyTraitWeight> configuredWeights,
-            IEnumerable<EnemyTraitTierCap> configuredTierCaps)
+            IEnumerable<int> configuredMaxTraitsByTier)
         {
-            RequireChance(firstTraitChance, nameof(firstTraitChance));
-            RequireChance(additionalTraitChance, nameof(additionalTraitChance));
+            RequireChance(firstChance, nameof(firstChance));
+            RequireChance(extraChance, nameof(extraChance));
 
-            var weightCopy = new List<EnemyTraitWeight>(
+            weights = new List<EnemyTraitWeight>(
                 configuredWeights
                     ?? throw new ArgumentNullException(nameof(configuredWeights)));
-            if (weightCopy.Count == 0)
+            if (weights.Count == 0)
                 throw new ArgumentException(
-                    "A trait roll table requires at least one weighted trait.",
+                    "A trait roll table requires weighted traits.",
                     nameof(configuredWeights));
 
-            var seenTraits = new HashSet<EnemyTrait>();
-            for (int index = 0; index < weightCopy.Count; index++)
+            var seen = new HashSet<EnemyTrait>();
+            for (int index = 0; index < weights.Count; index++)
             {
-                EnemyTraitWeight entry = weightCopy[index];
-                if (entry == null)
+                EnemyTraitWeight entry = weights[index];
+                if (entry == null || !seen.Add(entry.Trait))
                     throw new ArgumentException(
-                        "Trait weights cannot contain null entries.",
-                        nameof(configuredWeights));
-                if (!seenTraits.Add(entry.Trait))
-                    throw new ArgumentException(
-                        "Trait weights must contain each trait at most once.",
+                        "Trait weights must be non-null and unique.",
                         nameof(configuredWeights));
             }
-            weightCopy.Sort((left, right) => left.Trait.CompareTo(right.Trait));
+            weights.Sort((left, right) => left.Trait.CompareTo(right.Trait));
 
-            var capCopy = new List<EnemyTraitTierCap>(
-                configuredTierCaps
-                    ?? throw new ArgumentNullException(nameof(configuredTierCaps)));
-            if (capCopy.Count == 0)
+            maxTraitsByTier = new List<int>(
+                configuredMaxTraitsByTier
+                    ?? throw new ArgumentNullException(
+                        nameof(configuredMaxTraitsByTier)));
+            if (maxTraitsByTier.Count == 0)
                 throw new ArgumentException(
-                    "A trait roll table requires at least one tier cap.",
-                    nameof(configuredTierCaps));
-            capCopy.Sort((left, right) =>
-                left.MinimumTier.CompareTo(right.MinimumTier));
+                    "A trait roll table requires tier caps.",
+                    nameof(configuredMaxTraitsByTier));
 
-            int previousTier = 0;
-            int previousMaximum = -1;
-            for (int index = 0; index < capCopy.Count; index++)
+            int previous = -1;
+            for (int index = 0; index < maxTraitsByTier.Count; index++)
             {
-                EnemyTraitTierCap cap = capCopy[index];
-                if (cap == null)
+                int maximum = maxTraitsByTier[index];
+                if (maximum < 0 || maximum < previous)
                     throw new ArgumentException(
-                        "Trait tier caps cannot contain null entries.",
-                        nameof(configuredTierCaps));
-                if (cap.MinimumTier <= previousTier)
-                    throw new ArgumentException(
-                        "Trait tier caps must use unique increasing tiers.",
-                        nameof(configuredTierCaps));
-                if (cap.MaximumTraits < previousMaximum)
-                    throw new ArgumentException(
-                        "Trait tier caps cannot decrease at higher tiers.",
-                        nameof(configuredTierCaps));
-
-                previousTier = cap.MinimumTier;
-                previousMaximum = cap.MaximumTraits;
+                        "Trait tier caps must be non-negative and non-decreasing.",
+                        nameof(configuredMaxTraitsByTier));
+                previous = maximum;
             }
 
-            FirstTraitChance = firstTraitChance;
-            AdditionalTraitChance = additionalTraitChance;
-            weights = new ReadOnlyCollection<EnemyTraitWeight>(weightCopy);
-            tierCaps = new ReadOnlyCollection<EnemyTraitTierCap>(capCopy);
+            FirstChance = firstChance;
+            ExtraChance = extraChance;
         }
 
-        public double FirstTraitChance { get; }
-        public double AdditionalTraitChance { get; }
+        public double FirstChance { get; }
+        public double ExtraChance { get; }
         public IReadOnlyList<EnemyTraitWeight> Weights { get { return weights; } }
-        public IReadOnlyList<EnemyTraitTierCap> TierCaps { get { return tierCaps; } }
+        public IReadOnlyList<int> MaxTraitsByTier { get { return maxTraitsByTier; } }
 
-        public int MaximumTraits(int tier)
+        public int MaxTraits(int tier)
         {
             if (tier < 1) throw new ArgumentOutOfRangeException(nameof(tier));
-
-            int maximum = 0;
-            for (int index = 0; index < tierCaps.Count; index++)
-            {
-                EnemyTraitTierCap cap = tierCaps[index];
-                if (tier < cap.MinimumTier) break;
-                maximum = cap.MaximumTraits;
-            }
-            return Math.Min(maximum, weights.Count);
+            int index = Math.Min(tier, maxTraitsByTier.Count) - 1;
+            return Math.Min(maxTraitsByTier[index], weights.Count);
         }
 
         private static void RequireChance(double value, string parameterName)
@@ -175,19 +129,12 @@ namespace ShooterMover.EnemyRuntimeComposition
                     new EnemyTraitWeight(EnemyTrait.Overclocked, 20),
                     new EnemyTraitWeight(EnemyTrait.Volatile, 15),
                 },
-                new[]
-                {
-                    new EnemyTraitTierCap(1, 1),
-                    new EnemyTraitTierCap(2, 2),
-                    new EnemyTraitTierCap(3, 3),
-                    new EnemyTraitTierCap(4, 4),
-                });
+                new[] { 1, 2, 3, 4 });
         }
     }
 
     /// <summary>
-    /// Assigns weighted traits before combat. The same run, room, placement and lifecycle
-    /// always produce the same roll sequence.
+    /// The same run, room, placement and lifecycle always produce the same trait sequence.
     /// </summary>
     public static class EnemyTraitRoller
     {
@@ -199,28 +146,25 @@ namespace ShooterMover.EnemyRuntimeComposition
             if (table == null) throw new ArgumentNullException(nameof(table));
             if (enemy.TraitsRolled) return 0;
 
-            int maximum = table.MaximumTraits(enemy.Tier);
-            if (enemy.Traits.Count >= maximum)
-            {
-                enemy.MarkTraitsRolled();
-                return 0;
-            }
-
-            var random = new EnemyTraitRandom(BuildSeed(enemy));
+            int maximum = table.MaxTraits(enemy.Tier);
             int added = 0;
-            while (enemy.Traits.Count < maximum)
+            if (enemy.Traits.Count < maximum)
             {
-                double chance = enemy.Traits.Count == 0
-                    ? table.FirstTraitChance
-                    : table.AdditionalTraitChance;
-                if (random.NextUnit() >= chance) break;
+                var random = new EnemyTraitRandom(Seed(enemy));
+                while (enemy.Traits.Count < maximum)
+                {
+                    double chance = enemy.Traits.Count == 0
+                        ? table.FirstChance
+                        : table.ExtraChance;
+                    if (random.NextUnit() >= chance) break;
 
-                EnemyTrait trait;
-                if (!TryPick(enemy, table.Weights, random, out trait)) break;
-                if (enemy.AssignTrait(trait)) added++;
+                    EnemyTrait trait;
+                    if (!TryPick(enemy, table.Weights, random, out trait)) break;
+                    if (enemy.AssignTrait(trait)) added++;
+                }
             }
 
-            enemy.MarkTraitsRolled();
+            enemy.CompleteTraitRoll();
             return added;
         }
 
@@ -235,8 +179,8 @@ namespace ShooterMover.EnemyRuntimeComposition
             for (int index = 0; index < weights.Count; index++)
             {
                 EnemyTraitWeight entry = weights[index];
-                if (enemy.HasTrait(entry.Trait)) continue;
-                total = checked(total + entry.Weight);
+                if (!enemy.HasTrait(entry.Trait))
+                    total = checked(total + entry.Weight);
             }
             if (total == 0) return false;
 
@@ -253,10 +197,10 @@ namespace ShooterMover.EnemyRuntimeComposition
                 roll -= entry.Weight;
             }
             throw new InvalidOperationException(
-                "The weighted enemy trait roll could not resolve its selected entry.");
+                "The weighted trait roll could not resolve its selected entry.");
         }
 
-        private static string BuildSeed(EnemyInstance enemy)
+        private static string Seed(EnemyInstance enemy)
         {
             return "enemy-trait-roll-v1|"
                 + enemy.Request.RunStableId + "|"
@@ -274,7 +218,9 @@ namespace ShooterMover.EnemyRuntimeComposition
         public EnemyTraitRandom(string seed)
         {
             if (string.IsNullOrEmpty(seed))
-                throw new ArgumentException("A deterministic trait seed is required.", nameof(seed));
+                throw new ArgumentException(
+                    "A deterministic trait seed is required.",
+                    nameof(seed));
 
             state = 14695981039346656037UL;
             unchecked
