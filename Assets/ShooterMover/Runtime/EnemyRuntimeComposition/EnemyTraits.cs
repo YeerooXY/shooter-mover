@@ -9,11 +9,27 @@ namespace ShooterMover.EnemyRuntimeComposition
         EnergyShielded = 1,
         Fortified = 2,
         Golden = 3,
+        Swift = 4,
+        Overclocked = 5,
+        Volatile = 6,
     }
 
     public sealed partial class EnemyInstance
     {
+        public const double VolatileDamage = 20d;
+        public const double VolatileRadius = 2d;
+
         private readonly List<EnemyTrait> traits = new List<EnemyTrait>();
+
+        public double MovementSpeedMultiplier
+        {
+            get { return HasTrait(EnemyTrait.Swift) ? 1.25d : 1d; }
+        }
+
+        public double AttackCooldownMultiplier
+        {
+            get { return HasTrait(EnemyTrait.Overclocked) ? 0.75d : 1d; }
+        }
 
         public bool HasTrait(EnemyTrait trait)
         {
