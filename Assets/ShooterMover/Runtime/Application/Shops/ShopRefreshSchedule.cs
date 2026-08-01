@@ -32,11 +32,22 @@ namespace ShooterMover.Application.Shops
         public DateTime StartsAtUtc { get; }
         public DateTime RefreshesAtUtc { get; }
 
-        public StableId StockIdentity(StableId characterStableId)
+        public StableId StockId(
+            StableId characterId,
+            StableId shopId)
         {
+            if (characterId == null)
+            {
+                throw new ArgumentNullException(nameof(characterId));
+            }
+            if (shopId == null)
+            {
+                throw new ArgumentNullException(nameof(shopId));
+            }
             return Shop.DeriveStableId(
                 "shopwindow",
-                characterStableId.ToString(),
+                characterId.ToString(),
+                shopId.ToString(),
                 Ordinal.ToString(CultureInfo.InvariantCulture));
         }
     }
