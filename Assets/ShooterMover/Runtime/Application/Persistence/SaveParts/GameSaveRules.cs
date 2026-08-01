@@ -464,10 +464,7 @@ namespace ShooterMover.Application.Persistence.SaveParts
                         "staged-augment-signature-equipment-already-held:"
                             + signature.EquipmentInstanceStableId);
                 }
-                if (!OpeningContainsSignatureEquipment(strongboxes, signature)
-                    && !ShopReceiptContainsSignatureSource(
-                        shopReceipts,
-                        signature))
+                if (!OpeningContainsSignatureEquipment(strongboxes, signature))
                 {
                     return SavePartValidationResult.Reject(
                         "staged-augment-signature-opening-payload-missing:"
