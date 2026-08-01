@@ -52,6 +52,9 @@ namespace ShooterMover.Application.Shops
                     ClaimIdentity(record.Command.TransactionStableId)));
             if (IsRewardApplied(retried.Status))
             {
+                RecordPurchaseReceipt(
+                    record.Entry.StockEntryStableId,
+                    record.Command.TransactionStableId);
                 record.State.SetEntry(record.Entry.WithPurchaseState(
                     ShopStockEntryState.SoldOut,
                     record.Command.TransactionStableId));
@@ -143,8 +146,13 @@ namespace ShooterMover.Application.Shops
                 entries.Add(lockedEntries[index]);
             }
 
-            EquipmentGenerationPolicy policy;
-            if (!TryBuildRestrictedPolicy(definition, catalog, out policy, out rejectionCode))
+            EquipmentGenerationPolicy policy = null;
+            if (stockRoller == null
+                && !TryBuildRestrictedPolicy(
+                    definition,
+                    catalog,
+                    out policy,
+                    out rejectionCode))
             {
                 return false;
             }
@@ -155,41 +163,76 @@ namespace ShooterMover.Application.Shops
             {
                 string ordinal = refreshOrdinal.ToString(CultureInfo.InvariantCulture);
                 string slot = slotIndex.ToString(CultureInfo.InvariantCulture);
-                StableId operationId = Shop.DeriveStableId(
-                    "shopgenop",
-                    runStableId.ToString(),
-                    definition.ShopStableId.ToString(),
-                    ordinal,
-                    slot,
-                    definition.AlgorithmVersion.ToString(CultureInfo.InvariantCulture));
-                StableId equipmentInstanceId = Shop.DeriveStableId(
-                    "shopequipment",
-                    runStableId.ToString(),
-                    definition.ShopStableId.ToString(),
-                    ordinal,
-                    slot,
-                    definition.AlgorithmVersion.ToString(CultureInfo.InvariantCulture));
-                EquipmentGenerationResult generated = generator.GenerateEquipment(
-                    EquipmentGenerationRequest.Create(
-                        operationId,
-                        equipmentInstanceId,
-                        policy,
-                        catalog,
-                        context,
-                        inventorySeed,
-                        definition.AlgorithmVersion));
-                if (!generated.IsSuccess || generated.Equipment == null)
+                EquipmentInstance equipment;
+                string generationFingerprint;
+
+                if (stockRoller != null)
                 {
-                    rejectionCode = string.IsNullOrEmpty(generated.FailureReason)
-                        ? "shop-generator-rejected"
-                        : "shop-generator-rejected:" + generated.FailureReason;
-                    return false;
+                    ShopStockRollResult rolled;
+                    if (!stockRoller.TryRoll(
+                            new ShopStockRollRequest(
+                                runStableId,
+                                definition,
+                                catalog,
+                                context,
+                                inventorySeed,
+                                refreshOrdinal,
+                                slotIndex),
+                            out rolled,
+                            out rejectionCode)
+                        || rolled == null
+                        || rolled.Equipment == null)
+                    {
+                        if (string.IsNullOrWhiteSpace(rejectionCode))
+                        {
+                            rejectionCode = "shop-stock-roller-rejected";
+                        }
+                        return false;
+                    }
+                    equipment = rolled.Equipment;
+                    generationFingerprint =
+                        rolled.GenerationFingerprint;
+                }
+                else
+                {
+                    StableId operationId = Shop.DeriveStableId(
+                        "shopgenop",
+                        runStableId.ToString(),
+                        definition.ShopStableId.ToString(),
+                        ordinal,
+                        slot,
+                        definition.AlgorithmVersion.ToString(CultureInfo.InvariantCulture));
+                    StableId equipmentInstanceId = Shop.DeriveStableId(
+                        "shopequipment",
+                        runStableId.ToString(),
+                        definition.ShopStableId.ToString(),
+                        ordinal,
+                        slot,
+                        definition.AlgorithmVersion.ToString(CultureInfo.InvariantCulture));
+                    EquipmentGenerationResult generated = generator.GenerateEquipment(
+                        EquipmentGenerationRequest.Create(
+                            operationId,
+                            equipmentInstanceId,
+                            policy,
+                            catalog,
+                            context,
+                            inventorySeed,
+                            definition.AlgorithmVersion));
+                    if (!generated.IsSuccess || generated.Equipment == null)
+                    {
+                        rejectionCode = string.IsNullOrEmpty(generated.FailureReason)
+                            ? "shop-generator-rejected"
+                            : "shop-generator-rejected:" + generated.FailureReason;
+                        return false;
+                    }
+                    equipment = generated.Equipment;
+                    generationFingerprint = generated.ResultFingerprint;
                 }
 
                 long price;
                 string priceFailure;
                 if (!definition.PricingPolicy.TryCalculatePrice(
-                    generated.Equipment,
+                    equipment,
                     catalog,
                     out price,
                     out priceFailure))
@@ -207,9 +250,9 @@ namespace ShooterMover.Application.Shops
                     definition.AlgorithmVersion.ToString(CultureInfo.InvariantCulture));
                 entries.Add(new ShopStockEntry(
                     entryId,
-                    generated.Equipment,
+                    equipment,
                     price,
-                    generated.ResultFingerprint,
+                    generationFingerprint,
                     ShopStockEntryState.Available,
                     null));
             }
