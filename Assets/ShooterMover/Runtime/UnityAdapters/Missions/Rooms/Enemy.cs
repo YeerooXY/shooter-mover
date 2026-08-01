@@ -10,25 +10,23 @@ using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Missions.Rooms
 {
-    public sealed class EnemyVolatileExplosion
+    public sealed class VolatileBlast
     {
-        public EnemyVolatileExplosion(
-            StableId eventStableId,
-            StableId sourceEntityStableId,
-            StableId sourceRunParticipantStableId,
-            long sourceLifecycleGeneration,
+        public VolatileBlast(
+            StableId eventId,
+            StableId enemyId,
+            StableId runParticipantId,
+            long generation,
             Vector2 position,
             double radius,
             double damage)
         {
-            EventStableId = eventStableId
-                ?? throw new ArgumentNullException(nameof(eventStableId));
-            SourceEntityStableId = sourceEntityStableId
-                ?? throw new ArgumentNullException(nameof(sourceEntityStableId));
-            SourceRunParticipantStableId = sourceRunParticipantStableId
-                ?? throw new ArgumentNullException(nameof(sourceRunParticipantStableId));
-            if (sourceLifecycleGeneration <= 0L)
-                throw new ArgumentOutOfRangeException(nameof(sourceLifecycleGeneration));
+            EventId = eventId ?? throw new ArgumentNullException(nameof(eventId));
+            EnemyId = enemyId ?? throw new ArgumentNullException(nameof(enemyId));
+            RunParticipantId = runParticipantId
+                ?? throw new ArgumentNullException(nameof(runParticipantId));
+            if (generation <= 0L)
+                throw new ArgumentOutOfRangeException(nameof(generation));
             if (float.IsNaN(position.x)
                 || float.IsInfinity(position.x)
                 || float.IsNaN(position.y)
@@ -41,16 +39,16 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             if (double.IsNaN(damage) || double.IsInfinity(damage) || damage <= 0d)
                 throw new ArgumentOutOfRangeException(nameof(damage));
 
-            SourceLifecycleGeneration = sourceLifecycleGeneration;
+            Generation = generation;
             Position = position;
             Radius = radius;
             Damage = damage;
         }
 
-        public StableId EventStableId { get; }
-        public StableId SourceEntityStableId { get; }
-        public StableId SourceRunParticipantStableId { get; }
-        public long SourceLifecycleGeneration { get; }
+        public StableId EventId { get; }
+        public StableId EnemyId { get; }
+        public StableId RunParticipantId { get; }
+        public long Generation { get; }
         public Vector2 Position { get; }
         public double Radius { get; }
         public double Damage { get; }
@@ -76,9 +74,9 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         private bool legacyRelayEnabled;
         private bool legacyRelayStateCaptured;
         private bool terminalPresentationDisabled;
-        private bool volatileExplosionEmitted;
+        private bool volatileBlastEmitted;
 
-        public static event Action<Enemy, EnemyVolatileExplosion> VolatileExploded;
+        public static event Action<Enemy, VolatileBlast> VolatileExploded;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetRuntimeEvents()
@@ -200,7 +198,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
 
             runtime = value;
             resistances.Clear();
-            volatileExplosionEmitted = false;
+            volatileBlastEmitted = false;
             ApplyTraits();
             terminalPresentationDisabled = false;
             traitVfx = EnemyTraitVfx.Attach(this);
@@ -219,7 +217,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             }
             runtime = null;
             resistances.Clear();
-            volatileExplosionEmitted = false;
+            volatileBlastEmitted = false;
             if (legacyRelayStateCaptured && legacyRelay != null)
             {
                 legacyRelay.enabled = legacyRelayEnabled;
@@ -313,7 +311,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
 
             try
             {
-                EmitVolatileExplosion();
+                EmitVolatileBlast();
             }
             finally
             {
@@ -337,9 +335,9 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             }
         }
 
-        private void EmitVolatileExplosion()
+        private void EmitVolatileBlast()
         {
-            if (volatileExplosionEmitted
+            if (volatileBlastEmitted
                 || runtime == null
                 || !runtime.HasTrait(EnemyTrait.Volatile))
             {
@@ -348,10 +346,10 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             if (runtime.PublishedDeath == null)
             {
                 throw new InvalidOperationException(
-                    "A volatile enemy requires its canonical death fact.");
+                    "A volatile enemy requires a confirmed death.");
             }
 
-            volatileExplosionEmitted = true;
+            volatileBlastEmitted = true;
             Vector2 position = transform.position;
             StableId eventId = StableId.Create(
                 "enemy-volatile-explosion",
@@ -362,7 +360,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                         CultureInfo.InvariantCulture)
                     + "|"
                     + runtime.PublishedDeath.DeathEventStableId));
-            var explosion = new EnemyVolatileExplosion(
+            var blast = new VolatileBlast(
                 eventId,
                 runtime.SpawnStableId,
                 runtime.RunParticipantStableId,
@@ -370,10 +368,10 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 position,
                 EnemyInstance.VolatileRadius,
                 EnemyInstance.VolatileDamage);
-            Action<Enemy, EnemyVolatileExplosion> handler = VolatileExploded;
+            Action<Enemy, VolatileBlast> handler = VolatileExploded;
             if (handler != null)
             {
-                handler(this, explosion);
+                handler(this, blast);
             }
         }
 
