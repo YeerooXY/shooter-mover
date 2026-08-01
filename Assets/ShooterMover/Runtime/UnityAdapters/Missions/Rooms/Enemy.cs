@@ -102,6 +102,18 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             resistances[category] = current + amount;
         }
 
+        public bool AssignTrait(EnemyTrait trait)
+        {
+            if (runtime == null)
+            {
+                throw new InvalidOperationException(
+                    "The room enemy actor is not bound to a live enemy runtime.");
+            }
+            if (!runtime.AssignTrait(trait)) return false;
+            ApplyTrait(trait);
+            return true;
+        }
+
         internal void Bind(EnemyInstance value)
         {
             if (value == null) throw new ArgumentNullException(nameof(value));
@@ -121,6 +133,8 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             }
 
             runtime = value;
+            resistances.Clear();
+            ApplyTraits();
             terminalPresentationDisabled = false;
             if (reactivateAfterDeath && !gameObject.activeSelf)
             {
@@ -224,6 +238,22 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             }
 
             DisableTerminalPresentation();
+        }
+
+        private void ApplyTraits()
+        {
+            if (runtime.HasTrait(EnemyTrait.EnergyShielded))
+            {
+                ApplyTrait(EnemyTrait.EnergyShielded);
+            }
+        }
+
+        private void ApplyTrait(EnemyTrait trait)
+        {
+            if (trait == EnemyTrait.EnergyShielded)
+            {
+                AddResistance(GunDamageCategory.Energy, 0.2d);
+            }
         }
 
         private void DisableTerminalPresentation()
