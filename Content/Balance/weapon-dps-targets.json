@@ -1,0 +1,24 @@
+{
+  "$schema": "shooter-mover.weapon-dps-targets/2",
+  "rawWeaponCurve": {
+    "startLevel": 1,
+    "startDps": 4,
+    "referenceLevel": 110,
+    "referenceDps": 200,
+    "maxAuthoredLevel": 122
+  },
+  "rarityMultipliers": {
+    "common": 1,
+    "rare": 1.25,
+    "epic": 1.66,
+    "legendary": 2,
+    "artifact": 3
+  },
+  "buildMultipliers": {
+    "weaponUpgrades": 3,
+    "gear": 2,
+    "skills": 1.5,
+    "accountProgression": 1.2,
+    "optimizedTotal": 20
+  }
+}
