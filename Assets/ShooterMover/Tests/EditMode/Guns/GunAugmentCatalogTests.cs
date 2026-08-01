@@ -77,6 +77,38 @@ namespace ShooterMover.Tests.EditMode.Guns
                 Is.EqualTo(gun.EffectiveRicochet));
         }
 
+        [TestCase(-1d)]
+        [TestCase(0.5d)]
+        public void RicochetRejectsNonWholeOrNegativeAdditions(double value)
+        {
+            GunFixture fixture = RicochetFixture(2);
+            AugmentInstance augment = Augment(
+                GunAugments.RicochetId,
+                1,
+                "invalid-ricochet");
+            EquipmentInstance equipment = CreateEquipment(fixture, augment);
+            AugmentDefinition definition = fixture.Catalog.FindAugmentDefinition(
+                GunAugments.RicochetId);
+            GunAugmentModifierSet modifierSet = GunAugmentModifierSet.Create(
+                definition,
+                augment,
+                new[]
+                {
+                    GunStatModifier.Flat(
+                        GunEffectiveStat.RicochetTenths,
+                        value),
+                });
+
+            Assert.Throws<IncompatibleGunAugmentException>(delegate
+            {
+                EffectiveGunFactory.Create(
+                    fixture.Blueprint,
+                    fixture.Catalog,
+                    equipment,
+                    new[] { modifierSet });
+            });
+        }
+
         [Test]
         public void DamageAndFireRateStackAdditivelyOnDifferentStats()
         {
@@ -408,7 +440,7 @@ namespace ShooterMover.Tests.EditMode.Guns
                     0,
                     0d,
                     0d,
-                    0,
+                    1,
                     0d),
                 null,
                 GunGuidanceSpec.Unguided(),
