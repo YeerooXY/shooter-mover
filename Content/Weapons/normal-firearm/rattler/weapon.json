@@ -4,6 +4,10 @@
   "rarity": "common",
   "projectileType": "bullet",
   "damageType": "physical",
+  "fire": {
+    "mode": "automatic",
+    "rate": 4
+  },
   "shot": {
     "projectiles": 1,
     "spread": 0
