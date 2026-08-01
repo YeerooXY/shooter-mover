@@ -6,14 +6,14 @@ using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.CombatPresentation
 {
-    public sealed class EnemyTraitVfxStyle
+    public sealed class TraitLook
     {
-        public EnemyTraitVfxStyle(
+        public TraitLook(
             Color color,
             int sides,
             float radiusScale,
             float width,
-            float spinDegreesPerSecond,
+            float spinSpeed,
             float pulseAmount,
             float pulseSpeed)
         {
@@ -21,7 +21,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
                 || sides > 64
                 || !IsFinite(radiusScale)
                 || !IsFinite(width)
-                || !IsFinite(spinDegreesPerSecond)
+                || !IsFinite(spinSpeed)
                 || !IsFinite(pulseAmount)
                 || !IsFinite(pulseSpeed)
                 || radiusScale <= 0f
@@ -36,7 +36,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             Sides = sides;
             RadiusScale = radiusScale;
             Width = width;
-            SpinDegreesPerSecond = spinDegreesPerSecond;
+            SpinSpeed = spinSpeed;
             PulseAmount = pulseAmount;
             PulseSpeed = pulseSpeed;
         }
@@ -45,7 +45,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         public int Sides { get; }
         public float RadiusScale { get; }
         public float Width { get; }
-        public float SpinDegreesPerSecond { get; }
+        public float SpinSpeed { get; }
         public float PulseAmount { get; }
         public float PulseSpeed { get; }
 
@@ -55,67 +55,62 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         }
     }
 
-    /// <summary>
-    /// Presentation-only trait styles. A future trait needs one registration; the enemy actor
-    /// and stackable presenter remain unchanged.
-    /// </summary>
-    public static class EnemyTraitVfxCatalog
+    /// <summary>Visual settings for each enemy trait.</summary>
+    public static class TraitLooks
     {
-        private static readonly Dictionary<EnemyTrait, EnemyTraitVfxStyle> styles =
-            new Dictionary<EnemyTrait, EnemyTraitVfxStyle>();
+        private static readonly Dictionary<EnemyTrait, TraitLook> looks =
+            new Dictionary<EnemyTrait, TraitLook>();
 
-        static EnemyTraitVfxCatalog()
+        static TraitLooks()
         {
-            Register(
+            Add(
                 EnemyTrait.EnergyShielded,
-                new EnemyTraitVfxStyle(
+                new TraitLook(
                     new Color(0.15f, 0.82f, 1f, 0.9f),
                     32, 1f, 0.045f, 38f, 0.07f, 3.4f));
-            Register(
+            Add(
                 EnemyTrait.Fortified,
-                new EnemyTraitVfxStyle(
+                new TraitLook(
                     new Color(0.78f, 0.82f, 0.88f, 0.92f),
                     4, 1.1f, 0.075f, -14f, 0.025f, 2f));
-            Register(
+            Add(
                 EnemyTrait.Golden,
-                new EnemyTraitVfxStyle(
+                new TraitLook(
                     new Color(1f, 0.68f, 0.08f, 0.96f),
                     12, 1.22f, 0.05f, 28f, 0.1f, 4f));
-            Register(
+            Add(
                 EnemyTrait.Swift,
-                new EnemyTraitVfxStyle(
+                new TraitLook(
                     new Color(0.45f, 0.9f, 1f, 0.82f),
                     3, 0.92f, 0.032f, 190f, 0.045f, 5.5f));
-            Register(
+            Add(
                 EnemyTrait.Overclocked,
-                new EnemyTraitVfxStyle(
+                new TraitLook(
                     new Color(1f, 0.3f, 0.06f, 0.9f),
                     6, 1.06f, 0.045f, -135f, 0.12f, 6f));
-            Register(
+            Add(
                 EnemyTrait.Volatile,
-                new EnemyTraitVfxStyle(
+                new TraitLook(
                     new Color(1f, 0.08f, 0.04f, 0.94f),
                     8, 1.16f, 0.065f, 10f, 0.18f, 7f));
         }
 
-        public static void Register(EnemyTrait trait, EnemyTraitVfxStyle style)
+        public static void Add(EnemyTrait trait, TraitLook look)
         {
             if (!Enum.IsDefined(typeof(EnemyTrait), trait))
                 throw new ArgumentOutOfRangeException(nameof(trait));
-            if (style == null) throw new ArgumentNullException(nameof(style));
-            if (styles.ContainsKey(trait))
+            if (look == null) throw new ArgumentNullException(nameof(look));
+            if (looks.ContainsKey(trait))
             {
                 throw new InvalidOperationException(
-                    "Enemy trait VFX style is already registered: " + trait + ".");
+                    "Trait look already exists: " + trait + ".");
             }
-            styles.Add(trait, style);
+            looks.Add(trait, look);
         }
 
-        public static bool TryGet(
-            EnemyTrait trait,
-            out EnemyTraitVfxStyle style)
+        public static bool TryGet(EnemyTrait trait, out TraitLook look)
         {
-            return styles.TryGetValue(trait, out style);
+            return looks.TryGetValue(trait, out look);
         }
     }
 
@@ -126,7 +121,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
 
         private sealed class Layer
         {
-            private readonly EnemyTraitVfxStyle style;
+            private readonly TraitLook look;
             private readonly float radius;
             private readonly float phase;
             private readonly LineRenderer line;
@@ -135,27 +130,27 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             public Layer(
                 Transform owner,
                 EnemyTrait trait,
-                EnemyTraitVfxStyle style,
+                TraitLook look,
                 float bodyRadius,
                 int lane,
                 int sortingLayerId,
                 int sortingOrder)
             {
-                this.style = style;
-                radius = bodyRadius * style.RadiusScale + lane * LaneSpacing;
+                this.look = look;
+                radius = bodyRadius * look.RadiusScale + lane * LaneSpacing;
                 phase = lane * 1.371f + (int)trait * 0.617f;
 
                 root = new GameObject("Trait VFX - " + trait);
                 root.transform.SetParent(owner, false);
                 line = root.AddComponent<LineRenderer>();
-                line.sharedMaterial = EnemyTraitVfxMaterial.Get();
+                line.sharedMaterial = TraitMaterial.Get();
                 line.useWorldSpace = true;
                 line.loop = true;
-                line.positionCount = style.Sides;
-                line.startWidth = style.Width;
-                line.endWidth = style.Width;
-                line.startColor = style.Color;
-                line.endColor = style.Color;
+                line.positionCount = look.Sides;
+                line.startWidth = look.Width;
+                line.endWidth = look.Width;
+                line.startColor = look.Color;
+                line.endColor = look.Color;
                 line.numCapVertices = 2;
                 line.numCornerVertices = 2;
                 line.sortingLayerID = sortingLayerId;
@@ -165,14 +160,14 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             public void Tick(Vector2 center, float time)
             {
                 float pulse = 1f + Mathf.Sin(
-                    time * style.PulseSpeed + phase) * style.PulseAmount;
+                    time * look.PulseSpeed + phase) * look.PulseAmount;
                 float currentRadius = radius * pulse;
                 float rotation = (
-                    time * style.SpinDegreesPerSecond
+                    time * look.SpinSpeed
                     + phase * Mathf.Rad2Deg) * Mathf.Deg2Rad;
-                for (int index = 0; index < style.Sides; index++)
+                for (int index = 0; index < look.Sides; index++)
                 {
-                    float angle = rotation + Mathf.PI * 2f * index / style.Sides;
+                    float angle = rotation + Mathf.PI * 2f * index / look.Sides;
                     line.SetPosition(
                         index,
                         new Vector3(
@@ -181,9 +176,9 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
                             0f));
                 }
 
-                Color color = style.Color;
+                Color color = look.Color;
                 color.a *= 0.78f + 0.22f * Mathf.Sin(
-                    time * style.PulseSpeed + phase);
+                    time * look.PulseSpeed + phase);
                 line.startColor = color;
                 line.endColor = color;
             }
@@ -199,7 +194,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         private readonly List<Layer> layers = new List<Layer>();
         private Enemy enemy;
         private float bodyRadius;
-        private int traitHash;
+        private int traitKey;
 
         public int LayerCount { get { return layers.Count; } }
 
@@ -245,39 +240,39 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             }
 
             IReadOnlyList<EnemyTrait> traits = enemy.Runtime.Traits;
-            int nextHash = Hash(traits);
-            if (nextHash == traitHash) return;
+            int nextKey = Key(traits);
+            if (nextKey == traitKey) return;
 
             ClearLayers();
             int sortingLayerId;
             int sortingOrder;
-            ResolveSorting(out sortingLayerId, out sortingOrder);
+            ReadSorting(out sortingLayerId, out sortingOrder);
             for (int index = 0; index < traits.Count; index++)
             {
-                EnemyTraitVfxStyle style;
-                if (!EnemyTraitVfxCatalog.TryGet(traits[index], out style))
+                TraitLook look;
+                if (!TraitLooks.TryGet(traits[index], out look))
                 {
                     Debug.LogWarning(
-                        "enemy-trait-vfx-style-missing:" + traits[index],
+                        "enemy-trait-vfx-look-missing:" + traits[index],
                         enemy);
                     continue;
                 }
                 layers.Add(new Layer(
                     transform,
                     traits[index],
-                    style,
+                    look,
                     bodyRadius,
                     index,
                     sortingLayerId,
                     sortingOrder + index));
             }
-            traitHash = nextHash;
+            traitKey = nextKey;
         }
 
         public void Clear()
         {
             ClearLayers();
-            traitHash = 0;
+            traitKey = 0;
             enemy = null;
             enabled = false;
         }
@@ -289,7 +284,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
                 Clear();
                 return;
             }
-            if (Hash(enemy.Runtime.Traits) != traitHash)
+            if (Key(enemy.Runtime.Traits) != traitKey)
             {
                 Refresh();
             }
@@ -316,7 +311,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             layers.Clear();
         }
 
-        private void ResolveSorting(
+        private void ReadSorting(
             out int sortingLayerId,
             out int sortingOrder)
         {
@@ -337,21 +332,21 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             sortingOrder = highest + 10;
         }
 
-        private static int Hash(IReadOnlyList<EnemyTrait> traits)
+        private static int Key(IReadOnlyList<EnemyTrait> traits)
         {
             unchecked
             {
-                int hash = 17;
+                int key = 17;
                 for (int index = 0; index < traits.Count; index++)
                 {
-                    hash = hash * 31 + (int)traits[index];
+                    key = key * 31 + (int)traits[index];
                 }
-                return hash;
+                return key;
             }
         }
     }
 
-    internal static class EnemyTraitVfxMaterial
+    internal static class TraitMaterial
     {
         private static Material material;
 
