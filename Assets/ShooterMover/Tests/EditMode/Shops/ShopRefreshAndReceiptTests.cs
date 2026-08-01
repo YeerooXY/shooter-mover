@@ -1,10 +1,13 @@
 using System;
 using NUnit.Framework;
+using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Application.Shops;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Economy.Money;
 using ShooterMover.Domain.Rewards.Drops;
+using ShooterMover.Domain.Shops;
 
 namespace ShooterMover.Tests.EditMode.Shops
 {
@@ -38,22 +41,282 @@ namespace ShooterMover.Tests.EditMode.Shops
         }
 
         [Test]
-        public void StockIdentityIsStableInsideOneWindow()
+        public void ProductionShopGeneratesExactlySixOffers()
         {
-            StableId character = StableId.Parse("character.shop-window-test");
-            ShopRefreshWindow first = ShopRefreshSchedule.Resolve(
-                new DateTime(2026, 8, 1, 7, 0, 0, DateTimeKind.Utc));
-            ShopRefreshWindow same = ShopRefreshSchedule.Resolve(
-                new DateTime(2026, 8, 1, 11, 59, 59, DateTimeKind.Utc));
-            ShopRefreshWindow next = ShopRefreshSchedule.Resolve(
-                new DateTime(2026, 8, 1, 12, 0, 0, DateTimeKind.Utc));
+            CharacterLiveGraph graph = CreateGraph(
+                "character.shop-six-offers");
+            ShopInventoryView stock = Open(graph, Window(7));
+            Assert.That(stock.Entries, Has.Count.EqualTo(6));
+        }
+
+        [Test]
+        public void ReopeningOneWindowReturnsSameEquipmentInstances()
+        {
+            CharacterLiveGraph graph = CreateGraph(
+                "character.shop-reopen");
+            ShopRefreshWindow window = Window(7);
+            ShopInventoryView first = Open(graph, window);
+            ShopInventoryView reopened = Open(graph, window);
 
             Assert.That(
-                first.StockIdentity(character),
-                Is.EqualTo(same.StockIdentity(character)));
+                reopened.InventoryFingerprint,
+                Is.EqualTo(first.InventoryFingerprint));
+            for (int index = 0; index < first.Entries.Count; index++)
+            {
+                Assert.That(
+                    reopened.Entries[index].Equipment.InstanceId,
+                    Is.EqualTo(first.Entries[index].Equipment.InstanceId));
+            }
+        }
+
+        [Test]
+        public void NextWindowChangesStockIdAndDeterministicStock()
+        {
+            CharacterLiveGraph graph = CreateGraph(
+                "character.shop-next-window");
+            ShopRefreshWindow firstWindow = Window(7);
+            ShopRefreshWindow nextWindow = Window(13);
+            StableId firstId = StockId(graph, firstWindow);
+            StableId nextId = StockId(graph, nextWindow);
+            ShopInventoryView first = Open(graph, firstWindow);
+            ShopInventoryView next = Open(graph, nextWindow);
+
+            Assert.That(nextId, Is.Not.EqualTo(firstId));
+            Assert.That(first.RefreshOrdinal, Is.Zero);
+            Assert.That(next.RefreshOrdinal, Is.Zero);
             Assert.That(
-                next.StockIdentity(character),
-                Is.Not.EqualTo(first.StockIdentity(character)));
+                next.InventoryFingerprint,
+                Is.Not.EqualTo(first.InventoryFingerprint));
+            for (int index = 0; index < first.Entries.Count; index++)
+            {
+                Assert.That(
+                    next.Entries[index].Equipment.InstanceId,
+                    Is.Not.EqualTo(first.Entries[index].Equipment.InstanceId));
+            }
+        }
+
+        [Test]
+        public void DifferentShopsDoNotShareStockIdentity()
+        {
+            StableId character = Id("character.shop-id-test");
+            ShopRefreshWindow window = Window(7);
+            StableId weapons = window.StockId(
+                character,
+                Id("shop.hub-weapons"));
+            StableId armor = window.StockId(
+                character,
+                Id("shop.hub-armor"));
+            Assert.That(weapons, Is.Not.EqualTo(armor));
+        }
+
+        [Test]
+        public void SuccessfulPurchaseRemainsSoldAfterReceiptImport()
+        {
+            StableId character = Id("character.shop-receipt-restore");
+            ShopRefreshWindow window = Window(7);
+            CharacterLiveGraph source = CreateGraph(character);
+            ShopInventoryView stock = Open(source, window);
+            ShopStockEntry entry = stock.Entries[0];
+            GrantMoney(source, "restore", 100000L);
+
+            ShopPurchaseFact purchase = source.Shop.Authority.Purchase(
+                Purchase(source, stock, entry, "shop-purchase.restore"));
+            Assert.That(purchase.Status, Is.EqualTo(ShopPurchaseStatus.Applied));
+
+            ShopReceiptSnapshot snapshot =
+                source.Shop.Receipts.ExportSnapshot();
+            CharacterLiveGraph restored = CreateGraph(character);
+            string rejection;
+            Assert.That(
+                restored.Shop.Receipts.TryImportSnapshot(
+                    snapshot,
+                    out rejection),
+                Is.True,
+                rejection);
+
+            ShopInventoryView reopened = Open(restored, window);
+            ShopStockEntry restoredEntry = reopened.FindEntry(
+                entry.StockEntryStableId);
+            Assert.That(restoredEntry, Is.Not.Null);
+            Assert.That(
+                restoredEntry.State,
+                Is.EqualTo(ShopStockEntryState.SoldOut));
+            Assert.That(
+                restoredEntry.PurchaseTransactionStableId,
+                Is.EqualTo(purchase.TransactionStableId));
+        }
+
+        [Test]
+        public void FailedPurchaseCreatesNoReceipt()
+        {
+            CharacterLiveGraph graph = CreateGraph(
+                "character.shop-failed-purchase");
+            ShopInventoryView stock = Open(graph, Window(7));
+            ShopPurchaseFact fact = graph.Shop.Authority.Purchase(
+                Purchase(
+                    graph,
+                    stock,
+                    stock.Entries[0],
+                    "shop-purchase.no-money"));
+
+            Assert.That(
+                fact.Status,
+                Is.EqualTo(ShopPurchaseStatus.InsufficientFunds));
+            Assert.That(
+                graph.Shop.Receipts.ExportSnapshot().Receipts,
+                Is.Empty);
+        }
+
+        [Test]
+        public void ExactPurchaseReplayIsIdempotent()
+        {
+            CharacterLiveGraph graph = CreateGraph(
+                "character.shop-exact-replay");
+            ShopInventoryView stock = Open(graph, Window(7));
+            ShopStockEntry entry = stock.Entries[0];
+            GrantMoney(graph, "replay", 100000L);
+            ShopPurchaseCommand command = Purchase(
+                graph,
+                stock,
+                entry,
+                "shop-purchase.replay");
+            long before = graph.MoneyWallet.Balance;
+
+            ShopPurchaseFact first = graph.Shop.Authority.Purchase(command);
+            ShopPurchaseFact replay = graph.Shop.Authority.Purchase(command);
+
+            Assert.That(first.Status, Is.EqualTo(ShopPurchaseStatus.Applied));
+            Assert.That(
+                replay.Status,
+                Is.EqualTo(ShopPurchaseStatus.ExactDuplicateNoChange));
+            Assert.That(
+                replay.OriginalStatus,
+                Is.EqualTo(ShopPurchaseStatus.Applied));
+            Assert.That(
+                graph.MoneyWallet.Balance,
+                Is.EqualTo(before - entry.Price));
+            Assert.That(
+                graph.Shop.Receipts.ExportSnapshot().Receipts,
+                Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public void ConflictingReceiptIsControlledAndCardRemainsSold()
+        {
+            CharacterLiveGraph graph = CreateGraph(
+                "character.shop-receipt-conflict");
+            ShopRefreshWindow window = Window(7);
+            ShopInventoryView stock = Open(graph, window);
+            ShopStockEntry entry = stock.Entries[0];
+            StableId conflictingPurchase =
+                Id("shop-purchase.receipt-conflict-existing");
+            string rejection;
+            Assert.That(
+                graph.Shop.Receipts.TryRecord(
+                    entry.StockEntryStableId,
+                    conflictingPurchase,
+                    out rejection),
+                Is.True,
+                rejection);
+            GrantMoney(graph, "conflict", 100000L);
+
+            ShopPurchaseFact fact = graph.Shop.Authority.Purchase(
+                Purchase(
+                    graph,
+                    stock,
+                    entry,
+                    "shop-purchase.receipt-conflict-applied"));
+            ShopInventoryView reopened = Open(graph, window);
+            ShopStockEntry sold = reopened.FindEntry(
+                entry.StockEntryStableId);
+
+            Assert.That(fact.Status, Is.EqualTo(ShopPurchaseStatus.Applied));
+            Assert.That(fact.EquipmentConfirmed, Is.True);
+            Assert.That(
+                fact.RejectionCode,
+                Is.EqualTo("shop-purchase-receipt-conflict"));
+            Assert.That(sold.State, Is.EqualTo(ShopStockEntryState.SoldOut));
+            Assert.That(
+                sold.PurchaseTransactionStableId,
+                Is.EqualTo(fact.TransactionStableId));
+            StableId recorded;
+            Assert.That(
+                graph.Shop.Receipts.TryGet(
+                    entry.StockEntryStableId,
+                    out recorded),
+                Is.True);
+            Assert.That(recorded, Is.EqualTo(conflictingPurchase));
+        }
+
+        [Test]
+        public void OfferAugmentsBecomeDurableOnlyAfterPurchase()
+        {
+            CharacterLiveGraph graph = CreateGraph(
+                "character.shop-augment-purchase");
+            ShopInventoryView stock = Open(graph, Window(7));
+            ShopStockEntry entry = stock.Entries[0];
+            GeneratedEquipmentAugmentSignature offer;
+            bool committed;
+
+            Assert.That(
+                graph.Shop.OfferAugments.TryGetStagedOrCommitted(
+                    entry.Equipment.InstanceId,
+                    out offer,
+                    out committed),
+                Is.True);
+            Assert.That(committed, Is.False);
+            Assert.That(
+                graph.Augments.TryGet(
+                    entry.Equipment.InstanceId,
+                    out offer),
+                Is.False);
+
+            GrantMoney(graph, "augment", 100000L);
+            ShopPurchaseFact fact = graph.Shop.Authority.Purchase(
+                Purchase(
+                    graph,
+                    stock,
+                    entry,
+                    "shop-purchase.augment"));
+
+            Assert.That(fact.Status, Is.EqualTo(ShopPurchaseStatus.Applied));
+            Assert.That(
+                graph.Augments.TryGet(
+                    entry.Equipment.InstanceId,
+                    out offer),
+                Is.True);
+        }
+
+        [Test]
+        public void NewWindowClearsObsoleteOfferAugments()
+        {
+            CharacterLiveGraph graph = CreateGraph(
+                "character.shop-augment-window");
+            ShopInventoryView first = Open(graph, Window(7));
+            StableId oldEquipmentId = first.Entries[0].Equipment.InstanceId;
+            GeneratedEquipmentAugmentSignature signature;
+            bool committed;
+            Assert.That(
+                graph.Shop.OfferAugments.TryGetStagedOrCommitted(
+                    oldEquipmentId,
+                    out signature,
+                    out committed),
+                Is.True);
+
+            ShopInventoryView next = Open(graph, Window(13));
+
+            Assert.That(
+                graph.Shop.OfferAugments.TryGetStagedOrCommitted(
+                    oldEquipmentId,
+                    out signature,
+                    out committed),
+                Is.False);
+            Assert.That(
+                graph.Shop.OfferAugments.TryGetStagedOrCommitted(
+                    next.Entries[0].Equipment.InstanceId,
+                    out signature,
+                    out committed),
+                Is.True);
         }
 
         [Test]
@@ -65,7 +328,9 @@ namespace ShooterMover.Tests.EditMode.Shops
             StableId steel = StrongboxCatalog.GetByNumber(1).TierStableId;
             ulong total = 0UL;
             ulong steelWeight = 0UL;
-            for (int index = 0; index < profile.BaseWeights.Count; index++)
+            for (int index = 0;
+                 index < profile.BaseWeights.Count;
+                 index++)
             {
                 StrongboxTierWeight weight = profile.BaseWeights[index];
                 total += weight.Weight;
@@ -79,58 +344,88 @@ namespace ShooterMover.Tests.EditMode.Shops
             Assert.That(steelWeight, Is.EqualTo(550000UL));
         }
 
-        [Test]
-        public void PurchaseLedgerAcceptsExactReplayAndRejectsConflict()
+        private static ShopRefreshWindow Window(int hour)
         {
-            var ledger = new ShopPurchaseLedger();
-            StableId stock = StableId.Parse("shopstock.receipt-test");
-            StableId purchase = StableId.Parse("shoppurchase.receipt-test");
-            string rejection;
-
-            Assert.That(
-                ledger.TryRecord(stock, purchase, out rejection),
-                Is.True,
-                rejection);
-            Assert.That(
-                ledger.TryRecord(stock, purchase, out rejection),
-                Is.True,
-                rejection);
-            Assert.That(
-                ledger.TryRecord(
-                    stock,
-                    StableId.Parse("shoppurchase.conflict"),
-                    out rejection),
-                Is.False);
-            Assert.That(
-                rejection,
-                Is.EqualTo("shop-purchase-receipt-conflict"));
+            return ShopRefreshSchedule.Resolve(
+                new DateTime(2026, 8, 1, hour, 0, 0, DateTimeKind.Utc));
         }
 
-        [Test]
-        public void PurchaseLedgerSnapshotRoundTripsExactReceipts()
+        private static CharacterLiveGraph CreateGraph(string characterId)
         {
-            var source = new ShopPurchaseLedger();
-            StableId stock = StableId.Parse("shopstock.snapshot-test");
-            StableId purchase = StableId.Parse("shoppurchase.snapshot-test");
-            string rejection;
-            Assert.That(
-                source.TryRecord(stock, purchase, out rejection),
-                Is.True,
-                rejection);
+            return CreateGraph(Id(characterId));
+        }
 
-            var restored = new ShopPurchaseLedger();
-            Assert.That(
-                restored.TryImportSnapshot(
-                    source.ExportSnapshot(),
-                    out rejection),
-                Is.True,
-                rejection);
+        private static CharacterLiveGraph CreateGraph(StableId characterId)
+        {
+            return (CharacterLiveGraph)CharacterLiveGraphFactory
+                .CreateVerticalSliceDefaults()
+                .CreateStarter(
+                    0,
+                    characterId,
+                    Id("character-class.striker"),
+                    "Shop Test",
+                    null);
+        }
 
-            StableId restoredPurchase;
+        private static StableId StockId(
+            CharacterLiveGraph graph,
+            ShopRefreshWindow window)
+        {
+            return window.StockId(
+                graph.Character.CharacterInstanceStableId,
+                graph.Shop.Definition.ShopStableId);
+        }
+
+        private static ShopInventoryView Open(
+            CharacterLiveGraph graph,
+            ShopRefreshWindow window)
+        {
+            ShopInventoryOpenResult result = graph.Shop.Authority.Open(
+                StockId(graph, window),
+                graph.Shop.Definition,
+                graph.LoadoutRuntime.EquipmentCatalog,
+                graph.ExperienceAuthority.CurrentContext);
+            Assert.That(result.Succeeded, Is.True, result.RejectionCode);
+            Assert.That(result.Inventory, Is.Not.Null);
+            return result.Inventory;
+        }
+
+        private static ShopPurchaseCommand Purchase(
+            CharacterLiveGraph graph,
+            ShopInventoryView stock,
+            ShopStockEntry entry,
+            string purchaseId)
+        {
+            return ShopPurchaseCommand.Create(
+                Id(purchaseId),
+                stock.RunStableId,
+                stock.ShopStableId,
+                entry.StockEntryStableId,
+                graph.Character.CharacterInstanceStableId,
+                stock.InventoryFingerprint,
+                entry.Price);
+        }
+
+        private static void GrantMoney(
+            CharacterLiveGraph graph,
+            string suffix,
+            long amount)
+        {
+            MoneyWalletChangeFact fact = graph.MoneyWallet.Grant(
+                Id("shop-money-grant." + suffix),
+                Id("shop-money-operation." + suffix),
+                amount);
             Assert.That(
-                restored.TryGet(stock, out restoredPurchase),
-                Is.True);
-            Assert.That(restoredPurchase, Is.EqualTo(purchase));
+                fact.Status == MoneyWalletTransactionStatus.Applied
+                    || fact.Status
+                        == MoneyWalletTransactionStatus.DuplicateNoChange,
+                Is.True,
+                fact.RejectionCode);
+        }
+
+        private static StableId Id(string value)
+        {
+            return StableId.Parse(value);
         }
     }
 }
