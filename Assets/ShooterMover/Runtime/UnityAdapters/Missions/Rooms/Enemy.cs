@@ -5,6 +5,7 @@ using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Guns;
 using ShooterMover.EnemyRuntimeComposition;
 using ShooterMover.UnityAdapters.Combat;
+using ShooterMover.UnityAdapters.CombatPresentation;
 using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Missions.Rooms
@@ -68,6 +69,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         private readonly Dictionary<GunDamageCategory, double> resistances =
             new Dictionary<GunDamageCategory, double>();
         private EnemyInstance runtime;
+        private EnemyTraitVfx traitVfx;
         private RoomEnemyDeathRelay legacyRelay;
         private bool legacyRelayEnabled;
         private bool legacyRelayStateCaptured;
@@ -167,6 +169,10 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             }
             if (!runtime.AssignTrait(trait)) return false;
             ApplyTrait(trait);
+            if (traitVfx != null)
+            {
+                traitVfx.Refresh();
+            }
             return true;
         }
 
@@ -193,6 +199,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             volatileExplosionEmitted = false;
             ApplyTraits();
             terminalPresentationDisabled = false;
+            traitVfx = EnemyTraitVfx.Attach(this);
             if (reactivateAfterDeath && !gameObject.activeSelf)
             {
                 gameObject.SetActive(true);
@@ -201,6 +208,11 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
 
         public void Unbind()
         {
+            if (traitVfx != null)
+            {
+                traitVfx.Clear();
+                traitVfx = null;
+            }
             runtime = null;
             resistances.Clear();
             volatileExplosionEmitted = false;
