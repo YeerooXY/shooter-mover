@@ -132,6 +132,21 @@ card root. Do not animate, recolor or distort the weapon sprite itself.
 During `Roll` display, Details and Augments are hidden. During `Reveal`, the same card
 shows its name, rarity, level and augment list.
 
+Add an `AugmentSlotGrid` under `Details` (or beside the augment list) for the clean
+capacity presentation. Assign a `GridLayoutGroup` root, a 64x64 `Image` slot prefab,
+and these sprites:
+
+```text
+Assets/ShooterMover/Art/UI/Common/augment_slot_empty_ai.png
+Assets/ShooterMover/Art/UI/Common/augment_slot_filled_ai.png
+```
+
+The grid is driven by the equipment's real augment capacity and installed count. It
+uses seven columns by default and wraps only when capacity exceeds seven. Fresh
+strongbox equipment therefore shows clean empty cells; no augment is invented by the
+presentation. Installed augment definitions can replace filled cells in a later
+projection update.
+
 ## 6. Create the augment prefabs
 
 ### `AugmentRow.prefab`

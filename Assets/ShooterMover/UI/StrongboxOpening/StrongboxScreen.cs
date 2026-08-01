@@ -341,7 +341,10 @@ namespace ShooterMover.UI.StrongboxOpening
                     art,
                     rarity,
                     itemLevel,
-                    NoAugments);
+                    NoAugments,
+                    candidate.AugmentSlotCapacity,
+                    candidate.AugmentSharedLevel,
+                    candidate.InstalledAugmentCount);
                 presentationIdentity = candidate.IsUniqueInstance
                     ? candidate.InstanceStableId
                     : candidate.ContentStableId;
