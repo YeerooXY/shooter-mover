@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shooter Mover Weapon Folder Editor</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .weapon-workspace { display:grid; grid-template-columns:280px minmax(0,1fr) 300px; gap:16px; padding:16px; }
+    .weapon-editor { min-height:70vh; width:100%; resize:vertical; font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; }
+    .file-tabs { display:flex; gap:8px; flex-wrap:wrap; padding:12px; border-bottom:1px solid var(--border); }
+    .file-tabs button.active { background:var(--accent); color:white; }
+    .weapon-entry { width:100%; text-align:left; margin-bottom:6px; }
+    .weapon-entry small { display:block; opacity:.65; margin-top:2px; }
+    .generated-id { overflow-wrap:anywhere; }
+    @media (max-width:1000px) { .weapon-workspace { grid-template-columns:240px minmax(0,1fr); } .weapon-summary { grid-column:1 / -1; } }
+    @media (max-width:720px) { .weapon-workspace { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <strong>Weapon Folder Editor</strong>
+      <span>Split weapon.json + MK1–MK3 authoring</span>
+    </div>
+    <button type="button" onclick="location.href='index.html'">Legacy Item Maker</button>
+    <button id="newWeaponButton" type="button">New Weapon</button>
+    <div class="spacer"></div>
+    <button id="saveButton" type="button" class="primary">Validate & Save</button>
+    <div id="saveStatus" class="status-pill">Not saved</div>
+  </header>
+
+  <main class="weapon-workspace">
+    <aside>
+      <section class="panel">
+        <div class="panel-head">Repository Weapons</div>
+        <div class="panel-body">
+          <div id="repoStatus" class="repo-state">Checking local helper…</div>
+          <div class="divider"></div>
+          <div id="weaponList"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">Folder</div>
+        <div class="panel-body">
+          <div class="field">
+            <label for="categoryInput">Category folder</label>
+            <input id="categoryInput" class="mono" value="orb">
+          </div>
+          <div class="field" style="margin-top:10px">
+            <label for="folderInput">Weapon folder</label>
+            <input id="folderInput" class="mono" value="new_weapon">
+            <div class="hint">Lowercase letters, digits, and underscores.</div>
+          </div>
+          <div class="divider"></div>
+          <div id="sourcePath" class="mono help"></div>
+        </div>
+      </section>
+    </aside>
+
+    <section class="panel">
+      <div id="fileTabs" class="file-tabs"></div>
+      <div class="panel-body">
+        <textarea id="jsonEditor" class="weapon-editor" spellcheck="false"></textarea>
+      </div>
+    </section>
+
+    <aside class="weapon-summary">
+      <section class="panel">
+        <div class="panel-head">Generated IDs</div>
+        <div id="generatedIds" class="panel-body stats"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">Checks</div>
+        <div id="checks" class="panel-body issues"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">Ownership Reminder</div>
+        <div class="panel-body help">
+          Shared values belong in <span class="mono">weapon.json</span>. Values that differ by Mark must be complete in all three Mark files. Runtime authority is unchanged by this editor.
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <script src="weapon-folder.js"></script>
+</body>
+</html>
