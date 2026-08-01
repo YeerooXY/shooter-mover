@@ -124,7 +124,7 @@ namespace ShooterMover.UI.Shop
                 shop.Definition,
                 graph.LoadoutRuntime.EquipmentCatalog,
                 graph.ExperienceAuthority.CurrentContext,
-                shop.AugmentSignatures,
+                shop.PreviewAugmentSignatures,
                 window.RefreshesAtUtc,
                 new PersistenceBridge());
             menu.Configure(
