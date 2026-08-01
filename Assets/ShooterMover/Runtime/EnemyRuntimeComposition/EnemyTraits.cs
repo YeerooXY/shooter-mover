@@ -40,7 +40,10 @@ namespace ShooterMover.EnemyRuntimeComposition
         {
             if (!Enum.IsDefined(typeof(EnemyTrait), trait))
                 throw new ArgumentOutOfRangeException(nameof(trait));
-            if (!actorState.IsActive || actorState.ProcessedEventIds.Count != 0)
+            if (!actorState.IsActive
+                || actorState.ProcessedEventIds.Count != 0
+                || issuedDecisions.Count != 0
+                || attackReplay.Count != 0)
             {
                 throw new InvalidOperationException(
                     "Enemy traits must be assigned before combat begins.");
