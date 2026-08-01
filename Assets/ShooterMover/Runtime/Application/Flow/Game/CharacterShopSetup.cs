@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Economy.Scrap;
 using ShooterMover.Application.Rewards.Application;
@@ -21,76 +20,30 @@ namespace ShooterMover.Application.Flow.Game
         public CharacterShopLive(
             ShopLiveActions authority,
             ShopDefinition definition,
-            ShopPurchaseLedger purchases,
-            GeneratedEquipmentAugmentSignatureState previewAugmentSignatures)
+            ShopReceipts receipts,
+            GeneratedEquipmentAugmentSignatureState offerAugments)
         {
             Authority = authority
                 ?? throw new ArgumentNullException(nameof(authority));
             Definition = definition
                 ?? throw new ArgumentNullException(nameof(definition));
-            Purchases = purchases
-                ?? throw new ArgumentNullException(nameof(purchases));
-            PreviewAugmentSignatures = previewAugmentSignatures
-                ?? throw new ArgumentNullException(
-                    nameof(previewAugmentSignatures));
+            Receipts = receipts
+                ?? throw new ArgumentNullException(nameof(receipts));
+            OfferAugments = offerAugments
+                ?? throw new ArgumentNullException(nameof(offerAugments));
         }
 
         public ShopLiveActions Authority { get; }
         public ShopDefinition Definition { get; }
-        public ShopPurchaseLedger Purchases { get; }
-        public GeneratedEquipmentAugmentSignatureState PreviewAugmentSignatures
-        {
-            get;
-        }
-    }
-
-    public static class CharacterShopRegistry
-    {
-        private static readonly object Gate = new object();
-        private static readonly ConditionalWeakTable<
-            StrongboxOpeningActions,
-            CharacterShopLive> Shops =
-                new ConditionalWeakTable<
-                    StrongboxOpeningActions,
-                    CharacterShopLive>();
-
-        public static void Bind(
-            StrongboxOpeningActions strongboxes,
-            CharacterShopLive shop)
-        {
-            if (strongboxes == null)
-            {
-                throw new ArgumentNullException(nameof(strongboxes));
-            }
-            if (shop == null)
-            {
-                throw new ArgumentNullException(nameof(shop));
-            }
-            lock (Gate)
-            {
-                Shops.Remove(strongboxes);
-                Shops.Add(strongboxes, shop);
-            }
-        }
-
-        public static bool TryResolve(
-            StrongboxOpeningActions strongboxes,
-            out CharacterShopLive shop)
-        {
-            lock (Gate)
-            {
-                return strongboxes != null
-                    && Shops.TryGetValue(strongboxes, out shop)
-                    && shop != null;
-            }
-        }
+        public ShopReceipts Receipts { get; }
+        public GeneratedEquipmentAugmentSignatureState OfferAugments { get; }
     }
 
     internal static class CharacterShopSetup
     {
-        private static readonly StableId ShopStableId =
+        private static readonly StableId ShopId =
             StableId.Parse("shop.hub-weapons");
-        private static readonly StableId ShopRapAuthorityStableId =
+        private static readonly StableId PurchaseAuthorityId =
             StableId.Parse(
                 "authority.production-character-shop-reward-application");
 
@@ -98,48 +51,46 @@ namespace ShooterMover.Application.Flow.Game
             PlayerLoadoutLive loadout,
             MoneyWalletActions money,
             ScrapWalletActions scrap,
-            RewardGenerationActions generator,
-            GeneratedEquipmentAugmentSignatureState augmentSignatures)
+            GeneratedEquipmentAugmentSignatureState augments)
         {
             if (loadout == null) throw new ArgumentNullException(nameof(loadout));
             if (money == null) throw new ArgumentNullException(nameof(money));
             if (scrap == null) throw new ArgumentNullException(nameof(scrap));
-            if (generator == null) throw new ArgumentNullException(nameof(generator));
-            if (augmentSignatures == null)
+            if (augments == null)
             {
-                throw new ArgumentNullException(nameof(augmentSignatures));
+                throw new ArgumentNullException(nameof(augments));
             }
 
             ShopDefinition definition = BuildDefinition(
                 loadout.EquipmentCatalog);
-            var purchases = new ShopPurchaseLedger();
-            var roller = new StrongboxShopStockRoller(
+            var receipts = new ShopReceipts();
+            var roller = new StrongboxOfferRoller(
                 loadout.EquipmentCatalog,
                 loadout.GunCatalog,
                 CharacterStrongboxSetup.GenerationPolicyStableId);
-            var shopRewardApplication = new RewardApplicationActions(
-                ShopRapAuthorityStableId,
+            var purchaseRewards = new RewardApplicationActions(
+                PurchaseAuthorityId,
                 new MoneyRewardChildState(money),
                 new ScrapRewardChildState(scrap),
                 new GeneratedAugmentSignaturePlayerHoldingsRewardChildState(
                     loadout.LegacyHoldings,
                     loadout.CatalogBridge,
-                    augmentSignatures,
-                    roller.PreviewSignatures));
+                    augments,
+                    roller.OfferAugments));
             var authority = new ShopLiveActions(
-                generator,
+                new RewardGenerationActions(),
                 money,
-                shopRewardApplication,
+                purchaseRewards,
                 scrap.AuthorityStableId,
                 loadout.LegacyHoldings.AuthorityStableId,
                 null,
                 roller,
-                purchases);
+                receipts);
             return new CharacterShopLive(
                 authority,
                 definition,
-                purchases,
-                roller.PreviewSignatures);
+                receipts,
+                roller.OfferAugments);
         }
 
         private static ShopDefinition BuildDefinition(
@@ -221,7 +172,7 @@ namespace ShooterMover.Application.Flow.Game
                 0L,
                 0L);
             return ShopDefinition.Create(
-                ShopStableId,
+                ShopId,
                 6,
                 new[] { EquipmentCategoryIds.Gun },
                 Array.Empty<StableId>(),
