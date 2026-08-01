@@ -1,52 +1,34 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using ShooterMover.Application.Economy.Money;
-using ShooterMover.Application.Rewards.Application;
-using ShooterMover.Application.Rewards.Generation;
-using ShooterMover.Contracts.Rewards;
-using ShooterMover.Contracts.Rewards.Application;
 using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Economy.Money;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Progression.Context;
-using ShooterMover.Domain.Rewards.Generation;
-using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Shops;
 
 namespace ShooterMover.Application.Shops
 {
     public sealed partial class ShopLiveActions
     {
-        private void ApplyPurchaseReceipts(ShopState state)
+        private void ApplyReceipts(ShopState state)
         {
-            if (state == null || purchaseLedger == null)
+            if (state == null || receipts == null)
             {
                 return;
             }
-            state.ApplyPurchaseReceipts(purchaseLedger);
+            state.ApplyReceipts(receipts);
         }
 
-        private void RecordPurchaseReceipt(
-            StableId stockEntryStableId,
-            StableId purchaseTransactionStableId)
+        private bool RecordReceipt(
+            StableId stockEntryId,
+            StableId purchaseId,
+            out string diagnostic)
         {
-            if (purchaseLedger == null)
-            {
-                return;
-            }
-
-            string rejectionCode;
-            if (!purchaseLedger.TryRecord(
-                    stockEntryStableId,
-                    purchaseTransactionStableId,
-                    out rejectionCode))
-            {
-                throw new InvalidOperationException(
-                    string.IsNullOrWhiteSpace(rejectionCode)
-                        ? "shop-purchase-receipt-rejected"
-                        : rejectionCode);
-            }
+            diagnostic = null;
+            return receipts == null
+                || receipts.TryRecord(
+                    stockEntryId,
+                    purchaseId,
+                    out diagnostic);
         }
 
         private sealed class ShopState
@@ -92,7 +74,10 @@ namespace ShooterMover.Application.Shops
             public string InventoryFingerprint { get; private set; }
             public ShopDefinition Definition { get; private set; }
             public EquipmentCatalog Catalog { get; private set; }
-            public bool IsBound { get { return Definition != null && Catalog != null; } }
+            public bool IsBound
+            {
+                get { return Definition != null && Catalog != null; }
+            }
 
             public static ShopState Create(
                 StableId runStableId,
@@ -178,20 +163,21 @@ namespace ShooterMover.Application.Shops
             {
                 for (int index = 0; index < entries.Count; index++)
                 {
-                    if (entries[index].StockEntryStableId == replacement.StockEntryStableId)
+                    if (entries[index].StockEntryStableId
+                        == replacement.StockEntryStableId)
                     {
                         entries[index] = replacement;
                         return;
                     }
                 }
 
-                throw new InvalidOperationException("Shop stock entry was not found.");
+                throw new InvalidOperationException(
+                    "Shop stock entry was not found.");
             }
 
-            public void ApplyPurchaseReceipts(
-                ShopPurchaseLedger ledger)
+            public void ApplyReceipts(ShopReceipts receipts)
             {
-                if (ledger == null)
+                if (receipts == null)
                 {
                     return;
                 }
@@ -199,15 +185,15 @@ namespace ShooterMover.Application.Shops
                 for (int index = 0; index < entries.Count; index++)
                 {
                     ShopStockEntry entry = entries[index];
-                    StableId purchaseTransactionStableId;
+                    StableId purchaseId;
                     if (entry.State == ShopStockEntryState.Available
-                        && ledger.TryGet(
+                        && receipts.TryGet(
                             entry.StockEntryStableId,
-                            out purchaseTransactionStableId))
+                            out purchaseId))
                     {
                         entries[index] = entry.WithPurchaseState(
                             ShopStockEntryState.SoldOut,
-                            purchaseTransactionStableId);
+                            purchaseId);
                     }
                 }
             }
@@ -256,14 +242,15 @@ namespace ShooterMover.Application.Shops
 
             private void RecomputeFingerprint()
             {
-                InventoryFingerprint = ShopInventoryView.ComputeInventoryFingerprint(
-                    RunStableId,
-                    ShopStableId,
-                    RefreshOrdinal,
-                    InventorySeed,
-                    DefinitionFingerprint,
-                    InventoryContext.Fingerprint,
-                    entries);
+                InventoryFingerprint =
+                    ShopInventoryView.ComputeInventoryFingerprint(
+                        RunStableId,
+                        ShopStableId,
+                        RefreshOrdinal,
+                        InventorySeed,
+                        DefinitionFingerprint,
+                        InventoryContext.Fingerprint,
+                        entries);
             }
         }
 
@@ -274,7 +261,7 @@ namespace ShooterMover.Application.Shops
                 ShopPurchaseFact fact,
                 ShopState state,
                 ShopStockEntry entry,
-                RewardCommitCommand commit)
+                ShooterMover.Contracts.Rewards.Application.RewardCommitCommand commit)
             {
                 Command = command;
                 Fact = fact;
@@ -287,7 +274,10 @@ namespace ShooterMover.Application.Shops
             public ShopPurchaseFact Fact { get; set; }
             public ShopState State { get; }
             public ShopStockEntry Entry { get; }
-            public RewardCommitCommand Commit { get; }
+            public ShooterMover.Contracts.Rewards.Application.RewardCommitCommand Commit
+            {
+                get;
+            }
         }
 
         private sealed class RefreshRecord
