@@ -6,8 +6,8 @@ namespace ShooterMover.Application.Persistence.SaveParts
 {
     public static class ShopPurchaseSavePart
     {
-        private static readonly ShopPurchaseCodec CodecValue =
-            new ShopPurchaseCodec();
+        private static readonly ShopReceiptCodec CodecValue =
+            new ShopReceiptCodec();
 
         public static SavePartDefinition Definition()
         {
@@ -21,28 +21,28 @@ namespace ShooterMover.Application.Persistence.SaveParts
                 660);
         }
 
-        public static ShopPurchaseCodec Codec
+        public static ShopReceiptCodec Codec
         {
             get { return CodecValue; }
         }
 
         public static ISavePart CreateAdapter(
-            ShopPurchaseLedger authority)
+            ShopReceipts receipts)
         {
-            if (authority == null)
+            if (receipts == null)
             {
-                throw new ArgumentNullException(nameof(authority));
+                throw new ArgumentNullException(nameof(receipts));
             }
 
-            return new SnapshotSavePart<ShopPurchaseLedgerSnapshot>(
+            return new SnapshotSavePart<ShopReceiptSnapshot>(
                 Definition(),
                 CodecValue,
-                authority.ExportSnapshot,
+                receipts.ExportSnapshot,
                 CodecValue.Validate,
                 snapshot =>
                 {
                     string rejectionCode;
-                    return authority.TryImportSnapshot(
+                    return receipts.TryImportSnapshot(
                             snapshot,
                             out rejectionCode)
                         ? SavePartApplyResult.Applied()
@@ -51,27 +51,27 @@ namespace ShooterMover.Application.Persistence.SaveParts
         }
     }
 
-    public sealed class ShopPurchaseCodec :
-        ExplicitSavePartCodec<ShopPurchaseLedgerSnapshot>
+    public sealed class ShopReceiptCodec :
+        ExplicitSavePartCodec<ShopReceiptSnapshot>
     {
-        public ShopPurchaseCodec()
+        public ShopReceiptCodec()
             : base("shop-purchase-receipts-explicit-v1")
         {
         }
 
         public override SavePartValidationResult Validate(
-            ShopPurchaseLedgerSnapshot snapshot)
+            ShopReceiptSnapshot snapshot)
         {
             if (snapshot == null)
             {
                 return SavePartValidationResult.Reject(
-                    "shop-purchase-ledger-snapshot-null");
+                    "shop-receipt-snapshot-null");
             }
             if (snapshot.SchemaVersion
-                != ShopPurchaseLedgerSnapshot.CurrentSchemaVersion)
+                != ShopReceiptSnapshot.CurrentSchemaVersion)
             {
                 return SavePartValidationResult.Reject(
-                    "shop-purchase-ledger-schema-unsupported");
+                    "shop-receipt-schema-unsupported");
             }
             if (!string.Equals(
                     snapshot.Fingerprint,
@@ -80,7 +80,7 @@ namespace ShooterMover.Application.Persistence.SaveParts
                     StringComparison.Ordinal))
             {
                 return SavePartValidationResult.Reject(
-                    "shop-purchase-ledger-fingerprint-mismatch");
+                    "shop-receipt-fingerprint-mismatch");
             }
             for (int index = 0;
                  index < snapshot.Receipts.Count;
@@ -95,14 +95,14 @@ namespace ShooterMover.Application.Persistence.SaveParts
                         StringComparison.Ordinal))
                 {
                     return SavePartValidationResult.Reject(
-                        "shop-purchase-ledger-receipt-invalid");
+                        "shop-receipt-invalid");
                 }
             }
             return SavePartValidationResult.Accept();
         }
 
         protected override Node EncodeNode(
-            ShopPurchaseLedgerSnapshot snapshot)
+            ShopReceiptSnapshot snapshot)
         {
             return Node.Object(
                 Value.Field(
@@ -115,7 +115,7 @@ namespace ShooterMover.Application.Persistence.SaveParts
                         EncodeReceipt)));
         }
 
-        protected override ShopPurchaseLedgerSnapshot DecodeNode(
+        protected override ShopReceiptSnapshot DecodeNode(
             Node node)
         {
             var reader = new ObjectReader(
@@ -125,12 +125,12 @@ namespace ShooterMover.Application.Persistence.SaveParts
             int schemaVersion = Value.ReadInt32(
                 reader.Next("schema_version"));
             if (schemaVersion
-                != ShopPurchaseLedgerSnapshot.CurrentSchemaVersion)
+                != ShopReceiptSnapshot.CurrentSchemaVersion)
             {
                 throw new PayloadException(
-                    "shop-purchase-ledger-schema-unsupported");
+                    "shop-receipt-schema-unsupported");
             }
-            return new ShopPurchaseLedgerSnapshot(
+            return new ShopReceiptSnapshot(
                 ExplicitCodecValues.DecodeList(
                     reader.Next("receipts"),
                     DecodeReceipt),
