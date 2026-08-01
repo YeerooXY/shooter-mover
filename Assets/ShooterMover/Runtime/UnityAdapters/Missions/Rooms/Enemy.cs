@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Guns;
 using ShooterMover.EnemyRuntimeComposition;
@@ -8,6 +9,50 @@ using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Missions.Rooms
 {
+    public sealed class VolatileBlast
+    {
+        public VolatileBlast(
+            StableId eventId,
+            StableId enemyId,
+            StableId runParticipantId,
+            long generation,
+            Vector2 position,
+            double radius,
+            double damage)
+        {
+            EventId = eventId ?? throw new ArgumentNullException(nameof(eventId));
+            EnemyId = enemyId ?? throw new ArgumentNullException(nameof(enemyId));
+            RunParticipantId = runParticipantId
+                ?? throw new ArgumentNullException(nameof(runParticipantId));
+            if (generation <= 0L)
+                throw new ArgumentOutOfRangeException(nameof(generation));
+            if (float.IsNaN(position.x)
+                || float.IsInfinity(position.x)
+                || float.IsNaN(position.y)
+                || float.IsInfinity(position.y))
+            {
+                throw new ArgumentOutOfRangeException(nameof(position));
+            }
+            if (double.IsNaN(radius) || double.IsInfinity(radius) || radius <= 0d)
+                throw new ArgumentOutOfRangeException(nameof(radius));
+            if (double.IsNaN(damage) || double.IsInfinity(damage) || damage <= 0d)
+                throw new ArgumentOutOfRangeException(nameof(damage));
+
+            Generation = generation;
+            Position = position;
+            Radius = radius;
+            Damage = damage;
+        }
+
+        public StableId EventId { get; }
+        public StableId EnemyId { get; }
+        public StableId RunParticipantId { get; }
+        public long Generation { get; }
+        public Vector2 Position { get; }
+        public double Radius { get; }
+        public double Damage { get; }
+    }
+
     /// <summary>
     /// Connects one room enemy GameObject to its enemy gameplay state.
     /// The enemy owns health, death, rewards, drops, and room-clear reporting.
@@ -18,6 +63,8 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
     {
         private const double MinResistance = -1d;
         private const double MaxResistance = 0.95d;
+        private static readonly TraitRules Rules = TraitRules.Default;
+
         private readonly Dictionary<GunDamageCategory, double> resistances =
             new Dictionary<GunDamageCategory, double>();
         private EnemyInstance runtime;
@@ -25,6 +72,21 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         private bool legacyRelayEnabled;
         private bool legacyRelayStateCaptured;
         private bool terminalPresentationDisabled;
+        private bool volatileBlastEmitted;
+
+        public static event Action<Enemy, VolatileBlast> VolatileExploded;
+        public static event Action<Enemy> Bound;
+        public static event Action<Enemy> TraitsChanged;
+        public static event Action<Enemy> Unbound;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetRuntimeEvents()
+        {
+            VolatileExploded = null;
+            Bound = null;
+            TraitsChanged = null;
+            Unbound = null;
+        }
 
         public bool IsBound
         {
@@ -111,6 +173,8 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             }
             if (!runtime.AssignTrait(trait)) return false;
             ApplyTrait(trait);
+            Action<Enemy> handler = TraitsChanged;
+            if (handler != null) handler(this);
             return true;
         }
 
@@ -123,6 +187,8 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                     "A room enemy actor may only bind once per room presentation.");
             }
 
+            TraitRoller.Roll(value, Rules);
+
             bool reactivateAfterDeath = terminalPresentationDisabled;
             legacyRelay = GetComponent<RoomEnemyDeathRelay>();
             if (legacyRelay != null)
@@ -134,18 +200,24 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
 
             runtime = value;
             resistances.Clear();
+            volatileBlastEmitted = false;
             ApplyTraits();
             terminalPresentationDisabled = false;
             if (reactivateAfterDeath && !gameObject.activeSelf)
             {
                 gameObject.SetActive(true);
             }
+            Action<Enemy> handler = Bound;
+            if (handler != null) handler(this);
         }
 
         public void Unbind()
         {
+            Action<Enemy> handler = Unbound;
+            if (handler != null) handler(this);
             runtime = null;
             resistances.Clear();
+            volatileBlastEmitted = false;
             if (legacyRelayStateCaptured && legacyRelay != null)
             {
                 legacyRelay.enabled = legacyRelayEnabled;
@@ -237,7 +309,14 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                     "Enemy terminal collision facts must match the bound actor lifecycle.");
             }
 
-            DisableTerminalPresentation();
+            try
+            {
+                EmitVolatileBlast();
+            }
+            finally
+            {
+                DisableTerminalPresentation();
+            }
         }
 
         private void ApplyTraits()
@@ -253,6 +332,46 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             if (trait == EnemyTrait.EnergyShielded)
             {
                 AddResistance(GunDamageCategory.Energy, 0.2d);
+            }
+        }
+
+        private void EmitVolatileBlast()
+        {
+            if (volatileBlastEmitted
+                || runtime == null
+                || !runtime.HasTrait(EnemyTrait.Volatile))
+            {
+                return;
+            }
+            if (runtime.PublishedDeath == null)
+            {
+                throw new InvalidOperationException(
+                    "A volatile enemy requires a confirmed death.");
+            }
+
+            volatileBlastEmitted = true;
+            Vector2 position = transform.position;
+            StableId eventId = StableId.Create(
+                "enemy-volatile-explosion",
+                DeterministicEnemyLiveIdentityDeriver.Hash64(
+                    runtime.SpawnStableId
+                    + "|"
+                    + runtime.LifecycleGeneration.ToString(
+                        CultureInfo.InvariantCulture)
+                    + "|"
+                    + runtime.PublishedDeath.DeathEventStableId));
+            var blast = new VolatileBlast(
+                eventId,
+                runtime.SpawnStableId,
+                runtime.RunParticipantStableId,
+                runtime.LifecycleGeneration,
+                position,
+                EnemyInstance.VolatileRadius,
+                EnemyInstance.VolatileDamage);
+            Action<Enemy, VolatileBlast> handler = VolatileExploded;
+            if (handler != null)
+            {
+                handler(this, blast);
             }
         }
 

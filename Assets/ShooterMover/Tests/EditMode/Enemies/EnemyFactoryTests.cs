@@ -1,17 +1,166 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 using ShooterMover.Application.Missions.Rooms.Content;
 using ShooterMover.Contracts.Missions.Rooms;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies.Catalog;
+using ShooterMover.Domain.Guns;
 using ShooterMover.EnemyRuntimeComposition;
 using ShooterMover.GameplayEntities.Enemies;
+using UnityEngine;
+using RoomEnemy = ShooterMover.UnityAdapters.Missions.Rooms.Enemy;
 
 namespace ShooterMover.Tests.EditMode.Enemies
 {
     public sealed class EnemyFactoryTests
     {
+        [Test]
+        public void TraitRollsAreDeterministicReplaySafeAndTierBound()
+        {
+            EnemyInstance first = CreateTraitRuntime(2);
+            EnemyInstance replay = CreateTraitRuntime(2);
+            var rules = new TraitRules(
+                1d,
+                1d,
+                new[]
+                {
+                    new TraitWeight(EnemyTrait.EnergyShielded, 1),
+                    new TraitWeight(EnemyTrait.Fortified, 1),
+                    new TraitWeight(EnemyTrait.Golden, 1),
+                    new TraitWeight(EnemyTrait.Swift, 1),
+                    new TraitWeight(EnemyTrait.Overclocked, 1),
+                    new TraitWeight(EnemyTrait.Volatile, 1),
+                },
+                new[] { 1, 2, 3, 4 });
+
+            Assert.That(TraitRoller.Roll(first, rules), Is.EqualTo(2));
+            Assert.That(TraitRoller.Roll(replay, rules), Is.EqualTo(2));
+            Assert.That(first.Traits, Is.EqualTo(replay.Traits));
+            Assert.That(first.Traits.Count, Is.EqualTo(2));
+            Assert.That(TraitRoller.Roll(first, rules), Is.Zero);
+        }
+
+        [Test]
+        public void TraitModifiersFreezeBeforeCombatAndModifyExactStats()
+        {
+            EnemyInstance runtime = CreateTraitRuntime(3);
+            double initialMaximum = runtime.Runtime.ActorState.MaximumHealth;
+
+            Assert.That(runtime.AssignTrait(EnemyTrait.Fortified), Is.True);
+            Assert.That(runtime.AssignTrait(EnemyTrait.Swift), Is.True);
+            Assert.That(runtime.AssignTrait(EnemyTrait.Overclocked), Is.True);
+
+            Assert.That(
+                runtime.Runtime.ActorState.MaximumHealth,
+                Is.EqualTo(initialMaximum * 2d).Within(0.000001d));
+            Assert.That(runtime.MovementSpeedMultiplier, Is.EqualTo(1.25d));
+            Assert.That(runtime.AttackCooldownMultiplier, Is.EqualTo(0.75d));
+            Assert.That(runtime.AssignTrait(EnemyTrait.Swift), Is.False);
+        }
+
+        [Test]
+        public void RoomEnemyProjectsShieldResistanceAndTraitLifecycleNotifications()
+        {
+            EnemyInstance runtime = CreateTraitRuntime(1);
+            Assert.That(runtime.AssignTrait(EnemyTrait.EnergyShielded), Is.True);
+            var root = new GameObject("Trait Adapter Test");
+            RoomEnemy enemy = root.AddComponent<RoomEnemy>();
+            int bound = 0;
+            int changed = 0;
+            int unbound = 0;
+            Action<RoomEnemy> onBound = value => bound++;
+            Action<RoomEnemy> onChanged = value => changed++;
+            Action<RoomEnemy> onUnbound = value => unbound++;
+            RoomEnemy.Bound += onBound;
+            RoomEnemy.TraitsChanged += onChanged;
+            RoomEnemy.Unbound += onUnbound;
+
+            try
+            {
+                MethodInfo bind = typeof(RoomEnemy).GetMethod(
+                    "Bind",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                Assert.That(bind, Is.Not.Null);
+                bind.Invoke(enemy, new object[] { runtime });
+
+                Assert.That(bound, Is.EqualTo(1));
+                Assert.That(
+                    enemy.Resistance(GunDamageCategory.Energy),
+                    Is.EqualTo(0.2d).Within(0.000001d));
+
+                EnemyTrait added = EnemyTrait.Golden;
+                if (runtime.HasTrait(added)) added = EnemyTrait.Swift;
+                if (runtime.HasTrait(added)) added = EnemyTrait.Overclocked;
+                Assert.That(enemy.AssignTrait(added), Is.True);
+                Assert.That(changed, Is.EqualTo(1));
+
+                enemy.Unbind();
+                Assert.That(unbound, Is.EqualTo(1));
+                Assert.That(enemy.IsBound, Is.False);
+            }
+            finally
+            {
+                RoomEnemy.Bound -= onBound;
+                RoomEnemy.TraitsChanged -= onChanged;
+                RoomEnemy.Unbound -= onUnbound;
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void VolatileEnemyEmitsOneBlastForRepeatedTerminalPresentation()
+        {
+            EnemyInstance runtime = CreateTraitRuntime(1);
+            Assert.That(runtime.AssignTrait(EnemyTrait.Volatile), Is.True);
+            var root = new GameObject("Volatile Adapter Test");
+            RoomEnemy enemy = root.AddComponent<RoomEnemy>();
+            int explosions = 0;
+            Action<RoomEnemy, ShooterMover.UnityAdapters.Missions.Rooms.VolatileBlast>
+                onExplosion = (source, blast) => explosions++;
+            RoomEnemy.VolatileExploded += onExplosion;
+
+            try
+            {
+                MethodInfo bind = typeof(RoomEnemy).GetMethod(
+                    "Bind",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                MethodInfo setTerminal = typeof(RoomEnemy).GetMethod(
+                    "SetTerminal",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                Assert.That(bind, Is.Not.Null);
+                Assert.That(setTerminal, Is.Not.Null);
+                bind.Invoke(enemy, new object[] { runtime });
+
+                EnemyLiveDamageResult damage = runtime.ApplyDamage(
+                    new EnemyLiveDamageCommand(
+                        Id("enemy-damage", "volatile-test"),
+                        Id("entity", "player"),
+                        Id("run-participant", "player"),
+                        runtime.SpawnStableId,
+                        runtime.LifecycleGeneration,
+                        0L,
+                        1,
+                        10000d));
+                Assert.That(damage.DeathFact, Is.Not.Null);
+                var terminal = new EnemyTerminalCollisionFact(
+                    runtime.SpawnStableId,
+                    damage.DeathFact.DeathEventStableId,
+                    runtime.LifecycleGeneration);
+
+                setTerminal.Invoke(enemy, new object[] { terminal });
+                setTerminal.Invoke(enemy, new object[] { terminal });
+
+                Assert.That(explosions, Is.EqualTo(1));
+            }
+            finally
+            {
+                RoomEnemy.VolatileExploded -= onExplosion;
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
         [Test]
         public void TenRepeatedDefinitions_DeriveDistinctIndependentActorAndParticipantIdentities()
         {
@@ -488,6 +637,31 @@ namespace ShooterMover.Tests.EditMode.Enemies
                         false),
                     new ValidatedEnemyPerceptionLiveBridge()),
                 ports);
+        }
+
+        private static EnemyInstance CreateTraitRuntime(int tier)
+        {
+            EnemyDefinition definition = Definition(
+                "trait-fixture",
+                "mobile-positioning",
+                "ranged-standard",
+                "ranged-projectile",
+                EnemyCatalogRoomClearRole.RequiredEnemy,
+                false,
+                360d,
+                120d);
+            EnemyFactory factory = Factory(
+                new[] { definition },
+                new[] { Object("trait-fixture", definition) },
+                BuiltInEnemyRules.Create(),
+                EnemyLiveDownstreamPorts.None());
+            return factory.Create(
+                Request(
+                    "trait-fixture-placement",
+                    "trait-fixture",
+                    tier,
+                    1L,
+                    1d)).Runtime;
         }
 
         private static EnemyRules CustomPolicies(

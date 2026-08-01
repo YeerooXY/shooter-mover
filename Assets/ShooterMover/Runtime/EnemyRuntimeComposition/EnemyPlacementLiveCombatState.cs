@@ -228,7 +228,8 @@ namespace ShooterMover.EnemyRuntimeComposition
                                     {
                                         nextReadyAtByAttack[requested.AttackId] =
                                             occurredAtSeconds
-                                            + execution.ResolvedCooldownSeconds;
+                                            + execution.ResolvedCooldownSeconds
+                                                * AttackCooldownMultiplier;
                                         result = new EnemyAttackExecutionResult(
                                             EnemyLiveOperationStatus.Applied,
                                             EnemyLiveRejectionCode.None,
@@ -245,7 +246,8 @@ namespace ShooterMover.EnemyRuntimeComposition
                                             execution));
                                     nextReadyAtByAttack[requested.AttackId] =
                                         occurredAtSeconds
-                                        + execution.ResolvedCooldownSeconds;
+                                        + execution.ResolvedCooldownSeconds
+                                            * AttackCooldownMultiplier;
                                     result = new EnemyAttackExecutionResult(
                                         EnemyLiveOperationStatus.Applied,
                                         EnemyLiveRejectionCode.None,
