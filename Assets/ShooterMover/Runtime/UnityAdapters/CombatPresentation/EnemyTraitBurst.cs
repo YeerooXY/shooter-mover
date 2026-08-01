@@ -21,17 +21,17 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Reset()
         {
-            Enemy.VolatileExploded -= HandleVolatileExplosion;
+            Enemy.VolatileExploded -= OnExplosion;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Install()
         {
-            Enemy.VolatileExploded -= HandleVolatileExplosion;
-            Enemy.VolatileExploded += HandleVolatileExplosion;
+            Enemy.VolatileExploded -= OnExplosion;
+            Enemy.VolatileExploded += OnExplosion;
         }
 
-        private static void HandleVolatileExplosion(
+        private static void OnExplosion(
             Enemy source,
             EnemyVolatileExplosion explosion)
         {
@@ -57,7 +57,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             Enemy source)
         {
             if (explosion == null) throw new ArgumentNullException(nameof(explosion));
-            ResolveSorting(source, out int sortingLayerId, out int sortingOrder);
+            ReadSorting(source, out int sortingLayerId, out int sortingOrder);
             GameObject burstObject = new GameObject("Volatile Trait Burst");
             EnemyTraitBurst burst = burstObject.AddComponent<EnemyTraitBurst>();
             burst.Configure(
@@ -70,19 +70,19 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
 
         private void Configure(
             Vector2 position,
-            float maximumRadius,
+            float maxRadius,
             int sortingLayerId,
             int sortingOrder)
         {
-            if (maximumRadius <= 0f
-                || float.IsNaN(maximumRadius)
-                || float.IsInfinity(maximumRadius))
+            if (maxRadius <= 0f
+                || float.IsNaN(maxRadius)
+                || float.IsInfinity(maxRadius))
             {
-                throw new ArgumentOutOfRangeException(nameof(maximumRadius));
+                throw new ArgumentOutOfRangeException(nameof(maxRadius));
             }
 
             center = position;
-            radius = maximumRadius;
+            radius = maxRadius;
             transform.position = new Vector3(center.x, center.y, 0f);
             ring = CreateLine(
                 "Burst Ring",
@@ -139,19 +139,19 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
         }
 
         private LineRenderer CreateLine(
-            string lineName,
-            int pointCount,
+            string name,
+            int points,
             float width,
             int sortingLayerId,
             int sortingOrder)
         {
-            GameObject lineObject = new GameObject(lineName);
+            GameObject lineObject = new GameObject(name);
             lineObject.transform.SetParent(transform, false);
             LineRenderer line = lineObject.AddComponent<LineRenderer>();
-            line.sharedMaterial = EnemyTraitVfxMaterial.Get();
+            line.sharedMaterial = TraitMaterial.Get();
             line.useWorldSpace = true;
             line.loop = true;
-            line.positionCount = pointCount;
+            line.positionCount = points;
             line.startWidth = width;
             line.endWidth = width;
             line.numCapVertices = 2;
@@ -161,7 +161,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             return line;
         }
 
-        private static void ResolveSorting(
+        private static void ReadSorting(
             Enemy source,
             out int sortingLayerId,
             out int sortingOrder)
