@@ -550,7 +550,7 @@ namespace ShooterMover.UI.Game
 
                 BoxCollider2D trigger = door.gameObject.AddComponent<BoxCollider2D>();
                 trigger.isTrigger = true;
-                trigger.size = new Vector2(2.2f, 3.4f);
+                trigger.size = new Vector2(1.4f, 2.4f);
                 DoorTrigger traversal =
                     door.gameObject.AddComponent<DoorTrigger>();
                 traversal.Bind(door, playerMarker, NextOperationId);
