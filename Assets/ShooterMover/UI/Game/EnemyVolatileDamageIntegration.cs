@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
 using ShooterMover.GameplayEntities;
@@ -10,141 +8,80 @@ using UnityEngine.SceneManagement;
 
 namespace ShooterMover.UI.Game
 {
-    internal static class EnemyVolatileDamageInstaller
+    internal static class EnemyVolatileDamageIntegration
     {
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetRuntimeHook()
+        private sealed class PlayerBinding
         {
-            SceneManager.sceneLoaded -= HandleSceneLoaded;
-        }
-
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void InstallRuntimeHook()
-        {
-            SceneManager.sceneLoaded -= HandleSceneLoaded;
-            SceneManager.sceneLoaded += HandleSceneLoaded;
-            TryInstall(SceneManager.GetActiveScene());
-        }
-
-        private static void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
-        {
-            TryInstall(scene);
-        }
-
-        private static void TryInstall(Scene scene)
-        {
-            if (!scene.IsValid()
-                || !string.Equals(
-                    scene.path,
-                    PlayableLevelCatalog.PlayableLevelScenePath,
-                    StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            LevelGame controller = null;
-            GameObject[] roots = scene.GetRootGameObjects();
-            for (int index = 0; index < roots.Length; index++)
-            {
-                if (roots[index].GetComponentInChildren<
-                        EnemyVolatileDamageIntegration>(true) != null)
-                {
-                    return;
-                }
-
-                LevelGame candidate = roots[index]
-                    .GetComponentInChildren<LevelGame>(true);
-                if (candidate == null) continue;
-                if (controller != null && !ReferenceEquals(controller, candidate))
-                {
-                    Debug.LogError(
-                        "enemy-volatile-damage-controller-duplicated",
-                        candidate);
-                    return;
-                }
-                controller = candidate;
-            }
-
-            if (controller != null)
-            {
-                controller.gameObject.AddComponent<
-                    EnemyVolatileDamageIntegration>();
-            }
-        }
-    }
-
-    [DefaultExecutionOrder(705)]
-    [DisallowMultipleComponent]
-    public sealed class EnemyVolatileDamageIntegration : MonoBehaviour
-    {
-        private sealed class ReceiverBinding
-        {
-            public ReceiverBinding(
-                MonoBehaviour behaviour,
+            public PlayerBinding(
+                PlayerMarker marker,
                 IPlayablePlayerDamageReceiver receiver)
             {
-                Behaviour = behaviour;
+                Marker = marker;
                 Receiver = receiver;
             }
 
-            public MonoBehaviour Behaviour { get; }
+            public PlayerMarker Marker { get; }
             public IPlayablePlayerDamageReceiver Receiver { get; }
         }
 
-        private bool destroying;
-        private string lastDiagnostic = string.Empty;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void Reset()
+        {
+            Enemy.VolatileExploded -= HandleExplosion;
+        }
 
-        public string LastDiagnostic { get { return lastDiagnostic; } }
-
-        private void OnEnable()
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void Install()
         {
             Enemy.VolatileExploded -= HandleExplosion;
             Enemy.VolatileExploded += HandleExplosion;
         }
 
-        private void OnDisable()
-        {
-            Enemy.VolatileExploded -= HandleExplosion;
-        }
-
-        private void HandleExplosion(
+        private static void HandleExplosion(
             Enemy source,
             EnemyVolatileExplosion explosion)
         {
-            if (destroying
-                || source == null
-                || explosion == null
-                || source.gameObject.scene != gameObject.scene)
+            try
             {
-                return;
+                RouteExplosion(source, explosion);
             }
-            if (!source.IsBound
+            catch (Exception exception)
+            {
+                if (IsFatal(exception)) throw;
+                Debug.LogException(exception, source);
+            }
+        }
+
+        private static void RouteExplosion(
+            Enemy source,
+            EnemyVolatileExplosion explosion)
+        {
+            if (source == null
+                || explosion == null
+                || !source.IsBound
                 || source.ActorStableId != explosion.SourceEntityStableId
                 || source.LifecycleGeneration
                     != explosion.SourceLifecycleGeneration)
             {
-                Report("enemy-volatile-damage-source-stale");
                 return;
             }
 
-            PlayerMarker player;
-            ReceiverBinding binding;
+            PlayerBinding player;
             string diagnostic;
-            if (!TryResolvePlayer(out player, out binding, out diagnostic))
+            if (!TryResolvePlayer(source.gameObject.scene, out player, out diagnostic))
             {
-                Report(diagnostic);
+                Debug.LogError(diagnostic, source);
                 return;
             }
 
-            Vector2 delta = (Vector2)player.transform.position
+            Vector2 delta = (Vector2)player.Marker.transform.position
                 - explosion.Position;
-            double radiusSquared = explosion.Radius * explosion.Radius;
-            if (delta.sqrMagnitude > radiusSquared)
+            if (delta.sqrMagnitude > explosion.Radius * explosion.Radius)
             {
                 return;
             }
 
-            IPlayablePlayerDamageReceiver receiver = binding.Receiver;
+            IPlayablePlayerDamageReceiver receiver = player.Receiver;
             StableId hitId = StableId.Create(
                 "enemy-volatile-hit",
                 RunFingerprint.Hash(
@@ -157,7 +94,7 @@ namespace ShooterMover.UI.Game
             if (!PlayablePlayerDamageCommandFactory
                 .TryCreateForCharacterContact(
                     receiver,
-                    player.CharacterInstanceStableId,
+                    player.Marker.CharacterInstanceStableId,
                     hitId,
                     explosion.SourceEntityStableId,
                     explosion.SourceRunParticipantStableId,
@@ -166,136 +103,93 @@ namespace ShooterMover.UI.Game
                     out command,
                     out rejectionCode))
             {
-                Report(
+                Debug.LogError(
                     string.IsNullOrWhiteSpace(rejectionCode)
                         ? "enemy-volatile-damage-mapping-rejected"
-                        : rejectionCode);
+                        : rejectionCode,
+                    source);
                 return;
             }
 
-            DamageReceiverResult result = receiver.ApplyDamage(command);
-            if (result == null)
+            if (receiver.ApplyDamage(command) == null)
             {
-                Report("enemy-volatile-damage-result-missing");
+                Debug.LogError("enemy-volatile-damage-result-missing", source);
             }
         }
 
-        private bool TryResolvePlayer(
-            out PlayerMarker player,
-            out ReceiverBinding binding,
+        private static bool TryResolvePlayer(
+            Scene scene,
+            out PlayerBinding binding,
             out string diagnostic)
         {
-            player = null;
             binding = null;
             diagnostic = string.Empty;
-            Scene scene = gameObject.scene;
             if (!scene.IsValid() || !scene.isLoaded)
             {
                 diagnostic = "enemy-volatile-damage-scene-unavailable";
                 return false;
             }
 
-            List<PlayerMarker> players =
-                FindActiveComponents<PlayerMarker>(scene);
-            if (players.Count != 1)
+            PlayerMarker marker = null;
+            IPlayablePlayerDamageReceiver receiver = null;
+            MonoBehaviour receiverBehaviour = null;
+            int markerCount = 0;
+            int receiverCount = 0;
+            MonoBehaviour[] behaviours = UnityEngine.Object.FindObjectsByType<
+                MonoBehaviour>(
+                    FindObjectsInactive.Exclude,
+                    FindObjectsSortMode.None);
+            for (int index = 0; index < behaviours.Length; index++)
             {
-                diagnostic = players.Count == 0
-                    ? "enemy-volatile-damage-player-missing"
-                    : "enemy-volatile-damage-player-duplicated";
-                return false;
+                MonoBehaviour behaviour = behaviours[index];
+                if (behaviour == null || behaviour.gameObject.scene != scene)
+                {
+                    continue;
+                }
+
+                PlayerMarker candidateMarker = behaviour as PlayerMarker;
+                if (candidateMarker != null)
+                {
+                    marker = candidateMarker;
+                    markerCount++;
+                }
+
+                IPlayablePlayerDamageReceiver candidateReceiver =
+                    behaviour as IPlayablePlayerDamageReceiver;
+                if (candidateReceiver != null)
+                {
+                    receiver = candidateReceiver;
+                    receiverBehaviour = behaviour;
+                    receiverCount++;
+                }
             }
 
-            List<ReceiverBinding> receivers = FindActiveReceivers(scene);
-            if (receivers.Count != 1)
+            if (markerCount != 1 || receiverCount != 1)
             {
-                diagnostic = receivers.Count == 0
-                    ? "enemy-volatile-damage-receiver-missing"
-                    : "enemy-volatile-damage-receiver-duplicated";
+                diagnostic = markerCount != 1
+                    ? "enemy-volatile-damage-player-count:" + markerCount
+                    : "enemy-volatile-damage-receiver-count:" + receiverCount;
                 return false;
             }
-
-            player = players[0];
-            binding = receivers[0];
-            if (binding.Behaviour.gameObject != player.gameObject
-                || player.CharacterInstanceStableId == null
-                || binding.Receiver.CharacterInstanceStableId == null
-                || player.CharacterInstanceStableId
-                    != binding.Receiver.CharacterInstanceStableId
-                || binding.Receiver.Identity.EntityInstanceId == null)
+            if (receiverBehaviour.gameObject != marker.gameObject
+                || marker.CharacterInstanceStableId == null
+                || receiver.CharacterInstanceStableId
+                    != marker.CharacterInstanceStableId
+                || receiver.Identity.EntityInstanceId == null)
             {
                 diagnostic = "enemy-volatile-damage-player-mismatch";
-                player = null;
-                binding = null;
                 return false;
             }
+
+            binding = new PlayerBinding(marker, receiver);
             return true;
         }
 
-        private static List<T> FindActiveComponents<T>(Scene scene)
-            where T : MonoBehaviour
+        private static bool IsFatal(Exception exception)
         {
-            var result = new List<T>();
-            GameObject[] roots = scene.GetRootGameObjects();
-            for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
-            {
-                T[] values = roots[rootIndex]
-                    .GetComponentsInChildren<T>(true);
-                for (int index = 0; index < values.Length; index++)
-                {
-                    T value = values[index];
-                    if (value != null
-                        && value.gameObject.scene == scene
-                        && value.isActiveAndEnabled)
-                    {
-                        result.Add(value);
-                    }
-                }
-            }
-            return result;
-        }
-
-        private static List<ReceiverBinding> FindActiveReceivers(Scene scene)
-        {
-            var result = new List<ReceiverBinding>();
-            GameObject[] roots = scene.GetRootGameObjects();
-            for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
-            {
-                MonoBehaviour[] values = roots[rootIndex]
-                    .GetComponentsInChildren<MonoBehaviour>(true);
-                for (int index = 0; index < values.Length; index++)
-                {
-                    MonoBehaviour value = values[index];
-                    IPlayablePlayerDamageReceiver receiver =
-                        value as IPlayablePlayerDamageReceiver;
-                    if (value != null
-                        && receiver != null
-                        && value.gameObject.scene == scene
-                        && value.isActiveAndEnabled)
-                    {
-                        result.Add(new ReceiverBinding(value, receiver));
-                    }
-                }
-            }
-            return result;
-        }
-
-        private void Report(string diagnostic)
-        {
-            string value = string.IsNullOrWhiteSpace(diagnostic)
-                ? "enemy-volatile-damage-rejected"
-                : diagnostic.Trim();
-            if (string.Equals(lastDiagnostic, value, StringComparison.Ordinal))
-            {
-                return;
-            }
-            lastDiagnostic = value;
-            Debug.LogError(value, this);
-        }
-
-        private void OnDestroy()
-        {
-            destroying = true;
-            Enemy.VolatileExploded -= HandleExplosion;
+            return exception is OutOfMemoryException
+                || exception is StackOverflowException
+                || exception is AccessViolationException;
         }
     }
 }
