@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Shooter Mover Weapon Folder Editor</title>
+  <title>Shooter Mover Weapon Maker</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="weapon-gameplay-maker.css">
   <style>
     .weapon-workspace { display:grid; grid-template-columns:280px minmax(0,1fr) 300px; gap:16px; padding:16px; }
     .weapon-editor { min-height:70vh; width:100%; resize:vertical; font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; }
@@ -20,20 +21,20 @@
 <body>
   <header class="app-header">
     <div class="brand">
-      <strong>Weapon Folder Editor</strong>
-      <span>Split weapon.json + MK1–MK3 authoring</span>
+      <strong>Weapon Maker</strong>
+      <span>Create a weapon family and its MK1–MK3 gameplay stats</span>
     </div>
     <button type="button" onclick="location.href='index.html'">Legacy Item Maker</button>
     <button id="newWeaponButton" type="button">New Weapon</button>
     <div class="spacer"></div>
-    <button id="saveButton" type="button" class="primary">Validate & Save</button>
+    <button id="saveButton" type="button" class="primary">Save Weapon</button>
     <div id="saveStatus" class="status-pill">Not saved</div>
   </header>
 
   <main class="weapon-workspace">
     <aside>
       <section class="panel">
-        <div class="panel-head">Repository Weapons</div>
+        <div class="panel-head">Weapons</div>
         <div class="panel-body">
           <div id="repoStatus" class="repo-state">Checking local helper…</div>
           <div class="divider"></div>
@@ -42,16 +43,16 @@
       </section>
 
       <section class="panel">
-        <div class="panel-head">Folder</div>
+        <div class="panel-head">Weapon save key</div>
         <div class="panel-body">
           <div class="field">
-            <label for="categoryInput">Category folder</label>
+            <label for="categoryInput">Weapon category</label>
             <input id="categoryInput" class="mono" value="orb">
           </div>
           <div class="field" style="margin-top:10px">
-            <label for="folderInput">Weapon folder</label>
+            <label for="folderInput">Weapon key</label>
             <input id="folderInput" class="mono" value="new_weapon">
-            <div class="hint">Lowercase letters, digits, and underscores.</div>
+            <div class="hint">Created from the weapon name, then kept stable.</div>
           </div>
           <div class="divider"></div>
           <div id="sourcePath" class="mono help"></div>
@@ -59,32 +60,42 @@
       </section>
     </aside>
 
-    <section class="panel">
-      <div id="fileTabs" class="file-tabs"></div>
-      <div class="panel-body">
-        <textarea id="jsonEditor" class="weapon-editor" spellcheck="false"></textarea>
+    <section class="panel weapon-editor-panel">
+      <div class="editor-mode-bar">
+        <button id="gameplayModeButton" type="button" class="active">Gameplay</button>
+        <button id="jsonModeButton" type="button">Advanced JSON</button>
+      </div>
+      <div id="gameplayEditor" class="gameplay-editor">
+        <div class="help">Loading weapon stats…</div>
+      </div>
+      <div id="jsonWorkspace" class="json-workspace hidden">
+        <div id="fileTabs" class="file-tabs"></div>
+        <div class="panel-body">
+          <textarea id="jsonEditor" class="weapon-editor" spellcheck="false"></textarea>
+        </div>
       </div>
     </section>
 
     <aside class="weapon-summary">
       <section class="panel">
-        <div class="panel-head">Generated IDs</div>
+        <div class="panel-head">Weapon IDs</div>
         <div id="generatedIds" class="panel-body stats"></div>
       </section>
       <section class="panel">
-        <div class="panel-head">Checks</div>
+        <div class="panel-head">Weapon checks</div>
         <div id="checks" class="panel-body issues"></div>
       </section>
       <section class="panel">
-        <div class="panel-head">Ownership Reminder</div>
+        <div class="panel-head">Shared and Mark stats</div>
         <div class="panel-body help">
-          Shared values belong in <span class="mono">weapon.json</span>. Values that differ by Mark must be complete in all three Mark files. Runtime authority is unchanged by this editor.
+          Put identical gameplay stats in the shared weapon controls. Choose “Different by Mark” only when MK1, MK2, and MK3 genuinely behave differently.
         </div>
       </section>
     </aside>
   </main>
 
   <script src="weapon-folder.js"></script>
+  <script src="weapon-gameplay-maker.js"></script>
   <script src="weapon-folder-preview.js"></script>
 </body>
 </html>

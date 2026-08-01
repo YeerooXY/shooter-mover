@@ -3,9 +3,9 @@
 const compiledPanel = document.createElement("section");
 compiledPanel.className = "panel";
 compiledPanel.innerHTML = `
-  <div class="panel-head">Compiled Preview</div>
+  <div class="panel-head">Resolved weapon stats</div>
   <div class="panel-body">
-    <div class="help" style="margin-bottom:8px">Read-only merged definitions. Repository save still runs the full folder validator.</div>
+    <div class="help" style="margin-bottom:8px">The complete MK1–MK3 stats after shared weapon values are combined with each Mark.</div>
     <div id="compiledPreview" class="json-preview" style="max-height:420px;overflow:auto"></div>
   </div>`;
 
@@ -14,7 +14,7 @@ document.querySelector(".weapon-summary").insertBefore(
   document.querySelector(".weapon-summary").children[1]);
 
 const compiledPreview = compiledPanel.querySelector("#compiledPreview");
-compiledPreview.textContent = "Waiting for editor data…";
+compiledPreview.textContent = "Waiting for weapon stats…";
 
 function previewObject(value) {
   return value && typeof value === "object" && !Array.isArray(value);
@@ -40,7 +40,7 @@ function renderCompiledPreview() {
   if (result.errors.length
       || !/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/.test(category)
       || !/^[a-z0-9]+(?:_[a-z0-9]+)*$/.test(folder)) {
-    compiledPreview.textContent = "Fix the local JSON and folder checks to see compiled definitions.";
+    compiledPreview.textContent = "Fix the weapon checks to see the complete MK1–MK3 stats.";
     return;
   }
 
