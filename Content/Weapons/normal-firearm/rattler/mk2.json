@@ -1,10 +1,6 @@
 {
   "peakLevel": 25,
   "damage": 1,
-  "fire": {
-    "mode": "semi-automatic",
-    "rate": 4
-  },
   "art": {
     "side": "gun-art.rattler.mk2.side-v1",
     "mounted": "gun-art.rattler.mk2.mounted-top-v1"
