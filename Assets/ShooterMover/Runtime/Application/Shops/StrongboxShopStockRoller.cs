@@ -7,34 +7,40 @@ using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Common.Random;
 using ShooterMover.Domain.Equipment;
+using ShooterMover.Domain.Guns.Catalog;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Rewards.Strongboxes;
-using ShooterMover.Domain.Guns.Catalog;
 
 namespace ShooterMover.Application.Shops
 {
     /// <summary>
-    /// Treats each stock slot as one deterministic virtual strongbox. It reuses the
-    /// production tier profile and hybrid equipment resolver, but does not add a box to
-    /// holdings or invoke BOX opening. The generated augment signature remains staged
-    /// until the existing RAP holdings child commits the purchased equipment.
+    /// Treats each stock slot as one deterministic virtual strongbox. Preview signatures
+    /// live in a transient authority. Only the exact purchased item is staged into the
+    /// character's durable augment-signature authority before RAP applies ownership.
     /// </summary>
     public sealed class StrongboxShopStockRoller :
-        IShopStockRoller
+        IShopStockRoller,
+        IShopPurchasePreparer
     {
         private static readonly StableId SourceStableId =
             StableId.Parse("source.shop-virtual-strongbox");
         private static readonly StableId TierPurposeId =
             StableId.Parse("shop-rng.virtual-strongbox-tier-v1");
 
+        private readonly object gate = new object();
+        private readonly GeneratedEquipmentAugmentSignatureState
+            previewSignatures =
+                new GeneratedEquipmentAugmentSignatureState();
+        private readonly GeneratedEquipmentAugmentSignatureState
+            purchaseSignatures;
         private readonly StrongboxHybridEquipmentGenerationResolver resolver;
-        private readonly GeneratedEquipmentAugmentSignatureState signatures;
         private readonly StableId generationPolicyStableId;
+        private StableId currentStockIdentity;
 
         public StrongboxShopStockRoller(
             EquipmentCatalog equipmentCatalog,
             GunCatalog gunCatalog,
-            GeneratedEquipmentAugmentSignatureState signatures,
+            GeneratedEquipmentAugmentSignatureState purchaseSignatures,
             StableId generationPolicyStableId)
         {
             resolver = new StrongboxHybridEquipmentGenerationResolver(
@@ -42,12 +48,17 @@ namespace ShooterMover.Application.Shops
                     ?? throw new ArgumentNullException(nameof(equipmentCatalog)),
                 gunCatalog
                     ?? throw new ArgumentNullException(nameof(gunCatalog)),
-                signatures
-                    ?? throw new ArgumentNullException(nameof(signatures)));
-            this.signatures = signatures;
+                previewSignatures);
+            this.purchaseSignatures = purchaseSignatures
+                ?? throw new ArgumentNullException(nameof(purchaseSignatures));
             this.generationPolicyStableId = generationPolicyStableId
                 ?? throw new ArgumentNullException(
                     nameof(generationPolicyStableId));
+        }
+
+        public GeneratedEquipmentAugmentSignatureState PreviewSignatures
+        {
+            get { return previewSignatures; }
         }
 
         public bool TryRoll(
@@ -55,144 +66,200 @@ namespace ShooterMover.Application.Shops
             out ShopStockRollResult result,
             out string rejectionCode)
         {
-            result = null;
-            rejectionCode = null;
-            if (request == null)
+            lock (gate)
             {
-                rejectionCode = "shop-strongbox-roll-request-null";
-                return false;
-            }
+                result = null;
+                rejectionCode = null;
+                if (request == null)
+                {
+                    rejectionCode = "shop-strongbox-roll-request-null";
+                    return false;
+                }
 
-            StableId tierId;
-            try
-            {
-                tierId = StrongboxTierSelectionCatalog.SelectExactTier(
-                    StrongboxTierSelectionCatalog.ShopSourceProfileId,
-                    Array.Empty<StableId>(),
+                ResetPreviewWindow(request.RunStableId);
+
+                StableId tierId;
+                try
+                {
+                    tierId = StrongboxTierSelectionCatalog.SelectExactTier(
+                        StrongboxTierSelectionCatalog.ShopSourceProfileId,
+                        Array.Empty<StableId>(),
+                        request.InventorySeed,
+                        request.Definition.AlgorithmVersion,
+                        checked((ulong)request.SlotIndex));
+                }
+                catch (Exception exception)
+                {
+                    rejectionCode = "shop-strongbox-tier-roll-exception-"
+                        + exception.GetType().Name.ToLowerInvariant();
+                    return false;
+                }
+
+                StrongboxTier tier = FindTier(tierId);
+                if (tier == null)
+                {
+                    rejectionCode = "shop-strongbox-tier-unavailable";
+                    return false;
+                }
+                StrongboxDefinition definition = tier.CreateDefinition(
+                    generationPolicyStableId);
+
+                string ordinal = request.RefreshOrdinal.ToString(
+                    CultureInfo.InvariantCulture);
+                string slot = request.SlotIndex.ToString(
+                    CultureInfo.InvariantCulture);
+                StableId boxId = Strongbox.DeriveId(
+                    "shopbox",
+                    request.RunStableId.ToString(),
+                    request.Definition.ShopStableId.ToString(),
+                    ordinal,
+                    slot);
+                StableId sourceOperationId = Strongbox.DeriveId(
+                    "shopsourceop",
+                    boxId.ToString());
+                StableId commitmentId = Strongbox.DeriveId(
+                    "shopcommit",
+                    boxId.ToString());
+                StableId grantId = Strongbox.DeriveId(
+                    "shoprollgrant",
+                    boxId.ToString());
+                StableId collectionId = Strongbox.DeriveId(
+                    "shopvirtualcollection",
+                    boxId.ToString());
+                ulong rootSeed = DeriveSeed(
                     request.InventorySeed,
-                    request.Definition.AlgorithmVersion,
-                    checked((ulong)request.SlotIndex));
-            }
-            catch (Exception exception)
-            {
-                rejectionCode = "shop-strongbox-tier-roll-exception-"
-                    + exception.GetType().Name.ToLowerInvariant();
-                return false;
-            }
+                    request.SlotIndex);
 
-            StrongboxTier tier = FindTier(tierId);
-            if (tier == null)
-            {
-                rejectionCode = "shop-strongbox-tier-unavailable";
-                return false;
-            }
-            StrongboxDefinition definition = tier.CreateDefinition(
-                generationPolicyStableId);
-
-            string ordinal = request.RefreshOrdinal.ToString(
-                CultureInfo.InvariantCulture);
-            string slot = request.SlotIndex.ToString(
-                CultureInfo.InvariantCulture);
-            StableId boxId = Strongbox.DeriveId(
-                "shopbox",
-                request.RunStableId.ToString(),
-                request.Definition.ShopStableId.ToString(),
-                ordinal,
-                slot);
-            StableId sourceOperationId = Strongbox.DeriveId(
-                "shopsourceop",
-                boxId.ToString());
-            StableId commitmentId = Strongbox.DeriveId(
-                "shopcommit",
-                boxId.ToString());
-            StableId grantId = Strongbox.DeriveId(
-                "shoprollgrant",
-                boxId.ToString());
-            StableId collectionId = Strongbox.DeriveId(
-                "shopvirtualcollection",
-                boxId.ToString());
-            ulong rootSeed = DeriveSeed(
-                request.InventorySeed,
-                request.SlotIndex);
-
-            StrongboxInstanceContext context =
-                StrongboxInstanceContext.Create(
-                    boxId,
+                StrongboxInstanceContext context =
+                    StrongboxInstanceContext.Create(
+                        boxId,
+                        tierId,
+                        rootSeed,
+                        request.Definition.AlgorithmVersion,
+                        request.ProgressionContext,
+                        SourceStableId,
+                        collectionId,
+                        definition.Fingerprint);
+                string contextFingerprint = Strongbox.Fingerprint(
+                    context.ToCanonicalString());
+                string contentFingerprint =
+                    ShooterMover.Domain.Shops.Shop.Fingerprint(
+                        "schema=shop-virtual-strongbox-roll-v1"
+                        + "\nshop_id=" + request.Definition.ShopStableId
+                        + "\nrun_id=" + request.RunStableId
+                        + "\nslot=" + slot
+                        + "\ntier_id=" + tierId
+                        + "\ncontext=" + contextFingerprint);
+                RewardOperationRequest operation = RewardOperationRequest.Create(
+                    request.RunStableId,
+                    request.Definition.ShopStableId,
+                    sourceOperationId,
+                    commitmentId,
+                    TierPurposeId,
+                    contentFingerprint);
+                RewardGrant grant = RewardGrant.Create(
+                    grantId,
+                    RewardGrantKind.EquipmentReference,
                     tierId,
-                    rootSeed,
-                    request.Definition.AlgorithmVersion,
-                    request.ProgressionContext,
-                    SourceStableId,
-                    collectionId,
-                    definition.Fingerprint);
-            string contextFingerprint = Strongbox.Fingerprint(
-                context.ToCanonicalString());
-            string contentFingerprint =
-                ShooterMover.Domain.Shops.Shop.Fingerprint(
-                    "schema=shop-virtual-strongbox-roll-v1"
-                    + "\nshop_id=" + request.Definition.ShopStableId
-                    + "\nrun_id=" + request.RunStableId
-                    + "\nslot=" + slot
-                    + "\ntier_id=" + tierId
-                    + "\ncontext=" + contextFingerprint);
-            RewardOperationRequest operation = RewardOperationRequest.Create(
-                request.RunStableId,
-                request.Definition.ShopStableId,
-                sourceOperationId,
-                commitmentId,
-                TierPurposeId,
-                contentFingerprint);
-            RewardGrant grant = RewardGrant.Create(
-                grantId,
-                RewardGrantKind.EquipmentReference,
-                tierId,
-                1L);
+                    1L);
 
-            IReadOnlyList<EquipmentInstance> equipment;
-            if (!resolver.TryResolve(
-                    definition,
-                    context,
-                    operation,
-                    grant,
-                    out equipment,
-                    out rejectionCode)
-                || equipment == null
-                || equipment.Count != 1
-                || equipment[0] == null)
-            {
-                if (string.IsNullOrWhiteSpace(rejectionCode))
+                IReadOnlyList<EquipmentInstance> equipment;
+                if (!resolver.TryResolve(
+                        definition,
+                        context,
+                        operation,
+                        grant,
+                        out equipment,
+                        out rejectionCode)
+                    || equipment == null
+                    || equipment.Count != 1
+                    || equipment[0] == null)
+                {
+                    if (string.IsNullOrWhiteSpace(rejectionCode))
+                    {
+                        rejectionCode =
+                            "shop-strongbox-equipment-roll-rejected";
+                    }
+                    return false;
+                }
+
+                GeneratedEquipmentAugmentSignature signature;
+                bool committed;
+                if (!previewSignatures.TryGetStagedOrCommitted(
+                        equipment[0].InstanceId,
+                        out signature,
+                        out committed)
+                    || signature == null)
                 {
                     rejectionCode =
-                        "shop-strongbox-equipment-roll-rejected";
+                        "shop-strongbox-augment-signature-missing";
+                    return false;
                 }
-                return false;
-            }
 
-            GeneratedEquipmentAugmentSignature signature;
-            bool committed;
-            if (!signatures.TryGetStagedOrCommitted(
-                    equipment[0].InstanceId,
-                    out signature,
-                    out committed)
-                || signature == null)
+                string generationFingerprint =
+                    ShooterMover.Domain.Shops.Shop.Fingerprint(
+                        "schema=shop-strongbox-stock-result-v1"
+                        + "\ntier_id=" + tierId
+                        + "\nbox_context=" + contextFingerprint
+                        + "\nequipment=" + equipment[0].Fingerprint
+                        + "\naugment_signature=" + signature.Fingerprint);
+                result = new ShopStockRollResult(
+                    equipment[0],
+                    generationFingerprint,
+                    tierId);
+                return true;
+            }
+        }
+
+        public bool TryPreparePurchase(
+            EquipmentInstance equipment,
+            out string rejectionCode)
+        {
+            lock (gate)
             {
-                rejectionCode =
-                    "shop-strongbox-augment-signature-missing";
-                return false;
-            }
+                rejectionCode = null;
+                if (equipment == null)
+                {
+                    rejectionCode =
+                        "shop-purchase-equipment-preview-null";
+                    return false;
+                }
 
-            string generationFingerprint =
-                ShooterMover.Domain.Shops.Shop.Fingerprint(
-                    "schema=shop-strongbox-stock-result-v1"
-                    + "\ntier_id=" + tierId
-                    + "\nbox_context=" + contextFingerprint
-                    + "\nequipment=" + equipment[0].Fingerprint
-                    + "\naugment_signature=" + signature.Fingerprint);
-            result = new ShopStockRollResult(
-                equipment[0],
-                generationFingerprint,
-                tierId);
-            return true;
+                GeneratedEquipmentAugmentSignature signature;
+                bool committed;
+                if (!previewSignatures.TryGetStagedOrCommitted(
+                        equipment.InstanceId,
+                        out signature,
+                        out committed)
+                    || signature == null)
+                {
+                    rejectionCode =
+                        "shop-purchase-augment-preview-missing";
+                    return false;
+                }
+
+                return purchaseSignatures.TryStageBatch(
+                    new[] { signature },
+                    out rejectionCode);
+            }
+        }
+
+        public void CompletePurchase(EquipmentInstance equipment)
+        {
+            // Preview state is cleared atomically when the next stock window rolls.
+        }
+
+        private void ResetPreviewWindow(StableId stockIdentity)
+        {
+            if (currentStockIdentity == stockIdentity)
+            {
+                return;
+            }
+            previewSignatures.RestoreDurableSnapshot(
+                new GeneratedEquipmentAugmentSignatureSnapshot(
+                    Array.Empty<GeneratedEquipmentAugmentSignature>(),
+                    Array.Empty<GeneratedEquipmentAugmentSignature>()));
+            currentStockIdentity = stockIdentity;
         }
 
         private static StrongboxTier FindTier(StableId tierStableId)
