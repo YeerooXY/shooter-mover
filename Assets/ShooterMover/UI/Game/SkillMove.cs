@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using ShooterMover.Application.Flow.Game;
 using ShooterMover.Content.Definitions.Levels.Selection;
+using ShooterMover.Contracts.Combat;
 using ShooterMover.Contracts.Flow.Session;
+using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Progression.Skills;
+using ShooterMover.GameplayEntities;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -69,7 +72,7 @@ namespace ShooterMover.UI.Game
         }
     }
 
-    [DefaultExecutionOrder(600)]
+    [DefaultExecutionOrder(650)]
     [DisallowMultipleComponent]
     public sealed class SkillMoveSetup : MonoBehaviour
     {
@@ -127,14 +130,22 @@ namespace ShooterMover.UI.Game
 
             Rigidbody2D body = player.GetComponent<Rigidbody2D>();
             TopDownMovement movement = player.GetComponent<TopDownMovement>();
-            if (body == null || movement == null) return false;
+            PlayerHUD health = player.GetComponent<PlayerHUD>();
+            if (body == null
+                || movement == null
+                || health == null
+                || !health.IsBound)
+            {
+                return false;
+            }
 
-            SkillEffectSnapshot effects = new SkillEffectProjector().Project(
-                graph.SkillAuthority.Catalog,
-                allocation);
             SkillMove skills = player.GetComponent<SkillMove>()
                 ?? player.gameObject.AddComponent<SkillMove>();
-            skills.Bind(body, movement, effects);
+            skills.Bind(body, movement, allocation);
+
+            SkillArmor armor = player.GetComponent<SkillArmor>()
+                ?? player.gameObject.AddComponent<SkillArmor>();
+            armor.Bind(health, skills.ArmorReduction);
 
             bound = true;
             enabled = false;
@@ -175,6 +186,11 @@ namespace ShooterMover.UI.Game
     [DisallowMultipleComponent]
     public sealed class SkillMove : MonoBehaviour
     {
+        private const string ArmorId = "generic.armor";
+        private const string SpeedId = "generic.movement_speed";
+        private const string RecoveryId = "striker.thruster_recovery";
+        private const string EfficiencyId = "striker.movement_efficiency";
+
         private const float BaseDashSpeed = 18f;
         private const float BaseDashSeconds = 0.18f;
         private const float BaseRechargeSeconds = 2f;
@@ -192,6 +208,10 @@ namespace ShooterMover.UI.Game
         private float rechargeSeconds = BaseRechargeSeconds;
         private float armorReduction;
         private float dashEnds;
+        private int armorRank;
+        private int speedRank;
+        private int recoveryRank;
+        private int efficiencyRank;
         private int maximumCharges = BaseCharges;
         private bool dashing;
         private bool bound;
@@ -208,7 +228,7 @@ namespace ShooterMover.UI.Game
         public void Bind(
             Rigidbody2D configuredBody,
             TopDownMovement configuredMovement,
-            SkillEffectSnapshot effects)
+            RankedSkillAllocationSnapshot allocation)
         {
             if (bound)
             {
@@ -218,45 +238,30 @@ namespace ShooterMover.UI.Game
                 ?? throw new ArgumentNullException(nameof(configuredBody));
             movement = configuredMovement
                 ?? throw new ArgumentNullException(nameof(configuredMovement));
-            if (effects == null)
+            if (allocation == null)
             {
-                throw new ArgumentNullException(nameof(effects));
+                throw new ArgumentNullException(nameof(allocation));
             }
 
-            speedScale = Mathf.Max(
-                0.1f,
-                (float)effects.Apply("movement.speed", 1m));
-            dashSpeed = BaseDashSpeed * speedScale;
-            dashSeconds = BaseDashSeconds * Mathf.Max(
-                0.1f,
-                (float)effects.Apply("movement.energy_efficiency", 1m));
+            armorRank = allocation.RankOf(ArmorId);
+            speedRank = allocation.RankOf(SpeedId);
+            recoveryRank = allocation.RankOf(RecoveryId);
+            efficiencyRank = allocation.RankOf(EfficiencyId);
 
-            float recovery = Mathf.Max(
-                0.1f,
-                (float)effects.Apply("movement.thruster_recovery", 1m));
-            float recoveryDelay =
-                (float)effects.Apply("movement.recovery_delay", 0m);
+            armorReduction = Mathf.Clamp(armorRank * 0.01f, 0f, 0.9f);
+            speedScale = 1f + speedRank * 0.01f;
+            dashSpeed = BaseDashSpeed * speedScale;
+            dashSeconds = BaseDashSeconds * (1f + efficiencyRank * 0.01f);
+
+            float recovery = 1f + recoveryRank * 0.01f;
+            float milestone = recoveryRank >= 5 ? -0.1f : 0f;
             rechargeSeconds = Mathf.Max(
                 0.25f,
-                BaseRechargeSeconds / recovery + recoveryDelay);
+                BaseRechargeSeconds / recovery + milestone);
 
-            maximumCharges = Mathf.Max(
-                1,
-                Mathf.RoundToInt(
-                    (float)effects.Apply(
-                        "movement.maximum_charges",
-                        BaseCharges)));
-
-            float armorFactor = Mathf.Max(
-                1f,
-                (float)effects.Apply("character.armor", 1m));
-            armorReduction = Mathf.Clamp(armorFactor - 1f, 0f, 0.9f);
+            maximumCharges = BaseCharges
+                + (recoveryRank >= 8 && efficiencyRank >= 8 ? 1 : 0);
             bound = true;
-        }
-
-        public double ScaleIncomingDamage(double amount)
-        {
-            return amount * (1d - armorReduction);
         }
 
         private void Update()
@@ -316,7 +321,13 @@ namespace ShooterMover.UI.Game
                 text += "  " + next.ToString("0.0") + "s";
             }
             text += "  [SHIFT / SPACE]";
-            GUI.Label(new Rect(16f, Screen.height - 34f, 300f, 24f), text);
+            GUI.Label(new Rect(16f, Screen.height - 34f, 330f, 24f), text);
+
+            string ranks = "SKILLS  Armor " + armorRank
+                + "  Speed " + speedRank
+                + "  Recovery " + recoveryRank
+                + "  Efficiency " + efficiencyRank;
+            GUI.Label(new Rect(16f, Screen.height - 56f, 430f, 24f), ranks);
         }
 
         private void RefreshCharges(float now)
@@ -355,6 +366,141 @@ namespace ShooterMover.UI.Game
         private void OnDisable()
         {
             dashing = false;
+        }
+    }
+
+    [DefaultExecutionOrder(900)]
+    [DisallowMultipleComponent]
+    public sealed class SkillArmor :
+        MonoBehaviour,
+        IPlayablePlayerDamageReceiver
+    {
+        private const float HubRetrySeconds = 0.25f;
+
+        private PlayerHUD source;
+        private float reduction;
+        private float nextHubRetry;
+        private bool bound;
+
+        public event Action<PlayablePlayerDefeatedFact> Defeated;
+
+        public GameplayEntityIdentity Identity
+        {
+            get { return RequireSource().Identity; }
+        }
+        public StableId CharacterInstanceStableId
+        {
+            get { return RequireSource().CharacterInstanceStableId; }
+        }
+        public long LifecycleGeneration
+        {
+            get { return RequireSource().LifecycleGeneration; }
+        }
+        public double CurrentHealth
+        {
+            get { return RequireSource().CurrentHealth; }
+        }
+        public double MaximumHealth
+        {
+            get { return RequireSource().MaximumHealth; }
+        }
+        public bool IsDefeated
+        {
+            get { return RequireSource().IsDefeated; }
+        }
+
+        public void Bind(PlayerHUD configuredSource, float armorReduction)
+        {
+            if (bound)
+            {
+                throw new InvalidOperationException("skill-armor-duplicate-binding");
+            }
+            source = configuredSource
+                ?? throw new ArgumentNullException(nameof(configuredSource));
+            if (!source.IsBound)
+            {
+                throw new InvalidOperationException("skill-armor-source-unbound");
+            }
+
+            reduction = Mathf.Clamp(armorReduction, 0f, 0.9f);
+            source.Defeated += HandleDefeated;
+            source.enabled = false;
+            bound = true;
+        }
+
+        public PlayerActorSnapshot ExportSnapshot()
+        {
+            return RequireSource().ExportSnapshot();
+        }
+
+        public DamageReceiverResult ApplyDamage(DamageReceiverCommand command)
+        {
+            PlayerHUD health = RequireSource();
+            if (command == null || reduction <= 0f)
+            {
+                return health.ApplyDamage(command);
+            }
+
+            var scaled = new DamageReceiverCommand(
+                command.EventId,
+                command.SourceActorId,
+                command.SourceRunParticipantId,
+                command.TargetActorId,
+                command.Amount * (1d - reduction),
+                command.Channel,
+                command.LifecycleGeneration);
+            return health.ApplyDamage(scaled);
+        }
+
+        private void Update()
+        {
+            if (!bound
+                || source == null
+                || !source.IsDefeated
+                || source.IsHubReturnAccepted
+                || Time.unscaledTime < nextHubRetry)
+            {
+                return;
+            }
+
+            nextHubRetry = Time.unscaledTime + HubRetrySeconds;
+            source.TryRetryHubReturn();
+        }
+
+        private void OnGUI()
+        {
+            if (!bound || source == null) return;
+            GUI.Label(
+                new Rect(16f, 16f, 260f, 24f),
+                "HP " + source.CurrentHealth.ToString("0")
+                + "/" + source.MaximumHealth.ToString("0")
+                + "  ARMOR " + (reduction * 100f).ToString("0") + "%");
+        }
+
+        private void HandleDefeated(PlayablePlayerDefeatedFact fact)
+        {
+            Action<PlayablePlayerDefeatedFact> handlers = Defeated;
+            if (handlers != null)
+            {
+                handlers(fact);
+            }
+        }
+
+        private PlayerHUD RequireSource()
+        {
+            if (!bound || source == null)
+            {
+                throw new InvalidOperationException("skill-armor-source-missing");
+            }
+            return source;
+        }
+
+        private void OnDestroy()
+        {
+            if (source != null)
+            {
+                source.Defeated -= HandleDefeated;
+            }
         }
     }
 }
