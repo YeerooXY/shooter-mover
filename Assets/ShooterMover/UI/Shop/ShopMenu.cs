@@ -20,6 +20,7 @@ namespace ShooterMover.UI.Shop
         [SerializeField] private Texture2D shopTemplate;
 
         private ShopScreenSession session;
+        private Func<long?> moneyBalanceProvider;
         private IShopScreenRouteBridge routeAdapter;
         private PlayerRouteProfilePayload disconnectedPayload;
         private ShopScreenView projection;
@@ -52,6 +53,19 @@ namespace ShooterMover.UI.Shop
         public bool IsBound { get { return session != null; } }
         public bool IsDisconnected { get { return session == null && disconnectedPayload != null; } }
         public Texture2D ShopTemplate { get { return shopTemplate; } }
+        public long? DisplayedMoneyBalance
+        {
+            get
+            {
+                if (moneyBalanceProvider != null)
+                {
+                    return moneyBalanceProvider();
+                }
+                return projection == null
+                    ? null
+                    : (long?)projection.MoneyBalance;
+            }
+        }
 
         private void Awake()
         {
@@ -91,6 +105,7 @@ namespace ShooterMover.UI.Shop
 
             if (session == null || projection == null)
             {
+                DrawAvailableMoneyBalance();
                 GUILayout.FlexibleSpace();
                 GUILayout.Label(
                     disconnectedPayload == null
@@ -163,6 +178,12 @@ namespace ShooterMover.UI.Shop
             presentationEquipmentCatalog = equipmentCatalog;
             presentationGunCatalog = gunCatalog;
             gunArtCache.Clear();
+        }
+
+        public void ConfigureMoneyPresentation(
+            Func<long?> balanceProvider)
+        {
+            moneyBalanceProvider = balanceProvider;
         }
 
         public void ConfigureDisconnected(
@@ -324,6 +345,21 @@ namespace ShooterMover.UI.Shop
                     CultureInfo.InvariantCulture),
                 detailStyle);
             GUILayout.EndHorizontal();
+        }
+
+        private void DrawAvailableMoneyBalance()
+        {
+            long? balance = DisplayedMoneyBalance;
+            if (!balance.HasValue)
+            {
+                return;
+            }
+            GUILayout.Label(
+                "MONEY  " + balance.Value.ToString(
+                    "N0",
+                    CultureInfo.InvariantCulture),
+                balanceStyle);
+            GUILayout.Space(10f);
         }
 
         private void DrawFeedback()

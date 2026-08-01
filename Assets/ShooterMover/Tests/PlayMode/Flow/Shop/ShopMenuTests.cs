@@ -29,6 +29,26 @@ namespace ShooterMover.Tests.PlayMode.Flow.Shop
     public sealed partial class ShopMenuTests
     {
         [UnityTest]
+        public IEnumerator DisconnectedShopProjectsTheActiveCharactersLiveMoney()
+        {
+            Fixture fixture = new Fixture(10000L);
+            var host = new GameObject("Shop money projection test");
+            ShopMenu controller = host.AddComponent<ShopMenu>();
+            long balance = 10000L;
+            controller.ConfigureDisconnected(
+                fixture.RoutePayload,
+                new RecordingShopScreenRouteBridge());
+            controller.ConfigureMoneyPresentation(delegate { return balance; });
+
+            Assert.That(controller.DisplayedMoneyBalance, Is.EqualTo(10000L));
+            balance = 9750L;
+            Assert.That(controller.DisplayedMoneyBalance, Is.EqualTo(9750L));
+
+            UnityEngine.Object.DestroyImmediate(host);
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator ControllerProjectsRealStockAndPurchaseResult()
         {
             Fixture fixture = new Fixture(10000L);

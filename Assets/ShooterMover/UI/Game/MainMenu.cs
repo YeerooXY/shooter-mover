@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -15,11 +16,23 @@ namespace ShooterMover.UI.Game
 
         private Texture2D background;
         private Func<bool> requestPlay;
+        private Func<long?> moneyBalanceProvider;
         private bool requestAccepted;
         private GUIStyle titleStyle;
+        private GUIStyle balanceStyle;
         private GUIStyle buttonStyle;
 
         public int PlayRequestCount { get; private set; }
+
+        public long? DisplayedMoneyBalance
+        {
+            get
+            {
+                return moneyBalanceProvider == null
+                    ? null
+                    : moneyBalanceProvider();
+            }
+        }
 
         public bool IsConfigured { get { return requestPlay != null; } }
 
@@ -33,6 +46,12 @@ namespace ShooterMover.UI.Game
             requestPlay = play ?? throw new ArgumentNullException(nameof(play));
             requestAccepted = false;
             PlayRequestCount = 0;
+        }
+
+        public void ConfigureMoneyPresentation(
+            Func<long?> balanceProvider)
+        {
+            moneyBalanceProvider = balanceProvider;
         }
 
         private void Update()
@@ -68,6 +87,20 @@ namespace ShooterMover.UI.Game
                 new Rect(0f, Screen.height * 0.16f, Screen.width, 58f),
                 "SHOOTER MOVER",
                 titleStyle);
+            long? moneyBalance = DisplayedMoneyBalance;
+            if (moneyBalance.HasValue)
+            {
+                GUI.Label(
+                    new Rect(
+                        Screen.width - 292f,
+                        24f,
+                        260f,
+                        44f),
+                    "MONEY  " + moneyBalance.Value.ToString(
+                        "N0",
+                        CultureInfo.InvariantCulture),
+                    balanceStyle);
+            }
             GUI.enabled = !requestAccepted;
             Rect playRect = new Rect(
                 Screen.width * 0.35f,
@@ -140,6 +173,12 @@ namespace ShooterMover.UI.Game
             {
                 alignment = TextAnchor.MiddleCenter,
                 fontSize = 38,
+                fontStyle = FontStyle.Bold,
+            };
+            balanceStyle = new GUIStyle(GUI.skin.box)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 20,
                 fontStyle = FontStyle.Bold,
             };
             buttonStyle = new GUIStyle(GUI.skin.button)

@@ -230,6 +230,8 @@ namespace ShooterMover.UI.Game
                 if (controller != null)
                 {
                     controller.Configure(OpenCharacterSelection);
+                    controller.ConfigureMoneyPresentation(
+                        ResolveSelectedMoneyBalance);
                 }
                 return;
             }
@@ -264,6 +266,8 @@ namespace ShooterMover.UI.Game
                 if (controller != null)
                 {
                     controller.ConfigureProduction(transitions);
+                    controller.ConfigureMoneyPresentation(
+                        ResolveSelectedMoneyBalance);
                 }
                 return;
             }
@@ -347,6 +351,8 @@ namespace ShooterMover.UI.Game
                     controller.ConfigureDisconnected(
                         transitions.Navigation.Payload,
                         new ShopNavigationBridge(this));
+                    controller.ConfigureMoneyPresentation(
+                        ResolveSelectedMoneyBalance);
                     ConfigureShopGunPresentation(controller);
                 }
                 return;
@@ -635,6 +641,33 @@ namespace ShooterMover.UI.Game
                     runtime.EquipmentCatalog,
                     runtime.GunCatalog);
             }
+        }
+
+        private long? ResolveSelectedMoneyBalance()
+        {
+            CharacterLiveGraph graph;
+            FlowProfileRecord activeProfile;
+            if (!CharacterSave.TryResolveCurrent(
+                    out graph,
+                    out activeProfile)
+                || graph == null
+                || graph.IsDisposed
+                || graph.MoneyWallet == null)
+            {
+                return null;
+            }
+
+            PlayerRouteProfilePayload route = transitions == null
+                    || transitions.Navigation == null
+                ? null
+                : transitions.Navigation.Payload;
+            if (route != null
+                && graph.Character.CharacterInstanceStableId
+                    != route.SelectedCharacterStableId)
+            {
+                return null;
+            }
+            return graph.MoneyWallet.Balance;
         }
 
         private bool SelectExistingProfile(

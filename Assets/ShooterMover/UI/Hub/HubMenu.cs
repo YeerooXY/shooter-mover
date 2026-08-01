@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
@@ -40,6 +41,7 @@ namespace ShooterMover.UI.Hub
         private HubNavigationActions navigation;
         private IHubRouteDestinationBridge destinationAdapter;
         private IHubRouteTransactionPort transactionPort;
+        private Func<long?> moneyBalanceProvider;
         private HubNavigationResult lastNavigationResult;
         private GUIStyle titleStyle;
         private GUIStyle headingStyle;
@@ -55,6 +57,16 @@ namespace ShooterMover.UI.Hub
         public PlayerRouteProfilePayload Payload
         {
             get { EnsureInitialized(); return navigation.Payload; }
+        }
+
+        public long? DisplayedMoneyBalance
+        {
+            get
+            {
+                return moneyBalanceProvider == null
+                    ? null
+                    : moneyBalanceProvider();
+            }
         }
 
         public HubNavigationResult LastNavigationResult
@@ -118,6 +130,15 @@ namespace ShooterMover.UI.Hub
                 + "  /  "
                 + navigation.Payload.LoadoutProfileStableId,
                 bodyStyle);
+            long? moneyBalance = DisplayedMoneyBalance;
+            if (moneyBalance.HasValue)
+            {
+                GUILayout.Label(
+                    "MONEY  " + moneyBalance.Value.ToString(
+                        "N0",
+                        CultureInfo.InvariantCulture),
+                    headingStyle);
+            }
             GUILayout.Label(
                 "Route payload: " + ShortFingerprint(navigation.Payload.Fingerprint),
                 fingerprintStyle);
@@ -203,6 +224,12 @@ namespace ShooterMover.UI.Hub
                     nameof(port));
             destinationAdapter = null;
             lastNavigationResult = null;
+        }
+
+        public void ConfigureMoneyPresentation(
+            Func<long?> balanceProvider)
+        {
+            moneyBalanceProvider = balanceProvider;
         }
 
         public bool OpenCharacterSelect()

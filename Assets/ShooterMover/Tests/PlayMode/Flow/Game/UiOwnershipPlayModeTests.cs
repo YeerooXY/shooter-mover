@@ -32,6 +32,23 @@ namespace ShooterMover.Tests.PlayMode.Flow.Game
             };
 
         [UnityTest]
+        public IEnumerator MainMenuProjectsTheActiveCharactersLiveMoney()
+        {
+            var host = new GameObject("Main menu money projection test");
+            MainMenu controller = host.AddComponent<MainMenu>();
+            long balance = 1250L;
+            controller.Configure(delegate { return true; });
+            controller.ConfigureMoneyPresentation(delegate { return balance; });
+
+            Assert.That(controller.DisplayedMoneyBalance, Is.EqualTo(1250L));
+            balance = 1175L;
+            Assert.That(controller.DisplayedMoneyBalance, Is.EqualTo(1175L));
+
+            UnityEngine.Object.DestroyImmediate(host);
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator CanonicalScenesOwnExactlyOneLayout()
         {
             yield return EnsureCoordinator();

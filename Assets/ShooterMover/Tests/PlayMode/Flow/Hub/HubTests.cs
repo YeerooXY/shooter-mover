@@ -13,6 +13,25 @@ namespace ShooterMover.Tests.PlayMode.Flow.Hub
     public sealed class HubTests
     {
         [UnityTest]
+        public IEnumerator HubProjectsTheActiveCharactersLiveMoney()
+        {
+            GameObject host = new GameObject("Hub money projection test");
+            HubMenu controller = host.AddComponent<HubMenu>();
+            long balance = 4200L;
+            controller.ConfigureForTests(
+                CreatePayload(),
+                new RecordingBridge());
+            controller.ConfigureMoneyPresentation(delegate { return balance; });
+
+            Assert.That(controller.DisplayedMoneyBalance, Is.EqualTo(4200L));
+            balance = 3975L;
+            Assert.That(controller.DisplayedMoneyBalance, Is.EqualTo(3975L));
+
+            Object.DestroyImmediate(host);
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator MainMenuCharacterSelectHubAndEveryDestinationRetainPayload()
         {
             GameObject host = new GameObject("HUB-001 PlayMode Host");
