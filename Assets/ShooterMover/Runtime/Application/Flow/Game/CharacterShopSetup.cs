@@ -90,23 +90,21 @@ namespace ShooterMover.Application.Flow.Game
     {
         private static readonly StableId ShopStableId =
             StableId.Parse("shop.hub-weapons");
+        private static readonly StableId ShopRapAuthorityStableId =
+            StableId.Parse(
+                "authority.production-character-shop-reward-application");
 
         public static CharacterShopLive Create(
             PlayerLoadoutLive loadout,
             MoneyWalletActions money,
             ScrapWalletActions scrap,
             RewardGenerationActions generator,
-            RewardApplicationActions rewardApplication,
             GeneratedEquipmentAugmentSignatureState augmentSignatures)
         {
             if (loadout == null) throw new ArgumentNullException(nameof(loadout));
             if (money == null) throw new ArgumentNullException(nameof(money));
             if (scrap == null) throw new ArgumentNullException(nameof(scrap));
             if (generator == null) throw new ArgumentNullException(nameof(generator));
-            if (rewardApplication == null)
-            {
-                throw new ArgumentNullException(nameof(rewardApplication));
-            }
             if (augmentSignatures == null)
             {
                 throw new ArgumentNullException(nameof(augmentSignatures));
@@ -118,12 +116,20 @@ namespace ShooterMover.Application.Flow.Game
             var roller = new StrongboxShopStockRoller(
                 loadout.EquipmentCatalog,
                 loadout.GunCatalog,
-                augmentSignatures,
                 CharacterStrongboxSetup.GenerationPolicyStableId);
+            var shopRewardApplication = new RewardApplicationActions(
+                ShopRapAuthorityStableId,
+                new MoneyRewardChildState(money),
+                new ScrapRewardChildState(scrap),
+                new GeneratedAugmentSignaturePlayerHoldingsRewardChildState(
+                    loadout.LegacyHoldings,
+                    loadout.CatalogBridge,
+                    augmentSignatures,
+                    roller.PreviewSignatures));
             var authority = new ShopLiveActions(
                 generator,
                 money,
-                rewardApplication,
+                shopRewardApplication,
                 scrap.AuthorityStableId,
                 loadout.LegacyHoldings.AuthorityStableId,
                 null,
