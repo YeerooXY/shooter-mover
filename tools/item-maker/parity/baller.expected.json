@@ -1,0 +1,128 @@
+{
+  "familyId": "baller",
+  "definitions": [
+    {
+      "definitionId": "gun_baller_mk1_01",
+      "familyId": "baller",
+      "mark": 1,
+      "variant": 1,
+      "name": "Baller",
+      "category": "orb",
+      "rarity": "epic",
+      "projectileType": "orb",
+      "damageType": "energy",
+      "peakLevel": 15,
+      "damage": 10,
+      "fire": {
+        "mode": "automatic",
+        "rate": 3
+      },
+      "shot": {
+        "projectiles": 1,
+        "spread": 0
+      },
+      "projectile": {
+        "speed": 10,
+        "radius": 0.5,
+        "range": 30
+      },
+      "impact": {
+        "pierce": 3,
+        "ricochet": 0,
+        "knockback": 0
+      },
+      "homing": null,
+      "dot": null,
+      "explosion": null,
+      "art": {
+        "side": "gun-art.baller.mk1.side-v1",
+        "mounted": "gun-art.baller.mk1.mounted-top-v1",
+        "delivery": "gun-delivery-art.orb-energy.v1",
+        "trail": "gun-trail-art.orb-energy.v1",
+        "impact": "gun-impact-art.orb-energy.v1"
+      }
+    },
+    {
+      "definitionId": "gun_baller_mk2_01",
+      "familyId": "baller",
+      "mark": 2,
+      "variant": 1,
+      "name": "Baller",
+      "category": "orb",
+      "rarity": "epic",
+      "projectileType": "orb",
+      "damageType": "energy",
+      "peakLevel": 40,
+      "damage": 15,
+      "fire": {
+        "mode": "automatic",
+        "rate": 3
+      },
+      "shot": {
+        "projectiles": 1,
+        "spread": 0
+      },
+      "projectile": {
+        "speed": 10,
+        "radius": 0.5,
+        "range": 30
+      },
+      "impact": {
+        "pierce": 3,
+        "ricochet": 0,
+        "knockback": 0
+      },
+      "homing": null,
+      "dot": null,
+      "explosion": null,
+      "art": {
+        "side": "gun-art.baller.mk2.side-v1",
+        "mounted": "gun-art.baller.mk2.mounted-top-v1",
+        "delivery": "gun-delivery-art.orb-energy.v1",
+        "trail": "gun-trail-art.orb-energy.v1",
+        "impact": "gun-impact-art.orb-energy.v1"
+      }
+    },
+    {
+      "definitionId": "gun_baller_mk3_01",
+      "familyId": "baller",
+      "mark": 3,
+      "variant": 1,
+      "name": "Baller",
+      "category": "orb",
+      "rarity": "epic",
+      "projectileType": "orb",
+      "damageType": "energy",
+      "peakLevel": 65,
+      "damage": 20,
+      "fire": {
+        "mode": "automatic",
+        "rate": 3
+      },
+      "shot": {
+        "projectiles": 1,
+        "spread": 0
+      },
+      "projectile": {
+        "speed": 10,
+        "radius": 0.5,
+        "range": 30
+      },
+      "impact": {
+        "pierce": 3,
+        "ricochet": 0,
+        "knockback": 0
+      },
+      "homing": null,
+      "dot": null,
+      "explosion": null,
+      "art": {
+        "side": "gun-art.baller.mk3.side-v1",
+        "mounted": "gun-art.baller.mk3.mounted-top-v1",
+        "delivery": "gun-delivery-art.orb-energy.v1",
+        "trail": "gun-trail-art.orb-energy.v1",
+        "impact": "gun-impact-art.orb-energy.v1"
+      }
+    }
+  ]
+}
