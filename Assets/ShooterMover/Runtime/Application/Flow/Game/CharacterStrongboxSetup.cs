@@ -18,21 +18,18 @@ namespace ShooterMover.Application.Flow.Game
             StrongboxDefinitionCatalog catalog,
             StrongboxOpeningActions authority,
             IStrongboxOpeningRecoveryPort recovery,
-            GeneratedEquipmentAugmentSignatureState augmentSignatures,
-            CharacterShopLive shop)
+            GeneratedEquipmentAugmentSignatureState augmentSignatures)
         {
             Catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
             Authority = authority ?? throw new ArgumentNullException(nameof(authority));
             Recovery = recovery ?? throw new ArgumentNullException(nameof(recovery));
             AugmentSignatures = augmentSignatures
                 ?? throw new ArgumentNullException(nameof(augmentSignatures));
-            Shop = shop ?? throw new ArgumentNullException(nameof(shop));
         }
 
         public StrongboxDefinitionCatalog Catalog { get; }
         public StrongboxOpeningActions Authority { get; }
         public IStrongboxOpeningRecoveryPort Recovery { get; }
-        public CharacterShopLive Shop { get; }
 
         /// <summary>
         /// Exact-instance generated capacity/shared-level state. Payload generation stages
@@ -111,21 +108,13 @@ namespace ShooterMover.Application.Flow.Game
                     new DeterministicStrongboxGrantPayloadResolver(
                         equipmentResolver),
                     augmentSignatures));
-            CharacterShopLive shop = CharacterShopSetup.Create(
-                loadout,
-                money,
-                scrap,
-                generator,
-                augmentSignatures);
-            CharacterShopRegistry.Bind(authority, shop);
             return new CharacterStrongboxLive(
                 catalog,
                 authority,
                 new ExistingStrongboxOpeningRecoveryPort(
                     authority,
                     rewardApplication),
-                augmentSignatures,
-                shop);
+                augmentSignatures);
         }
     }
 }
