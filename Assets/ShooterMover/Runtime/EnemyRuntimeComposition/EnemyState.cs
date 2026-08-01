@@ -48,7 +48,7 @@ namespace ShooterMover.EnemyRuntimeComposition
                 context.CurrentPosition,
                 context.CurrentFacing,
                 context.SimulationTick,
-                DifficultyScaling.MovementMultiplier,
+                DifficultyScaling.MovementMultiplier * MovementSpeedMultiplier,
                 context.EnvironmentQuery);
             return Movement.Realizer.Realize(intent, scaledContext, Movement.Configuration);
         }
