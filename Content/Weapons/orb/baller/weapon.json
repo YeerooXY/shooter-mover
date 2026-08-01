@@ -1,0 +1,32 @@
+{
+  "name": "Baller",
+  "description": "A heavy energy orb launcher that pierces multiple enemies.",
+  "category": "orb",
+  "rarity": "epic",
+  "projectileType": "orb",
+  "damageType": "energy",
+  "fire": {
+    "mode": "automatic",
+    "rate": 3
+  },
+  "shot": {
+    "projectiles": 1,
+    "spread": 0
+  },
+  "projectile": {
+    "speed": 10,
+    "radius": 0.5,
+    "range": 30
+  },
+  "impact": {
+    "pierce": 3,
+    "ricochet": 0,
+    "knockback": 0
+  },
+  "art": {
+    "mounted": "gun_baller_mounted",
+    "delivery": "gun_baller_orb",
+    "trail": "gun_baller_trail",
+    "impact": "gun_baller_impact"
+  }
+}
