@@ -37,13 +37,11 @@ namespace ShooterMover.UI.Game
             Enemy.VolatileExploded += OnExplosion;
         }
 
-        private static void OnExplosion(
-            Enemy source,
-            EnemyVolatileExplosion explosion)
+        private static void OnExplosion(Enemy source, VolatileBlast blast)
         {
             try
             {
-                DamagePlayer(source, explosion);
+                DamagePlayer(source, blast);
             }
             catch (Exception exception)
             {
@@ -52,16 +50,13 @@ namespace ShooterMover.UI.Game
             }
         }
 
-        private static void DamagePlayer(
-            Enemy source,
-            EnemyVolatileExplosion explosion)
+        private static void DamagePlayer(Enemy source, VolatileBlast blast)
         {
             if (source == null
-                || explosion == null
+                || blast == null
                 || !source.IsBound
-                || source.ActorStableId != explosion.SourceEntityStableId
-                || source.LifecycleGeneration
-                    != explosion.SourceLifecycleGeneration)
+                || source.ActorStableId != blast.EnemyId
+                || source.LifecycleGeneration != blast.Generation)
             {
                 return;
             }
@@ -75,8 +70,8 @@ namespace ShooterMover.UI.Game
             }
 
             Vector2 delta = (Vector2)player.Marker.transform.position
-                - explosion.Position;
-            if (delta.sqrMagnitude > explosion.Radius * explosion.Radius)
+                - blast.Position;
+            if (delta.sqrMagnitude > blast.Radius * blast.Radius)
             {
                 return;
             }
@@ -86,27 +81,27 @@ namespace ShooterMover.UI.Game
                 "enemy-volatile-hit",
                 RunFingerprint.Hash(
                     "enemy-volatile-hit-v1|"
-                    + explosion.EventStableId + "|"
+                    + blast.EventId + "|"
                     + receiver.Identity.EntityInstanceId + "|"
                     + receiver.LifecycleGeneration));
             DamageReceiverCommand command;
-            string rejectionCode;
+            string errorCode;
             if (!PlayablePlayerDamageCommandFactory
                 .TryCreateForCharacterContact(
                     receiver,
                     player.Marker.CharacterInstanceStableId,
                     hitId,
-                    explosion.SourceEntityStableId,
-                    explosion.SourceRunParticipantStableId,
-                    explosion.Damage,
+                    blast.EnemyId,
+                    blast.RunParticipantId,
+                    blast.Damage,
                     CombatChannel.Explosive,
                     out command,
-                    out rejectionCode))
+                    out errorCode))
             {
                 Debug.LogError(
-                    string.IsNullOrWhiteSpace(rejectionCode)
+                    string.IsNullOrWhiteSpace(errorCode)
                         ? "enemy-volatile-damage-mapping-rejected"
-                        : rejectionCode,
+                        : errorCode,
                     source);
                 return;
             }
