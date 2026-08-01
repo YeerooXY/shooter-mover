@@ -10,14 +10,16 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
     {
         public EnemyTraitVfxStyle(
             Color color,
+            int sides,
             float radiusScale,
             float width,
             float spinDegreesPerSecond,
             float pulseAmount,
-            float pulseSpeed,
-            int orbiters)
+            float pulseSpeed)
         {
-            if (!IsFinite(radiusScale)
+            if (sides < 3
+                || sides > 64
+                || !IsFinite(radiusScale)
                 || !IsFinite(width)
                 || !IsFinite(spinDegreesPerSecond)
                 || !IsFinite(pulseAmount)
@@ -25,28 +27,27 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
                 || radiusScale <= 0f
                 || width <= 0f
                 || pulseAmount < 0f
-                || pulseSpeed < 0f
-                || orbiters < 0)
+                || pulseSpeed < 0f)
             {
                 throw new ArgumentOutOfRangeException();
             }
 
             Color = color;
+            Sides = sides;
             RadiusScale = radiusScale;
             Width = width;
             SpinDegreesPerSecond = spinDegreesPerSecond;
             PulseAmount = pulseAmount;
             PulseSpeed = pulseSpeed;
-            Orbiters = orbiters;
         }
 
         public Color Color { get; }
+        public int Sides { get; }
         public float RadiusScale { get; }
         public float Width { get; }
         public float SpinDegreesPerSecond { get; }
         public float PulseAmount { get; }
         public float PulseSpeed { get; }
-        public int Orbiters { get; }
 
         private static bool IsFinite(float value)
         {
@@ -55,8 +56,8 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
     }
 
     /// <summary>
-    /// Presentation-only trait style registry. Adding a visual for a future trait requires one
-    /// registration and no change to the enemy actor or the stackable presenter.
+    /// Presentation-only trait styles. A future trait needs one registration; the enemy actor
+    /// and stackable presenter remain unchanged.
     /// </summary>
     public static class EnemyTraitVfxCatalog
     {
@@ -69,62 +70,32 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
                 EnemyTrait.EnergyShielded,
                 new EnemyTraitVfxStyle(
                     new Color(0.15f, 0.82f, 1f, 0.9f),
-                    1f,
-                    0.045f,
-                    55f,
-                    0.07f,
-                    3.4f,
-                    3));
+                    32, 1f, 0.045f, 38f, 0.07f, 3.4f));
             Register(
                 EnemyTrait.Fortified,
                 new EnemyTraitVfxStyle(
                     new Color(0.78f, 0.82f, 0.88f, 0.92f),
-                    1.1f,
-                    0.075f,
-                    -18f,
-                    0.025f,
-                    2f,
-                    4));
+                    4, 1.1f, 0.075f, -14f, 0.025f, 2f));
             Register(
                 EnemyTrait.Golden,
                 new EnemyTraitVfxStyle(
                     new Color(1f, 0.68f, 0.08f, 0.96f),
-                    1.22f,
-                    0.05f,
-                    34f,
-                    0.1f,
-                    4f,
-                    5));
+                    12, 1.22f, 0.05f, 28f, 0.1f, 4f));
             Register(
                 EnemyTrait.Swift,
                 new EnemyTraitVfxStyle(
                     new Color(0.45f, 0.9f, 1f, 0.82f),
-                    0.92f,
-                    0.032f,
-                    190f,
-                    0.045f,
-                    5.5f,
-                    2));
+                    3, 0.92f, 0.032f, 190f, 0.045f, 5.5f));
             Register(
                 EnemyTrait.Overclocked,
                 new EnemyTraitVfxStyle(
                     new Color(1f, 0.3f, 0.06f, 0.9f),
-                    1.06f,
-                    0.045f,
-                    -135f,
-                    0.12f,
-                    6f,
-                    3));
+                    6, 1.06f, 0.045f, -135f, 0.12f, 6f));
             Register(
                 EnemyTrait.Volatile,
                 new EnemyTraitVfxStyle(
                     new Color(1f, 0.08f, 0.04f, 0.94f),
-                    1.16f,
-                    0.065f,
-                    12f,
-                    0.18f,
-                    7f,
-                    1));
+                    8, 1.16f, 0.065f, 10f, 0.18f, 7f));
         }
 
         public static void Register(EnemyTrait trait, EnemyTraitVfxStyle style)
@@ -151,8 +122,6 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
     [DisallowMultipleComponent]
     public sealed class EnemyTraitVfx : MonoBehaviour
     {
-        private const int RingPoints = 48;
-        private const int OrbiterPoints = 10;
         private const float LaneSpacing = 0.11f;
 
         private sealed class Layer
@@ -160,8 +129,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             private readonly EnemyTraitVfxStyle style;
             private readonly float radius;
             private readonly float phase;
-            private readonly LineRenderer ring;
-            private readonly List<LineRenderer> orbiters;
+            private readonly LineRenderer line;
             private readonly GameObject root;
 
             public Layer(
@@ -179,27 +147,19 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
 
                 root = new GameObject("Trait VFX - " + trait);
                 root.transform.SetParent(owner, false);
-                ring = CreateLine(
-                    root.transform,
-                    "Ring",
-                    RingPoints,
-                    style.Width,
-                    style.Color,
-                    sortingLayerId,
-                    sortingOrder);
-
-                orbiters = new List<LineRenderer>(style.Orbiters);
-                for (int index = 0; index < style.Orbiters; index++)
-                {
-                    orbiters.Add(CreateLine(
-                        root.transform,
-                        "Orbiter " + (index + 1),
-                        OrbiterPoints,
-                        style.Width * 0.72f,
-                        style.Color,
-                        sortingLayerId,
-                        sortingOrder + 1));
-                }
+                line = root.AddComponent<LineRenderer>();
+                line.sharedMaterial = EnemyTraitVfxMaterial.Get();
+                line.useWorldSpace = true;
+                line.loop = true;
+                line.positionCount = style.Sides;
+                line.startWidth = style.Width;
+                line.endWidth = style.Width;
+                line.startColor = style.Color;
+                line.endColor = style.Color;
+                line.numCapVertices = 2;
+                line.numCornerVertices = 2;
+                line.sortingLayerID = sortingLayerId;
+                line.sortingOrder = sortingOrder;
             }
 
             public void Tick(Vector2 center, float time)
@@ -207,35 +167,25 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
                 float pulse = 1f + Mathf.Sin(
                     time * style.PulseSpeed + phase) * style.PulseAmount;
                 float currentRadius = radius * pulse;
-                SetCircle(ring, center, currentRadius, 0f);
-
-                float brightness = 0.78f + 0.22f * Mathf.Sin(
-                    time * style.PulseSpeed + phase);
-                Color color = style.Color;
-                color.a *= Mathf.Clamp01(brightness);
-                ring.startColor = color;
-                ring.endColor = color;
-
-                if (orbiters.Count == 0) return;
-                float rotation = time * style.SpinDegreesPerSecond + phase * 57.29578f;
-                float orbiterRadius = Mathf.Max(
-                    style.Width * 1.65f,
-                    currentRadius * 0.055f);
-                for (int index = 0; index < orbiters.Count; index++)
+                float rotation = (
+                    time * style.SpinDegreesPerSecond
+                    + phase * Mathf.Rad2Deg) * Mathf.Deg2Rad;
+                for (int index = 0; index < style.Sides; index++)
                 {
-                    float angle = rotation + 360f * index / orbiters.Count;
-                    float radians = angle * Mathf.Deg2Rad;
-                    Vector2 orbitCenter = center + new Vector2(
-                        Mathf.Cos(radians),
-                        Mathf.Sin(radians)) * currentRadius;
-                    SetCircle(
-                        orbiters[index],
-                        orbitCenter,
-                        orbiterRadius,
-                        -angle);
-                    orbiters[index].startColor = color;
-                    orbiters[index].endColor = color;
+                    float angle = rotation + Mathf.PI * 2f * index / style.Sides;
+                    line.SetPosition(
+                        index,
+                        new Vector3(
+                            center.x + Mathf.Cos(angle) * currentRadius,
+                            center.y + Mathf.Sin(angle) * currentRadius,
+                            0f));
                 }
+
+                Color color = style.Color;
+                color.a *= 0.78f + 0.22f * Mathf.Sin(
+                    time * style.PulseSpeed + phase);
+                line.startColor = color;
+                line.endColor = color;
             }
 
             public void Dispose()
@@ -243,53 +193,6 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
                 if (root == null) return;
                 root.SetActive(false);
                 UnityEngine.Object.Destroy(root);
-            }
-
-            private static LineRenderer CreateLine(
-                Transform parent,
-                string name,
-                int points,
-                float width,
-                Color color,
-                int sortingLayerId,
-                int sortingOrder)
-            {
-                GameObject lineObject = new GameObject(name);
-                lineObject.transform.SetParent(parent, false);
-                LineRenderer line = lineObject.AddComponent<LineRenderer>();
-                line.sharedMaterial = EnemyTraitVfxMaterial.Get();
-                line.useWorldSpace = true;
-                line.loop = true;
-                line.positionCount = points;
-                line.startWidth = width;
-                line.endWidth = width;
-                line.startColor = color;
-                line.endColor = color;
-                line.numCapVertices = 2;
-                line.numCornerVertices = 2;
-                line.sortingLayerID = sortingLayerId;
-                line.sortingOrder = sortingOrder;
-                return line;
-            }
-
-            private static void SetCircle(
-                LineRenderer line,
-                Vector2 center,
-                float radius,
-                float rotationDegrees)
-            {
-                int count = line.positionCount;
-                float rotation = rotationDegrees * Mathf.Deg2Rad;
-                for (int index = 0; index < count; index++)
-                {
-                    float angle = rotation + Mathf.PI * 2f * index / count;
-                    line.SetPosition(
-                        index,
-                        new Vector3(
-                            center.x + Mathf.Cos(angle) * radius,
-                            center.y + Mathf.Sin(angle) * radius,
-                            0f));
-                }
             }
         }
 
@@ -326,8 +229,9 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             enabled = true;
             if (bodyRadius <= 0f)
             {
-                float size = EnemyBounds.MeasureLargestDimension(transform);
-                bodyRadius = Mathf.Max(0.35f, size * 0.55f);
+                bodyRadius = Mathf.Max(
+                    0.35f,
+                    EnemyBounds.MeasureLargestDimension(transform) * 0.55f);
             }
             Refresh();
         }
@@ -342,10 +246,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
 
             IReadOnlyList<EnemyTrait> traits = enemy.Runtime.Traits;
             int nextHash = Hash(traits);
-            if (nextHash == traitHash && layers.Count == traits.Count)
-            {
-                return;
-            }
+            if (nextHash == traitHash) return;
 
             ClearLayers();
             int sortingLayerId;
@@ -353,23 +254,22 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
             ResolveSorting(out sortingLayerId, out sortingOrder);
             for (int index = 0; index < traits.Count; index++)
             {
-                EnemyTrait trait = traits[index];
                 EnemyTraitVfxStyle style;
-                if (!EnemyTraitVfxCatalog.TryGet(trait, out style))
+                if (!EnemyTraitVfxCatalog.TryGet(traits[index], out style))
                 {
                     Debug.LogWarning(
-                        "enemy-trait-vfx-style-missing:" + trait,
+                        "enemy-trait-vfx-style-missing:" + traits[index],
                         enemy);
                     continue;
                 }
                 layers.Add(new Layer(
                     transform,
-                    trait,
+                    traits[index],
                     style,
                     bodyRadius,
                     index,
                     sortingLayerId,
-                    sortingOrder + index * 2));
+                    sortingOrder + index));
             }
             traitHash = nextHash;
         }
@@ -389,9 +289,7 @@ namespace ShooterMover.UnityAdapters.CombatPresentation
                 Clear();
                 return;
             }
-
-            IReadOnlyList<EnemyTrait> traits = enemy.Runtime.Traits;
-            if (Hash(traits) != traitHash)
+            if (Hash(enemy.Runtime.Traits) != traitHash)
             {
                 Refresh();
             }
