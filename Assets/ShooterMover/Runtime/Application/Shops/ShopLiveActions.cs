@@ -264,10 +264,68 @@ namespace ShooterMover.Application.Shops
                         spend.RejectionCode ?? "shop-money-spend-rejected");
                 }
 
+                IShopPurchasePreparer purchasePreparer =
+                    stockRoller as IShopPurchasePreparer;
+                if (purchasePreparer != null)
+                {
+                    string preparationRejection;
+                    if (!purchasePreparer.TryPreparePurchase(
+                            entry.Equipment,
+                            out preparationRejection))
+                    {
+                        MoneyWalletChangeFact preparationRefund = money.Grant(
+                            RefundTransaction(command.TransactionStableId),
+                            RefundOperation(command.TransactionStableId),
+                            entry.Price);
+                        if (IsMoneyApplied(preparationRefund))
+                        {
+                            state.SetEntry(entry);
+                            return RecordTerminal(
+                                command,
+                                entry,
+                                ShopPurchaseStatus.RewardApplicationRejected,
+                                entry.Price,
+                                balanceBefore,
+                                money.Balance,
+                                false,
+                                string.IsNullOrWhiteSpace(preparationRejection)
+                                    ? "shop-purchase-preview-prepare-rejected"
+                                    : preparationRejection);
+                        }
+
+                        ShopPurchaseFact preparationPending =
+                            new ShopPurchaseFact(
+                                command.TransactionStableId,
+                                command.Fingerprint,
+                                ShopPurchaseStatus.CompensationPending,
+                                ShopPurchaseStatus.CompensationPending,
+                                entry.StockEntryStableId,
+                                entry.Price,
+                                balanceBefore,
+                                money.Balance,
+                                false,
+                                preparationRefund.RejectionCode
+                                    ?? "shop-preview-prepare-refund-pending");
+                        purchases.Add(
+                            command.TransactionStableId,
+                            new PurchaseRecord(
+                                command,
+                                preparationPending,
+                                state,
+                                entry,
+                                commit));
+                        return preparationPending;
+                    }
+                }
+
                 RewardClaimCommand claim = BuildClaim(command, commit);
                 RewardApplicationResult claimed = rewardApplication.Claim(claim);
                 if (IsRewardApplied(claimed.Status))
                 {
+                    if (purchasePreparer != null)
+                    {
+                        purchasePreparer.CompletePurchase(entry.Equipment);
+                    }
                     RecordPurchaseReceipt(
                         entry.StockEntryStableId,
                         command.TransactionStableId);
