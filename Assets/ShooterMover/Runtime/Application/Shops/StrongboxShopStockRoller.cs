@@ -15,12 +15,11 @@ namespace ShooterMover.Application.Shops
 {
     /// <summary>
     /// Treats each stock slot as one deterministic virtual strongbox. Preview signatures
-    /// live in a transient authority. Only the exact purchased item is staged into the
-    /// character's durable augment-signature authority before RAP applies ownership.
+    /// remain transient and window-scoped; the Shop RAP holdings child commits the exact
+    /// purchased preview alongside equipment ownership.
     /// </summary>
     public sealed class StrongboxShopStockRoller :
-        IShopStockRoller,
-        IShopPurchasePreparer
+        IShopStockRoller
     {
         private static readonly StableId SourceStableId =
             StableId.Parse("source.shop-virtual-strongbox");
@@ -31,8 +30,6 @@ namespace ShooterMover.Application.Shops
         private readonly GeneratedEquipmentAugmentSignatureState
             previewSignatures =
                 new GeneratedEquipmentAugmentSignatureState();
-        private readonly GeneratedEquipmentAugmentSignatureState
-            purchaseSignatures;
         private readonly StrongboxHybridEquipmentGenerationResolver resolver;
         private readonly StableId generationPolicyStableId;
         private StableId currentStockIdentity;
@@ -40,7 +37,6 @@ namespace ShooterMover.Application.Shops
         public StrongboxShopStockRoller(
             EquipmentCatalog equipmentCatalog,
             GunCatalog gunCatalog,
-            GeneratedEquipmentAugmentSignatureState purchaseSignatures,
             StableId generationPolicyStableId)
         {
             resolver = new StrongboxHybridEquipmentGenerationResolver(
@@ -49,8 +45,6 @@ namespace ShooterMover.Application.Shops
                 gunCatalog
                     ?? throw new ArgumentNullException(nameof(gunCatalog)),
                 previewSignatures);
-            this.purchaseSignatures = purchaseSignatures
-                ?? throw new ArgumentNullException(nameof(purchaseSignatures));
             this.generationPolicyStableId = generationPolicyStableId
                 ?? throw new ArgumentNullException(
                     nameof(generationPolicyStableId));
@@ -209,44 +203,6 @@ namespace ShooterMover.Application.Shops
                     tierId);
                 return true;
             }
-        }
-
-        public bool TryPreparePurchase(
-            EquipmentInstance equipment,
-            out string rejectionCode)
-        {
-            lock (gate)
-            {
-                rejectionCode = null;
-                if (equipment == null)
-                {
-                    rejectionCode =
-                        "shop-purchase-equipment-preview-null";
-                    return false;
-                }
-
-                GeneratedEquipmentAugmentSignature signature;
-                bool committed;
-                if (!previewSignatures.TryGetStagedOrCommitted(
-                        equipment.InstanceId,
-                        out signature,
-                        out committed)
-                    || signature == null)
-                {
-                    rejectionCode =
-                        "shop-purchase-augment-preview-missing";
-                    return false;
-                }
-
-                return purchaseSignatures.TryStageBatch(
-                    new[] { signature },
-                    out rejectionCode);
-            }
-        }
-
-        public void CompletePurchase(EquipmentInstance equipment)
-        {
-            // Preview state is cleared atomically when the next stock window rolls.
         }
 
         private void ResetPreviewWindow(StableId stockIdentity)
