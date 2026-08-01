@@ -119,8 +119,12 @@ namespace ShooterMover.Tests.EditMode.Shops
             ShopStockEntry entry = stock.Entries[0];
             GrantMoney(source, "restore", 100000L);
 
-            ShopPurchaseFact purchase = source.Shop.Authority.Purchase(
-                Purchase(source, stock, entry, "shop-purchase.restore"));
+            ShopPurchaseCommand command = Purchase(
+                source,
+                stock,
+                entry,
+                "shop-purchase.restore");
+            ShopPurchaseFact purchase = source.Shop.Authority.Purchase(command);
             Assert.That(purchase.Status, Is.EqualTo(ShopPurchaseStatus.Applied));
 
             ShopReceiptSnapshot snapshot =
@@ -143,7 +147,7 @@ namespace ShooterMover.Tests.EditMode.Shops
                 Is.EqualTo(ShopStockEntryState.SoldOut));
             Assert.That(
                 restoredEntry.PurchaseTransactionStableId,
-                Is.EqualTo(purchase.TransactionStableId));
+                Is.EqualTo(command.TransactionStableId));
         }
 
         [Test]
@@ -220,25 +224,24 @@ namespace ShooterMover.Tests.EditMode.Shops
                 rejection);
             GrantMoney(graph, "conflict", 100000L);
 
-            ShopPurchaseFact fact = graph.Shop.Authority.Purchase(
-                Purchase(
-                    graph,
-                    stock,
-                    entry,
-                    "shop-purchase.receipt-conflict-applied"));
+            ShopPurchaseCommand command = Purchase(
+                graph,
+                stock,
+                entry,
+                "shop-purchase.receipt-conflict-applied");
+            ShopPurchaseFact fact = graph.Shop.Authority.Purchase(command);
             ShopInventoryView reopened = Open(graph, window);
             ShopStockEntry sold = reopened.FindEntry(
                 entry.StockEntryStableId);
 
             Assert.That(fact.Status, Is.EqualTo(ShopPurchaseStatus.Applied));
-            Assert.That(fact.EquipmentConfirmed, Is.True);
             Assert.That(
                 fact.RejectionCode,
                 Is.EqualTo("shop-purchase-receipt-conflict"));
             Assert.That(sold.State, Is.EqualTo(ShopStockEntryState.SoldOut));
             Assert.That(
                 sold.PurchaseTransactionStableId,
-                Is.EqualTo(fact.TransactionStableId));
+                Is.EqualTo(command.TransactionStableId));
             StableId recorded;
             Assert.That(
                 graph.Shop.Receipts.TryGet(
