@@ -30,6 +30,7 @@ namespace ShooterMover.UI.Game
                 StableId placementStableId,
                 long sourceLifecycleGeneration,
                 Vector2 position,
+                bool golden,
                 string fingerprint)
             {
                 DeathEventStableId = deathEventStableId;
@@ -40,6 +41,7 @@ namespace ShooterMover.UI.Game
                 PlacementStableId = placementStableId;
                 SourceLifecycleGeneration = sourceLifecycleGeneration;
                 Position = position;
+                Golden = golden;
                 Fingerprint = fingerprint;
             }
 
@@ -51,6 +53,7 @@ namespace ShooterMover.UI.Game
             public StableId PlacementStableId { get; }
             public long SourceLifecycleGeneration { get; }
             public Vector2 Position { get; }
+            public bool Golden { get; }
             public string Fingerprint { get; }
 
             public bool Matches(
@@ -135,6 +138,10 @@ namespace ShooterMover.UI.Game
                     source.Fingerprint);
 
                 inner.Consume(fact);
+                if (source.Golden)
+                {
+                    inner.Consume(GoldenDrop(fact));
+                }
                 pickupBridge.ProcessPending();
             }
         }
@@ -170,6 +177,7 @@ namespace ShooterMover.UI.Game
             }
 
             Vector2 position = actor.transform.position;
+            bool golden = actor.Runtime.HasTrait(EnemyTrait.Golden);
             string fingerprint = RunFingerprint.Hash(
                 "enemy-terminal-position-v1|"
                 + run.RunStableId + "|"
@@ -182,7 +190,8 @@ namespace ShooterMover.UI.Game
                     CultureInfo.InvariantCulture) + "|"
                 + fact.DeathEventStableId + "|"
                 + position.x.ToString("R", CultureInfo.InvariantCulture) + "|"
-                + position.y.ToString("R", CultureInfo.InvariantCulture));
+                + position.y.ToString("R", CultureInfo.InvariantCulture) + "|"
+                + (golden ? "golden" : "ordinary"));
 
             return new TerminalSource(
                 fact.DeathEventStableId,
@@ -193,7 +202,27 @@ namespace ShooterMover.UI.Game
                 fact.Identity.PlacementStableId,
                 fact.LifecycleGeneration,
                 position,
+                golden,
                 fingerprint);
+        }
+
+        private static EnemyDeathFact GoldenDrop(EnemyDeathFact fact)
+        {
+            return new EnemyDeathFact(
+                StableId.Create(
+                    "enemy-golden-drop",
+                    RunFingerprint.Hash(
+                        "enemy-golden-drop-v1|" + fact.DeathEventStableId)),
+                fact.DeathEventStableId,
+                fact.Identity,
+                fact.DefinitionStableId,
+                fact.Level,
+                fact.LifecycleGeneration,
+                fact.KillerEntityStableId,
+                fact.KillerRunParticipantStableId,
+                fact.ExperienceProfileStableId,
+                fact.DropProfileStableId,
+                fact.DeathCause);
         }
     }
 }
