@@ -308,6 +308,52 @@ namespace ShooterMover.Tests.EditMode.Shops
         }
 
         [Test]
+        public void PurchasedOfferPassesCharacterSaveValidation()
+        {
+            CharacterLiveGraph graph = CreateGraph(
+                "character.shop-save-validation");
+            ShopInventoryView stock = Open(graph, Window(7));
+            ShopStockEntry entry = stock.Entries[0];
+            GrantMoney(graph, "save-validation", 100000L);
+
+            ShopPurchaseFact purchase = graph.Shop.Authority.Purchase(
+                Purchase(
+                    graph,
+                    stock,
+                    entry,
+                    "shop-purchase.save-validation"));
+            Assert.That(
+                purchase.Status,
+                Is.EqualTo(ShopPurchaseStatus.Applied));
+
+            GeneratedEquipmentAugmentSignature signature;
+            Assert.That(
+                graph.AugmentSignatures.TryGet(
+                    entry.Equipment.InstanceId,
+                    out signature),
+                Is.True);
+            Assert.That(
+                signature.SourceStrongboxInstanceStableId,
+                Is.EqualTo(entry.StockEntryStableId));
+
+            CharacterInstanceSnapshot saved = graph.Character;
+            for (int index = 0;
+                 index < graph.SaveAdapters.Count;
+                 index++)
+            {
+                saved = saved.WithComponent(
+                    graph.SaveAdapters[index].ExportComponent());
+            }
+
+            SavePartValidationResult validation =
+                GameSaveRules.ValidateCharacter(saved);
+            Assert.That(
+                validation.Succeeded,
+                Is.True,
+                validation.RejectionCode);
+        }
+
+        [Test]
         public void NewWindowClearsObsoleteOfferAugments()
         {
             CharacterLiveGraph graph = CreateGraph(

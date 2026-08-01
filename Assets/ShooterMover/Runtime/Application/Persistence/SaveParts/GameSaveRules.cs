@@ -12,6 +12,7 @@ using ShooterMover.Domain.Holdings;
 using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Rewards.Strongboxes;
+using ShooterMover.Domain.Shops;
 
 namespace ShooterMover.Application.Persistence.SaveParts
 {
@@ -52,6 +53,7 @@ namespace ShooterMover.Application.Persistence.SaveParts
             InventoryLoadoutStateSnapshot loadout = null;
             StrongboxOpeningSnapshot strongboxes = null;
             GeneratedEquipmentAugmentSignatureSnapshot augmentSignatures = null;
+            ShopReceiptSnapshot shopReceipts = null;
             string error;
             SavePartSnapshot component;
             if (character.TryGetComponent(
@@ -113,6 +115,18 @@ namespace ShooterMover.Application.Persistence.SaveParts
                     .TryDecode(
                         component.CanonicalPayload,
                         out augmentSignatures,
+                        out error))
+            {
+                return SavePartValidationResult.Reject(error);
+            }
+            if (character.TryGetComponent(
+                ShopPurchaseSavePart.Definition()
+                    .ComponentStableId,
+                out component)
+                && !ShopPurchaseSavePart.Codec
+                    .TryDecode(
+                        component.CanonicalPayload,
+                        out shopReceipts,
                         out error))
             {
                 return SavePartValidationResult.Reject(error);
@@ -213,6 +227,7 @@ namespace ShooterMover.Application.Persistence.SaveParts
             return ValidateGeneratedAugmentSignatures(
                 holdings,
                 strongboxes,
+                shopReceipts,
                 augmentSignatures);
         }
 
@@ -398,6 +413,7 @@ namespace ShooterMover.Application.Persistence.SaveParts
             ValidateGeneratedAugmentSignatures(
                 PlayerHoldingsSnapshot holdings,
                 StrongboxOpeningSnapshot strongboxes,
+                ShopReceiptSnapshot shopReceipts,
                 GeneratedEquipmentAugmentSignatureSnapshot signatures)
         {
             if (signatures == null)
@@ -427,7 +443,10 @@ namespace ShooterMover.Application.Persistence.SaveParts
                         "committed-augment-signature-equipment-not-held:"
                             + signature.EquipmentInstanceStableId);
                 }
-                if (!OpeningContainsSignatureEquipment(strongboxes, signature))
+                if (!OpeningContainsSignatureEquipment(strongboxes, signature)
+                    && !ShopReceiptContainsSignatureSource(
+                        shopReceipts,
+                        signature))
                 {
                     return SavePartValidationResult.Reject(
                         "committed-augment-signature-opening-payload-missing:"
@@ -445,7 +464,10 @@ namespace ShooterMover.Application.Persistence.SaveParts
                         "staged-augment-signature-equipment-already-held:"
                             + signature.EquipmentInstanceStableId);
                 }
-                if (!OpeningContainsSignatureEquipment(strongboxes, signature))
+                if (!OpeningContainsSignatureEquipment(strongboxes, signature)
+                    && !ShopReceiptContainsSignatureSource(
+                        shopReceipts,
+                        signature))
                 {
                     return SavePartValidationResult.Reject(
                         "staged-augment-signature-opening-payload-missing:"
@@ -495,6 +517,37 @@ namespace ShooterMover.Application.Persistence.SaveParts
                             return true;
                         }
                     }
+                }
+            }
+            return false;
+        }
+
+        private static bool ShopReceiptContainsSignatureSource(
+            ShopReceiptSnapshot shopReceipts,
+            GeneratedEquipmentAugmentSignature signature)
+        {
+            if (shopReceipts == null || signature == null)
+            {
+                return false;
+            }
+
+            string source = signature.SourceStrongboxInstanceStableId
+                .ToString();
+            if (!source.StartsWith(
+                    "shopstock.",
+                    StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            for (int index = 0;
+                 index < shopReceipts.Receipts.Count;
+                 index++)
+            {
+                if (shopReceipts.Receipts[index].StockEntryStableId
+                    == signature.SourceStrongboxInstanceStableId)
+                {
+                    return true;
                 }
             }
             return false;
