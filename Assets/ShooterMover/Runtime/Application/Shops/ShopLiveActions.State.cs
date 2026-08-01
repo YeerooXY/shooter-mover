@@ -18,6 +18,37 @@ namespace ShooterMover.Application.Shops
 {
     public sealed partial class ShopLiveActions
     {
+        private void ApplyPurchaseReceipts(ShopState state)
+        {
+            if (state == null || purchaseLedger == null)
+            {
+                return;
+            }
+            state.ApplyPurchaseReceipts(purchaseLedger);
+        }
+
+        private void RecordPurchaseReceipt(
+            StableId stockEntryStableId,
+            StableId purchaseTransactionStableId)
+        {
+            if (purchaseLedger == null)
+            {
+                return;
+            }
+
+            string rejectionCode;
+            if (!purchaseLedger.TryRecord(
+                    stockEntryStableId,
+                    purchaseTransactionStableId,
+                    out rejectionCode))
+            {
+                throw new InvalidOperationException(
+                    string.IsNullOrWhiteSpace(rejectionCode)
+                        ? "shop-purchase-receipt-rejected"
+                        : rejectionCode);
+            }
+        }
+
         private sealed class ShopState
         {
             private readonly List<ShopStockEntry> entries;
@@ -155,6 +186,30 @@ namespace ShooterMover.Application.Shops
                 }
 
                 throw new InvalidOperationException("Shop stock entry was not found.");
+            }
+
+            public void ApplyPurchaseReceipts(
+                ShopPurchaseLedger ledger)
+            {
+                if (ledger == null)
+                {
+                    return;
+                }
+
+                for (int index = 0; index < entries.Count; index++)
+                {
+                    ShopStockEntry entry = entries[index];
+                    StableId purchaseTransactionStableId;
+                    if (entry.State == ShopStockEntryState.Available
+                        && ledger.TryGet(
+                            entry.StockEntryStableId,
+                            out purchaseTransactionStableId))
+                    {
+                        entries[index] = entry.WithPurchaseState(
+                            ShopStockEntryState.SoldOut,
+                            purchaseTransactionStableId);
+                    }
+                }
             }
 
             public void ReplaceInventory(
