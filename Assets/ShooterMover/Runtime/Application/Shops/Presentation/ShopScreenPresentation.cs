@@ -1,12 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using ShooterMover.Application.Economy.Money;
-using ShooterMover.Application.Shops;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Equipment;
-using ShooterMover.Domain.Progression.Context;
 using ShooterMover.Domain.Shops;
 
 namespace ShooterMover.Application.Shops.Presentation
@@ -50,7 +46,7 @@ namespace ShooterMover.Application.Shops.Presentation
             PlayerRouteProfilePayload payload);
     }
 
-    public interface IShopScreenPersistencePort
+    public interface IShopSave
     {
         bool Persist(
             string mutationFingerprint,
@@ -70,7 +66,6 @@ namespace ShooterMover.Application.Shops.Presentation
         }
 
         public StableId InputStableId { get; }
-
         public StableId StockEntryStableId { get; }
     }
 
@@ -127,7 +122,8 @@ namespace ShooterMover.Application.Shops.Presentation
             DefinitionStableId = definitionStableId
                 ?? throw new ArgumentNullException(nameof(definitionStableId));
             EquipmentInstanceStableId = equipmentInstanceStableId
-                ?? throw new ArgumentNullException(nameof(equipmentInstanceStableId));
+                ?? throw new ArgumentNullException(
+                    nameof(equipmentInstanceStableId));
             DisplayName = string.IsNullOrWhiteSpace(displayName)
                 ? definitionStableId.ToString()
                 : displayName.Trim();
@@ -137,19 +133,16 @@ namespace ShooterMover.Application.Shops.Presentation
             {
                 throw new ArgumentOutOfRangeException(nameof(itemLevel));
             }
-
             if (augmentCount < 0
                 || augmentCapacity < augmentCount
                 || augmentSharedLevel < 0)
             {
                 throw new ArgumentOutOfRangeException();
             }
-
             if (price < 1L)
             {
                 throw new ArgumentOutOfRangeException(nameof(price));
             }
-
             if (!Enum.IsDefined(typeof(ShopStockEntryState), state))
             {
                 throw new ArgumentOutOfRangeException(nameof(state));
@@ -166,31 +159,18 @@ namespace ShooterMover.Application.Shops.Presentation
         }
 
         public StableId StockEntryStableId { get; }
-
         public StableId DefinitionStableId { get; }
-
         public StableId EquipmentInstanceStableId { get; }
-
         public string DisplayName { get; }
-
         public string CategoryLabel { get; }
-
         public string QualityLabel { get; }
-
         public int ItemLevel { get; }
-
         public int AugmentCount { get; }
-
         public int AugmentCapacity { get; }
-
         public int AugmentSharedLevel { get; }
-
         public bool HasGeneratedAugmentSignature { get; }
-
         public long Price { get; }
-
         public ShopStockEntryState State { get; }
-
         public StableId PurchaseTransactionStableId { get; }
 
         public bool CanPurchase
@@ -269,22 +249,18 @@ namespace ShooterMover.Application.Shops.Presentation
             {
                 throw new ArgumentOutOfRangeException(nameof(refreshOrdinal));
             }
-
             if (moneyBalance < 0L)
             {
                 throw new ArgumentOutOfRangeException(nameof(moneyBalance));
             }
-
             if (!Enum.IsDefined(typeof(ShopScreenActionStatus), status))
             {
                 throw new ArgumentOutOfRangeException(nameof(status));
             }
-
             if (!Enum.IsDefined(typeof(ShopScreenFeedbackKind), feedbackKind))
             {
                 throw new ArgumentOutOfRangeException(nameof(feedbackKind));
             }
-
             if (refreshesAtUtc.HasValue
                 && refreshesAtUtc.Value.Kind != DateTimeKind.Utc)
             {
@@ -307,30 +283,19 @@ namespace ShooterMover.Application.Shops.Presentation
         }
 
         public PlayerRouteProfilePayload RoutePayload { get; }
-
         public StableId RunStableId { get; }
-
         public StableId ShopStableId { get; }
-
         public int RefreshOrdinal { get; }
-
         public string InventoryFingerprint { get; }
-
         public long MoneyBalance { get; }
-
         public IReadOnlyList<ShopScreenStockCard> Stock
         {
             get { return stock; }
         }
-
         public DateTime? RefreshesAtUtc { get; }
-
         public ShopScreenActionStatus Status { get; }
-
         public ShopScreenFeedbackKind FeedbackKind { get; }
-
         public string FeedbackText { get; }
-
         public string FeedbackCode { get; }
 
         public ShopScreenStockCard FindCard(StableId stockEntryStableId)
@@ -339,7 +304,6 @@ namespace ShooterMover.Application.Shops.Presentation
             {
                 return null;
             }
-
             for (int index = 0; index < stock.Count; index++)
             {
                 if (stock[index].StockEntryStableId == stockEntryStableId)
@@ -347,7 +311,6 @@ namespace ShooterMover.Application.Shops.Presentation
                     return stock[index];
                 }
             }
-
             return null;
         }
     }
@@ -363,7 +326,6 @@ namespace ShooterMover.Application.Shops.Presentation
             {
                 throw new ArgumentOutOfRangeException(nameof(status));
             }
-
             Status = status;
             AuthorityFact = authorityFact;
             Projection = projection
@@ -371,9 +333,7 @@ namespace ShooterMover.Application.Shops.Presentation
         }
 
         public ShopScreenActionStatus Status { get; }
-
         public ShopPurchaseFact AuthorityFact { get; }
-
         public ShopScreenView Projection { get; }
 
         public bool CanRetry
@@ -398,7 +358,6 @@ namespace ShooterMover.Application.Shops.Presentation
             {
                 throw new ArgumentOutOfRangeException(nameof(route));
             }
-
             Route = route;
             Payload = payload;
             Emitted = emitted;
@@ -406,12 +365,8 @@ namespace ShooterMover.Application.Shops.Presentation
         }
 
         public ShopScreenRoute Route { get; }
-
         public PlayerRouteProfilePayload Payload { get; }
-
         public bool Emitted { get; }
-
         public string FeedbackCode { get; }
     }
-
 }
