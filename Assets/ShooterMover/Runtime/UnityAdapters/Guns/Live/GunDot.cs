@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using ShooterMover.Application.Guns.Execution;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Guns;
 using ShooterMover.Domain.Guns.Execution;
 using ShooterMover.UnityAdapters.Combat;
 using UnityEngine;
@@ -27,6 +28,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
             public string Key { get; }
             public HashSet<GunEffectApplicationKey> Accepted { get; }
             public GunEffectSourceContext Source { get; set; }
+            public GunDamageCategory Category { get; set; }
             public int Count { get; set; }
             public double DamagePerSecond { get; set; }
             public double TicksPerSecond { get; set; }
@@ -115,6 +117,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
 
             stack.Accepted.Add(resolution.ApplicationKey);
             stack.Source = source;
+            stack.Category = decision.DamageCategory;
             stack.Count = decision.ResultingStackCount;
             stack.DamagePerSecond = decision.DamagePerSecondPerStack;
             stack.TicksPerSecond = decision.TicksPerSecond;
@@ -198,20 +201,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 targetId,
                 targetLife,
                 checked(stack.BaseOrder + stack.TickNo),
-                (int)stack.Source.Identity.GunDefinitionId.Value
-                    .GetHashCode(),
-                amount,
-                occurredAt);
-
-            // Hit channels are the authored damage category, not the definition hash.
-            hit = new Hit(
-                eventId,
-                identity.ActorId.Value,
-                identity.ParticipantId.Value,
-                targetId,
-                targetLife,
-                checked(stack.BaseOrder + stack.TickNo),
-                (int)ResolveCategory(stack),
+                (int)stack.Category,
                 amount,
                 occurredAt);
 
@@ -227,14 +217,6 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                     this);
                 return false;
             }
-        }
-
-        private static ShooterMover.Domain.Guns.GunDamageCategory ResolveCategory(
-            Stack stack)
-        {
-            // All applications in one stack group come from the same exact gun definition.
-            // The source decision does not retain category, so the live group records it below.
-            return stack.Category;
         }
 
         private void Bind(Damageable exactTarget)
