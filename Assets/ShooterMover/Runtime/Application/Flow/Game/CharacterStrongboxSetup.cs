@@ -116,7 +116,6 @@ namespace ShooterMover.Application.Flow.Game
                 money,
                 scrap,
                 generator,
-                rewardApplication,
                 augmentSignatures);
             CharacterShopRegistry.Bind(authority, shop);
             return new CharacterStrongboxLive(
