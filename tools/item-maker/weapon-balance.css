@@ -41,6 +41,14 @@
 }
 .dps-utility { color: #c9d5e2; }
 .dps-mark-card button { width: 100%; margin-top: 8px; }
+.dps-build-rows {
+  display: grid;
+  gap: 3px;
+  padding-top: 7px;
+  margin-top: 7px;
+  border-top: 1px solid rgba(48, 59, 75, .65);
+  font-size: 12px;
+}
 
 .dps-target-editor { margin-top: 10px; border-top: 1px solid var(--line); }
 .dps-target-editor > summary {
@@ -48,29 +56,32 @@
   cursor: pointer;
   font-weight: 700;
 }
-.dps-target-body { display: grid; gap: 10px; }
-.dps-curve-controls { display: grid; gap: 8px; }
-.dps-target-rows {
-  max-height: 360px;
-  overflow: auto;
+.dps-target-body { display: grid; gap: 12px; }
+.dps-config-group {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #0e141c;
 }
-.dps-target-row {
+.dps-config-grid {
   display: grid;
-  grid-template-columns: 75px minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  align-items: center;
-  padding: 6px 8px;
-  border-bottom: 1px solid rgba(48, 59, 75, .55);
 }
-.dps-target-row:last-child { border-bottom: 0; }
-.dps-target-row span { color: var(--muted); font-size: 12px; }
-.dps-target-row input { min-height: 34px; padding: 5px 7px; }
+.dps-config-grid.compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.dps-config-result {
+  padding: 8px;
+  border-radius: 7px;
+  background: rgba(87, 199, 255, .07);
+  color: #c9d5e2;
+  font-size: 12px;
+}
 .dps-target-actions { display: grid; gap: 7px; }
 
 @media (max-width: 760px) {
   .weapon-qol-buttons { display: grid; grid-template-columns: 1fr; }
-  .dps-target-rows { max-height: 50vh; }
+  .dps-config-grid,
+  .dps-config-grid.compact { grid-template-columns: 1fr; }
 }
