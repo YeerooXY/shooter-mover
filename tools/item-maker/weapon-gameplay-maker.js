@@ -9,39 +9,22 @@ const gameplayRarities = ["common", "rare", "epic", "legendary", "artifact"];
 const gameplayProjectileTypes = ["bullet", "orb", "rocket", "beam"];
 const gameplayDamageTypes = ["physical", "energy", "thermal", "chemical"];
 const gameplayFireModes = ["semi-automatic", "automatic", "burst"];
-const gameplayOwnership = [
-  ["shared", "Same for MK1–MK3"],
-  ["mark", "Different by Mark"]
-];
-const gameplayEffectOwnership = [
-  ["off", "Not used"],
-  ["shared", "Same for MK1–MK3"],
-  ["mark", "Different by Mark"]
-];
+const gameplayOwnership = [["shared", "Same for MK1–MK3"], ["mark", "Different by Mark"]];
+const gameplayEffectOwnership = [["off", "Not used"], ...gameplayOwnership];
 
 let weaponEditorMode = "gameplay";
 let gameplayHasRendered = false;
 let gameplayRenderQueued = false;
 
-function gameplayClone(value) {
-  return JSON.parse(JSON.stringify(value || {}));
-}
-
-function gameplayObject(value) {
-  return value && typeof value === "object" && !Array.isArray(value);
-}
-
+function gameplayClone(value) { return JSON.parse(JSON.stringify(value || {})); }
+function gameplayObject(value) { return value && typeof value === "object" && !Array.isArray(value); }
 function gameplayNumber(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
-
 function gameplayTitle(value) {
-  return String(value || "")
-    .replace(/[-_]+/g, " ")
-    .replace(/\b\w/g, character => character.toUpperCase());
+  return String(value || "").replace(/[-_]+/g, " ").replace(/\b\w/g, character => character.toUpperCase());
 }
-
 function gameplayOptions(values, selected) {
   return values.map(value => {
     const optionValue = Array.isArray(value) ? value[0] : value;
@@ -49,63 +32,46 @@ function gameplayOptions(values, selected) {
     return `<option value="${escapeHtml(optionValue)}"${optionValue === selected ? " selected" : ""}>${escapeHtml(optionLabel)}</option>`;
   }).join("");
 }
-
 function gameplayInput(label, key, value, options = {}) {
   const type = options.type || "number";
   const step = type === "number" ? ` step="${options.step || "any"}"` : "";
   const min = options.min === undefined ? "" : ` min="${options.min}"`;
   const max = options.max === undefined ? "" : ` max="${options.max}"`;
-  const placeholder = options.placeholder ? ` placeholder="${escapeHtml(options.placeholder)}"` : "";
   const full = options.full ? " full" : "";
-  return `<div class="field${full}"><label>${escapeHtml(label)}</label><input data-g-key="${escapeHtml(key)}" type="${type}" value="${escapeHtml(value ?? "")}"${step}${min}${max}${placeholder}></div>`;
+  return `<div class="field${full}"><label>${escapeHtml(label)}</label><input data-g-key="${escapeHtml(key)}" type="${type}" value="${escapeHtml(value ?? "")}"${step}${min}${max}></div>`;
 }
-
 function gameplayTextarea(label, key, value) {
   return `<div class="field full"><label>${escapeHtml(label)}</label><textarea data-g-key="${escapeHtml(key)}">${escapeHtml(value || "")}</textarea></div>`;
 }
-
-function gameplaySelect(label, key, value, values, options = {}) {
-  const full = options.full ? " full" : "";
-  return `<div class="field${full}"><label>${escapeHtml(label)}</label><select data-g-key="${escapeHtml(key)}">${gameplayOptions(values, value)}</select></div>`;
+function gameplaySelect(label, key, value, values) {
+  return `<div class="field"><label>${escapeHtml(label)}</label><select data-g-key="${escapeHtml(key)}">${gameplayOptions(values, value)}</select></div>`;
 }
-
 function gameplayCheckbox(label, key, checked) {
   return `<label class="checkbox-row"><input data-g-key="${escapeHtml(key)}" type="checkbox"${checked ? " checked" : ""}> <span>${escapeHtml(label)}</span></label>`;
 }
-
-function gameplayControl(key) {
-  return gameplayEditor.querySelector(`[data-g-key="${key}"]`);
-}
-
+function gameplayControl(key) { return gameplayEditor.querySelector(`[data-g-key="${key}"]`); }
 function gameplayValue(key, fallback = "") {
   const control = gameplayControl(key);
   return control ? control.value : fallback;
 }
-
-function gameplayNumericValue(key, fallback = 0) {
-  return gameplayNumber(gameplayValue(key, fallback), fallback);
-}
-
+function gameplayNumericValue(key, fallback = 0) { return gameplayNumber(gameplayValue(key, fallback), fallback); }
 function gameplayChecked(key, fallback = false) {
   const control = gameplayControl(key);
   return control ? control.checked : fallback;
 }
 
-function gameplayFireFields(prefix, fire, title = "") {
-  const value = gameplayObject(fire) ? fire : {};
+function gameplayFireFields(prefix, value = {}, title = "") {
   return `<div class="mark-card" data-fire-card="${escapeHtml(prefix)}">
     ${title ? `<h3>${escapeHtml(title)}</h3>` : ""}
     ${gameplaySelect("Fire mode", `${prefix}.mode`, value.mode || "automatic", gameplayFireModes)}
     ${gameplayInput("Cycles per second", `${prefix}.rate`, value.rate ?? 1, { min: 0.000001 })}
-    <div data-burst-fields="${escapeHtml(prefix)}">
+    <div data-burst-fields>
       ${gameplayInput("Shots in each burst", `${prefix}.shotsPerBurst`, value.shotsPerBurst ?? 3, { min: 2, step: 1 })}
       ${gameplayInput("Seconds between burst shots", `${prefix}.secondsBetweenShots`, value.secondsBetweenShots ?? 0.08, { min: 0.000001 })}
     </div>
   </div>`;
 }
-
-function gameplayHomingFields(prefix, homing, title = "") {
-  const value = gameplayObject(homing) ? homing : {};
+function gameplayHomingFields(prefix, value = {}, title = "") {
   return `<div class="mark-card">
     ${title ? `<h3>${escapeHtml(title)}</h3>` : ""}
     ${gameplayInput("Target search range", `${prefix}.acquisitionRange`, value.acquisitionRange ?? 20, { min: 0.000001 })}
@@ -115,9 +81,7 @@ function gameplayHomingFields(prefix, homing, title = "") {
     ${gameplayCheckbox("Find another target if needed", `${prefix}.reacquire`, value.reacquire !== false)}
   </div>`;
 }
-
-function gameplayDotFields(prefix, dot, title = "") {
-  const value = gameplayObject(dot) ? dot : {};
+function gameplayDotFields(prefix, value = {}, title = "") {
   return `<div class="mark-card">
     ${title ? `<h3>${escapeHtml(title)}</h3>` : ""}
     ${gameplayInput("Damage per second", `${prefix}.damagePerSecond`, value.damagePerSecond ?? 1, { min: 0.000001 })}
@@ -126,27 +90,22 @@ function gameplayDotFields(prefix, dot, title = "") {
     ${gameplayInput("Maximum stacks", `${prefix}.maxStacks`, value.maxStacks ?? 1, { min: 1, step: 1 })}
   </div>`;
 }
-
-function gameplayExplosionFields(prefix, explosion, title) {
-  const value = gameplayObject(explosion) ? explosion : {};
-  return `<div class="mark-card">
-    <h3>${escapeHtml(title)}</h3>
+function gameplayExplosionFields(prefix, value = {}, title) {
+  return `<div class="mark-card"><h3>${escapeHtml(title)}</h3>
     ${gameplayInput("Explosion radius", `${prefix}.radius`, value.radius ?? 2, { min: 0.000001 })}
     ${gameplayInput("Damage at outer edge", `${prefix}.edgeDamageMultiplier`, value.edgeDamageMultiplier ?? 0.5, { min: 0, max: 1 })}
   </div>`;
 }
-
 function gameplayInferDotOwnership(shared, marks) {
-  const numericalFields = ["damagePerSecond", "duration", "ticksPerSecond", "maxStacks"];
-  if (gameplayObject(shared.dot) && numericalFields.some(field => Object.prototype.hasOwnProperty.call(shared.dot, field))) return "shared";
-  if (marks.every(mark => gameplayObject(mark.dot))) return "mark";
-  return "off";
+  const numerical = ["damagePerSecond", "duration", "ticksPerSecond", "maxStacks"];
+  if (gameplayObject(shared.dot) && numerical.some(field => Object.prototype.hasOwnProperty.call(shared.dot, field))) return "shared";
+  return marks.every(mark => gameplayObject(mark.dot)) ? "mark" : "off";
 }
 
 function gameplayRender() {
   const result = parseFiles();
   if (result.errors.length) {
-    gameplayEditor.innerHTML = `<div class="gameplay-warning">The Advanced JSON contains an error. Fix it there before returning to the gameplay editor.<br><br>${result.errors.map(escapeHtml).join("<br>")}</div>`;
+    gameplayEditor.innerHTML = `<div class="gameplay-warning">Advanced JSON contains an error. Fix it there before using the gameplay editor.<br><br>${result.errors.map(escapeHtml).join("<br>")}</div>`;
     gameplayHasRendered = true;
     return;
   }
@@ -157,142 +116,97 @@ function gameplayRender() {
   const homingOwnership = gameplayObject(shared.homing) ? "shared" : (marks.every(mark => gameplayObject(mark.homing)) ? "mark" : "off");
   const dotOwnership = gameplayInferDotOwnership(shared, marks);
   const explosionOwnership = marks.every(mark => gameplayObject(mark.explosion)) ? "mark" : "off";
-  const mountedOwnership = gameplayObject(shared.art) && shared.art.mounted ? "shared" : "mark";
-  const projectile = gameplayObject(shared.projectile) ? shared.projectile : {};
-  const beam = gameplayObject(shared.beam) ? shared.beam : {};
-  const impact = gameplayObject(shared.impact) ? shared.impact : {};
-  const sharedArt = gameplayObject(shared.art) ? shared.art : {};
-  const sharedDot = gameplayObject(shared.dot) ? shared.dot : {};
+  const mountedOwnership = shared.art?.mounted ? "shared" : "mark";
+  const projectile = shared.projectile || {};
+  const beam = shared.beam || {};
+  const impact = shared.impact || {};
+  const sharedArt = shared.art || {};
+  const sharedDot = shared.dot || {};
 
   gameplayEditor.innerHTML = `
-    <section class="gameplay-section">
-      <h2>Weapon</h2>
-      <div class="gameplay-section-body gameplay-form-grid two">
-        ${gameplayInput("Weapon name", "shared.name", shared.name || "", { type: "text" })}
-        ${gameplaySelect("Rarity", "shared.rarity", shared.rarity || "common", gameplayRarities)}
-        ${gameplayTextarea("Gameplay description", "shared.description", shared.description || "")}
-        ${gameplaySelect("Projectile type", "shared.projectileType", shared.projectileType || "bullet", gameplayProjectileTypes)}
-        ${gameplaySelect("Damage type", "shared.damageType", shared.damageType || "physical", gameplayDamageTypes)}
+    <section class="gameplay-section"><h2>Weapon</h2><div class="gameplay-section-body gameplay-form-grid two">
+      ${gameplayInput("Weapon name", "shared.name", shared.name || "", { type: "text" })}
+      ${gameplaySelect("Rarity", "shared.rarity", shared.rarity || "common", gameplayRarities)}
+      ${gameplayTextarea("Gameplay description", "shared.description", shared.description || "")}
+      ${gameplaySelect("Projectile type", "shared.projectileType", shared.projectileType || "bullet", gameplayProjectileTypes)}
+      ${gameplaySelect("Damage type", "shared.damageType", shared.damageType || "physical", gameplayDamageTypes)}
+    </div></section>
+
+    <section class="gameplay-section"><h2>Firing</h2><div class="gameplay-section-body">
+      <div class="ownership-row">${gameplaySelect("Firing behaviour", "settings.fireOwnership", fireOwnership, gameplayOwnership)}</div>
+      <div data-fire-shared>${gameplayFireFields("shared.fire", shared.fire || marks[0].fire || {})}</div>
+      <div class="mark-grid" data-fire-marks>${marks.map((mark, index) => gameplayFireFields(`mark.${index + 1}.fire`, mark.fire || shared.fire || {}, `MK${index + 1}`)).join("")}</div>
+      <div class="gameplay-note">Projectile count and burst shots are separate. A shotgun can fire several pellets in one firing cycle.</div>
+    </div></section>
+
+    <section class="gameplay-section"><h2>Shot and travel</h2><div class="gameplay-section-body">
+      <div class="gameplay-form-grid">
+        ${gameplayInput("Projectiles per shot", "shared.shot.projectiles", shared.shot?.projectiles ?? 1, { min: 1, step: 1 })}
+        ${gameplayInput("Spread (degrees)", "shared.shot.spread", shared.shot?.spread ?? 0, { min: 0 })}
       </div>
-    </section>
-
-    <section class="gameplay-section">
-      <h2>Firing</h2>
-      <div class="gameplay-section-body">
-        <div class="ownership-row">
-          ${gameplaySelect("Firing behaviour", "settings.fireOwnership", fireOwnership, gameplayOwnership)}
-        </div>
-        <div data-fire-shared>${gameplayFireFields("shared.fire", shared.fire || marks[0].fire)}</div>
-        <div class="mark-grid" data-fire-marks>
-          ${marks.map((mark, index) => gameplayFireFields(`mark.${index + 1}.fire`, mark.fire || shared.fire, `MK${index + 1}`)).join("")}
-        </div>
-        <div class="gameplay-note">Projectile count and burst shots are separate: a three-pellet shotgun can still fire one cycle at a time.</div>
+      <div class="gameplay-form-grid" data-projectile-fields>
+        ${gameplayInput("Projectile speed", "shared.projectile.speed", projectile.speed ?? 20, { min: 0.000001 })}
+        ${gameplayInput("Projectile radius", "shared.projectile.radius", projectile.radius ?? 0.1, { min: 0.000001 })}
+        ${gameplayInput("Range", "shared.projectile.range", projectile.range ?? 25, { min: 0.000001 })}
       </div>
-    </section>
-
-    <section class="gameplay-section">
-      <h2>Shot and travel</h2>
-      <div class="gameplay-section-body">
-        <div class="gameplay-form-grid">
-          ${gameplayInput("Projectiles per shot", "shared.shot.projectiles", shared.shot && shared.shot.projectiles ?? 1, { min: 1, step: 1 })}
-          ${gameplayInput("Spread (degrees)", "shared.shot.spread", shared.shot && shared.shot.spread ?? 0, { min: 0 })}
-        </div>
-        <div class="gameplay-form-grid" data-projectile-fields>
-          ${gameplayInput("Projectile speed", "shared.projectile.speed", projectile.speed ?? 20, { min: 0.000001 })}
-          ${gameplayInput("Projectile radius", "shared.projectile.radius", projectile.radius ?? 0.1, { min: 0.000001 })}
-          ${gameplayInput("Range", "shared.projectile.range", projectile.range ?? 25, { min: 0.000001 })}
-        </div>
-        <div class="gameplay-form-grid two" data-beam-fields>
-          ${gameplayInput("Beam range", "shared.beam.range", beam.range ?? projectile.range ?? 25, { min: 0.000001 })}
-          ${gameplayInput("Beam width", "shared.beam.width", beam.width ?? 0.2, { min: 0.000001 })}
-        </div>
+      <div class="gameplay-form-grid two" data-beam-fields>
+        ${gameplayInput("Beam range", "shared.beam.range", beam.range ?? projectile.range ?? 25, { min: 0.000001 })}
+        ${gameplayInput("Beam width", "shared.beam.width", beam.width ?? 0.2, { min: 0.000001 })}
       </div>
-    </section>
+    </div></section>
 
-    <section class="gameplay-section">
-      <h2>Hits</h2>
-      <div class="gameplay-section-body gameplay-form-grid">
-        ${gameplayInput("Pierce", "shared.impact.pierce", impact.pierce ?? 1, { min: 0, step: 1 })}
-        ${gameplayInput("Ricochet", "shared.impact.ricochet", impact.ricochet ?? 0, { min: 0 })}
-        ${gameplayInput("Knockback", "shared.impact.knockback", impact.knockback ?? 0, { min: 0 })}
+    <section class="gameplay-section"><h2>Hits</h2><div class="gameplay-section-body gameplay-form-grid">
+      ${gameplayInput("Pierce", "shared.impact.pierce", impact.pierce ?? 1, { min: 0, step: 1 })}
+      ${gameplayInput("Ricochet", "shared.impact.ricochet", impact.ricochet ?? 0, { min: 0 })}
+      ${gameplayInput("Knockback", "shared.impact.knockback", impact.knockback ?? 0, { min: 0 })}
+    </div></section>
+
+    <section class="gameplay-section"><h2>MK1–MK3</h2><div class="gameplay-section-body mark-grid">
+      ${marks.map((mark, index) => `<div class="mark-card"><h3>MK${index + 1}</h3>
+        ${gameplayInput("Peak drop level", `mark.${index + 1}.peakLevel`, mark.peakLevel ?? [1, 25, 50][index], { min: 1, step: 1 })}
+        ${gameplayInput("Damage", `mark.${index + 1}.damage`, mark.damage ?? 1, { min: 0.000001 })}
+      </div>`).join("")}
+    </div></section>
+
+    <section class="gameplay-section"><h2>Homing</h2><div class="gameplay-section-body">
+      <div class="ownership-row">${gameplaySelect("Homing", "settings.homingOwnership", homingOwnership, gameplayEffectOwnership)}</div>
+      <div data-homing-shared>${gameplayHomingFields("shared.homing", shared.homing || marks[0].homing || {})}</div>
+      <div class="mark-grid" data-homing-marks>${marks.map((mark, index) => gameplayHomingFields(`mark.${index + 1}.homing`, mark.homing || shared.homing || {}, `MK${index + 1}`)).join("")}</div>
+      <div class="effect-disabled" data-homing-off>This weapon flies straight and does not steer toward enemies.</div>
+    </div></section>
+
+    <section class="gameplay-section"><h2>Damage over time</h2><div class="gameplay-section-body">
+      <div class="ownership-row">
+        ${gameplaySelect("Damage over time", "settings.dotOwnership", dotOwnership, gameplayEffectOwnership)}
+        ${gameplayCheckbox("Refresh duration when applied again", "settings.dotRefreshDuration", sharedDot.refreshDuration !== false)}
       </div>
-    </section>
+      <div data-dot-shared>${gameplayDotFields("shared.dot", shared.dot || marks[0].dot || {})}</div>
+      <div class="mark-grid" data-dot-marks>${marks.map((mark, index) => gameplayDotFields(`mark.${index + 1}.dot`, mark.dot || shared.dot || {}, `MK${index + 1}`)).join("")}</div>
+      <div class="effect-disabled" data-dot-off>This weapon deals only direct hit damage.</div>
+    </div></section>
 
-    <section class="gameplay-section">
-      <h2>MK1–MK3</h2>
-      <div class="gameplay-section-body mark-grid">
-        ${marks.map((mark, index) => `<div class="mark-card">
-          <h3>MK${index + 1}</h3>
-          ${gameplayInput("Peak drop level", `mark.${index + 1}.peakLevel`, mark.peakLevel ?? (index === 0 ? 1 : index === 1 ? 25 : 50), { min: 1, step: 1 })}
-          ${gameplayInput("Damage", `mark.${index + 1}.damage`, mark.damage ?? 1, { min: 0.000001 })}
-        </div>`).join("")}
+    <section class="gameplay-section"><h2>Explosion</h2><div class="gameplay-section-body">
+      <div class="ownership-row">${gameplaySelect("Explosion", "settings.explosionOwnership", explosionOwnership, [["off", "Not used"], ["mark", "Explosion values by Mark"]])}</div>
+      <div class="mark-grid" data-explosion-marks>${marks.map((mark, index) => gameplayExplosionFields(`mark.${index + 1}.explosion`, mark.explosion || {}, `MK${index + 1}`)).join("")}</div>
+      <div class="effect-disabled" data-explosion-off>This weapon does not create an area explosion.</div>
+      <div class="gameplay-note">Outer-edge damage is a fraction of normal weapon damage. There is no separate area-damage value.</div>
+    </div></section>
+
+    <section class="gameplay-section"><h2>Weapon art</h2><div class="gameplay-section-body">
+      <div class="ownership-row">${gameplaySelect("Mounted weapon art", "settings.mountedOwnership", mountedOwnership, gameplayOwnership)}</div>
+      <div class="gameplay-form-grid">
+        ${gameplayInput("Projectile / beam art", "shared.art.delivery", sharedArt.delivery || "", { type: "text" })}
+        ${gameplayInput("Trail art", "shared.art.trail", sharedArt.trail || "", { type: "text" })}
+        ${gameplayInput("Impact art", "shared.art.impact", sharedArt.impact || "", { type: "text" })}
+        <div data-mounted-shared>${gameplayInput("Mounted art", "shared.art.mounted", sharedArt.mounted || marks[0].art?.mounted || "", { type: "text" })}</div>
       </div>
-    </section>
+      <div class="mark-grid" style="margin-top:10px">${marks.map((mark, index) => `<div class="mark-card"><h3>MK${index + 1}</h3>
+        ${gameplayInput("Side art", `mark.${index + 1}.art.side`, mark.art?.side || "", { type: "text" })}
+        <div data-mounted-mark>${gameplayInput("Mounted art", `mark.${index + 1}.art.mounted`, mark.art?.mounted || sharedArt.mounted || "", { type: "text" })}</div>
+      </div>`).join("")}</div>
+    </div></section>`;
 
-    <section class="gameplay-section">
-      <h2>Homing</h2>
-      <div class="gameplay-section-body">
-        <div class="ownership-row">${gameplaySelect("Homing", "settings.homingOwnership", homingOwnership, gameplayEffectOwnership)}</div>
-        <div data-homing-shared>${gameplayHomingFields("shared.homing", shared.homing || marks[0].homing)}</div>
-        <div class="mark-grid" data-homing-marks>
-          ${marks.map((mark, index) => gameplayHomingFields(`mark.${index + 1}.homing`, mark.homing || shared.homing, `MK${index + 1}`)).join("")}
-        </div>
-        <div class="effect-disabled" data-homing-off>This weapon flies straight and does not steer toward enemies.</div>
-      </div>
-    </section>
-
-    <section class="gameplay-section">
-      <h2>Damage over time</h2>
-      <div class="gameplay-section-body">
-        <div class="ownership-row">
-          ${gameplaySelect("Damage over time", "settings.dotOwnership", dotOwnership, gameplayEffectOwnership)}
-          ${gameplayCheckbox("Refresh duration when applied again", "settings.dotRefreshDuration", sharedDot.refreshDuration !== false)}
-        </div>
-        <div data-dot-shared>${gameplayDotFields("shared.dot", shared.dot || marks[0].dot)}</div>
-        <div class="mark-grid" data-dot-marks>
-          ${marks.map((mark, index) => gameplayDotFields(`mark.${index + 1}.dot`, mark.dot || shared.dot, `MK${index + 1}`)).join("")}
-        </div>
-        <div class="effect-disabled" data-dot-off>This weapon deals only its direct hit damage.</div>
-      </div>
-    </section>
-
-    <section class="gameplay-section">
-      <h2>Explosion</h2>
-      <div class="gameplay-section-body">
-        <div class="ownership-row">${gameplaySelect("Explosion", "settings.explosionOwnership", explosionOwnership, [["off", "Not used"], ["mark", "Explosion values by Mark"]])}</div>
-        <div class="mark-grid" data-explosion-marks>
-          ${marks.map((mark, index) => gameplayExplosionFields(`mark.${index + 1}.explosion`, mark.explosion, `MK${index + 1}`)).join("")}
-        </div>
-        <div class="effect-disabled" data-explosion-off>This weapon does not create an area explosion.</div>
-        <div class="gameplay-note">Outer-edge damage is a fraction of the weapon's normal damage. Do not enter separate area damage.</div>
-      </div>
-    </section>
-
-    <section class="gameplay-section">
-      <h2>Weapon art</h2>
-      <div class="gameplay-section-body">
-        <div class="ownership-row">${gameplaySelect("Mounted weapon art", "settings.mountedOwnership", mountedOwnership, gameplayOwnership)}</div>
-        <div class="gameplay-form-grid">
-          ${gameplayInput("Projectile / beam art", "shared.art.delivery", sharedArt.delivery || "", { type: "text" })}
-          ${gameplayInput("Trail art", "shared.art.trail", sharedArt.trail || "", { type: "text" })}
-          ${gameplayInput("Impact art", "shared.art.impact", sharedArt.impact || "", { type: "text" })}
-          <div data-mounted-shared>${gameplayInput("Mounted art", "shared.art.mounted", sharedArt.mounted || marks[0].art && marks[0].art.mounted || "", { type: "text", full: true })}</div>
-        </div>
-        <div class="mark-grid" style="margin-top:10px">
-          ${marks.map((mark, index) => `<div class="mark-card">
-            <h3>MK${index + 1}</h3>
-            ${gameplayInput("Side art", `mark.${index + 1}.art.side`, mark.art && mark.art.side || "", { type: "text" })}
-            <div data-mounted-mark>${gameplayInput("Mounted art", `mark.${index + 1}.art.mounted`, mark.art && mark.art.mounted || sharedArt.mounted || "", { type: "text" })}</div>
-          </div>`).join("")}
-        </div>
-      </div>
-    </section>`;
-
-  gameplayEditor.querySelectorAll("input, select, textarea").forEach(control => {
-    control.addEventListener("input", gameplayHandleInput);
-    control.addEventListener("change", gameplayHandleInput);
-  });
-
+  gameplayEditor.querySelectorAll("input, select, textarea").forEach(control => control.addEventListener("input", gameplayHandleInput));
   gameplayUpdateVisibility();
   gameplayHasRendered = true;
 }
@@ -301,11 +215,8 @@ function gameplayUpdateVisibility() {
   const fireOwnership = gameplayValue("settings.fireOwnership", "shared");
   gameplayEditor.querySelector("[data-fire-shared]")?.classList.toggle("hidden", fireOwnership !== "shared");
   gameplayEditor.querySelector("[data-fire-marks]")?.classList.toggle("hidden", fireOwnership !== "mark");
-
   gameplayEditor.querySelectorAll("[data-fire-card]").forEach(card => {
-    const prefix = card.dataset.fireCard;
-    const burst = gameplayValue(`${prefix}.mode`, "automatic") === "burst";
-    card.querySelector("[data-burst-fields]")?.classList.toggle("hidden", !burst);
+    card.querySelector("[data-burst-fields]")?.classList.toggle("hidden", gameplayValue(`${card.dataset.fireCard}.mode`, "automatic") !== "burst");
   });
 
   const projectileType = gameplayValue("shared.projectileType", "bullet");
@@ -319,28 +230,24 @@ function gameplayUpdateVisibility() {
     gameplayEditor.querySelector(`[data-${effect}-off]`)?.classList.toggle("hidden", ownership !== "off");
   });
 
-  const explosionOwnership = gameplayValue("settings.explosionOwnership", "off");
-  gameplayEditor.querySelector("[data-explosion-marks]")?.classList.toggle("hidden", explosionOwnership !== "mark");
-  gameplayEditor.querySelector("[data-explosion-off]")?.classList.toggle("hidden", explosionOwnership !== "off");
+  const explosion = gameplayValue("settings.explosionOwnership", "off");
+  gameplayEditor.querySelector("[data-explosion-marks]")?.classList.toggle("hidden", explosion !== "mark");
+  gameplayEditor.querySelector("[data-explosion-off]")?.classList.toggle("hidden", explosion !== "off");
 
-  const mountedOwnership = gameplayValue("settings.mountedOwnership", "mark");
-  gameplayEditor.querySelector("[data-mounted-shared]")?.classList.toggle("hidden", mountedOwnership !== "shared");
-  gameplayEditor.querySelectorAll("[data-mounted-mark]").forEach(element => element.classList.toggle("hidden", mountedOwnership !== "mark"));
+  const mounted = gameplayValue("settings.mountedOwnership", "mark");
+  gameplayEditor.querySelector("[data-mounted-shared]")?.classList.toggle("hidden", mounted !== "shared");
+  gameplayEditor.querySelectorAll("[data-mounted-mark]").forEach(element => element.classList.toggle("hidden", mounted !== "mark"));
 }
 
 function gameplayReadFire(prefix) {
   const mode = gameplayValue(`${prefix}.mode`, "automatic");
-  const fire = {
-    mode,
-    rate: gameplayNumericValue(`${prefix}.rate`, 1)
-  };
+  const fire = { mode, rate: gameplayNumericValue(`${prefix}.rate`, 1) };
   if (mode === "burst") {
     fire.shotsPerBurst = gameplayNumericValue(`${prefix}.shotsPerBurst`, 3);
     fire.secondsBetweenShots = gameplayNumericValue(`${prefix}.secondsBetweenShots`, 0.08);
   }
   return fire;
 }
-
 function gameplayReadHoming(prefix) {
   return {
     acquisitionRange: gameplayNumericValue(`${prefix}.acquisitionRange`, 20),
@@ -350,15 +257,14 @@ function gameplayReadHoming(prefix) {
     reacquire: gameplayChecked(`${prefix}.reacquire`, true)
   };
 }
-
-function gameplayReadDot(prefix, includeRefreshDuration) {
+function gameplayReadDot(prefix, includeRefresh) {
   const dot = {
     damagePerSecond: gameplayNumericValue(`${prefix}.damagePerSecond`, 1),
     duration: gameplayNumericValue(`${prefix}.duration`, 3),
     ticksPerSecond: gameplayNumericValue(`${prefix}.ticksPerSecond`, 3),
     maxStacks: gameplayNumericValue(`${prefix}.maxStacks`, 1)
   };
-  if (includeRefreshDuration) dot.refreshDuration = gameplayChecked("settings.dotRefreshDuration", true);
+  if (includeRefresh) dot.refreshDuration = gameplayChecked("settings.dotRefreshDuration", true);
   return dot;
 }
 
@@ -366,14 +272,12 @@ function gameplayApply() {
   if (!gameplayHasRendered) return;
   const parsed = parseFiles();
   if (parsed.errors.length) return;
-
   const shared = gameplayClone(parsed.parsed["weapon.json"]);
   const marks = [1, 2, 3].map(mark => gameplayClone(parsed.parsed[`mk${mark}.json`]));
 
   shared.name = gameplayValue("shared.name", "New Weapon").trim();
   const description = gameplayValue("shared.description", "").trim();
-  if (description) shared.description = description;
-  else delete shared.description;
+  if (description) shared.description = description; else delete shared.description;
   shared.category = elements.categoryInput.value.trim();
   shared.rarity = gameplayValue("shared.rarity", "common");
   shared.projectileType = gameplayValue("shared.projectileType", "bullet");
@@ -385,10 +289,7 @@ function gameplayApply() {
 
   if (shared.projectileType === "beam") {
     delete shared.projectile;
-    shared.beam = {
-      range: gameplayNumericValue("shared.beam.range", 25),
-      width: gameplayNumericValue("shared.beam.width", 0.2)
-    };
+    shared.beam = { range: gameplayNumericValue("shared.beam.range", 25), width: gameplayNumericValue("shared.beam.width", 0.2) };
   } else {
     delete shared.beam;
     shared.projectile = {
@@ -404,8 +305,7 @@ function gameplayApply() {
     knockback: gameplayNumericValue("shared.impact.knockback", 0)
   };
 
-  const fireOwnership = gameplayValue("settings.fireOwnership", "shared");
-  if (fireOwnership === "shared") {
+  if (gameplayValue("settings.fireOwnership", "shared") === "shared") {
     shared.fire = gameplayReadFire("shared.fire");
     marks.forEach(mark => delete mark.fire);
   } else {
@@ -413,11 +313,11 @@ function gameplayApply() {
     marks.forEach((mark, index) => { mark.fire = gameplayReadFire(`mark.${index + 1}.fire`); });
   }
 
-  const homingOwnership = gameplayValue("settings.homingOwnership", "off");
-  if (homingOwnership === "shared") {
+  const homing = gameplayValue("settings.homingOwnership", "off");
+  if (homing === "shared") {
     shared.homing = gameplayReadHoming("shared.homing");
     marks.forEach(mark => delete mark.homing);
-  } else if (homingOwnership === "mark") {
+  } else if (homing === "mark") {
     delete shared.homing;
     marks.forEach((mark, index) => { mark.homing = gameplayReadHoming(`mark.${index + 1}.homing`); });
   } else {
@@ -425,11 +325,11 @@ function gameplayApply() {
     marks.forEach(mark => delete mark.homing);
   }
 
-  const dotOwnership = gameplayValue("settings.dotOwnership", "off");
-  if (dotOwnership === "shared") {
+  const dot = gameplayValue("settings.dotOwnership", "off");
+  if (dot === "shared") {
     shared.dot = gameplayReadDot("shared.dot", true);
     marks.forEach(mark => delete mark.dot);
-  } else if (dotOwnership === "mark") {
+  } else if (dot === "mark") {
     shared.dot = { refreshDuration: gameplayChecked("settings.dotRefreshDuration", true) };
     marks.forEach((mark, index) => { mark.dot = gameplayReadDot(`mark.${index + 1}.dot`, false); });
   } else {
@@ -437,39 +337,32 @@ function gameplayApply() {
     marks.forEach(mark => delete mark.dot);
   }
 
-  const explosionOwnership = gameplayValue("settings.explosionOwnership", "off");
-  if (explosionOwnership === "mark") {
+  if (gameplayValue("settings.explosionOwnership", "off") === "mark") {
     marks.forEach((mark, index) => {
       mark.explosion = {
         radius: gameplayNumericValue(`mark.${index + 1}.explosion.radius`, 2),
         edgeDamageMultiplier: gameplayNumericValue(`mark.${index + 1}.explosion.edgeDamageMultiplier`, 0.5)
       };
     });
-  } else {
-    marks.forEach(mark => delete mark.explosion);
-  }
+  } else marks.forEach(mark => delete mark.explosion);
 
   if (!gameplayObject(shared.art)) shared.art = {};
   shared.art.delivery = gameplayValue("shared.art.delivery", "").trim();
   shared.art.trail = gameplayValue("shared.art.trail", "").trim();
   shared.art.impact = gameplayValue("shared.art.impact", "").trim();
 
-  const mountedOwnership = gameplayValue("settings.mountedOwnership", "mark");
-  if (mountedOwnership === "shared") {
+  const mounted = gameplayValue("settings.mountedOwnership", "mark");
+  if (mounted === "shared") {
     shared.art.mounted = gameplayValue("shared.art.mounted", "").trim();
-    marks.forEach(mark => {
-      if (gameplayObject(mark.art)) delete mark.art.mounted;
-    });
-  } else {
-    delete shared.art.mounted;
-  }
+    marks.forEach(mark => { if (gameplayObject(mark.art)) delete mark.art.mounted; });
+  } else delete shared.art.mounted;
 
   marks.forEach((mark, index) => {
-    mark.peakLevel = gameplayNumericValue(`mark.${index + 1}.peakLevel`, index === 0 ? 1 : index === 1 ? 25 : 50);
+    mark.peakLevel = gameplayNumericValue(`mark.${index + 1}.peakLevel`, [1, 25, 50][index]);
     mark.damage = gameplayNumericValue(`mark.${index + 1}.damage`, 1);
     if (!gameplayObject(mark.art)) mark.art = {};
     mark.art.side = gameplayValue(`mark.${index + 1}.art.side`, "").trim();
-    if (mountedOwnership === "mark") mark.art.mounted = gameplayValue(`mark.${index + 1}.art.mounted`, "").trim();
+    if (mounted === "mark") mark.art.mounted = gameplayValue(`mark.${index + 1}.art.mounted`, "").trim();
   });
 
   files["weapon.json"] = format(shared);
@@ -489,7 +382,6 @@ function gameplayHandleInput(event) {
   gameplayUpdateVisibility();
   gameplayApply();
 }
-
 function gameplayQueueRender() {
   if (gameplayRenderQueued) return;
   gameplayRenderQueued = true;
@@ -498,7 +390,6 @@ function gameplayQueueRender() {
     if (weaponEditorMode === "gameplay") gameplayRender();
   });
 }
-
 function setWeaponEditorMode(mode) {
   captureActiveFile();
   weaponEditorMode = mode;
@@ -507,23 +398,23 @@ function setWeaponEditorMode(mode) {
   jsonWorkspace.classList.toggle("hidden", gameplay);
   gameplayModeButton.classList.toggle("active", gameplay);
   jsonModeButton.classList.toggle("active", !gameplay);
-  if (gameplay) gameplayRender();
-  else elements.jsonEditor.value = files[activeFile];
+  if (gameplay) gameplayRender(); else elements.jsonEditor.value = files[activeFile];
 }
 
 gameplayModeButton.addEventListener("click", () => setWeaponEditorMode("gameplay"));
 jsonModeButton.addEventListener("click", () => setWeaponEditorMode("json"));
-
 elements.categoryInput.addEventListener("input", () => {
   if (weaponEditorMode === "gameplay" && gameplayHasRendered) gameplayApply();
 });
-
 elements.jsonEditor.addEventListener("input", () => {
-  if (weaponEditorMode === "json") gameplayQueueRender();
+  if (weaponEditorMode === "json") gameplayHasRendered = false;
 });
-
 new MutationObserver(() => {
   if (elements.fileTabs.children.length) gameplayQueueRender();
 }).observe(elements.fileTabs, { childList: true });
 
-setWeaponEditorMode("gameplay");
+// Display gameplay mode immediately, but wait for the core editor's first render before reading files.
+gameplayEditor.classList.remove("hidden");
+jsonWorkspace.classList.add("hidden");
+gameplayModeButton.classList.add("active");
+jsonModeButton.classList.remove("active");
