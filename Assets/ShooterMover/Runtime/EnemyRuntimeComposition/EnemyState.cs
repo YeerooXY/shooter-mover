@@ -259,7 +259,19 @@ namespace ShooterMover.EnemyRuntimeComposition
             lastTerminalConsequenceFailure = code
                 + (exception == null
                     ? string.Empty
-                    : ":" + exception.GetType().Name + ":" + exception.Message);
+                    : ":" + DescribeTerminalException(exception));
+        }
+
+        private static string DescribeTerminalException(Exception exception)
+        {
+            var parts = new List<string>();
+            Exception current = exception;
+            while (current != null)
+            {
+                parts.Add(current.GetType().Name + ":" + current.Message);
+                current = current.InnerException;
+            }
+            return string.Join(" -> ", parts);
         }
 
         private EnemyLiveRejectionCode ValidateDecisionCode(
@@ -297,7 +309,7 @@ namespace ShooterMover.EnemyRuntimeComposition
                 command.OperationStableId,
                 Identity,
                 Definition.DefinitionId,
-                Level,
+                Tier,
                 LifecycleGeneration,
                 command.SourceEntityStableId,
                 command.SourceRunParticipantStableId,

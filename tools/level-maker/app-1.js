@@ -13,7 +13,6 @@ const iconFor=t=>({enemy:"👾",prop:"▣",floor:"▦",door:"▥",decor:"✦"}[t
 
 const defaultCatalog = [
  {id:"enemy.moving-droid",label:"Moving Droid",type:"enemy",source:"EnemyCatalog"},
- {id:"enemy.mobile-blaster-droid",label:"Mobile Blaster Droid",type:"enemy",source:"EnemyCatalog"},
  {id:"enemy.ram-pouncer",label:"Ram Pouncer",type:"enemy",source:"EnemyCatalog"},
  {id:"enemy.blaster-turret",label:"Blaster Turret",type:"enemy",source:"EnemyCatalog"},
  {id:"enemy.pursuer-drone",label:"Pursuer Drone",type:"enemy",source:"EnemyCatalog"},

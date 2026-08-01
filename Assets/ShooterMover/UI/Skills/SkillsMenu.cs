@@ -25,8 +25,6 @@ namespace ShooterMover.UI.Skills
 
         [SerializeField] private TextAsset skillsBackplateAsset;
         [SerializeField] private bool enableStandalonePreview;
-        [SerializeField, Range(1, 100)] private int previewPlayerLevel = 20;
-        [SerializeField] private string backSceneName = "MainMenu";
 
         private SkillsScreenSession session;
         private RankedSkillsScreenSession rankedSession;

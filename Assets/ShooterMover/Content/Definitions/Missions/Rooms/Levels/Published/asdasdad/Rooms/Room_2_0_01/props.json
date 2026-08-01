@@ -1,0 +1,78 @@
+{
+  "schema_version": 2,
+      "room": "room.asdasdad-3",
+  "props": [
+    {
+      "id": "prop.ea037786",
+      "object": "prop.wall-1x1",
+      "position": [
+        -3,
+        2.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "prop.5deaede0",
+      "object": "prop.wall-1x1",
+      "position": [
+        -3,
+        1.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "prop.df503db1",
+      "object": "prop.wall-1x1",
+      "position": [
+        -2,
+        0.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "prop.4bc3f821",
+      "object": "prop.wall-1x1",
+      "position": [
+        -2,
+        -0.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "prop.dfa72e28",
+      "object": "prop.wall-1x1",
+      "position": [
+        -3,
+        -1.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "prop.eb441a1f",
+      "object": "prop.wall-1x1",
+      "position": [
+        -4,
+        -2.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "prop.3aec3349",
+      "object": "prop.wall-1x1",
+      "position": [
+        -4,
+        2.5
+      ],
+      "rotation": 0
+    },
+    {
+      "id": "prop.2b2a9eff",
+      "object": "prop.wall-1x1",
+      "position": [
+        -4,
+        3.5
+      ],
+      "rotation": 0
+    }
+  ]
+}

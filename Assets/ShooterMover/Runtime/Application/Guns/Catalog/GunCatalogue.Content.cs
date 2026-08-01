@@ -258,7 +258,8 @@ namespace ShooterMover.Application.Guns.Catalog
             switch (mark)
             {
                 case 1:
-                    fire = FireSettings.Automatic(4d);
+                    // Just-for-fun MK1 boost: five times the normal 4 shots/second.
+                    fire = FireSettings.Automatic(20d);
                     break;
                 case 2:
                     fire = FireSettings.SemiAutomatic(4d);

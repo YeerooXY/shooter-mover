@@ -57,7 +57,7 @@ async function chooseProject(){
 }
 function addRoom(){
  const wasMap=state.editor.viewMode==="map";
- mutate(()=>{const i=state.rooms.length,r=newRoom(i);r.id=`room.${safeId(state.level.id,"level")}.room-${i+1}`;r.grid=[i,0];state.rooms.push(r);state.activeRoomId=r.id;state.editor.selectedId=null});
+ mutate(()=>{const i=state.rooms.length,roomKey=safeId(state.level.targetFolder||state.level.name||"level","level").replace(/\./g,"-");const r=newRoom(i);r.id=`room.${roomKey}-${i+1}`;r.grid=[i,0];state.rooms.push(r);state.activeRoomId=r.id;state.editor.selectedId=null});
  if(wasMap)fitMap();else fitRoom();renderAll()
 }
 function duplicateRoom(){

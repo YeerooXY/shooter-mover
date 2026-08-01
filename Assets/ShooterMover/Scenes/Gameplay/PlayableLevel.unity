@@ -175,7 +175,7 @@ MonoBehaviour:
   presentationCatalog: {fileID: 11400000, guid: d5c237f6050a48a88cb87efe23fad0d4, type: 2}
   presentationRoot: {fileID: 1001}
   playerPrefab: {fileID: 100000, guid: 1d7caf4c4417482bb09ac9dab37804e2, type: 3}
-  playerSpeed: 6
+  playerSpeed: 18
   cameraSize: 8
 --- !u!114 &1007
 MonoBehaviour:

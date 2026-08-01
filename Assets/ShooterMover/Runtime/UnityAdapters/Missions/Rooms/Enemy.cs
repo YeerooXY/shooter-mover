@@ -37,7 +37,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
 
         public int Level
         {
-            get { return runtime == null ? 0 : runtime.Level; }
+            get { return runtime == null ? 0 : runtime.Tier; }
         }
 
         public long LifecycleGeneration

@@ -565,7 +565,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                     != runtime.PlacementStableId
                 || deathFact.LifecycleGeneration != runtime.LifecycleGeneration
                 || deathFact.DefinitionStableId != runtime.Definition.DefinitionId
-                || deathFact.Level != runtime.Level
+                || deathFact.Level != runtime.Tier
                 || !placementMapped)
             {
                 throw new InvalidOperationException(

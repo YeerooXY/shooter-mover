@@ -9,6 +9,7 @@ using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Holdings;
+using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Rewards.Strongboxes;
 
 namespace ShooterMover.UI.Game
