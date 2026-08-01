@@ -157,7 +157,7 @@ namespace ShooterMover.UI.Game
             if (!PlayablePlayerDamageCommandFactory
                 .TryCreateForCharacterContact(
                     receiver,
-                    receiver.Identity.EntityInstanceId,
+                    player.CharacterInstanceStableId,
                     hitId,
                     explosion.SourceEntityStableId,
                     explosion.SourceRunParticipantStableId,
@@ -221,7 +221,6 @@ namespace ShooterMover.UI.Game
                 || binding.Receiver.CharacterInstanceStableId == null
                 || player.CharacterInstanceStableId
                     != binding.Receiver.CharacterInstanceStableId
-                || binding.Receiver.Identity == null
                 || binding.Receiver.Identity.EntityInstanceId == null)
             {
                 diagnostic = "enemy-volatile-damage-player-mismatch";
