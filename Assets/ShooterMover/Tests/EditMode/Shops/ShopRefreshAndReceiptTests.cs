@@ -1,6 +1,7 @@
 using System;
 using NUnit.Framework;
 using ShooterMover.Application.Flow.Game;
+using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Application.Shops;
@@ -288,6 +289,51 @@ namespace ShooterMover.Tests.EditMode.Shops
                     entry.Equipment.InstanceId,
                     out offer),
                 Is.True);
+        }
+
+        [Test]
+        public void PurchasedOfferPassesCharacterSaveValidation()
+        {
+            CharacterLiveGraph graph = CreateGraph(
+                "character.shop-save-validation");
+            ShopInventoryView stock = Open(graph, Window(7));
+            ShopStockEntry entry = stock.Entries[0];
+            GrantMoney(graph, "save-validation", 100000L);
+
+            ShopPurchaseFact purchase = graph.Shop.Authority.Purchase(
+                Purchase(
+                    graph,
+                    stock,
+                    entry,
+                    "shop-purchase.save-validation"));
+            Assert.That(
+                purchase.Status,
+                Is.EqualTo(ShopPurchaseStatus.Applied));
+
+            GeneratedEquipmentAugmentSignature signature;
+            Assert.That(
+                graph.Augments.TryGet(
+                    entry.Equipment.InstanceId,
+                    out signature),
+                Is.True);
+            Assert.That(
+                signature.SourceStrongboxInstanceStableId,
+                Is.EqualTo(entry.StockEntryStableId));
+
+            var saved = graph.Character;
+            for (int index = 0;
+                 index < graph.SaveAdapters.Count;
+                 index++)
+            {
+                saved = saved.WithComponent(
+                    graph.SaveAdapters[index].ExportComponent());
+            }
+
+            var validation = GameSaveRules.ValidateCharacter(saved);
+            Assert.That(
+                validation.Succeeded,
+                Is.True,
+                validation.RejectionCode);
         }
 
         [Test]
