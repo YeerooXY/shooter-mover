@@ -42,11 +42,11 @@ function compileWeaponFolder(folder) {
   const definitions = [1, 2, 3].map(mark => {
     const markSource = readObject(path.join(resolved, `mk${mark}.json`));
     return {
+      ...mergeObjects(shared, markSource),
       definitionId: `gun_${slug}_mk${mark}_01`,
       familyId: slug,
       mark,
-      variant: 1,
-      ...mergeObjects(shared, markSource)
+      variant: 1
     };
   });
 
