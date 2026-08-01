@@ -6,11 +6,13 @@ const path = require("path");
 const { execFileSync } = require("child_process");
 const crypto = require("crypto");
 const { URL } = require("url");
+const WeaponDps = require("./weapon-dps");
 
 const root = path.resolve(process.argv.includes("--repo") ? process.argv[process.argv.indexOf("--repo") + 1] : path.join(__dirname, "..", ".."));
 const port = Number(process.argv.includes("--port") ? process.argv[process.argv.indexOf("--port") + 1] : 4173);
 const locations = { "gun-family": ["Content/Items/Guns", ".gun.json"], "gear-set": ["Content/Items/Gear", ".gear.json"] };
 const weaponFiles = ["weapon.json", "mk1.json", "mk2.json", "mk3.json"];
+const dpsTargetFile = path.resolve(root, "Content/Balance/weapon-dps-targets.json");
 const mutationToken = crypto.randomBytes(24).toString("hex");
 function git(args) { return execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim(); }
 function send(res, status, value) { const body = JSON.stringify(value); res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Content-Length": Buffer.byteLength(body), "Cache-Control": "no-store" }); res.end(body); }
@@ -106,6 +108,22 @@ function saveWeaponFolder(category, folder, files) {
     throw error;
   }
 }
+function readDpsTargets() {
+  if (!fs.existsSync(dpsTargetFile)) return WeaponDps.emptyTargets();
+  const value = JSON.parse(fs.readFileSync(dpsTargetFile, "utf8"));
+  const errors = WeaponDps.validateTargets(value);
+  if (errors.length) throw new Error(errors.join(" "));
+  return value;
+}
+function saveDpsTargets(value) {
+  const errors = WeaponDps.validateTargets(value);
+  if (errors.length) throw new Error(errors.join(" "));
+  fs.mkdirSync(path.dirname(dpsTargetFile), { recursive: true });
+  const temp = dpsTargetFile + `.tmp-${process.pid}-${Date.now()}`;
+  fs.writeFileSync(temp, JSON.stringify(value, null, 2) + "\n");
+  fs.renameSync(temp, dpsTargetFile);
+  return path.relative(root, dpsTargetFile).replace(/\\/g, "/");
+}
 async function api(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/status") return send(res, 200, { ...status(), mutationToken });
   if (req.method === "GET" && url.pathname === "/api/packages") {
@@ -129,6 +147,7 @@ async function api(req, res, url) {
     const category = url.searchParams.get("category"), folder = url.searchParams.get("folder");
     return send(res, 200, { category, folder, files: readWeaponFolder(category, folder) });
   }
+  if (req.method === "GET" && url.pathname === "/api/weapon-dps-targets") return send(res, 200, { targets: readDpsTargets() });
   if (req.method !== "GET" && req.headers["x-item-maker-token"] !== mutationToken) throw new Error("Mutation token is missing or invalid.");
   if (req.method === "POST" && url.pathname === "/api/fetch") { git(["fetch", "--prune", "origin"]); return send(res, 200, status()); }
   if (req.method === "POST" && url.pathname === "/api/pull") {
@@ -148,6 +167,10 @@ async function api(req, res, url) {
   if (req.method === "PUT" && url.pathname === "/api/weapon-folder") {
     const body = await readBody(req);
     return send(res, 200, saveWeaponFolder(body.category, body.folder, body.files));
+  }
+  if (req.method === "PUT" && url.pathname === "/api/weapon-dps-targets") {
+    const body = await readBody(req);
+    return send(res, 200, { saved: saveDpsTargets(body.targets) });
   }
   send(res, 404, { error: "Not found." });
 }
