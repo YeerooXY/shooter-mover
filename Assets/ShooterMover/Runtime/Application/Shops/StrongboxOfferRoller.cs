@@ -99,12 +99,15 @@ namespace ShooterMover.Application.Shops
                     CultureInfo.InvariantCulture);
                 string slot = request.SlotIndex.ToString(
                     CultureInfo.InvariantCulture);
-                StableId boxId = Strongbox.DeriveId(
-                    "shopbox",
-                    request.StockId.ToString(),
-                    request.Definition.ShopStableId.ToString(),
-                    revision,
-                    slot);
+                StableId boxId =
+                    ShooterMover.Domain.Shops.Shop.DeriveStableId(
+                        "shopstock",
+                        request.StockId.ToString(),
+                        request.Definition.ShopStableId.ToString(),
+                        revision,
+                        slot,
+                        request.Definition.AlgorithmVersion.ToString(
+                            CultureInfo.InvariantCulture));
                 StableId sourceOperationId = Strongbox.DeriveId(
                     "shopsourceop",
                     boxId.ToString());
