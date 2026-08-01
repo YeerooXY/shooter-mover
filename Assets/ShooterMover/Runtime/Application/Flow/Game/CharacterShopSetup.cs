@@ -22,7 +22,7 @@ namespace ShooterMover.Application.Flow.Game
             ShopLiveActions authority,
             ShopDefinition definition,
             ShopPurchaseLedger purchases,
-            GeneratedEquipmentAugmentSignatureState augmentSignatures)
+            GeneratedEquipmentAugmentSignatureState previewAugmentSignatures)
         {
             Authority = authority
                 ?? throw new ArgumentNullException(nameof(authority));
@@ -30,14 +30,15 @@ namespace ShooterMover.Application.Flow.Game
                 ?? throw new ArgumentNullException(nameof(definition));
             Purchases = purchases
                 ?? throw new ArgumentNullException(nameof(purchases));
-            AugmentSignatures = augmentSignatures
-                ?? throw new ArgumentNullException(nameof(augmentSignatures));
+            PreviewAugmentSignatures = previewAugmentSignatures
+                ?? throw new ArgumentNullException(
+                    nameof(previewAugmentSignatures));
         }
 
         public ShopLiveActions Authority { get; }
         public ShopDefinition Definition { get; }
         public ShopPurchaseLedger Purchases { get; }
-        public GeneratedEquipmentAugmentSignatureState AugmentSignatures
+        public GeneratedEquipmentAugmentSignatureState PreviewAugmentSignatures
         {
             get;
         }
@@ -132,7 +133,7 @@ namespace ShooterMover.Application.Flow.Game
                 authority,
                 definition,
                 purchases,
-                augmentSignatures);
+                roller.PreviewSignatures);
         }
 
         private static ShopDefinition BuildDefinition(
