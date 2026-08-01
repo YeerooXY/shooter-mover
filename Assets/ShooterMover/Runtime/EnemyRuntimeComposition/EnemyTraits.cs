@@ -21,6 +21,11 @@ namespace ShooterMover.EnemyRuntimeComposition
 
         private readonly List<EnemyTrait> traits = new List<EnemyTrait>();
 
+        public IReadOnlyList<EnemyTrait> Traits
+        {
+            get { return traits; }
+        }
+
         public double MovementSpeedMultiplier
         {
             get { return HasTrait(EnemyTrait.Swift) ? 1.25d : 1d; }
