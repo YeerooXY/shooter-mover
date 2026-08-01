@@ -14,6 +14,7 @@ document.querySelector(".weapon-summary").insertBefore(
   document.querySelector(".weapon-summary").children[1]);
 
 const compiledPreview = compiledPanel.querySelector("#compiledPreview");
+compiledPreview.textContent = "Waiting for editor data…";
 
 function previewObject(value) {
   return value && typeof value === "object" && !Array.isArray(value);
@@ -66,5 +67,3 @@ function renderCompiledPreview() {
 new MutationObserver(renderCompiledPreview).observe(
   elements.fileTabs,
   { childList: true });
-
-renderCompiledPreview();
