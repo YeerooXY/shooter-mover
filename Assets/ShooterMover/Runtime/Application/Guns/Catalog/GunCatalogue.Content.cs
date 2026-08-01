@@ -254,27 +254,13 @@ namespace ShooterMover.Application.Guns.Catalog
 
         private static ProvisionalCombatProfile RattlerProfile(int mark)
         {
-            FireSettings fire;
-            switch (mark)
+            if (mark < 1 || mark > 3)
             {
-                case 1:
-                    // Just-for-fun MK1 boost: five times the normal 4 shots/second.
-                    fire = FireSettings.Automatic(20d);
-                    break;
-                case 2:
-                    fire = FireSettings.SemiAutomatic(4d);
-                    break;
-                case 3:
-                    fire = FireSettings.Burst(
-                        4d / 3d,
-                        new GunBurstSettings(3, 0.08d));
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(mark));
+                throw new ArgumentOutOfRangeException(nameof(mark));
             }
 
             return TravellingProfile(
-                fire,
+                FireSettings.Automatic(4d),
                 GunShotPattern.Canonical(1, 0d),
                 1d,
                 GunDamageCategory.Physical,
