@@ -109,6 +109,11 @@ namespace ShooterMover.Application.Flow.Game
                         context);
                     PlayerExperienceImportResult result =
                         verifier.TryImport(snapshot);
+                    if (result.Status
+                        == PlayerExperienceImportStatus.CurveMismatch)
+                    {
+                        result = verifier.TryMigrateLegacyPlaceholder(snapshot);
+                    }
                     return result.Status
                             == PlayerExperienceImportStatus.Imported
                         || result.Status
@@ -121,6 +126,11 @@ namespace ShooterMover.Application.Flow.Game
                 {
                     PlayerExperienceImportResult result =
                         authority.TryImport(snapshot);
+                    if (result.Status
+                        == PlayerExperienceImportStatus.CurveMismatch)
+                    {
+                        result = authority.TryMigrateLegacyPlaceholder(snapshot);
+                    }
                     return result.Status
                             == PlayerExperienceImportStatus.Imported
                         || result.Status

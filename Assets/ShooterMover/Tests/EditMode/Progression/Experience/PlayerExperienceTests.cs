@@ -50,6 +50,44 @@ namespace ShooterMover.Tests.EditMode.Progression.Experience
         }
 
         [Test]
+        public void ProductionCurve_HasAuthoredLinearCostsAndExactTotal()
+        {
+            PlayerExperienceCurve curve = PlayerExperienceCurve.CreateProduction();
+
+            Assert.That(curve.GetExperienceToAdvance(1), Is.EqualTo(100L));
+            Assert.That(curve.GetExperienceToAdvance(2), Is.EqualTo(147L));
+            Assert.That(curve.GetExperienceToAdvance(3), Is.EqualTo(195L));
+            Assert.That(curve.GetExperienceToAdvance(99), Is.EqualTo(4748L));
+            Assert.That(curve.MaximumProgressionExperience, Is.EqualTo(240000L));
+        }
+
+        [Test]
+        public void LegacyPlaceholderMigration_RetainsCumulativeXpAndReceipts()
+        {
+            PlayerExperienceCurve legacy =
+                PlayerExperienceCurve.CreateLegacyPlaceholder();
+            var original = CreateAuthority(legacy);
+            StableId source = StableId.Parse("xp-source.legacy-migration");
+            original.Grant(new PlayerExperienceGrantRequest(source, 350L));
+
+            var migrated = CreateAuthority(
+                PlayerExperienceCurve.CreateProduction());
+            PlayerExperienceImportResult result =
+                migrated.TryMigrateLegacyPlaceholder(
+                    original.ExportSnapshot());
+            PlayerExperienceGrantFact replay = migrated.Grant(
+                new PlayerExperienceGrantRequest(source, 350L));
+
+            Assert.That(result.Status, Is.EqualTo(PlayerExperienceImportStatus.Imported));
+            Assert.That(migrated.CurrentState.CumulativeExperience, Is.EqualTo(350L));
+            Assert.That(migrated.CurrentState.Level, Is.EqualTo(3));
+            Assert.That(migrated.CurrentSnapshot.CurveFingerprint,
+                Is.EqualTo(PlayerExperienceCurve.CreateProduction().Fingerprint));
+            Assert.That(replay.Status,
+                Is.EqualTo(PlayerExperienceGrantStatus.DuplicateNoChange));
+        }
+
+        [Test]
         public void DuplicateGrant_ProducesNoAdditionalExperience()
         {
             var authority = CreateAuthority(CreateConstantCurve());

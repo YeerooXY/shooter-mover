@@ -5,6 +5,7 @@ using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Missions.Rooms;
 using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Contracts.Flow.Session;
+using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Contracts.Missions.Rooms;
 using ShooterMover.Domain.Common;
 using ShooterMover.UI.LevelSelection;
@@ -45,6 +46,8 @@ namespace ShooterMover.UI.Game
         private PlayerMarker playerMarker;
         private Rigidbody2D playerBody;
         private Func<bool> runCompletion;
+        private Func<MissionRunCompletionState, bool> runFailure;
+        private MissionRunCompletionState? acceptedIncompleteState;
         private long operationSequence;
         private bool isConfigured;
         private bool completionAccepted;
@@ -77,6 +80,93 @@ namespace ShooterMover.UI.Game
                     "playable-level-run-completion-already-configured");
             }
             runCompletion = completion;
+        }
+
+        public void ConfigureRunFailure(
+            Func<MissionRunCompletionState, bool> failure)
+        {
+            if (failure == null)
+                throw new ArgumentNullException(nameof(failure));
+            if (runFailure != null && !ReferenceEquals(runFailure, failure))
+            {
+                throw new InvalidOperationException(
+                    "playable-level-run-failure-already-configured");
+            }
+            runFailure = failure;
+        }
+
+        public bool TrySettleIncompleteRun(
+            MissionRunCompletionState completionState,
+            out string rejectionCode)
+        {
+            rejectionCode = string.Empty;
+            if (completionState != MissionRunCompletionState.Failed
+                && completionState != MissionRunCompletionState.Abandoned)
+            {
+                rejectionCode = "playable-level-incomplete-state-invalid";
+                return false;
+            }
+            if (!isConfigured || completionAccepted)
+            {
+                rejectionCode = "playable-level-incomplete-run-unavailable";
+                return false;
+            }
+            if (acceptedIncompleteState.HasValue)
+            {
+                if (acceptedIncompleteState.Value == completionState)
+                {
+                    return true;
+                }
+                rejectionCode = "playable-level-incomplete-state-conflict";
+                return false;
+            }
+            if (runFailure == null || !runFailure(completionState))
+            {
+                rejectionCode = "playable-level-incomplete-settlement-rejected";
+                return false;
+            }
+
+            acceptedIncompleteState = completionState;
+            return true;
+        }
+
+        public bool TryAbandonAndReturnToHub()
+        {
+            string rejectionCode;
+            if (!TrySettleIncompleteRun(
+                    MissionRunCompletionState.Abandoned,
+                    out rejectionCode))
+            {
+                if (!string.IsNullOrWhiteSpace(rejectionCode))
+                {
+                    Debug.LogError(rejectionCode, this);
+                }
+                return false;
+            }
+            if (!ReturnCurrentCharacterToHub())
+            {
+                Debug.LogError(
+                    "playable-level-abandon-hub-return-rejected",
+                    this);
+                return false;
+            }
+            return true;
+        }
+
+        private void Update()
+        {
+            if (!isConfigured
+                || completionAccepted)
+            {
+                return;
+            }
+            Keyboard keyboard = Keyboard.current;
+            if (keyboard != null
+                && (keyboard.escapeKey.wasPressedThisFrame
+                    || keyboard.backspaceKey.wasPressedThisFrame))
+            {
+                TryAbandonAndReturnToHub();
+            }
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -651,7 +741,7 @@ namespace ShooterMover.UI.Game
             ReturnCurrentCharacterToHub();
         }
 
-        private static void ReturnCurrentCharacterToHub()
+        private static bool ReturnCurrentCharacterToHub()
         {
             CharacterLiveGraph graph;
             FlowProfileRecord profile;
@@ -665,8 +755,9 @@ namespace ShooterMover.UI.Game
                 && graph != null
                 && !graph.IsDisposed)
             {
-                flow.Transitions.TryReturnToHub(graph.RoutePayload);
+                return flow.Transitions.TryReturnToHub(graph.RoutePayload);
             }
+            return false;
         }
 
         private static InvalidOperationException Failure(string code)
@@ -684,6 +775,7 @@ namespace ShooterMover.UI.Game
         private void OnDestroy()
         {
             runCompletion = null;
+            runFailure = null;
             if (roomRuntime != null)
             {
                 roomRuntime.CurrentRoomPresentationRebuilt -=

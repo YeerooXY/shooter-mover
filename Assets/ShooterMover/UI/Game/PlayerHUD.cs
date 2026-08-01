@@ -4,6 +4,7 @@ using ShooterMover.Application.Flow.Game;
 using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Contracts.Flow.Session;
+using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Domain.Common;
 using ShooterMover.GameplayEntities;
 using UnityEngine;
@@ -172,6 +173,17 @@ namespace ShooterMover.UI.Game
                     profile.Payload,
                     graph.LoadoutRuntime.Holdings,
                     graph.LoadoutRuntime.LoadoutAuthority,
+                    out rejectionCode))
+            {
+                return false;
+            }
+
+            LevelGame level = UnityEngine.Object.FindFirstObjectByType<
+                LevelGame>(FindObjectsInactive.Include);
+            if (level != null
+                && level.IsConfigured
+                && !level.TrySettleIncompleteRun(
+                    MissionRunCompletionState.Failed,
                     out rejectionCode))
             {
                 return false;

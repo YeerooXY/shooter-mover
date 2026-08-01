@@ -1,5 +1,12 @@
 # Enemy XP Rewards V1
 
+## Status
+
+This definition-level, enemy-level-band adapter is retained for compatibility
+fixtures only. Production playable missions use the run-scoped profile/tier
+ledger documented in `MISSION_XP_REWARDS_V1.md`; this V1 catalog is no longer
+composed into the live mission path.
+
 ## Purpose
 
 XP-002 converts accepted enemy-destruction facts into exactly-once XP-001 grants without moving authority into enemy combat, Unity callbacks, or enemy definitions.

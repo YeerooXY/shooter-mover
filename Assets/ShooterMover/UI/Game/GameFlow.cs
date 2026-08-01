@@ -415,6 +415,7 @@ namespace ShooterMover.UI.Game
                 {
                     controller.Configure(
                         resultsContext.Result,
+                        BuildResultsSummary(resultsContext),
                         OpenStrongbox,
                         ReturnFromResults);
                 }
@@ -461,6 +462,40 @@ namespace ShooterMover.UI.Game
         private bool OpenCharacterSelection()
         {
             return transitions.TryNavigateTo(HubRoute.CharacterSelect);
+        }
+
+        private static ResultsSummary BuildResultsSummary(
+            ResultsContext context)
+        {
+            if (context == null || context.Experience == null) return null;
+            CharacterLiveGraph graph;
+            FlowProfileRecord profile;
+            CharacterSetupFlow coordinator;
+            if (!CharacterSave.TryResolveCurrent(
+                    out graph,
+                    out profile,
+                    out coordinator)
+                || graph == null
+                || graph.IsDisposed)
+            {
+                return null;
+            }
+
+            return new ResultsSummary(
+                graph.Character.DisplayName,
+                graph.Character.ClassDefinitionStableId.ToString(),
+                context.Experience.NewLevel,
+                context.Experience.ParticipantStableId,
+                context.Experience.EnemiesKilled,
+                context.Experience.EnemyExperience,
+                context.Experience.CompletedRooms,
+                context.Experience.CompletionExperience,
+                context.Experience.TotalExperience,
+                context.Experience.PreviousLevel,
+                context.Experience.NewLevel,
+                context.Experience.SkillPointsEarned,
+                0L,
+                0L);
         }
 
         private static GunCatalog ResolveGunCatalog(

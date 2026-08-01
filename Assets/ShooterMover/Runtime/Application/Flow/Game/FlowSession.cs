@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ShooterMover.Application.Flow.Hub;
+using ShooterMover.Application.Progression.Experience;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Application.Rewards.Strongboxes.Persistence;
 using ShooterMover.Contracts.Flow.Session;
@@ -462,6 +463,7 @@ namespace ShooterMover.Application.Flow.Game
                 commandFactory,
                 equipmentCatalog,
                 null,
+                null,
                 refreshResult)
         {
         }
@@ -474,6 +476,26 @@ namespace ShooterMover.Application.Flow.Game
             EquipmentCatalog equipmentCatalog,
             GunCatalog gunCatalog,
             Func<MissionResultPayload> refreshResult)
+            : this(
+                result,
+                openingService,
+                commandFactory,
+                equipmentCatalog,
+                gunCatalog,
+                null,
+                refreshResult)
+        {
+        }
+
+        public ResultsContext(
+            MissionResultPayload result,
+            StrongboxOpeningActions openingService,
+            Func<MissionRunStrongboxResult, StrongboxOpenCommand>
+                commandFactory,
+            EquipmentCatalog equipmentCatalog,
+            GunCatalog gunCatalog,
+            MissionExperienceResult experience,
+            Func<MissionResultPayload> refreshResult)
         {
             Result = result ?? throw new ArgumentNullException(nameof(result));
             OpeningService = openingService
@@ -482,6 +504,7 @@ namespace ShooterMover.Application.Flow.Game
                 ?? throw new ArgumentNullException(nameof(commandFactory));
             EquipmentCatalog = equipmentCatalog;
             GunCatalog = gunCatalog;
+            Experience = experience;
             this.refreshResult = refreshResult
                 ?? throw new ArgumentNullException(nameof(refreshResult));
         }
@@ -493,6 +516,8 @@ namespace ShooterMover.Application.Flow.Game
         public EquipmentCatalog EquipmentCatalog { get; }
 
         public GunCatalog GunCatalog { get; }
+
+        public MissionExperienceResult Experience { get; }
 
         public StrongboxOpeningBinding BindExact(
             MissionRunStrongboxResult selected)
@@ -590,6 +615,7 @@ namespace ShooterMover.Application.Flow.Game
                 commandFactory,
                 EquipmentCatalog,
                 GunCatalog,
+                Experience,
                 refreshResult);
         }
 

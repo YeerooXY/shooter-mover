@@ -66,7 +66,8 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
             string enemyCatalogResourcePath,
             StableId playerPresentationStableId,
             LevelRecommendation recommendation,
-            int sortOrder)
+            int sortOrder,
+            bool awardsPersistentExperience)
         {
             LevelStableId = levelStableId
                 ?? throw new ArgumentNullException(nameof(levelStableId));
@@ -85,6 +86,7 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
                 ?? throw new ArgumentNullException(nameof(recommendation));
             if (sortOrder < 0) throw new ArgumentOutOfRangeException(nameof(sortOrder));
             SortOrder = sortOrder;
+            AwardsPersistentExperience = awardsPersistentExperience;
         }
 
         public StableId LevelStableId { get; }
@@ -96,6 +98,7 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
         public StableId PlayerPresentationStableId { get; }
         public LevelRecommendation Recommendation { get; }
         public int SortOrder { get; }
+        public bool AwardsPersistentExperience { get; }
 
         public LevelSelectionDefinition ToSelectionDefinition()
         {
@@ -141,7 +144,8 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
                 "Levels/Level1EnemyCatalog",
                 StableId.Parse("presentation.player-default"),
                 new LevelRecommendation(1, 1, 1, "STANDARD"),
-                10),
+                10,
+                true),
         };
 
         private static PlayableLevelDefinition[] entries;
@@ -226,7 +230,8 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
                         value.recommended_equipment_level,
                         value.recommended_party_size,
                         value.difficulty_label),
-                    value.sort_order));
+                    value.sort_order,
+                    value.awards_persistent_xp));
             }
             return values.ToArray();
         }
@@ -252,6 +257,7 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
             public int recommended_party_size;
             public string difficulty_label;
             public int sort_order;
+            public bool awards_persistent_xp;
         }
     }
 

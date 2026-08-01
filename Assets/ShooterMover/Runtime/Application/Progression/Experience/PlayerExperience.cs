@@ -246,6 +246,7 @@ namespace ShooterMover.Application.Progression.Experience
                 string rejectionCode;
                 if (!TryValidateSnapshot(
                     snapshot,
+                    false,
                     out importedGrants,
                     out importedState,
                     out failureStatus,
@@ -280,6 +281,67 @@ namespace ShooterMover.Application.Progression.Experience
                 currentState = importedState;
                 currentContext = snapshot.ProgressionContext;
                 currentSnapshot = snapshot;
+                return new PlayerExperienceImportResult(
+                    PlayerExperienceImportStatus.Imported,
+                    string.Empty,
+                    previous,
+                    currentSnapshot);
+            }
+        }
+
+        /// <summary>
+        /// Imports the one retired 100-XP-per-level production format while retaining
+        /// cumulative XP and every exactly-once grant receipt. The imported cumulative
+        /// value is re-evaluated against the active curve and exported under its current
+        /// fingerprint. Arbitrary curve mismatches remain rejected.
+        /// </summary>
+        public PlayerExperienceImportResult TryMigrateLegacyPlaceholder(
+            PlayerExperienceSnapshot snapshot)
+        {
+            lock (syncRoot)
+            {
+                PlayerExperienceSnapshot previous = currentSnapshot;
+                if (snapshot == null
+                    || !PlayerExperienceCurve.IsLegacyPlaceholderFingerprint(
+                        snapshot.CurveFingerprint))
+                {
+                    return new PlayerExperienceImportResult(
+                        PlayerExperienceImportStatus.CurveMismatch,
+                        "xp-snapshot-legacy-curve-mismatch",
+                        previous,
+                        previous);
+                }
+
+                Dictionary<string, AppliedGrant> importedGrants;
+                PlayerExperienceState importedState;
+                PlayerExperienceImportStatus failureStatus;
+                string rejectionCode;
+                if (!TryValidateSnapshot(
+                    snapshot,
+                    true,
+                    out importedGrants,
+                    out importedState,
+                    out failureStatus,
+                    out rejectionCode))
+                {
+                    return new PlayerExperienceImportResult(
+                        failureStatus,
+                        rejectionCode,
+                        previous,
+                        previous);
+                }
+
+                grantsBySource.Clear();
+                foreach (KeyValuePair<string, AppliedGrant> entry in importedGrants)
+                {
+                    grantsBySource.Add(entry.Key, entry.Value);
+                }
+
+                sequence = snapshot.Sequence;
+                currentState = importedState;
+                currentContext = importedState.ProjectContext(
+                    snapshot.ProgressionContext);
+                currentSnapshot = BuildSnapshot();
                 return new PlayerExperienceImportResult(
                     PlayerExperienceImportStatus.Imported,
                     string.Empty,
@@ -363,6 +425,7 @@ namespace ShooterMover.Application.Progression.Experience
 
         private bool TryValidateSnapshot(
             PlayerExperienceSnapshot snapshot,
+            bool allowLegacyCurveMigration,
             out Dictionary<string, AppliedGrant> importedGrants,
             out PlayerExperienceState importedState,
             out PlayerExperienceImportStatus failureStatus,
@@ -401,7 +464,8 @@ namespace ShooterMover.Application.Progression.Experience
             if (!string.Equals(
                 snapshot.CurveFingerprint,
                 curve.Fingerprint,
-                StringComparison.Ordinal))
+                StringComparison.Ordinal)
+                && !allowLegacyCurveMigration)
             {
                 failureStatus = PlayerExperienceImportStatus.CurveMismatch;
                 rejectionCode = "xp-snapshot-curve-mismatch";
@@ -444,7 +508,8 @@ namespace ShooterMover.Application.Progression.Experience
             }
 
             if (snapshot.ProgressionContext.CharacterLevel
-                != importedState.Level)
+                != importedState.Level
+                && !allowLegacyCurveMigration)
             {
                 rejectionCode = "xp-snapshot-context-level-mismatch";
                 return false;

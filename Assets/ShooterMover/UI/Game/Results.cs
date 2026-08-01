@@ -23,6 +23,39 @@ namespace ShooterMover.UI.Game
             long experience,
             long money,
             long scrap)
+            : this(
+                playerName,
+                className,
+                level,
+                participantStableId,
+                kills,
+                experience,
+                0,
+                0L,
+                experience,
+                level,
+                level,
+                0,
+                money,
+                scrap)
+        {
+        }
+
+        public ResultsSummary(
+            string playerName,
+            string className,
+            int level,
+            StableId participantStableId,
+            int kills,
+            long enemyExperience,
+            int completedRooms,
+            long completionExperience,
+            long totalExperience,
+            int previousLevel,
+            int newLevel,
+            int skillPointsEarned,
+            long money,
+            long scrap)
         {
             if (string.IsNullOrWhiteSpace(playerName))
             {
@@ -45,7 +78,15 @@ namespace ShooterMover.UI.Game
                 throw new ArgumentNullException(nameof(participantStableId));
             }
             if (kills < 0
-                || experience < 0L
+                || enemyExperience < 0L
+                || completedRooms < 0
+                || completionExperience < 0L
+                || totalExperience < 0L
+                || totalExperience != enemyExperience + completionExperience
+                || previousLevel < 1
+                || newLevel < previousLevel
+                || newLevel != level
+                || skillPointsEarned < 0
                 || money < 0L
                 || scrap < 0L)
             {
@@ -59,7 +100,13 @@ namespace ShooterMover.UI.Game
             Level = level;
             ParticipantStableId = participantStableId;
             Kills = kills;
-            Experience = experience;
+            EnemyExperience = enemyExperience;
+            CompletedRooms = completedRooms;
+            CompletionExperience = completionExperience;
+            Experience = totalExperience;
+            PreviousLevel = previousLevel;
+            NewLevel = newLevel;
+            SkillPointsEarned = skillPointsEarned;
             Money = money;
             Scrap = scrap;
         }
@@ -69,7 +116,13 @@ namespace ShooterMover.UI.Game
         public int Level { get; }
         public StableId ParticipantStableId { get; }
         public int Kills { get; }
+        public long EnemyExperience { get; }
+        public int CompletedRooms { get; }
+        public long CompletionExperience { get; }
         public long Experience { get; }
+        public int PreviousLevel { get; }
+        public int NewLevel { get; }
+        public int SkillPointsEarned { get; }
         public long Money { get; }
         public long Scrap { get; }
     }
@@ -385,14 +438,27 @@ namespace ShooterMover.UI.Game
                 "KILLS",
                 summary.Kills.ToString(CultureInfo.InvariantCulture));
             DrawMetric(
-                "XP EARNED",
+                "ENEMY XP",
+                summary.EnemyExperience.ToString(CultureInfo.InvariantCulture));
+            DrawMetric(
+                "ROOMS",
+                summary.CompletedRooms.ToString(CultureInfo.InvariantCulture));
+            DrawMetric(
+                "COMPLETION XP",
+                summary.CompletionExperience.ToString(CultureInfo.InvariantCulture));
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            DrawMetric(
+                "TOTAL XP",
                 summary.Experience.ToString(CultureInfo.InvariantCulture));
             DrawMetric(
-                "MONEY",
-                summary.Money.ToString(CultureInfo.InvariantCulture));
+                "LEVEL",
+                summary.PreviousLevel.ToString(CultureInfo.InvariantCulture)
+                    + " -> "
+                    + summary.NewLevel.ToString(CultureInfo.InvariantCulture));
             DrawMetric(
-                "SCRAP",
-                summary.Scrap.ToString(CultureInfo.InvariantCulture));
+                "SKILL POINTS",
+                "+" + summary.SkillPointsEarned.ToString(CultureInfo.InvariantCulture));
             GUILayout.EndHorizontal();
             GUILayout.Space(12f);
         }

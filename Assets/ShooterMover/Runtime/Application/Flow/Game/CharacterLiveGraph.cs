@@ -17,7 +17,6 @@ using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Economy.Scrap;
 using ShooterMover.Domain.Persistence.Accounts;
 using ShooterMover.Domain.Progression.Context;
-using ShooterMover.Domain.Progression.Curves;
 using ShooterMover.Domain.Progression.Experience;
 using ShooterMover.Domain.Progression.Skills;
 using ShooterMover.Domain.Rewards.Strongboxes;
@@ -294,11 +293,7 @@ namespace ShooterMover.Application.Flow.Game
                         additionalAdapterFactory = null)
         {
             return new CharacterLiveGraphFactory(
-                new PlayerExperienceCurve(
-                    100L,
-                    100L,
-                    50,
-                    new SoftActivationCurveParameters(0.1, 10L, 10L)),
+                PlayerExperienceCurve.CreateProduction(),
                 ProgressionContext.Create(
                     1,
                     1,

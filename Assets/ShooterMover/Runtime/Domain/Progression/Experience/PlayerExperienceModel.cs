@@ -25,9 +25,14 @@ namespace ShooterMover.Domain.Progression.Experience
         public const int MaximumLevel = 100;
 
         private const string SchemaId = "player-experience-curve-v1";
+        private const string LinearSchemaId = "player-experience-curve-linear-v2";
+        private const double ProductionBaseExperience = 100d;
+        private const double ProductionGrowthPerLevel = 47.4335d;
         private readonly long[] cumulativeThresholds;
         private readonly long[] experienceToAdvance;
         private readonly string canonicalString;
+        private readonly bool usesLinearGrowth;
+        private readonly double linearGrowthPerLevel;
 
         public PlayerExperienceCurve(
             long minimumExperienceToAdvance,
@@ -58,6 +63,8 @@ namespace ShooterMover.Domain.Progression.Experience
             }
 
             Shape = shape ?? throw new ArgumentNullException(nameof(shape));
+            usesLinearGrowth = false;
+            linearGrowthPerLevel = 0d;
             MinimumExperienceToAdvance = minimumExperienceToAdvance;
             MaximumExperienceToAdvance = maximumExperienceToAdvance;
             NominalFullCostLevel = nominalFullCostLevel;
@@ -83,7 +90,98 @@ namespace ShooterMover.Domain.Progression.Experience
                     "The configured XP curve exceeds the Int64 cumulative range.");
             }
 
+            canonicalString = BuildCanonicalString();
+            Fingerprint = PlayerExperienceFormat.ComputeSha256(canonicalString);
+        }
+
+        private PlayerExperienceCurve(
+            long baseExperienceToAdvance,
+            double growthPerLevel,
+            bool linearGrowth)
+            : this(
+                baseExperienceToAdvance,
+                checked((long)Math.Round(
+                    baseExperienceToAdvance
+                        + (growthPerLevel * (MaximumLevel - 2)),
+                    MidpointRounding.AwayFromZero)),
+                MaximumLevel - 1,
+                new SoftActivationCurveParameters(0.1, 10L, 10L))
+        {
+            if (!linearGrowth)
+            {
+                throw new ArgumentException(
+                    "The linear XP constructor requires the linear-growth marker.",
+                    nameof(linearGrowth));
+            }
+            if (double.IsNaN(growthPerLevel)
+                || double.IsInfinity(growthPerLevel)
+                || growthPerLevel <= 0d)
+            {
+                throw new ArgumentOutOfRangeException(nameof(growthPerLevel));
+            }
+
+            usesLinearGrowth = true;
+            linearGrowthPerLevel = growthPerLevel;
+            cumulativeThresholds[MinimumLevel] = 0L;
+            for (int level = MinimumLevel; level < MaximumLevel; level++)
+            {
+                long cost = EvaluateCost(level);
+                experienceToAdvance[level] = cost;
+                cumulativeThresholds[level + 1] = checked(
+                    cumulativeThresholds[level] + cost);
+            }
+
+            canonicalString = BuildCanonicalString();
+            Fingerprint = PlayerExperienceFormat.ComputeSha256(canonicalString);
+        }
+
+        /// <summary>
+        /// The authoritative production curve. Level 1 to 2 costs 100 XP and each
+        /// subsequent level cost grows by 47.4335 XP before deterministic rounding.
+        /// The cumulative level-1-to-100 cost is exactly 240,000 XP.
+        /// </summary>
+        public static PlayerExperienceCurve CreateProduction()
+        {
+            return new PlayerExperienceCurve(
+                checked((long)ProductionBaseExperience),
+                ProductionGrowthPerLevel,
+                true);
+        }
+
+        public static PlayerExperienceCurve CreateLegacyPlaceholder()
+        {
+            return new PlayerExperienceCurve(
+                100L,
+                100L,
+                50,
+                new SoftActivationCurveParameters(0.1, 10L, 10L));
+        }
+
+        public static bool IsLegacyPlaceholderFingerprint(string fingerprint)
+        {
+            return string.Equals(
+                fingerprint,
+                CreateLegacyPlaceholder().Fingerprint,
+                StringComparison.Ordinal);
+        }
+
+        private string BuildCanonicalString()
+        {
             var builder = new StringBuilder();
+            if (usesLinearGrowth)
+            {
+                PlayerExperienceFormat.AppendToken(builder, "schema", LinearSchemaId);
+                PlayerExperienceFormat.AppendToken(
+                    builder,
+                    "base_experience_to_advance",
+                    MinimumExperienceToAdvance.ToString(CultureInfo.InvariantCulture));
+                PlayerExperienceFormat.AppendToken(
+                    builder,
+                    "growth_per_level",
+                    linearGrowthPerLevel.ToString("R", CultureInfo.InvariantCulture));
+            }
+            else
+            {
             PlayerExperienceFormat.AppendToken(builder, "schema", SchemaId);
             PlayerExperienceFormat.AppendToken(
                 builder,
@@ -109,6 +207,7 @@ namespace ShooterMover.Domain.Progression.Experience
                 builder,
                 "post_nominal_activation_levels",
                 Shape.PostNominalActivationLevels.ToString(CultureInfo.InvariantCulture));
+            }
             for (int level = MinimumLevel; level < MaximumLevel; level++)
             {
                 PlayerExperienceFormat.AppendToken(
@@ -117,8 +216,7 @@ namespace ShooterMover.Domain.Progression.Experience
                     experienceToAdvance[level].ToString(CultureInfo.InvariantCulture));
             }
 
-            canonicalString = builder.ToString();
-            Fingerprint = PlayerExperienceFormat.ComputeSha256(canonicalString);
+            return builder.ToString();
         }
 
         public long MinimumExperienceToAdvance { get; }
@@ -225,6 +323,22 @@ namespace ShooterMover.Domain.Progression.Experience
 
         private long EvaluateCost(int level)
         {
+            if (usesLinearGrowth)
+            {
+                double linearValue = MinimumExperienceToAdvance
+                    + (linearGrowthPerLevel * (level - MinimumLevel));
+                if (double.IsNaN(linearValue)
+                    || double.IsInfinity(linearValue)
+                    || linearValue > long.MaxValue)
+                {
+                    throw new OverflowException(
+                        "The linear XP-to-advance value is not finite.");
+                }
+                return checked((long)Math.Round(
+                    linearValue,
+                    MidpointRounding.AwayFromZero));
+            }
+
             if (MinimumExperienceToAdvance == MaximumExperienceToAdvance)
             {
                 return MinimumExperienceToAdvance;

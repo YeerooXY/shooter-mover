@@ -225,6 +225,20 @@ namespace ShooterMover.UI.Game
                     }
                     return accepted;
                 });
+            controller.ConfigureRunFailure(
+                completionState =>
+                {
+                    bool accepted = completion.SettleIncomplete(
+                        completionState);
+                    if (!accepted)
+                    {
+                        Debug.LogError(
+                            "playable-level-run-failure-rejected:"
+                                + completion.LastDiagnostic,
+                            controller);
+                    }
+                    return accepted;
+                });
             observedLifecycleGeneration = runtime.Run.LifecycleGeneration;
             pickupBridge.RetireOtherLifecycles(
                 runtime.RunStableId,

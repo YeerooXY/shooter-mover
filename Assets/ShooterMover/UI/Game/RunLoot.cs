@@ -5,6 +5,8 @@ using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using System.Text;
 using ShooterMover.Application.Flow.Game;
+using ShooterMover.Application.Missions.Rooms;
+using ShooterMover.Application.Progression.Experience;
 using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Application.Runs.Session;
 using ShooterMover.Content.Definitions.Levels.Selection;
@@ -25,13 +27,18 @@ namespace ShooterMover.UI.Game
         public const int GenerationAlgorithmVersion = 1;
 
         private readonly LevelPorts livePorts;
+        private readonly LevelRooms rooms;
+        private readonly RunExperienceLedger experienceLedger;
 
         private RunLoot(
             RunSessionState authority,
             RunSessionAggregate run,
             ProgressionContext frozenProgression,
             LevelPorts livePorts,
-            IEnemyDropFactConsumer dropConsumer)
+            IEnemyDropFactConsumer dropConsumer,
+            LevelRooms rooms,
+            RunExperienceLedger experienceLedger,
+            bool awardsPersistentExperience)
         {
             RunSessions = authority
                 ?? throw new ArgumentNullException(nameof(authority));
@@ -40,9 +47,13 @@ namespace ShooterMover.UI.Game
                 ?? throw new ArgumentNullException(nameof(frozenProgression));
             this.livePorts = livePorts
                 ?? throw new ArgumentNullException(nameof(livePorts));
+            this.rooms = rooms ?? throw new ArgumentNullException(nameof(rooms));
+            this.experienceLedger = experienceLedger
+                ?? throw new ArgumentNullException(nameof(experienceLedger));
             DropConsumer = dropConsumer
                 ?? throw new ArgumentNullException(nameof(dropConsumer));
-            ExperienceConsumer = new NoXp();
+            ExperienceConsumer = experienceLedger;
+            AwardsPersistentExperience = awardsPersistentExperience;
             KillStatisticsConsumer = new NoKillStats();
         }
 
@@ -53,6 +64,27 @@ namespace ShooterMover.UI.Game
         public IEnemyExperienceFactConsumer ExperienceConsumer { get; }
         public IEnemyDropFactConsumer DropConsumer { get; }
         public IEnemyKillStatFactConsumer KillStatisticsConsumer { get; }
+        public bool AwardsPersistentExperience { get; }
+
+        public RunExperienceLedgerSnapshot ExperienceSnapshot
+        {
+            get { return experienceLedger.ExportSnapshot(); }
+        }
+
+        public int CompletedRoomCount
+        {
+            get
+            {
+                RoomLiveView projection = rooms.CurrentProjection;
+                if (projection == null) return 0;
+                int count = 0;
+                for (int index = 0; index < projection.Rooms.Count; index++)
+                {
+                    if (projection.Rooms[index].IsCompleted) count++;
+                }
+                return count;
+            }
+        }
 
         public MissionResultPayload RefreshMissionResult(
             MissionResultPayload prior)
@@ -206,20 +238,20 @@ namespace ShooterMover.UI.Game
                     pending,
                     pickupBridge,
                     consumerFactory);
+            RunPlayerSnapshot player = run.RuntimePorts.Player.ExportSnapshot();
+            var experienceLedger = new RunExperienceLedger(
+                run.RunStableId,
+                player.ParticipantStableId,
+                new MissionExperienceRewardPolicy(1m));
             return new RunLoot(
                 authority,
                 run,
                 frozenProgression,
                 livePorts,
-                transactionalConsumer);
-        }
-    }
-
-    internal sealed class NoXp : IEnemyExperienceFactConsumer
-    {
-        public void Consume(EnemyDeathFact fact)
-        {
-            if (fact == null) throw new ArgumentNullException(nameof(fact));
+                transactionalConsumer,
+                rooms,
+                experienceLedger,
+                level.AwardsPersistentExperience);
         }
     }
 
