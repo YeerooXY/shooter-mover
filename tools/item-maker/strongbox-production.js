@@ -32,6 +32,7 @@
     .distribution{width:100%;border-collapse:collapse;font-size:12px}.distribution th,.distribution td{padding:7px 6px;border-top:1px solid rgba(145,220,255,.1);text-align:right}.distribution th:first-child,.distribution td:first-child{text-align:left}.distribution tbody tr:first-child td{border-top:0}
     .distribution-bar{display:inline-block;width:90px;height:7px;margin-right:8px;border-radius:99px;background:rgba(145,220,255,.12);vertical-align:middle;overflow:hidden}.distribution-bar i{display:block;height:100%;background:#73d8ff}
     .analysis-meta{margin:0 0 14px;color:#b8d7e8;font-size:12px}.analysis-meta code{color:#8de1ff}
+    .weapon-analysis-picker{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px;padding:12px 14px;border:1px solid rgba(145,220,255,.18);border-radius:12px;background:rgba(8,35,57,.72)}.weapon-analysis-picker label{color:#9fc3d7;font-size:11px;font-weight:850;letter-spacing:.08em;text-transform:uppercase}.weapon-analysis-picker select{min-width:240px;min-height:38px;padding:0 10px;border:1px solid rgba(145,220,255,.3);border-radius:9px;background:#092c47;color:#eefaff}.weapon-analysis-summary{margin-left:auto;color:#cbe5f4;font-size:12px}.distribution .weapon-link{padding:0;border:0;background:none;color:#8de1ff;font:inherit;font-weight:800;text-align:left;cursor:pointer}.distribution .weapon-link:hover,.distribution .weapon-link:focus{text-decoration:underline}.weapon-drilldown{margin-top:14px}.weapon-drilldown-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:10px}.weapon-drilldown-head h2{margin:0;font-size:22px}.weapon-drilldown-head p{margin:0;color:#9fc3d7;font-size:12px}
     @media(max-width:1000px){.analysis-metrics{grid-template-columns:repeat(3,1fr)}.analysis-grid{grid-template-columns:1fr}.analysis-section.full{grid-column:auto}}
     @media(max-width:900px){.presentation-head{grid-template-columns:1fr}.presentation{inset:60px 8px 80px;width:auto;max-height:none}.production-fields label span{display:none}}
     @media(max-width:560px){.analysis-metrics{grid-template-columns:repeat(2,1fr)}}
@@ -208,6 +209,51 @@
       </section>`;
   }
 
+  function weaponDistributionTable(entries) {
+    const rows = entries || [];
+    if (!rows.length) return `<section class="analysis-section full"><h3>Weapon results</h3><p>No results.</p></section>`;
+    const maximum = Math.max(...rows.map(entry => Number(entry.percentage) || 0), 0.0001);
+    return `
+      <section class="analysis-section full">
+        <h3>Weapon results — click a weapon to inspect it</h3>
+        <table class="distribution">
+          <thead><tr><th>Weapon</th><th>Count</th><th>Share</th></tr></thead>
+          <tbody>${rows.map(entry => `
+            <tr>
+              <td><span class="distribution-bar"><i style="width:${Math.max(0, Math.min(100, Number(entry.percentage) / maximum * 100))}%"></i></span><button type="button" class="weapon-link" data-weapon-key="${escapeText(entry.key)}">${escapeText(entry.label)}</button></td>
+              <td>${formatNumber(entry.count, 0)}</td>
+              <td>${formatNumber(entry.percentage, 3)}%</td>
+            </tr>`).join("")}</tbody>
+        </table>
+      </section>`;
+  }
+
+  function renderWeaponDrilldown(report, definitionId) {
+    const detail = (report.weaponBreakdowns || []).find(value => value.definitionId === definitionId);
+    const target = presentation.querySelector("#weaponDrilldown");
+    const summary = presentation.querySelector("#weaponAnalysisSummary");
+    if (!target) return;
+    if (!detail) {
+      target.innerHTML = `<div class="bridge-error"><div><strong>No weapon detail found</strong>The selected weapon was not present in this analysis.</div></div>`;
+      if (summary) summary.textContent = "";
+      return;
+    }
+    if (summary) summary.textContent = `${formatNumber(detail.count, 0)} drops · ${formatNumber(detail.percentage, 3)}% of successful openings`;
+    target.innerHTML = `
+      <div class="weapon-drilldown-head">
+        <div><h2>${escapeText(detail.displayName)}</h2><p>${escapeText(detail.definitionId)}</p></div>
+        <p>${formatNumber(detail.count, 0)} of ${formatNumber(report.successfulOpenings, 0)} successful openings</p>
+      </div>
+      <div class="analysis-grid">
+        ${distributionTable("Augment signatures (level/slots)", detail.augmentSignatureDistribution, { full: true })}
+        ${distributionTable("Augment levels", detail.augmentLevelDistribution)}
+        ${distributionTable("Augment slots", detail.augmentSlotDistribution)}
+        ${distributionTable("Item levels", detail.itemLevelDistribution)}
+        ${distributionTable("Target levels", detail.targetLevelDistribution)}
+        ${distributionTable("Quality", detail.qualityDistribution)}
+      </div>`;
+  }
+
   function showAnalysis(report) {
     showPanel();
     const rejection = Number(report.rejectedOpenings || 0);
@@ -228,7 +274,7 @@
         <div class="analysis-metric"><span>Tier / player</span><strong>${report.tierNumber} / ${report.playerLevel}</strong></div>
       </div>
       <div class="analysis-grid">
-        ${distributionTable("Weapon results", report.weaponDistribution, { full: true })}
+        ${weaponDistributionTable(report.weaponDistribution)}
         ${distributionTable("Rarity", report.rarityDistribution)}
         ${distributionTable("Augment signatures (level/slots)", report.augmentSignatureDistribution)}
         ${distributionTable("Augment slots", report.augmentSlotDistribution)}
@@ -237,7 +283,28 @@
         ${distributionTable("Target levels", report.targetLevelDistribution)}
         ${distributionTable("Quality", report.qualityDistribution)}
         ${rejection ? distributionTable("Rejected openings", report.rejectionDistribution, { full: true }) : ""}
+      </div>
+      <div class="weapon-drilldown">
+        <div class="weapon-analysis-picker">
+          <label for="analysisWeaponFilter">Inspect one weapon</label>
+          <select id="analysisWeaponFilter">${(report.weaponBreakdowns || []).map(detail => `<option value="${escapeText(detail.definitionId)}">${escapeText(detail.displayName)}</option>`).join("")}</select>
+          <span id="weaponAnalysisSummary" class="weapon-analysis-summary"></span>
+        </div>
+        <div id="weaponDrilldown"></div>
       </div>`;
+
+    const weaponFilter = presentation.querySelector("#analysisWeaponFilter");
+    const firstWeapon = weaponFilter?.value || report.weaponBreakdowns?.[0]?.definitionId;
+    if (firstWeapon) renderWeaponDrilldown(report, firstWeapon);
+    weaponFilter?.addEventListener("change", () => renderWeaponDrilldown(report, weaponFilter.value));
+    presentation.querySelectorAll("[data-weapon-key]").forEach(button => {
+      button.addEventListener("click", () => {
+        const definitionId = button.dataset.weaponKey;
+        if (weaponFilter) weaponFilter.value = definitionId;
+        renderWeaponDrilldown(report, definitionId);
+        presentation.querySelector("#weaponDrilldown")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
   }
 
   function showError(error) {
