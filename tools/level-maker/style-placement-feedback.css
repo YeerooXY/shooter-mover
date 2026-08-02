@@ -1,0 +1,167 @@
+/* Placement feedback and SM63-style side layout. */
+
+#tools{
+  left:auto!important;
+  right:10px!important;
+  top:10px!important;
+  width:286px;
+  max-width:min(286px,calc(100% - 20px))!important;
+  max-height:calc(100% - 82px);
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  overflow-x:hidden;
+  overflow-y:auto;
+  gap:7px;
+  padding:7px;
+}
+
+#tools .tool-cluster{
+  width:100%;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:5px;
+  padding:20px 6px 6px;
+}
+
+#tools .tool-cluster-label{
+  left:8px;
+  top:5px;
+}
+
+#tools button{
+  width:100%;
+  min-width:0;
+  flex:none;
+}
+
+#tools .tool-cluster[data-cluster="level"]{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+
+#asset-palette{
+  left:10px!important;
+  right:auto!important;
+  top:10px!important;
+  width:270px!important;
+  max-width:calc(100% - 316px)!important;
+  max-height:calc(100% - 20px);
+  padding:9px;
+  overflow:hidden;
+}
+
+#asset-palette .palette-title{
+  margin:0 0 8px 1px;
+  font-size:11px;
+}
+
+#asset-palette .palette-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:7px;
+  max-height:calc(100vh - 210px);
+  overflow-x:hidden;
+  overflow-y:auto;
+  padding:1px 3px 5px 1px;
+}
+
+#asset-palette .palette-asset{
+  width:100%;
+  min-width:0;
+  min-height:52px;
+}
+
+#asset-palette .palette-asset b{
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.palette-floor-actions{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:6px;
+  margin-bottom:8px;
+  padding-bottom:8px;
+  border-bottom:1px solid var(--line);
+}
+
+.palette-floor-actions button{
+  min-height:34px;
+  font-weight:750;
+}
+
+.palette-floor-actions kbd{
+  margin-left:4px;
+  font-size:8px;
+}
+
+#room-focus-tools{
+  top:auto!important;
+  right:10px!important;
+  bottom:10px!important;
+  left:auto!important;
+  transform:none!important;
+  max-width:calc(100% - 306px);
+}
+
+body.asset-palette-open #room-hud{
+  left:290px;
+}
+
+body.room-focus #view-hud{
+  top:10px!important;
+  right:306px;
+}
+
+body.room-focus #selection-hud{
+  right:306px;
+  bottom:10px;
+}
+
+@media(max-width:900px){
+  #tools{
+    width:236px;
+    max-width:236px!important;
+  }
+  #asset-palette{
+    width:230px!important;
+    max-width:calc(100% - 266px)!important;
+  }
+  #room-focus-tools{
+    max-width:calc(100% - 256px);
+  }
+  body.asset-palette-open #room-hud{
+    left:250px;
+  }
+  body.room-focus #view-hud,
+  body.room-focus #selection-hud{
+    right:256px;
+  }
+}
+
+@media(max-width:680px){
+  #tools{
+    width:210px;
+    max-width:210px!important;
+  }
+  #tools .tool-cluster{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  #asset-palette{
+    width:calc(100% - 240px)!important;
+    max-width:calc(100% - 240px)!important;
+  }
+  #room-focus-tools{
+    right:10px!important;
+    bottom:10px!important;
+    max-width:200px;
+  }
+  body.asset-palette-open #room-hud{
+    left:10px;
+    bottom:76px;
+  }
+  body.room-focus #view-hud,
+  body.room-focus #selection-hud{
+    display:none!important;
+  }
+}
