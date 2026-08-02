@@ -14,7 +14,8 @@
   }
 
   function manualAssets(assets) {
-    return (assets || []).filter(asset => asset?.source === "manual").map(copy);
+    const list = Array.isArray(assets) ? assets : [];
+    return list.filter(asset => asset?.source === "manual").map(copy);
   }
 
   function checkLevelFile(levelFile) {
