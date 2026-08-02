@@ -16,6 +16,7 @@ Historical source: `d30030776909a42fed4633c49817c29b8c2eddf2:Assets/ShooterMover
 - `Photonic` and `Omni-Phase` are not normalized to Energy; they remain review/pending.
 - Rarity: `Common -> common`, `Uncommon -> common`, `Rare -> rare`, `Epic -> epic`, `Legendary -> legendary`, `Mythic -> artifact`, `Artifact -> artifact`.
 - Because current production rarity is family-owned, generated families use the highest normalized rarity among their Marks.
+- Historical `FinalBaseWeight` values are preserved only in the source manifest and are not imported into live drop selection; current peak-level and rarity rules remain authoritative.
 - Historical bullet definitions do not author collision radius; generated bullet Marks use the current-project `0.1` convention and record that approximation below.
 - Families with fewer than three Marks are not padded or duplicated.
 - Launchers and explosive Orbs remain blocked because current canonical authored data has one executable damage value, while PR #288 authored separate direct and area damage.

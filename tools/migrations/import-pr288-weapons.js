@@ -264,7 +264,6 @@ function generateCSharp(root, generatedFamilies) {
     family.exactDefinitions.forEach((d, index) => {
       lines.push("                        new Pr288MarkSource(");
       lines.push(`                            ${index + 1}, ${d.PeakDropLevel},`);
-      lines.push(`                            ${csharpNumber(d.FinalBaseWeight)},`);
       lines.push(`                            ${fireExpression(family.archetype, d.FireRate)},`);
       lines.push(`                            GunShotPattern.Canonical(${d.ProjectilesPerTrigger}, ${csharpNumber(d.SpreadDegrees)}),`);
       lines.push(`                            ${csharpNumber(d.DamagePerProjectile)},`);
@@ -279,11 +278,11 @@ function generateCSharp(root, generatedFamilies) {
   lines.push("");
   lines.push("        private sealed class Pr288MarkSource");
   lines.push("        {");
-  lines.push("            public Pr288MarkSource(int mark, int peak, double weight, FireSettings fire, GunShotPattern shot, double damage, GunDamageCategory category, int pierce, double knockback, double range, double speed, double radius)");
+  lines.push("            public Pr288MarkSource(int mark, int peak, FireSettings fire, GunShotPattern shot, double damage, GunDamageCategory category, int pierce, double knockback, double range, double speed, double radius)");
   lines.push("            {");
-  lines.push("                Mark = mark; Peak = peak; Weight = weight; Fire = fire; Shot = shot; Damage = damage; Category = category; Pierce = pierce; Knockback = knockback; Range = range; Speed = speed; Radius = radius;");
+  lines.push("                Mark = mark; Peak = peak; Fire = fire; Shot = shot; Damage = damage; Category = category; Pierce = pierce; Knockback = knockback; Range = range; Speed = speed; Radius = radius;");
   lines.push("            }");
-  lines.push("            public int Mark { get; } public int Peak { get; } public double Weight { get; }");
+  lines.push("            public int Mark { get; } public int Peak { get; }");
   lines.push("            public FireSettings Fire { get; } public GunShotPattern Shot { get; }");
   lines.push("            public double Damage { get; } public GunDamageCategory Category { get; }");
   lines.push("            public int Pierce { get; } public double Knockback { get; } public double Range { get; }");
@@ -325,7 +324,7 @@ function generateCSharp(root, generatedFamilies) {
   lines.push("                        \"gun-impact-art.\" + presentationKey + \".v1\", null),");
   lines.push("                    new GunDropMetadata(");
   lines.push("                        StableId.Create(\"equipment\", equipmentValue), rarityId,");
-  lines.push("                        GunDropAvailability.Live, source.Peak, source.Weight,");
+  lines.push("                        GunDropAvailability.Live, source.Peak, PlaceholderBaseWeight,");
   lines.push("                        GunStrongboxEligibility.FromMinimumTier(1)));");
   lines.push("                marks[index] = new GunMark(source.Mark, source.Peak, Math.Min(source.Peak, 100), true, blueprint);");
   lines.push("            }");
@@ -356,6 +355,7 @@ function report(root, manifest, rows) {
     "- `Photonic` and `Omni-Phase` are not normalized to Energy; they remain review/pending.",
     "- Rarity: `Common -> common`, `Uncommon -> common`, `Rare -> rare`, `Epic -> epic`, `Legendary -> legendary`, `Mythic -> artifact`, `Artifact -> artifact`.",
     "- Because current production rarity is family-owned, generated families use the highest normalized rarity among their Marks.",
+    "- Historical `FinalBaseWeight` values are preserved only in the source manifest and are not imported into live drop selection; current peak-level and rarity rules remain authoritative.",
     "- Historical bullet definitions do not author collision radius; generated bullet Marks use the current-project `0.1` convention and record that approximation below.",
     "- Families with fewer than three Marks are not padded or duplicated.",
     "- Launchers and explosive Orbs remain blocked because current canonical authored data has one executable damage value, while PR #288 authored separate direct and area damage.",

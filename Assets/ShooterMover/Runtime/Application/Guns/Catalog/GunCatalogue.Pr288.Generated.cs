@@ -23,7 +23,6 @@ namespace ShooterMover.Application.Guns.Catalog
                     {
                         new Pr288MarkSource(
                             1, 5,
-                            1100d,
                             FireSettings.SemiAutomatic(1.45d),
                             GunShotPattern.Canonical(7, 19d),
                             1.552015862068966d,
@@ -32,7 +31,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             16d, 25d, 0.1d),
                         new Pr288MarkSource(
                             2, 28,
-                            605d,
                             FireSettings.SemiAutomatic(1.4935d),
                             GunShotPattern.Canonical(7, 18.05d),
                             5.679319833641276d,
@@ -41,7 +39,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             16.48d, 26.25d, 0.1d),
                         new Pr288MarkSource(
                             3, 52,
-                            1100d,
                             FireSettings.SemiAutomatic(1.537d),
                             GunShotPattern.Canonical(7, 17.1d),
                             16.10189087332782d,
@@ -59,7 +56,6 @@ namespace ShooterMover.Application.Guns.Catalog
                     {
                         new Pr288MarkSource(
                             1, 14,
-                            522.5d,
                             FireSettings.SemiAutomatic(0.72d),
                             GunShotPattern.Canonical(1, 0.15d),
                             37.436299190750226d,
@@ -68,7 +64,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             58d, 75d, 0.1d),
                         new Pr288MarkSource(
                             2, 38,
-                            209d,
                             FireSettings.SemiAutomatic(0.7416d),
                             GunShotPattern.Canonical(1, 0.1425d),
                             153.73283204605988d,
@@ -77,7 +72,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             59.74d, 78.75d, 0.1d),
                         new Pr288MarkSource(
                             3, 62,
-                            522.5d,
                             FireSettings.SemiAutomatic(0.7632d),
                             GunShotPattern.Canonical(1, 0.135d),
                             435.8601659639591d,
@@ -95,7 +89,6 @@ namespace ShooterMover.Application.Guns.Catalog
                     {
                         new Pr288MarkSource(
                             1, 25,
-                            193.6d,
                             FireSettings.SemiAutomatic(2.15d),
                             GunShotPattern.Canonical(1, 0.35d),
                             27.516298357012836d,
@@ -104,7 +97,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             48d, 82d, 0.1d),
                         new Pr288MarkSource(
                             2, 49,
-                            484d,
                             FireSettings.SemiAutomatic(2.2145d),
                             GunShotPattern.Canonical(1, 0.33249999999999996d),
                             77.94746179113703d,
@@ -113,7 +105,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             49.44d, 86.10000000000001d, 0.1d),
                         new Pr288MarkSource(
                             3, 73,
-                            880d,
                             FireSettings.SemiAutomatic(2.279d),
                             GunShotPattern.Canonical(1, 0.315d),
                             224.1520663645046d,
@@ -131,7 +122,6 @@ namespace ShooterMover.Application.Guns.Catalog
                     {
                         new Pr288MarkSource(
                             1, 34,
-                            180.39999999999998d,
                             FireSettings.Automatic(14d),
                             GunShotPattern.Canonical(1, 2.5d),
                             8.9882925089946d,
@@ -140,7 +130,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             36d, 42d, 0.1d),
                         new Pr288MarkSource(
                             2, 57,
-                            451d,
                             FireSettings.Automatic(14.42d),
                             GunShotPattern.Canonical(1, 2.375d),
                             24.134411076114308d,
@@ -149,7 +138,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             37.08d, 44.1d, 0.1d),
                         new Pr288MarkSource(
                             3, 81,
-                            820d,
                             FireSettings.Automatic(14.84d),
                             GunShotPattern.Canonical(1, 2.25d),
                             72.07833065445672d,
@@ -167,7 +155,6 @@ namespace ShooterMover.Application.Guns.Catalog
                     {
                         new Pr288MarkSource(
                             1, 3,
-                            1200d,
                             FireSettings.Automatic(7.5d),
                             GunShotPattern.Canonical(1, 2d),
                             1.764d,
@@ -176,7 +163,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             32d, 32d, 0.1d),
                         new Pr288MarkSource(
                             2, 25,
-                            660d,
                             FireSettings.Automatic(7.7250000000000005d),
                             GunShotPattern.Canonical(1, 1.9d),
                             6.089520991780434d,
@@ -185,7 +171,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             32.96d, 33.6d, 0.1d),
                         new Pr288MarkSource(
                             3, 47,
-                            1200d,
                             FireSettings.Automatic(7.95d),
                             GunShotPattern.Canonical(1, 1.8d),
                             15.43816236668627d,
@@ -203,7 +188,6 @@ namespace ShooterMover.Application.Guns.Catalog
                     {
                         new Pr288MarkSource(
                             1, 10,
-                            550d,
                             FireSettings.Automatic(7.5d),
                             GunShotPattern.Canonical(1, 2d),
                             3.0170386277171786d,
@@ -212,7 +196,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             32d, 32d, 0.1d),
                         new Pr288MarkSource(
                             2, 33,
-                            1000d,
                             FireSettings.Automatic(7.7250000000000005d),
                             GunShotPattern.Canonical(1, 1.9d),
                             7.508095877603602d,
@@ -221,7 +204,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             32.96d, 33.6d, 0.1d),
                         new Pr288MarkSource(
                             3, 56,
-                            220d,
                             FireSettings.Automatic(7.95d),
                             GunShotPattern.Canonical(1, 1.8d),
                             38.36077900641255d,
@@ -239,7 +221,6 @@ namespace ShooterMover.Application.Guns.Catalog
                     {
                         new Pr288MarkSource(
                             1, 21,
-                            189.2d,
                             FireSettings.SemiAutomatic(1.45d),
                             GunShotPattern.Canonical(7, 19d),
                             5.005406269401396d,
@@ -248,7 +229,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             16d, 25d, 0.1d),
                         new Pr288MarkSource(
                             2, 44,
-                            473d,
                             FireSettings.SemiAutomatic(1.4935d),
                             GunShotPattern.Canonical(7, 18.05d),
                             13.376290161632655d,
@@ -257,7 +237,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             16.48d, 26.25d, 0.1d),
                         new Pr288MarkSource(
                             3, 67,
-                            860d,
                             FireSettings.SemiAutomatic(1.537d),
                             GunShotPattern.Canonical(7, 17.1d),
                             35.947092855285135d,
@@ -275,7 +254,6 @@ namespace ShooterMover.Application.Guns.Catalog
                     {
                         new Pr288MarkSource(
                             1, 20,
-                            517d,
                             FireSettings.SemiAutomatic(1.45d),
                             GunShotPattern.Canonical(7, 19d),
                             3.921866785881265d,
@@ -284,7 +262,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             16d, 25d, 0.1d),
                         new Pr288MarkSource(
                             2, 43,
-                            206.79999999999998d,
                             FireSettings.SemiAutomatic(1.4935d),
                             GunShotPattern.Canonical(7, 18.05d),
                             15.706993351794498d,
@@ -293,7 +270,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             16.48d, 26.25d, 0.1d),
                         new Pr288MarkSource(
                             3, 66,
-                            940d,
                             FireSettings.SemiAutomatic(1.537d),
                             GunShotPattern.Canonical(7, 17.1d),
                             34.0730737964788d,
@@ -311,7 +287,6 @@ namespace ShooterMover.Application.Guns.Catalog
                     {
                         new Pr288MarkSource(
                             1, 6,
-                            1120d,
                             FireSettings.Automatic(7.5d),
                             GunShotPattern.Canonical(1, 2d),
                             2.0420505000000007d,
@@ -320,7 +295,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             32d, 32d, 0.1d),
                         new Pr288MarkSource(
                             2, 29,
-                            616.0000000000001d,
                             FireSettings.Automatic(7.7250000000000005d),
                             GunShotPattern.Canonical(1, 1.9d),
                             7.508095877603602d,
@@ -329,7 +303,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             32.96d, 33.6d, 0.1d),
                         new Pr288MarkSource(
                             3, 52,
-                            1120d,
                             FireSettings.Automatic(7.95d),
                             GunShotPattern.Canonical(1, 1.8d),
                             20.177060785713255d,
@@ -347,7 +320,6 @@ namespace ShooterMover.Application.Guns.Catalog
                     {
                         new Pr288MarkSource(
                             1, 22,
-                            506d,
                             FireSettings.SemiAutomatic(1.45d),
                             GunShotPattern.Canonical(7, 19d),
                             4.323858131434096d,
@@ -356,7 +328,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             16d, 25d, 0.1d),
                         new Pr288MarkSource(
                             2, 45,
-                            202.4d,
                             FireSettings.SemiAutomatic(1.4935d),
                             GunShotPattern.Canonical(7, 18.05d),
                             17.482276275381068d,
@@ -365,7 +336,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             16.48d, 26.25d, 0.1d),
                         new Pr288MarkSource(
                             3, 68,
-                            920d,
                             FireSettings.SemiAutomatic(1.537d),
                             GunShotPattern.Canonical(7, 17.1d),
                             37.924182962325816d,
@@ -383,7 +353,6 @@ namespace ShooterMover.Application.Guns.Catalog
                     {
                         new Pr288MarkSource(
                             1, 50,
-                            184.79999999999998d,
                             FireSettings.Automatic(7.5d),
                             GunShotPattern.Canonical(1, 2d),
                             29.490254833536824d,
@@ -392,7 +361,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             32d, 32d, 0.1d),
                         new Pr288MarkSource(
                             2, 73,
-                            462d,
                             FireSettings.Automatic(7.7250000000000005d),
                             GunShotPattern.Canonical(1, 1.9d),
                             81.8487164456979d,
@@ -401,7 +369,6 @@ namespace ShooterMover.Application.Guns.Catalog
                             32.96d, 33.6d, 0.1d),
                         new Pr288MarkSource(
                             3, 96,
-                            840d,
                             FireSettings.Automatic(7.95d),
                             GunShotPattern.Canonical(1, 1.8d),
                             240.6327158456136d,
@@ -414,11 +381,11 @@ namespace ShooterMover.Application.Guns.Catalog
 
         private sealed class Pr288MarkSource
         {
-            public Pr288MarkSource(int mark, int peak, double weight, FireSettings fire, GunShotPattern shot, double damage, GunDamageCategory category, int pierce, double knockback, double range, double speed, double radius)
+            public Pr288MarkSource(int mark, int peak, FireSettings fire, GunShotPattern shot, double damage, GunDamageCategory category, int pierce, double knockback, double range, double speed, double radius)
             {
-                Mark = mark; Peak = peak; Weight = weight; Fire = fire; Shot = shot; Damage = damage; Category = category; Pierce = pierce; Knockback = knockback; Range = range; Speed = speed; Radius = radius;
+                Mark = mark; Peak = peak; Fire = fire; Shot = shot; Damage = damage; Category = category; Pierce = pierce; Knockback = knockback; Range = range; Speed = speed; Radius = radius;
             }
-            public int Mark { get; } public int Peak { get; } public double Weight { get; }
+            public int Mark { get; } public int Peak { get; }
             public FireSettings Fire { get; } public GunShotPattern Shot { get; }
             public double Damage { get; } public GunDamageCategory Category { get; }
             public int Pierce { get; } public double Knockback { get; } public double Range { get; }
@@ -460,7 +427,7 @@ namespace ShooterMover.Application.Guns.Catalog
                         "gun-impact-art." + presentationKey + ".v1", null),
                     new GunDropMetadata(
                         StableId.Create("equipment", equipmentValue), rarityId,
-                        GunDropAvailability.Live, source.Peak, source.Weight,
+                        GunDropAvailability.Live, source.Peak, PlaceholderBaseWeight,
                         GunStrongboxEligibility.FromMinimumTier(1)));
                 marks[index] = new GunMark(source.Mark, source.Peak, Math.Min(source.Peak, 100), true, blueprint);
             }
