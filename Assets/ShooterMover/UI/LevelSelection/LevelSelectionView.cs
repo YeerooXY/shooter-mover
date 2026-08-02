@@ -61,12 +61,25 @@ namespace ShooterMover.UI.LevelSelection
             DrawContext(service);
             GUILayout.Space(16f);
 
-            for (int index = 0; index < service.Catalog.Levels.Count; index++)
+            if (service.Catalog.Levels.Count == 0)
             {
-                LevelSelectionDefinition definition =
-                    service.Catalog.Levels[index];
-                DrawLevel(definition, selectLevel);
-                GUILayout.Space(12f);
+                GUILayout.BeginVertical(GUI.skin.box);
+                GUILayout.Label("NO PLAYABLE LEVELS", headingStyle);
+                GUILayout.Label(
+                    "No level packages are currently registered. Create and publish "
+                    + "a new level before starting a run.",
+                    feedbackStyle);
+                GUILayout.EndVertical();
+            }
+            else
+            {
+                for (int index = 0; index < service.Catalog.Levels.Count; index++)
+                {
+                    LevelSelectionDefinition definition =
+                        service.Catalog.Levels[index];
+                    DrawLevel(definition, selectLevel);
+                    GUILayout.Space(12f);
+                }
             }
 
             DrawFeedback(lastResult);

@@ -12,11 +12,6 @@ const safeId=(s,fallback)=>String(s||fallback).trim().replace(/\s+/g,"-").toLowe
 const iconFor=t=>({enemy:"👾",prop:"▣",floor:"▦",door:"▥",decor:"✦"}[t]||"◇");
 
 const defaultCatalog = [
- {id:"enemy.moving-droid",label:"Moving Droid",type:"enemy",source:"EnemyCatalog"},
- {id:"enemy.ram-pouncer",label:"Ram Pouncer",type:"enemy",source:"EnemyCatalog"},
- {id:"enemy.blaster-turret",label:"Blaster Turret",type:"enemy",source:"EnemyCatalog"},
- {id:"enemy.pursuer-drone",label:"Pursuer Drone",type:"enemy",source:"EnemyCatalog"},
- {id:"enemy.hybrid-sentinel",label:"Hybrid Sentinel",type:"enemy",source:"EnemyCatalog"},
  {id:"prop.wall-1x1",label:"Indestructible Wall 1x1",type:"prop",source:"BuiltInRoomContentObjectCatalog"},
  {id:"prop.wall-2x2",label:"Indestructible Wall 2x2",type:"prop",source:"BuiltInRoomContentObjectCatalog"},
  {id:"tile.floor-industrial",label:"Industrial Floor",type:"floor",source:"Level1"},
@@ -77,7 +72,7 @@ function initialState(){
   format:"shooter-mover-web-level-project",editorVersion:1,schemaVersion:2,
   level:{id:"level.level-1",name:"Level 1",targetFolder:"level-1",startRoomId:r.id,finalRoomId:r.id,finalExitDoorId:exit.id},
   rooms:[r],connections:[],logic:[],catalog:clone(defaultCatalog),activeRoomId:r.id,
-  editor:{tool:"select",viewMode:"room",mapMode:"open",placementMode:"single",focusRoom:true,selectedId:null,selectedAssetId:"enemy.moving-droid",zoom:32,pan:[0,0],snap:true,snapSize:1,roomView:{zoom:32,pan:[0,0]},mapView:{zoom:22,pan:[0,0]}}
+  editor:{tool:"select",viewMode:"room",mapMode:"open",placementMode:"single",focusRoom:true,selectedId:null,selectedAssetId:"prop.wall-1x1",zoom:32,pan:[0,0],snap:true,snapSize:1,roomView:{zoom:32,pan:[0,0]},mapView:{zoom:22,pan:[0,0]}}
  };
 }
 let state=readRecoveryDraft()||initialState(), history=[], future=[], gestureSnapshot=null;

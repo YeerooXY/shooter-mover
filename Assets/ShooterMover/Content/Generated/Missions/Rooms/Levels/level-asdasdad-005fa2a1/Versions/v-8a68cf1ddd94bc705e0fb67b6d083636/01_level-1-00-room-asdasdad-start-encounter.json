@@ -1,1 +1,0 @@
-{"completion":"all-enemies","door_rules":[{"match":{"door_id":"door.asdasdad-final-exit"},"open_when":"room-complete"}],"optional_enemy_ids":[],"room":"room.asdasdad-start"}

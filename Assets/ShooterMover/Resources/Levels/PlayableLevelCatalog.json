@@ -1,33 +1,4 @@
 {
   "schema_version": 1,
-  "levels": [
-    {
-      "level_id": "level.asdasdad",
-      "display_name": "RealFirstMap",
-      "description": "Play RealFirstMap.",
-      "room_content_resource": "Levels/LevelAsdasdad_005fa2a1RoomContent",
-      "enemy_catalog_resource": "Levels/Level1EnemyCatalog",
-      "player_presentation": "presentation.player-default",
-      "recommended_player_level": 1,
-      "recommended_equipment_level": 1,
-      "recommended_party_size": 1,
-      "difficulty_label": "STANDARD",
-      "sort_order": 10,
-      "awards_persistent_xp": true
-    },
-    {
-      "level_id": "level.level-1",
-      "display_name": "level.level-1",
-      "description": "Play level.level-1.",
-      "room_content_resource": "Levels/Level1RoomContent",
-      "enemy_catalog_resource": "Levels/Level1EnemyCatalog",
-      "player_presentation": "presentation.player-default",
-      "recommended_player_level": 1,
-      "recommended_equipment_level": 1,
-      "recommended_party_size": 1,
-      "difficulty_label": "STANDARD",
-      "sort_order": 20,
-      "awards_persistent_xp": true
-    }
-  ]
+  "levels": []
 }

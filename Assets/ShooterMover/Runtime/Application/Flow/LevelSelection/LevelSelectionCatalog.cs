@@ -58,13 +58,6 @@ namespace ShooterMover.Application.Flow.LevelSelection
             }
 
             var ordered = new List<LevelSelectionDefinition>(levels);
-            if (ordered.Count == 0)
-            {
-                throw new ArgumentException(
-                    "At least one level definition is required.",
-                    nameof(levels));
-            }
-
             ordered.Sort(new DefinitionComparer());
             levelsById =
                 new Dictionary<StableId, LevelSelectionDefinition>();
