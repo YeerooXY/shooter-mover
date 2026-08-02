@@ -1,6 +1,34 @@
 "use strict";
 
 (() => {
+  const epicColor = "#8B5CF6";
+  const epicGlow = "#C4B5FD";
+
+  function applyEpicPalette(rarities) {
+    const epic = rarities?.find(rarity => rarity.id === "epic");
+    if (!epic) return;
+    epic.color = epicColor;
+    epic.glow = epicGlow;
+  }
+
+  applyEpicPalette(DEFAULT_CONFIG.rarities);
+  applyEpicPalette(config.rarities);
+
+  const prototypeResetVisualState = resetVisualState;
+  resetVisualState = function purpleEpicResetVisualState(run, rerender) {
+    prototypeResetVisualState(run, rerender);
+    if (rarityEl.textContent === "Grey · Blue · Green · Yellow · Red") {
+      rarityEl.textContent = "Grey · Blue · Purple · Yellow · Red";
+    }
+  };
+
+  const epicIndex = config.rarities.findIndex(rarity => rarity.id === "epic");
+  const epicInput = document.querySelector(
+    `[data-rarity="${epicIndex}"][data-field="color"]`
+  );
+  if (epicInput) epicInput.value = epicColor;
+  if (pendingRun) prepare(pendingRun);
+
   const presentation = document.getElementById("strongboxPresentation");
   if (!presentation) return;
 
