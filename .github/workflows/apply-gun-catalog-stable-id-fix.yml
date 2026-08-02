@@ -1,0 +1,112 @@
+name: Apply gun catalogue StableId fix
+
+on:
+  push:
+    branches:
+      - automation/fix-gun-catalog-stable-ids
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Patch catalogue StableId values
+        shell: bash
+        run: |
+          set -euo pipefail
+          git switch -C fix/gun-catalog-stable-id-values
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          content_path = Path("Assets/ShooterMover/Runtime/Application/Guns/Catalog/GunCatalogue.Content.cs")
+          generated_path = Path("Assets/ShooterMover/Runtime/Application/Guns/Catalog/GunCatalogue.Pr288.Generated.cs")
+          generator_path = Path("tools/migrations/import-pr288-weapons-core.js")
+
+          content = content_path.read_text(encoding="utf-8")
+          old_content_line = '            string equipmentValue = "gun-" + slug + "-mk" + mark;'
+          new_content_line = '            string equipmentValue = "gun-" + StableFamilyToken(slug) + "-mk" + mark;'
+          if content.count(old_content_line) != 1:
+              raise SystemExit("Expected exactly one base equipment-value construction.")
+          content = content.replace(old_content_line, new_content_line)
+
+          helper_anchor = "        private static ProvisionalCombatProfile BuildCombatProfile(\n"
+          helper = '''        // Authoring family IDs use underscore-safe folder keys, while StableId\n        // components require single hyphens. Keep the authored identity unchanged and\n        // convert only the namespace-local equipment token.\n        private static string StableFamilyToken(string familyId)\n        {\n            if (string.IsNullOrWhiteSpace(familyId))\n            {\n                throw new ArgumentException(\n                    "A gun family ID is required.",\n                    nameof(familyId));\n            }\n\n            return familyId.Replace('_', '-');\n        }\n\n'''
+          if helper_anchor not in content:
+              raise SystemExit("Could not locate the shared catalogue helper anchor.")
+          if "private static string StableFamilyToken" in content:
+              raise SystemExit("StableFamilyToken already exists unexpectedly.")
+          content = content.replace(helper_anchor, helper + helper_anchor, 1)
+          content_path.write_text(content, encoding="utf-8")
+
+          generated = generated_path.read_text(encoding="utf-8")
+          old_generated_line = '                string equipmentValue = "gun-" + familyId + "-mk" + source.Mark;'
+          new_generated_line = '                string equipmentValue = "gun-" + StableFamilyToken(familyId) + "-mk" + source.Mark;'
+          if generated.count(old_generated_line) != 1:
+              raise SystemExit("Expected exactly one generated equipment-value construction.")
+          generated = generated.replace(old_generated_line, new_generated_line)
+          generated_path.write_text(generated, encoding="utf-8")
+
+          generator = generator_path.read_text(encoding="utf-8")
+          old_generator_line = '  lines.push("                string equipmentValue = \\"gun-\\" + familyId + \\"-mk\\" + source.Mark;");'
+          new_generator_line = '  lines.push("                string equipmentValue = \\"gun-\\" + StableFamilyToken(familyId) + \\"-mk\\" + source.Mark;");'
+          if generator.count(old_generator_line) != 1:
+              raise SystemExit("Expected exactly one generator equipment-value template.")
+          generator = generator.replace(old_generator_line, new_generator_line)
+          generator_path.write_text(generator, encoding="utf-8")
+
+          component = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+          family_sources = [
+              content_path,
+              generated_path,
+              Path("Assets/ShooterMover/Runtime/Application/Guns/Catalog/GunCatalogue.StrongboxTestPool.cs"),
+              Path("Assets/ShooterMover/Runtime/Application/Guns/Catalog/GunCatalogue.LowLevelStrongboxTestPool.cs"),
+          ]
+          family_ids = []
+          for path in family_sources:
+              text = path.read_text(encoding="utf-8")
+              family_ids.extend(re.findall(r'Build(?:Pr288)?Family\(\s*\n?\s*"([a-z0-9_-]+)"', text))
+          if not family_ids:
+              raise SystemExit("No catalogue family IDs found for validation.")
+          invalid = []
+          for family_id in family_ids:
+              equipment_value = f"gun-{family_id.replace('_', '-')}-mk1"
+              if not component.fullmatch(equipment_value):
+                  invalid.append((family_id, equipment_value))
+          if invalid:
+              raise SystemExit(f"Invalid normalized equipment values: {invalid}")
+
+          if old_content_line in content_path.read_text(encoding="utf-8"):
+              raise SystemExit("Old base equipment construction remains.")
+          if old_generated_line in generated_path.read_text(encoding="utf-8"):
+              raise SystemExit("Old generated equipment construction remains.")
+          if old_generator_line in generator_path.read_text(encoding="utf-8"):
+              raise SystemExit("Old generator template remains.")
+
+          print(f"Validated {len(family_ids)} gun family equipment StableId values.")
+          PY
+
+          git diff --check
+          git diff -- Assets/ShooterMover/Runtime/Application/Guns/Catalog/GunCatalogue.Content.cs \
+            Assets/ShooterMover/Runtime/Application/Guns/Catalog/GunCatalogue.Pr288.Generated.cs \
+            tools/migrations/import-pr288-weapons-core.js
+
+      - name: Publish focused branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            Assets/ShooterMover/Runtime/Application/Guns/Catalog/GunCatalogue.Content.cs \
+            Assets/ShooterMover/Runtime/Application/Guns/Catalog/GunCatalogue.Pr288.Generated.cs \
+            tools/migrations/import-pr288-weapons-core.js
+          git commit -m "Fix gun catalogue equipment StableIds"
+          git push --force origin HEAD:fix/gun-catalog-stable-id-values
