@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shooter Mover Strongbox Simulator</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .sim-main{max-width:1180px;margin:0 auto;padding:14px}.sim-controls{display:grid;grid-template-columns:180px 1fr auto;gap:10px;align-items:end}.sim-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}.sim-card{padding:12px;border:1px solid var(--line);border-radius:10px;background:#111821}.sim-card h2{margin:0 0 5px;font-size:16px}.sim-card .meta{color:var(--muted);font-size:12px}.sim-stats{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:10px;font-size:12px}.sim-empty{padding:28px;text-align:center;color:var(--muted)}@media(max-width:760px){.sim-controls,.sim-grid{grid-template-columns:1fr}.sim-main{padding:8px}}
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand"><strong>Strongbox Simulator</strong><span>Preview rolls from the current split weapon folders</span></div>
+    <button type="button" onclick="location.href='weapon-folder.html'">Weapon Maker</button>
+    <div class="spacer"></div>
+    <div id="simStatus" class="status-pill">Loading weapons…</div>
+  </header>
+  <main class="sim-main">
+    <section class="panel">
+      <div class="panel-head">Preview roll</div>
+      <div class="panel-body">
+        <div class="sim-controls">
+          <div class="field"><label for="simLevel">Character level</label><input id="simLevel" type="number" min="1" value="25"></div>
+          <div class="help">The cards use the live values from <span class="mono">Content/Weapons</span>. Exact strongbox tier and rarity weighting still belongs to the future Unity bridge.</div>
+          <button id="rollButton" type="button" class="primary">Roll 6 offers</button>
+        </div>
+        <div id="rollGrid" class="sim-grid"><div class="sim-empty">Loading current weapons…</div></div>
+      </div>
+    </section>
+  </main>
+  <script src="strongbox-simulator.js"></script>
+</body>
+</html>
