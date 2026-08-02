@@ -5,11 +5,8 @@
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   if (root) root.WeaponDps = api;
 })(typeof globalThis !== "undefined" ? globalThis : this, function createWeaponDps() {
-  const SCHEMA = "shooter-mover.weapon-dps-targets/2";
-  const LEGACY_SCHEMA = "shooter-mover.weapon-dps-targets/1";
   const DEFAULT_MAX_LEVEL = 122;
-  const DEFAULT_CONFIG = Object.freeze({
-    $schema: SCHEMA,
+  const DEFAULT_SETTINGS = Object.freeze({
     rawWeaponCurve: Object.freeze({
       startLevel: 1,
       startDps: 4,
@@ -54,97 +51,66 @@
     return JSON.parse(JSON.stringify(value));
   }
 
-  function emptyTargets() {
-    return clone(DEFAULT_CONFIG);
+  function defaultSettings() {
+    return clone(DEFAULT_SETTINGS);
   }
 
-  function validateLegacyTargets(value) {
+  function validateSettings(value) {
     const errors = [];
-    if (!Number.isInteger(value.maxLevel) || value.maxLevel < 1 || value.maxLevel > 1000) errors.push("maxLevel must be an integer from 1 to 1000.");
-    if (!value.targets || typeof value.targets !== "object" || Array.isArray(value.targets)) return errors.concat("targets must be an object keyed by level.");
-    for (let level = 1; level <= value.maxLevel; level += 1) {
-      if (!positive(value.targets[String(level)])) errors.push(`Level ${level} DPS target must be greater than zero.`);
-    }
-    return errors;
-  }
-
-  function validateTargets(value) {
-    const errors = [];
-    if (!value || typeof value !== "object" || Array.isArray(value)) return ["Weapon balance must be an object."];
-    if (value.$schema === LEGACY_SCHEMA) return validateLegacyTargets(value);
-    if (value.$schema !== SCHEMA) errors.push(`$schema must be ${SCHEMA}.`);
+    if (!value || typeof value !== "object" || Array.isArray(value)) return ["Balance settings must be an object."];
 
     const curve = value.rawWeaponCurve;
     if (!curve || typeof curve !== "object" || Array.isArray(curve)) {
       errors.push("rawWeaponCurve must be an object.");
     } else {
-      if (!positiveInteger(curve.startLevel)) errors.push("rawWeaponCurve.startLevel must be a positive integer.");
-      if (!positive(curve.startDps)) errors.push("rawWeaponCurve.startDps must be greater than zero.");
-      if (!positiveInteger(curve.referenceLevel)) errors.push("rawWeaponCurve.referenceLevel must be a positive integer.");
-      if (!positive(curve.referenceDps)) errors.push("rawWeaponCurve.referenceDps must be greater than zero.");
-      if (!positiveInteger(curve.maxAuthoredLevel) || curve.maxAuthoredLevel > 10000) errors.push("rawWeaponCurve.maxAuthoredLevel must be an integer from 1 to 10000.");
+      if (!positiveInteger(curve.startLevel)) errors.push("Starting level must be a positive integer.");
+      if (!positive(curve.startDps)) errors.push("Starting raw DPS must be greater than zero.");
+      if (!positiveInteger(curve.referenceLevel)) errors.push("Reference level must be a positive integer.");
+      if (!positive(curve.referenceDps)) errors.push("Reference raw DPS must be greater than zero.");
+      if (!positiveInteger(curve.maxAuthoredLevel) || curve.maxAuthoredLevel > 10000) errors.push("Maximum authored level must be an integer from 1 to 10000.");
       if (positiveInteger(curve.startLevel) && positiveInteger(curve.referenceLevel) && curve.referenceLevel <= curve.startLevel) {
-        errors.push("rawWeaponCurve.referenceLevel must be greater than startLevel.");
+        errors.push("Reference level must be greater than starting level.");
       }
       if (positiveInteger(curve.referenceLevel) && positiveInteger(curve.maxAuthoredLevel) && curve.maxAuthoredLevel < curve.referenceLevel) {
-        errors.push("rawWeaponCurve.maxAuthoredLevel must be at least referenceLevel.");
+        errors.push("Maximum authored level must be at least the reference level.");
       }
     }
 
     const rarity = value.rarityMultipliers;
     if (!rarity || typeof rarity !== "object" || Array.isArray(rarity)) {
-      errors.push("rarityMultipliers must be an object.");
+      errors.push("Rarity suggestions must be an object.");
     } else {
       ["common", "rare", "epic", "legendary", "artifact"].forEach(key => {
-        if (!positive(rarity[key])) errors.push(`rarityMultipliers.${key} must be greater than zero.`);
+        if (!positive(rarity[key])) errors.push(`${key} rarity suggestion must be greater than zero.`);
       });
     }
 
     const build = value.buildMultipliers;
     if (!build || typeof build !== "object" || Array.isArray(build)) {
-      errors.push("buildMultipliers must be an object.");
+      errors.push("Build estimates must be an object.");
     } else {
       ["weaponUpgrades", "gear", "skills", "accountProgression", "optimizedTotal"].forEach(key => {
-        if (!positive(build[key])) errors.push(`buildMultipliers.${key} must be greater than zero.`);
+        if (!positive(build[key])) errors.push(`${key} build estimate must be greater than zero.`);
       });
       if (["weaponUpgrades", "gear", "skills", "accountProgression", "optimizedTotal"].every(key => positive(build[key]))) {
         const normalTotal = build.weaponUpgrades * build.gear * build.skills * build.accountProgression;
-        if (build.optimizedTotal < normalTotal) errors.push("buildMultipliers.optimizedTotal must be at least the normal completed-build multiplier.");
+        if (build.optimizedTotal < normalTotal) errors.push("Optimized total must be at least the normal completed-build multiplier.");
       }
     }
 
     return errors;
   }
 
-  function normalizeTargets(value) {
-    const normalized = emptyTargets();
+  function normalizeSettings(value) {
+    const normalized = defaultSettings();
     if (!value || typeof value !== "object") return normalized;
-
-    if (value.$schema === "shooter-mover.weapon-dps-targets/1") {
-      const maxLevel = positiveInteger(value.maxLevel) ? value.maxLevel : normalized.rawWeaponCurve.referenceLevel;
-      const start = value.targets && positive(value.targets["1"]) ? value.targets["1"] : normalized.rawWeaponCurve.startDps;
-      const end = value.targets && positive(value.targets[String(maxLevel)]) ? value.targets[String(maxLevel)] : normalized.rawWeaponCurve.referenceDps;
-      normalized.rawWeaponCurve.startDps = start;
-      normalized.rawWeaponCurve.referenceLevel = maxLevel;
-      normalized.rawWeaponCurve.referenceDps = end;
-      normalized.rawWeaponCurve.maxAuthoredLevel = Math.max(maxLevel, DEFAULT_MAX_LEVEL);
-      return normalized;
-    }
-
-    if (value.rawWeaponCurve && typeof value.rawWeaponCurve === "object") {
-      Object.assign(normalized.rawWeaponCurve, value.rawWeaponCurve);
-    }
-    if (value.rarityMultipliers && typeof value.rarityMultipliers === "object") {
-      Object.assign(normalized.rarityMultipliers, value.rarityMultipliers);
-    }
-    if (value.buildMultipliers && typeof value.buildMultipliers === "object") {
-      Object.assign(normalized.buildMultipliers, value.buildMultipliers);
-    }
-    normalized.$schema = SCHEMA;
+    if (value.rawWeaponCurve && typeof value.rawWeaponCurve === "object") Object.assign(normalized.rawWeaponCurve, value.rawWeaponCurve);
+    if (value.rarityMultipliers && typeof value.rarityMultipliers === "object") Object.assign(normalized.rarityMultipliers, value.rarityMultipliers);
+    if (value.buildMultipliers && typeof value.buildMultipliers === "object") Object.assign(normalized.buildMultipliers, value.buildMultipliers);
     return normalized;
   }
 
-  function generateCurve(startDps, endDps, maxLevel = 110, mode = "linear") {
+  function generateCurve(startDps, endDps, maxLevel = 110, mode = "exponential") {
     if (!positive(startDps) || !positive(endDps)) throw new Error("Start and end DPS must be greater than zero.");
     if (!positiveInteger(maxLevel)) throw new Error("Maximum level must be a positive integer.");
     if (!["linear", "exponential"].includes(mode)) throw new Error("Curve must be linear or exponential.");
@@ -156,32 +122,31 @@
         : startDps + ((endDps - startDps) * progress);
       targets[String(level)] = round(value, 4);
     }
-    return { $schema: LEGACY_SCHEMA, maxLevel, targets };
+    return { maxLevel, targets };
   }
 
-  function targetAtLevel(config, level) {
+  function targetAtLevel(settings, level) {
     if (!positiveInteger(level)) return null;
-    const normalized = normalizeTargets(config);
-    if (validateTargets(normalized).length) return null;
+    const normalized = normalizeSettings(settings);
+    if (validateSettings(normalized).length) return null;
     const curve = normalized.rawWeaponCurve;
     const progress = (level - curve.startLevel) / (curve.referenceLevel - curve.startLevel);
     const value = curve.startDps * ((curve.referenceDps / curve.startDps) ** progress);
     return positive(value) ? round(value, 4) : null;
   }
 
-  function rarityTargetAtLevel(config, level, rarity) {
-    const rawTarget = targetAtLevel(config, level);
+  function rarityTargetAtLevel(settings, level, rarity) {
+    const rawTarget = targetAtLevel(settings, level);
     if (!positive(rawTarget)) return null;
-    const normalized = normalizeTargets(config);
-    const multiplier = positive(normalized.rarityMultipliers[String(rarity || "common").toLowerCase()])
-      ? normalized.rarityMultipliers[String(rarity || "common").toLowerCase()]
-      : normalized.rarityMultipliers.common;
+    const normalized = normalizeSettings(settings);
+    const key = String(rarity || "common").toLowerCase();
+    const multiplier = positive(normalized.rarityMultipliers[key]) ? normalized.rarityMultipliers[key] : normalized.rarityMultipliers.common;
     return round(rawTarget * multiplier, 4);
   }
 
-  function buildEstimates(rawDps, config) {
+  function buildEstimates(rawDps, settings) {
     if (!positive(rawDps)) return null;
-    const normalized = normalizeTargets(config);
+    const normalized = normalizeSettings(settings);
     const build = normalized.buildMultipliers;
     const developedWeapon = rawDps * build.weaponUpgrades;
     const withGear = developedWeapon * build.gear;
@@ -249,12 +214,11 @@
   }
 
   return {
-    SCHEMA,
     DEFAULT_MAX_LEVEL,
-    DEFAULT_CONFIG,
-    emptyTargets,
-    validateTargets,
-    normalizeTargets,
+    DEFAULT_SETTINGS,
+    defaultSettings,
+    validateSettings,
+    normalizeSettings,
     generateCurve,
     targetAtLevel,
     rarityTargetAtLevel,
