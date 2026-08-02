@@ -44,6 +44,66 @@
     return "common";
   }
 
+  function applyRarityFirstCandidateShares(reward) {
+    if (!reward || reward.rarityFirstCandidateSharesApplied) return;
+    const candidates = Array.isArray(reward.candidates)
+      ? reward.candidates
+      : [];
+    const groups = new Map();
+
+    candidates.forEach(candidate => {
+      candidate.chancePercent = 0;
+      const affinity = Number(candidate.baseWeight) * Number(candidate.levelAffinity);
+      const rarityWeight = Number(candidate.rarityMultiplier);
+      const eligible = candidate.reason === "eligible"
+        && candidate.hardEligible !== false
+        && Number.isFinite(affinity)
+        && affinity > 0
+        && Number.isFinite(rarityWeight)
+        && rarityWeight > 0;
+      if (!eligible) {
+        candidate.finalWeight = 0;
+        return;
+      }
+
+      const rarityId = String(candidate.rarityId || "");
+      let group = groups.get(rarityId);
+      if (!group) {
+        group = {
+          rarityWeight,
+          affinityTotal: 0,
+          candidates: []
+        };
+        groups.set(rarityId, group);
+      }
+      group.affinityTotal += affinity;
+      group.candidates.push({ candidate, affinity });
+    });
+
+    const rarityTotal = [...groups.values()].reduce(
+      (sum, group) => sum + group.rarityWeight,
+      0
+    );
+    if (!(rarityTotal > 0)) {
+      reward.totalWeight = 0;
+      reward.rarityFirstCandidateSharesApplied = true;
+      return;
+    }
+
+    groups.forEach(group => {
+      group.candidates.forEach(entry => {
+        const effectiveWeight = group.rarityWeight
+          * entry.affinity
+          / group.affinityTotal;
+        entry.candidate.finalWeight = effectiveWeight;
+        entry.candidate.chancePercent = 100 * effectiveWeight / rarityTotal;
+      });
+    });
+
+    reward.totalWeight = rarityTotal;
+    reward.rarityFirstCandidateSharesApplied = true;
+  }
+
   function seedHash(value) {
     let hash = 2166136261;
     for (const character of String(value || "")) {
@@ -75,6 +135,7 @@
 
   function buildCandidateReel(run) {
     if (!run?.reward || !Array.isArray(run.items)) return;
+    applyRarityFirstCandidateShares(run.reward);
     if (run.previewWeapons?.length === run.items.length) return;
 
     const candidates = (run.reward.candidates || []).filter(
@@ -146,7 +207,7 @@
           ? `${rarity.label} · LV ${run.reward.itemLevel}`
           : `${rarity.label} · PEAK LV ${weapon.peakLevel}`;
       }
-      card.title = `${weapon.displayName}\n${weapon.definitionId}\n${Number(weapon.chancePercent || 0).toFixed(3)}% of this target-level pool`;
+      card.title = `${weapon.displayName}\n${weapon.definitionId}\n${Number(weapon.chancePercent || 0).toFixed(3)}% after rarity-first selection`;
     });
   }
 
@@ -227,6 +288,12 @@
   function cleanReport() {
     scheduled = false;
     applyAnalysisEpicPalette();
+
+    presentation.querySelectorAll(".weight-table th").forEach(heading => {
+      if (heading.textContent.trim() === "Rarity ×") {
+        heading.textContent = "Rarity weight";
+      }
+    });
 
     const activeTab = presentation.querySelector(".analysis-tab.active")?.dataset.analysisTab || "";
     const rarityTab = presentation.querySelector('[data-analysis-tab="rarity"]');
