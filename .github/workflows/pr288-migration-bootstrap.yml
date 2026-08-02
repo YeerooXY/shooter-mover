@@ -1,0 +1,40 @@
+name: PR288 migration bootstrap
+
+on:
+  push:
+    branches:
+      - codex/pr288-weapon-migration
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Generate and validate migration
+        run: |
+          node tools/migrations/bootstrap-pr288.js | tee /tmp/pr288-summary.json
+          git diff --check
+          node --check tools/migrations/import-pr288-weapons.js
+          git add -A
+          git diff --cached --binary > /tmp/first.patch
+          node tools/migrations/import-pr288-weapons.js > /tmp/pr288-rerun.json
+          git add -A
+          git diff --cached --binary > /tmp/second.patch
+          cmp /tmp/first.patch /tmp/second.patch
+      - name: Commit deterministic output
+        run: |
+          rm -f .github/workflows/pr288-migration-bootstrap.yml
+          git add -A
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git commit -m "Generate current PR #288 weapon migration"
+          git push
