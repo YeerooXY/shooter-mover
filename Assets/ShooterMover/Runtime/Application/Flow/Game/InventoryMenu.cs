@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Guns.Catalog;
+using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Contracts.Flow.Session;
-using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Guns;
 using ShooterMover.Domain.Guns.Catalog;
 
@@ -142,18 +140,15 @@ namespace ShooterMover.Application.Flow.Game
     }
 
     /// <summary>
-    /// Exact gun-only Inventory draft. Physical mount state comes from the selected character's
-    /// existing canonical authority. The fixed-slot state is written only as a compatibility and
-    /// armor projection after the physical authority accepts the change. Opening or refreshing this
-    /// service never grants, repairs, recreates, migrates, or auto-equips equipment.
+    /// Exact gun-only Inventory draft. GunInventoryState is the ownership authority and
+    /// LoadoutState is the sole equipped-state authority. Opening or refreshing this service
+    /// never grants, repairs, recreates, migrates, or projects another loadout model.
     /// </summary>
     public sealed class InventoryMenuActions
     {
         private readonly PlayerRouteProfilePayload incomingRoute;
-        private readonly IPlayerHoldingsState genericHoldings;
         private readonly GunInventoryState gunHoldings;
         private readonly LoadoutState mountLoadoutAuthority;
-        private readonly InventoryLoadoutState loadoutAuthority;
         private readonly GunSlots layout;
         private readonly GunCatalog gunCatalog;
         private readonly Dictionary<StableId, StableId> draftBindings =
@@ -164,9 +159,7 @@ namespace ShooterMover.Application.Flow.Game
 
         public InventoryMenuActions(
             PlayerRouteProfilePayload incomingRoute,
-            IPlayerHoldingsState genericHoldings,
             GunInventoryState gunHoldings,
-            InventoryLoadoutState loadoutAuthority,
             GunSlots layout,
             GunCatalog gunCatalog)
         {
@@ -178,12 +171,8 @@ namespace ShooterMover.Application.Flow.Game
                     "The incoming Inventory route payload is invalid.",
                     nameof(incomingRoute));
             }
-            this.genericHoldings = genericHoldings
-                ?? throw new ArgumentNullException(nameof(genericHoldings));
             this.gunHoldings = gunHoldings
                 ?? throw new ArgumentNullException(nameof(gunHoldings));
-            this.loadoutAuthority = loadoutAuthority
-                ?? throw new ArgumentNullException(nameof(loadoutAuthority));
             this.layout = layout ?? throw new ArgumentNullException(nameof(layout));
             this.gunCatalog = gunCatalog
                 ?? throw new ArgumentNullException(nameof(gunCatalog));
@@ -227,11 +216,6 @@ namespace ShooterMover.Application.Flow.Game
         public InventoryMenuState Snapshot
         {
             get { return snapshot; }
-        }
-
-        public InventoryLoadoutScreenSnapshot CompatibilitySnapshot
-        {
-            get { return BuildCompatibilitySnapshot(); }
         }
 
         public InventoryLoadoutScreenResult Refresh()
@@ -388,13 +372,13 @@ namespace ShooterMover.Application.Flow.Game
                 gunHoldings.ExportSnapshot();
             LoadoutSnapshot mountsBefore =
                 mountLoadoutAuthority.ExportSnapshot();
-            InventoryLoadoutStateSnapshot legacyBefore =
-                loadoutAuthority.ExportSnapshot();
+            IReadOnlyList<EquippedGun> requestedBindings =
+                BuildMountBindings();
 
             LoadoutImportResult mountResult =
                 mountLoadoutAuthority.Apply(
                     mountsBefore.Sequence,
-                    BuildMountBindings());
+                    requestedBindings);
             if (mountResult == null || !mountResult.Succeeded)
             {
                 return Result(
@@ -404,58 +388,36 @@ namespace ShooterMover.Application.Flow.Game
                         : mountResult.RejectionCode);
             }
 
-            IReadOnlyList<InventoryLoadoutSlotBinding> compatibilityBindings =
-                LoadoutView.ToLegacyProjection(
-                    layout,
-                    mountResult.Snapshot,
-                    legacyBefore).Bindings;
-            var command = new InventoryLoadoutStateCommand(
-                legacyBefore.Sequence,
-                genericHoldings.Sequence,
-                compatibilityBindings);
-            InventoryLoadoutStateResult legacyResult =
-                loadoutAuthority.Apply(command);
-            if (legacyResult == null || !legacyResult.Succeeded)
-            {
-                RollBack(mountsBefore, legacyBefore);
-                return Result(
-                    InventoryLoadoutScreenStatus.AuthorityRejected,
-                    legacyResult == null
-                        ? "inventory-loadout-authority-result-null"
-                        : legacyResult.RejectionCode);
-            }
-
             GunInventorySnapshot holdingsAfter =
                 gunHoldings.ExportSnapshot();
-            InventoryLoadoutStateSnapshot legacyAfter =
-                legacyResult.Snapshot ?? loadoutAuthority.ExportSnapshot();
             if (holdingsAfter.Sequence != holdingsBefore.Sequence
                 || !string.Equals(
                     holdingsAfter.Fingerprint,
                     holdingsBefore.Fingerprint,
                     StringComparison.Ordinal))
             {
-                RollBack(mountsBefore, legacyBefore);
+                RollBack(mountsBefore);
                 return Result(
                     InventoryLoadoutScreenStatus.HoldingsChangedDuringApply,
                     "inventory-loadout-authority-mutated-gun-holdings");
             }
-            if (!Matches(legacyAfter, compatibilityBindings))
+
+            LoadoutSnapshot mountsAfter = mountResult.Snapshot
+                ?? mountLoadoutAuthority.ExportSnapshot();
+            if (!MatchesMountBindings(mountsAfter, requestedBindings))
             {
-                RollBack(mountsBefore, legacyBefore);
+                RollBack(mountsBefore);
                 return Result(
-                    InventoryLoadoutScreenStatus.AuthoritySnapshotMismatch,
-                    "inventory-loadout-authority-result-mismatch");
+                    InventoryLoadoutScreenStatus.AuthorityRejected,
+                    "gun-mount-loadout-authority-result-mismatch");
             }
 
             completed = true;
             Rebuild();
-            LoadoutSnapshot mountsAfter =
-                mountLoadoutAuthority.ExportSnapshot();
             return new InventoryLoadoutScreenResult(
                 InventoryLoadoutScreenStatus.Confirmed,
                 string.Empty,
-                BuildCompatibilitySnapshot(),
+                snapshot,
                 LoadoutView.Route(
                     incomingRoute.SelectedCharacterStableId,
                     incomingRoute.LoadoutProfileStableId,
@@ -476,7 +438,7 @@ namespace ShooterMover.Application.Flow.Game
             return new InventoryLoadoutScreenResult(
                 InventoryLoadoutScreenStatus.Cancelled,
                 string.Empty,
-                BuildCompatibilitySnapshot(),
+                snapshot,
                 incomingRoute);
         }
 
@@ -512,21 +474,14 @@ namespace ShooterMover.Application.Flow.Game
             }
         }
 
-        private void RollBack(
-            LoadoutSnapshot mounts,
-            InventoryLoadoutStateSnapshot legacy)
+        private void RollBack(LoadoutSnapshot mounts)
         {
-            LoadoutImportResult mountRollback =
+            LoadoutImportResult rollback =
                 mountLoadoutAuthority.ImportSnapshot(mounts);
-            InventoryLoadoutImportResult legacyRollback =
-                loadoutAuthority.ImportSnapshot(legacy);
-            if (mountRollback == null
-                || !mountRollback.Succeeded
-                || legacyRollback == null
-                || !legacyRollback.Succeeded)
+            if (rollback == null || !rollback.Succeeded)
             {
                 throw new InvalidOperationException(
-                    "Inventory loadout rollback failed.");
+                    "Inventory gun mount rollback failed.");
             }
         }
 
@@ -647,75 +602,6 @@ namespace ShooterMover.Application.Flow.Game
                 completed);
         }
 
-        private InventoryLoadoutScreenSnapshot BuildCompatibilitySnapshot()
-        {
-            var equipment = new List<InventoryLoadoutEquipmentView>(
-                snapshot.OwnedGuns.Count);
-            for (int index = 0;
-                 index < snapshot.OwnedGuns.Count;
-                 index++)
-            {
-                GunInventoryCard card = snapshot.OwnedGuns[index];
-                equipment.Add(new InventoryLoadoutEquipmentView(
-                    card.Instance.InstanceId,
-                    StableId.Parse(card.Instance.GunDefinitionId.Value),
-                    EquipmentCategoryIds.Gun,
-                    card.DisplayName,
-                    0,
-                    null,
-                    card.Instance.InstanceId
-                        + "|"
-                        + card.Instance.GunDefinitionId.Value,
-                    true,
-                    string.Empty));
-            }
-
-            InventoryLoadoutStateSnapshot legacy =
-                loadoutAuthority.ExportSnapshot();
-            var selections = new List<InventoryLoadoutSelectionView>(
-                InventoryLoadoutSlots.All.Count);
-            for (int index = 0;
-                 index < InventoryLoadoutSlots.All.Count;
-                 index++)
-            {
-                InventoryLoadoutSlotDescriptor slot =
-                    InventoryLoadoutSlots.All[index];
-                GunSlot physical = slot.Kind
-                        == InventoryLoadoutSlotKind.Gun
-                    ? FindPhysicalMount(slot.SlotStableId)
-                    : null;
-                StableId selected = slot.Kind
-                        == InventoryLoadoutSlotKind.Gun
-                    ? physical == null
-                        ? null
-                        : draftBindings[slot.SlotStableId]
-                    : legacy.GetBinding(slot.SlotStableId)
-                        .EquipmentInstanceStableId;
-                bool valid = slot.Kind != InventoryLoadoutSlotKind.Gun
-                    || physical == null
-                    || physical.IsActive
-                    || selected == null;
-                selections.Add(new InventoryLoadoutSelectionView(
-                    slot,
-                    selected,
-                    valid,
-                    valid
-                        ? string.Empty
-                        : "inventory-loadout-slot-unavailable-for-profile"));
-            }
-
-            return new InventoryLoadoutScreenSnapshot(
-                incomingRoute,
-                snapshot.GunInventorySequence,
-                snapshot.GunInventoryFingerprint,
-                snapshot.LoadoutSequence,
-                snapshot.LoadoutFingerprint,
-                equipment,
-                selections,
-                snapshot.CanConfirm,
-                snapshot.IsCompleted);
-        }
-
         private InventoryLoadoutScreenResult Result(
             InventoryLoadoutScreenStatus status,
             string rejectionCode)
@@ -723,7 +609,7 @@ namespace ShooterMover.Application.Flow.Game
             return new InventoryLoadoutScreenResult(
                 status,
                 rejectionCode,
-                BuildCompatibilitySnapshot(),
+                snapshot,
                 null);
         }
 
@@ -792,11 +678,12 @@ namespace ShooterMover.Application.Flow.Game
             return true;
         }
 
-        private static bool Matches(
-            InventoryLoadoutStateSnapshot snapshot,
-            IReadOnlyList<InventoryLoadoutSlotBinding> bindings)
+        private static bool MatchesMountBindings(
+            LoadoutSnapshot snapshot,
+            IReadOnlyList<EquippedGun> bindings)
         {
             if (snapshot == null
+                || bindings == null
                 || !snapshot.HasValidFingerprint()
                 || snapshot.Bindings.Count != bindings.Count)
             {
@@ -804,7 +691,9 @@ namespace ShooterMover.Application.Flow.Game
             }
             for (int index = 0; index < bindings.Count; index++)
             {
-                if (!snapshot.Bindings[index].Equals(bindings[index]))
+                EquippedGun actual = snapshot.Find(bindings[index].MountId);
+                if (actual == null
+                    || actual.InstanceId != bindings[index].InstanceId)
                 {
                     return false;
                 }

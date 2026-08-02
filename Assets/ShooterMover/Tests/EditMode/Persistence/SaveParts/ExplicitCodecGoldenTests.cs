@@ -4,7 +4,6 @@ using NUnit.Framework;
 using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Economy.Scrap;
 using ShooterMover.Application.Holdings;
-using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Application.Progression.Experience;
 using ShooterMover.Contracts.Equipment;
@@ -154,32 +153,6 @@ namespace ShooterMover.Tests.EditMode.Persistence.SaveParts
                 "schema_version",
                 "content_version",
                 "ranks");
-        }
-
-        [Test]
-        public void ExactInstanceLoadoutCodecHasAuthoredFieldOrder()
-        {
-            var bindings = new List<InventoryLoadoutSlotBinding>();
-            for (int index = 0; index < InventoryLoadoutSlots.All.Count; index++)
-            {
-                InventoryLoadoutSlotDescriptor slot =
-                    InventoryLoadoutSlots.All[index];
-                bindings.Add(new InventoryLoadoutSlotBinding(
-                    slot.SlotStableId,
-                    index == 0
-                        ? Id("equipment-instance.codec-golden")
-                        : null));
-            }
-            InventoryLoadoutStateSnapshot snapshot =
-                InventoryLoadoutStateSnapshot.CreateCanonical(
-                    1L,
-                    bindings);
-            AssertCanonical(
-                GameSaveFormats.ExactInstanceLoadout,
-                snapshot,
-                "InventoryLoadoutStateSnapshot",
-                "sequence",
-                "bindings");
         }
 
         [Test]

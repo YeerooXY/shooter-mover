@@ -1,12 +1,10 @@
 using System;
-using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Application.Flow.Game;
-using ShooterMover.Application.Inventory.LoadoutScreen;
+using ShooterMover.Application.Flow.Hub;
 using ShooterMover.Application.Guns.Catalog;
+using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Rewards.Strongboxes;
-using ShooterMover.Contracts.Equipment;
 using ShooterMover.Contracts.Flow.Session;
-using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Guns;
@@ -21,21 +19,15 @@ namespace ShooterMover.UI.InventoryLoadout
         MonoBehaviour,
         IHubRouteDestinationBridge
     {
-        private IPlayerHoldingsState holdingsAuthority;
-        private IEquipmentCatalogProvider equipmentCatalogProvider;
-        private IInventoryLoadoutStatePort loadoutAuthority;
         private GunInventoryState canonicalGunInventory;
-        private InventoryLoadoutState canonicalLoadoutAuthority;
         private GunSlots canonicalMountLayout;
         private GunCatalog canonicalGunCatalog;
         private GeneratedEquipmentAugmentSignatureState augmentSignatures;
-        private InventoryLoadoutScreenActions legacyService;
         private InventoryMenuActions canonicalService;
         private Action<PlayerRouteProfilePayload> returnToHub;
         private PlayerRouteProfilePayload incomingPayload;
         private InventoryLoadoutScreenResult lastResult;
-        private StableId activeSlotStableId =
-            InventoryLoadoutSlotIds.GunOne;
+        private StableId activeSlotStableId;
         private bool returnDispatched;
         private Vector2 equipmentScroll;
         private Vector2 slotScroll;
@@ -48,21 +40,14 @@ namespace ShooterMover.UI.InventoryLoadout
 
         public event Action<PlayerRouteProfilePayload> Confirmed;
 
-        public InventoryLoadoutScreenSnapshot Snapshot
+        public InventoryMenuState Snapshot
         {
-            get
-            {
-                if (canonicalService != null)
-                {
-                    return canonicalService.CompatibilitySnapshot;
-                }
-                return legacyService == null ? null : legacyService.Snapshot;
-            }
+            get { return canonicalService == null ? null : canonicalService.Snapshot; }
         }
 
         public InventoryMenuState CanonicalSnapshot
         {
-            get { return canonicalService == null ? null : canonicalService.Snapshot; }
+            get { return Snapshot; }
         }
 
         public InventoryLoadoutScreenResult LastResult
@@ -93,74 +78,23 @@ namespace ShooterMover.UI.InventoryLoadout
             get
             {
                 return canonicalGunInventory != null
-                    && canonicalLoadoutAuthority != null
                     && canonicalMountLayout != null
-                    && canonicalGunCatalog != null
-                    || holdingsAuthority != null
-                    && equipmentCatalogProvider != null
-                    && loadoutAuthority != null;
-            }
-        }
-
-        public void Configure(
-            IPlayerHoldingsState holdingsAuthority,
-            IEquipmentCatalogProvider equipmentCatalogProvider,
-            IInventoryLoadoutStatePort loadoutAuthority,
-            Action<PlayerRouteProfilePayload> returnToHub)
-        {
-            ConnectAuthorities(
-                holdingsAuthority,
-                equipmentCatalogProvider,
-                loadoutAuthority);
-            this.returnToHub = returnToHub;
-        }
-
-        public void ConnectAuthorities(
-            IPlayerHoldingsState holdingsAuthority,
-            IEquipmentCatalogProvider equipmentCatalogProvider,
-            IInventoryLoadoutStatePort loadoutAuthority)
-        {
-            this.holdingsAuthority = holdingsAuthority
-                ?? throw new ArgumentNullException(nameof(holdingsAuthority));
-            this.equipmentCatalogProvider = equipmentCatalogProvider
-                ?? throw new ArgumentNullException(
-                    nameof(equipmentCatalogProvider));
-            this.loadoutAuthority = loadoutAuthority
-                ?? throw new ArgumentNullException(nameof(loadoutAuthority));
-            canonicalGunInventory = null;
-            canonicalLoadoutAuthority = null;
-            canonicalMountLayout = null;
-            canonicalGunCatalog = null;
-            canonicalService = null;
-            if (incomingPayload != null)
-            {
-                BuildService(incomingPayload);
+                    && canonicalGunCatalog != null;
             }
         }
 
         public void ConnectCanonicalAuthorities(
-            IPlayerHoldingsState genericHoldings,
-            IEquipmentCatalogProvider equipmentCatalogProvider,
             GunInventoryState gunHoldings,
-            InventoryLoadoutState loadoutAuthority,
             GunSlots mountLayout,
             GunCatalog gunCatalog)
         {
-            holdingsAuthority = genericHoldings
-                ?? throw new ArgumentNullException(nameof(genericHoldings));
-            this.equipmentCatalogProvider = equipmentCatalogProvider
-                ?? throw new ArgumentNullException(
-                    nameof(equipmentCatalogProvider));
-            this.loadoutAuthority = loadoutAuthority
-                ?? throw new ArgumentNullException(nameof(loadoutAuthority));
             canonicalGunInventory = gunHoldings
                 ?? throw new ArgumentNullException(nameof(gunHoldings));
-            canonicalLoadoutAuthority = loadoutAuthority;
             canonicalMountLayout = mountLayout
                 ?? throw new ArgumentNullException(nameof(mountLayout));
             canonicalGunCatalog = gunCatalog
                 ?? throw new ArgumentNullException(nameof(gunCatalog));
-            legacyService = null;
+            canonicalService = null;
             if (incomingPayload != null)
             {
                 BuildService(incomingPayload);
@@ -186,31 +120,26 @@ namespace ShooterMover.UI.InventoryLoadout
         public void ConfigureDisconnected(
             Action<PlayerRouteProfilePayload> returnToHub)
         {
-            holdingsAuthority = null;
-            equipmentCatalogProvider = null;
-            loadoutAuthority = null;
             canonicalGunInventory = null;
-            canonicalLoadoutAuthority = null;
             canonicalMountLayout = null;
             canonicalGunCatalog = null;
             augmentSignatures = null;
-            legacyService = null;
             canonicalService = null;
             this.returnToHub = returnToHub
                 ?? throw new ArgumentNullException(nameof(returnToHub));
         }
 
         public void ConfigureForTests(
-            IPlayerHoldingsState holdingsAuthority,
-            IEquipmentCatalogProvider equipmentCatalogProvider,
-            IInventoryLoadoutStatePort loadoutAuthority,
+            GunInventoryState gunHoldings,
+            GunSlots mountLayout,
+            GunCatalog gunCatalog,
             Action<PlayerRouteProfilePayload> returnToHub)
         {
-            Configure(
-                holdingsAuthority,
-                equipmentCatalogProvider,
-                loadoutAuthority,
-                returnToHub);
+            ConnectCanonicalAuthorities(
+                gunHoldings,
+                mountLayout,
+                gunCatalog);
+            this.returnToHub = returnToHub;
         }
 
         public void Present(
@@ -284,83 +213,54 @@ namespace ShooterMover.UI.InventoryLoadout
             return SelectSlot(layout.Positions[index].LoadoutSlotStableId);
         }
 
-        /// <summary>
-        /// Compatibility action: in canonical mode this selects and equips the exact instance.
-        /// The UI itself separates selection from the explicit Equip action.
-        /// </summary>
         public InventoryLoadoutScreenResult SelectInstance(
             StableId equipmentInstanceStableId)
         {
-            if (canonicalService != null)
-            {
-                lastResult = canonicalService.SelectGun(
-                    equipmentInstanceStableId);
-                if (lastResult.Status
-                    != InventoryLoadoutScreenStatus.SelectionChanged
-                    && lastResult.Status
-                        != InventoryLoadoutScreenStatus.NoChange)
-                {
-                    return lastResult;
-                }
-                lastResult = canonicalService.EquipSelected(
-                    activeSlotStableId);
-                return lastResult;
-            }
-            if (legacyService == null)
+            if (canonicalService == null)
             {
                 return null;
             }
-            lastResult = legacyService.TrySelect(
-                activeSlotStableId,
+            lastResult = canonicalService.SelectGun(
                 equipmentInstanceStableId);
+            if (lastResult.Status
+                != InventoryLoadoutScreenStatus.SelectionChanged
+                && lastResult.Status
+                    != InventoryLoadoutScreenStatus.NoChange)
+            {
+                return lastResult;
+            }
+            lastResult = canonicalService.EquipSelected(
+                activeSlotStableId);
             return lastResult;
         }
 
         public InventoryLoadoutScreenResult UnequipActiveSlot()
         {
-            if (canonicalService != null)
-            {
-                lastResult = canonicalService.Unequip(activeSlotStableId);
-                return lastResult;
-            }
-            if (legacyService == null)
+            if (canonicalService == null)
             {
                 return null;
             }
-            lastResult = legacyService.TryUnequip(activeSlotStableId);
+            lastResult = canonicalService.Unequip(activeSlotStableId);
             return lastResult;
         }
 
         public InventoryLoadoutScreenResult Refresh()
         {
-            if (canonicalService != null)
-            {
-                lastResult = canonicalService.Refresh();
-                return lastResult;
-            }
-            if (legacyService == null)
+            if (canonicalService == null)
             {
                 return null;
             }
-            lastResult = legacyService.Refresh();
+            lastResult = canonicalService.Refresh();
             return lastResult;
         }
 
         public InventoryLoadoutScreenResult Confirm()
         {
-            if (canonicalService != null)
-            {
-                lastResult = canonicalService.Confirm();
-            }
-            else if (legacyService != null)
-            {
-                lastResult = legacyService.Confirm();
-            }
-            else
+            if (canonicalService == null)
             {
                 return null;
             }
-
+            lastResult = canonicalService.Confirm();
             if (lastResult.Status
                 == InventoryLoadoutScreenStatus.Confirmed)
             {
@@ -376,20 +276,13 @@ namespace ShooterMover.UI.InventoryLoadout
 
         public InventoryLoadoutScreenResult Back()
         {
-            if (canonicalService != null)
-            {
-                lastResult = canonicalService.Back();
-            }
-            else if (legacyService != null)
-            {
-                lastResult = legacyService.Back();
-            }
-            else
+            if (canonicalService == null)
             {
                 DispatchReturn(incomingPayload);
                 return null;
             }
 
+            lastResult = canonicalService.Back();
             if (lastResult.Status
                 == InventoryLoadoutScreenStatus.Cancelled)
             {
@@ -454,10 +347,6 @@ namespace ShooterMover.UI.InventoryLoadout
             {
                 DrawCanonical();
             }
-            else if (legacyService != null)
-            {
-                DrawLegacy();
-            }
             else
             {
                 DrawDisconnected();
@@ -469,10 +358,10 @@ namespace ShooterMover.UI.InventoryLoadout
         {
             GUILayout.FlexibleSpace();
             GUILayout.Label(
-                "AWAITING INVENTORY AUTHORITY COMPOSITION",
+                "AWAITING CANONICAL GUN AUTHORITIES",
                 headingStyle);
             GUILayout.Label(
-                "No fallback holdings, starter grant or loadout authority was created.",
+                "No fallback holdings, starter grant, or fixed-slot loadout is created.",
                 bodyStyle);
             if (GUILayout.Button(
                 "BACK TO HUB",
@@ -722,37 +611,6 @@ namespace ShooterMover.UI.InventoryLoadout
             }
         }
 
-        private void DrawLegacy()
-        {
-            InventoryLoadoutScreenSnapshot current = legacyService.Snapshot;
-            GUILayout.Label(
-                "LEGACY GENERIC EQUIPMENT COMPATIBILITY VIEW",
-                headingStyle);
-            GUILayout.Label(
-                "Production gun ownership uses the canonical exact-instance view.",
-                bodyStyle);
-            GUILayout.Label(
-                "Held equipment: " + current.Equipment.Count
-                + "  •  Loadout sequence " + current.LoadoutSequence,
-                bodyStyle);
-            GUILayout.FlexibleSpace();
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("REFRESH", GUILayout.MinHeight(42f)))
-            {
-                Refresh();
-            }
-            if (GUILayout.Button("CONFIRM", GUILayout.MinHeight(42f)))
-            {
-                Confirm();
-            }
-            if (GUILayout.Button("BACK", GUILayout.MinHeight(42f)))
-            {
-                Back();
-            }
-            GUILayout.EndHorizontal();
-            DrawLastDiagnostic();
-        }
-
         private void DrawCanonicalSafety(GunItem instance)
         {
             if (instance == null)
@@ -874,33 +732,17 @@ namespace ShooterMover.UI.InventoryLoadout
         private void BuildService(PlayerRouteProfilePayload payload)
         {
             canonicalService = null;
-            legacyService = null;
-            if (canonicalGunInventory != null
-                && canonicalLoadoutAuthority != null
-                && canonicalMountLayout != null
-                && canonicalGunCatalog != null
-                && holdingsAuthority != null)
+            if (canonicalGunInventory == null
+                || canonicalMountLayout == null
+                || canonicalGunCatalog == null)
             {
-                canonicalService =
-                    new InventoryMenuActions(
-                        payload,
-                        holdingsAuthority,
-                        canonicalGunInventory,
-                        canonicalLoadoutAuthority,
-                        canonicalMountLayout,
-                        canonicalGunCatalog);
                 return;
             }
-            if (holdingsAuthority != null
-                && equipmentCatalogProvider != null
-                && loadoutAuthority != null)
-            {
-                legacyService = new InventoryLoadoutScreenActions(
-                    payload,
-                    holdingsAuthority,
-                    equipmentCatalogProvider,
-                    loadoutAuthority);
-            }
+            canonicalService = new InventoryMenuActions(
+                payload,
+                canonicalGunInventory,
+                canonicalMountLayout,
+                canonicalGunCatalog);
         }
 
         private void DispatchReturn(PlayerRouteProfilePayload payload)

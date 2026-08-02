@@ -52,10 +52,7 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
                 HubRoute.Inventory,
                 runtime.CurrentRoutePayload);
             controller.ConnectCanonicalAuthorities(
-                runtime.Holdings,
-                runtime.CatalogBridge,
                 runtime.GunInventory,
-                runtime.LoadoutAuthority,
                 runtime.MountLayout,
                 runtime.GunCatalog);
             InventoryLoadoutScreenResult result =

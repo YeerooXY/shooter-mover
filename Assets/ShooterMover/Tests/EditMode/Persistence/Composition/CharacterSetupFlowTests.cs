@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using ShooterMover.Application.Flow.Game;
-using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Accounts;
 using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Application.Persistence.Composition;
@@ -272,19 +271,19 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
             Assert.That(selected.Succeeded, Is.True, selected.Diagnostic);
             var graph = (CharacterLiveGraph)
                 composition.ActiveRuntime;
-            InventoryLoadoutStateSnapshot loadout =
-                graph.LoadoutRuntime.LoadoutAuthority.ExportSnapshot();
+            LoadoutSnapshot loadout = graph.LoadoutRuntime
+                .MountLoadoutAuthority.ExportSnapshot();
             var equipped = loadout.Bindings
-                .Where(item => item.EquipmentInstanceStableId != null)
-                .Select(item => item.EquipmentInstanceStableId)
+                .Where(item => item.InstanceId != null)
+                .Select(item => item.InstanceId)
                 .ToArray();
-            var owned = graph.LoadoutRuntime.Holdings.ExportSnapshot()
-                .UniqueHoldings.Select(item => item.InstanceStableId)
+            var owned = graph.LoadoutRuntime.GunInventory.ExportSnapshot()
+                .Instances.Select(item => item.InstanceId)
                 .ToArray();
 
             Assert.That(equipped.Length, Is.EqualTo(4));
             Assert.That(equipped.Distinct().Count(), Is.EqualTo(4));
-            Assert.That(owned.Length, Is.EqualTo(4));
+            Assert.That(owned.Length, Is.GreaterThanOrEqualTo(4));
             Assert.That(equipped.All(owned.Contains), Is.True);
         }
 
@@ -406,7 +405,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 GameSaveParts.MoneyWallet(),
                 GameSaveParts.ScrapWallet(),
                 GameSaveParts.RankedSkillAllocation(),
-                GameSaveParts.ExactInstanceLoadout(),
+                GunInventorySavePart.Definition(),
+                LoadoutSavePart.Definition(),
                 GameSaveParts.StrongboxState(),
             };
         }

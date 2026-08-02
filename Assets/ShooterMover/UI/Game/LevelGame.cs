@@ -41,7 +41,7 @@ namespace ShooterMover.UI.Game
         private PlayableLevelDefinition levelDefinition;
         private CharacterLiveGraph characterGraph;
         private object exactHoldingsAuthority;
-        private object exactLoadoutAuthority;
+        private object exactGunMountLoadoutAuthority;
         private string routeFingerprint;
         private PlayerMarker playerMarker;
         private Rigidbody2D playerBody;
@@ -328,7 +328,7 @@ namespace ShooterMover.UI.Game
                 characterGraph = graph
                     ?? throw new ArgumentNullException(nameof(graph));
                 exactHoldingsAuthority = graph.LoadoutRuntime.Holdings;
-                exactLoadoutAuthority = graph.LoadoutRuntime.LoadoutAuthority;
+                exactGunMountLoadoutAuthority = graph.LoadoutRuntime.MountLoadoutAuthority;
                 routeFingerprint = graph.RoutePayload.Fingerprint;
 
                 RoomFile roomContent =
@@ -506,7 +506,7 @@ namespace ShooterMover.UI.Game
                 characterGraph.Character.ClassDefinitionStableId,
                 characterGraph.RoutePayload,
                 exactHoldingsAuthority,
-                exactLoadoutAuthority);
+                exactGunMountLoadoutAuthority);
 
             playerBody = player.GetComponent<Rigidbody2D>();
             if (playerBody == null)
@@ -696,8 +696,8 @@ namespace ShooterMover.UI.Game
                     exactHoldingsAuthority,
                     characterGraph.LoadoutRuntime.Holdings)
                 || !ReferenceEquals(
-                    exactLoadoutAuthority,
-                    characterGraph.LoadoutRuntime.LoadoutAuthority)
+                    exactGunMountLoadoutAuthority,
+                    characterGraph.LoadoutRuntime.MountLoadoutAuthority)
                 || !string.Equals(
                     routeFingerprint,
                     characterGraph.RoutePayload.Fingerprint,
@@ -792,14 +792,14 @@ namespace ShooterMover.UI.Game
         public StableId ClassDefinitionStableId { get; private set; }
         public PlayerRouteProfilePayload RoutePayload { get; private set; }
         public object HoldingsAuthority { get; private set; }
-        public object LoadoutAuthority { get; private set; }
+        public object GunMountLoadoutAuthority { get; private set; }
 
         public void Bind(
             StableId characterInstanceStableId,
             StableId classDefinitionStableId,
             PlayerRouteProfilePayload routePayload,
             object holdingsAuthority,
-            object loadoutAuthority)
+            object gunMountLoadoutAuthority)
         {
             if (CharacterInstanceStableId != null)
             {
@@ -814,8 +814,8 @@ namespace ShooterMover.UI.Game
                 ?? throw new ArgumentNullException(nameof(routePayload));
             HoldingsAuthority = holdingsAuthority
                 ?? throw new ArgumentNullException(nameof(holdingsAuthority));
-            LoadoutAuthority = loadoutAuthority
-                ?? throw new ArgumentNullException(nameof(loadoutAuthority));
+            GunMountLoadoutAuthority = gunMountLoadoutAuthority
+                ?? throw new ArgumentNullException(nameof(gunMountLoadoutAuthority));
         }
     }
 

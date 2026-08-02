@@ -1,6 +1,5 @@
 using System;
 using ShooterMover.Application.Holdings;
-using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Contracts.Equipment;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Holdings;
@@ -64,18 +63,10 @@ namespace ShooterMover.Application.Flow.Game
                 MountLayout,
                 GunInventory,
                 state.EquippedGuns);
-
-            // This retained fixed-slot projection exists only for current gun Inventory callers.
-            // It accepts gun slots and rejects every former armor slot.
-            LoadoutAuthority = new InventoryLoadoutState(
-                CurrentRoutePayload,
-                Holdings,
-                CatalogBridge,
-                GunInventory,
-                GunCatalog);
         }
 
         public PlayerRouteProfilePayload RoutePayload { get; }
+
         public PlayerRouteProfilePayload CurrentRoutePayload
         {
             get
@@ -87,61 +78,22 @@ namespace ShooterMover.Application.Flow.Game
                     MountLoadoutAuthority.ExportSnapshot());
             }
         }
+
         public GunSlots MountLayout { get; }
         public PlayerHoldingsActions LegacyHoldings { get; }
         public IPlayerHoldingsState Holdings { get; }
         public GunInventoryState GunInventory { get; }
-        public LoadoutState MountLoadoutAuthority
-        {
-            get;
-        }
+        public LoadoutState MountLoadoutAuthority { get; }
         public EquipmentCatalog EquipmentCatalog { get; }
         public EquipmentCatalogBridge CatalogBridge { get; }
         public GunCatalog GunCatalog { get; }
 
-        /// <summary>
-        /// Gun-slot-only compatibility projection. It is not an armor authority.
-        /// </summary>
-        public InventoryLoadoutState LoadoutAuthority { get; }
-
-        public static PlayerLoadoutLive Restore(
-            StableId characterInstanceStableId,
-            StableId loadoutProfileStableId,
-            PlayerHoldingsSnapshot holdings,
-            InventoryLoadoutStateSnapshot retiredLoadout)
-        {
-            return Restore(
-                characterInstanceStableId,
-                loadoutProfileStableId,
-                holdings,
-                null,
-                null,
-                retiredLoadout);
-        }
-
         public static PlayerLoadoutLive Restore(
             StableId characterInstanceStableId,
             StableId loadoutProfileStableId,
             PlayerHoldingsSnapshot genericHoldings,
             GunInventorySnapshot gunHoldings,
-            InventoryLoadoutStateSnapshot retiredLoadout)
-        {
-            return Restore(
-                characterInstanceStableId,
-                loadoutProfileStableId,
-                genericHoldings,
-                gunHoldings,
-                null,
-                retiredLoadout);
-        }
-
-        public static PlayerLoadoutLive Restore(
-            StableId characterInstanceStableId,
-            StableId loadoutProfileStableId,
-            PlayerHoldingsSnapshot genericHoldings,
-            GunInventorySnapshot gunHoldings,
-            LoadoutSnapshot gunMountLoadout,
-            InventoryLoadoutStateSnapshot retiredLoadout)
+            LoadoutSnapshot gunMountLoadout)
         {
             return new PlayerLoadoutLive(
                 StarterLoadout.Restore(
@@ -149,8 +101,7 @@ namespace ShooterMover.Application.Flow.Game
                     loadoutProfileStableId,
                     genericHoldings,
                     gunHoldings,
-                    gunMountLoadout,
-                    retiredLoadout));
+                    gunMountLoadout));
         }
 
         public bool TryResolveFirstActiveEquippedGun(

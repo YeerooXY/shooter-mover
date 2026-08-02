@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Rewards.Generation;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Economy;
@@ -357,58 +356,6 @@ namespace ShooterMover.Application.Persistence.SaveParts
                 schemaVersion,
                 contentVersion,
                 ranks);
-        }
-    }
-
-    public sealed class LoadoutCodec :
-        ExplicitSavePartCodec<InventoryLoadoutStateSnapshot>
-    {
-        public LoadoutCodec()
-            : base("inventory-loadout-explicit-v1")
-        {
-        }
-
-        public override SavePartValidationResult Validate(
-            InventoryLoadoutStateSnapshot snapshot)
-        {
-            return FingerprintResult(
-                snapshot != null && snapshot.HasValidFingerprint(),
-                "inventory-loadout-fingerprint-mismatch");
-        }
-
-        protected override Node EncodeNode(
-            InventoryLoadoutStateSnapshot snapshot)
-        {
-            return Node.Object(
-                Value.Field("sequence", Value.Int64(snapshot.Sequence)),
-                Value.Field("bindings", ExplicitCodecValues.EncodeList(
-                    snapshot.Bindings,
-                    binding => Node.Object(
-                        Value.Field("slot_id", ExplicitCodecValues.RequiredIdNode(binding.SlotStableId)),
-                        Value.Field("equipment_instance_id", ExplicitCodecValues.Id(binding.EquipmentInstanceStableId))))));
-        }
-
-        protected override InventoryLoadoutStateSnapshot DecodeNode(
-            Node node)
-        {
-            var reader = new ObjectReader(
-                node,
-                "sequence",
-                "bindings");
-            return InventoryLoadoutStateSnapshot.CreateCanonical(
-                Value.ReadInt64(reader.Next("sequence")),
-                ExplicitCodecValues.DecodeList(
-                    reader.Next("bindings"),
-                    bindingNode =>
-                    {
-                        var bindingReader = new ObjectReader(
-                            bindingNode,
-                            "slot_id",
-                            "equipment_instance_id");
-                        return new InventoryLoadoutSlotBinding(
-                            ExplicitCodecValues.RequiredId(bindingReader.Next("slot_id")),
-                            ExplicitCodecValues.OptionalId(bindingReader.Next("equipment_instance_id")));
-                    }));
         }
     }
 
