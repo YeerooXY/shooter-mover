@@ -1,6 +1,7 @@
 using System;
 using NUnit.Framework;
 using ShooterMover.Application.Rewards.Strongboxes;
+using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Common.Random;
 using ShooterMover.Domain.Rewards.Strongboxes;
 
@@ -114,24 +115,21 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
             StrongboxTargetLevelRoll target =
                 policy.RollTargetLevel(30, 77UL, 1, 0UL);
 
-            double centered = policy.EvaluateDefinitionWeight(
+            double centered = policy.EvaluateDefinitionAffinity(
                 target,
                 target.TargetLevel,
-                1.0,
-                StrongboxDefinitionRarityIds.Common);
-            double tail = policy.EvaluateDefinitionWeight(
+                1.0);
+            double tail = policy.EvaluateDefinitionAffinity(
                 target,
                 target.TargetLevel + 12,
-                1.0,
-                StrongboxDefinitionRarityIds.Common);
+                1.0);
             double ratio = tail / centered;
 
             Assert.That(ratio, Is.EqualTo(0.000335).Within(0.0000001));
-            Assert.That(policy.EvaluateDefinitionWeight(
+            Assert.That(policy.EvaluateDefinitionAffinity(
                     target,
                     target.TargetLevel + 13,
-                    1.0,
-                    StrongboxDefinitionRarityIds.Common),
+                    1.0),
                 Is.EqualTo(0.0));
         }
 
@@ -182,6 +180,31 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
                     1,
                     0UL);
             });
+        }
+
+        [Test]
+        public void RarityWeightsAreDirectFiveBandOdds()
+        {
+            AssertRarityWeights(1, 80000, 16000, 3500, 500, 0);
+            AssertRarityWeights(5, 45000, 31000, 18000, 5999, 1);
+            AssertRarityWeights(8, 20000, 28000, 31000, 20950, 50);
+            AssertRarityWeights(10, 7000, 15000, 30000, 47000, 1000);
+            AssertRarityWeights(11, 2000, 7000, 24000, 64500, 2500);
+        }
+
+        [Test]
+        public void ArtifactSelectionUsesAJackpotLadder()
+        {
+            int[] expected = { 0, 0, 0, 0, 1, 5, 20, 50, 250, 1000, 2500 };
+            for (int tier = 1; tier <= expected.Length; tier++)
+            {
+                Assert.That(
+                    StrongboxHybridLootCatalog.GetByTierNumber(tier)
+                        .GetRaritySelectionWeight(
+                            StrongboxDefinitionRarityIds.Artifact),
+                    Is.EqualTo(expected[tier - 1]),
+                    "Tier " + tier);
+            }
         }
 
         [Test]
@@ -311,14 +334,35 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
         }
 
         [Test]
-        public void TierElevenGuaranteesNormalMaximumAndCanRollBothOvercaps()
+        public void TierElevenAuthorsHalfPercentLevelTwelveAndPointOneFiveCombinedJackpot()
+        {
+            StrongboxHybridLootPolicy policy =
+                StrongboxHybridLootCatalog.GetByTierNumber(11);
+            ulong levelTotal = OutcomeTotal(policy.AugmentLevelOutcomes);
+            ulong slotTotal = OutcomeTotal(policy.AugmentSlotOutcomes);
+            ulong levelTwelve = OutcomeWeight(policy.AugmentLevelOutcomes, 12);
+            ulong fourSlots = OutcomeWeight(policy.AugmentSlotOutcomes, 4);
+
+            Assert.That(levelTotal, Is.EqualTo(2000UL));
+            Assert.That(levelTwelve, Is.EqualTo(10UL));
+            Assert.That(100.0 * levelTwelve / levelTotal,
+                Is.EqualTo(0.5).Within(0.0000001));
+            Assert.That(100.0 * fourSlots / slotTotal,
+                Is.EqualTo(30.0).Within(0.0000001));
+            Assert.That(
+                100.0 * levelTwelve * fourSlots / (levelTotal * slotTotal),
+                Is.EqualTo(0.15).Within(0.0000001));
+        }
+
+        [Test]
+        public void TierElevenGuaranteesNormalMaximumAndCanRollOvercaps()
         {
             StrongboxHybridLootPolicy policy =
                 StrongboxHybridLootCatalog.GetByTierNumber(11);
             bool sawFourthSlot = false;
-            bool sawLevelEleven = false;
+            bool sawLevelElevenOrTwelve = false;
 
-            for (ulong ordinal = 0UL; ordinal < 2048UL; ordinal++)
+            for (ulong ordinal = 0UL; ordinal < 4096UL; ordinal++)
             {
                 StrongboxAugmentSignature signature =
                     policy.RollAugmentSignature(
@@ -331,13 +375,13 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
                         1,
                         ordinal);
                 Assert.That(signature.SlotCount, Is.InRange(3, 4));
-                Assert.That(signature.SharedLevel, Is.InRange(10, 11));
+                Assert.That(signature.SharedLevel, Is.InRange(10, 12));
                 sawFourthSlot |= signature.SlotCount == 4;
-                sawLevelEleven |= signature.SharedLevel == 11;
+                sawLevelElevenOrTwelve |= signature.SharedLevel >= 11;
             }
 
             Assert.That(sawFourthSlot, Is.True);
-            Assert.That(sawLevelEleven, Is.True);
+            Assert.That(sawLevelElevenOrTwelve, Is.True);
         }
 
         [Test]
@@ -368,6 +412,60 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
 
             Assert.That(sawZero, Is.True);
             Assert.That(sawNonZero, Is.True);
+        }
+
+        private static void AssertRarityWeights(
+            int tier,
+            int common,
+            int rare,
+            int epic,
+            int legendary,
+            int artifact)
+        {
+            StrongboxHybridLootPolicy policy =
+                StrongboxHybridLootCatalog.GetByTierNumber(tier);
+            Assert.That(policy.GetRaritySelectionWeight(
+                    StrongboxDefinitionRarityIds.Common),
+                Is.EqualTo(common));
+            Assert.That(policy.GetRaritySelectionWeight(
+                    StrongboxDefinitionRarityIds.Rare),
+                Is.EqualTo(rare));
+            Assert.That(policy.GetRaritySelectionWeight(
+                    StrongboxDefinitionRarityIds.Epic),
+                Is.EqualTo(epic));
+            Assert.That(policy.GetRaritySelectionWeight(
+                    StrongboxDefinitionRarityIds.Legendary),
+                Is.EqualTo(legendary));
+            Assert.That(policy.GetRaritySelectionWeight(
+                    StrongboxDefinitionRarityIds.Artifact),
+                Is.EqualTo(artifact));
+            Assert.That(common + rare + epic + legendary + artifact,
+                Is.EqualTo(100000));
+        }
+
+        private static ulong OutcomeTotal(
+            System.Collections.Generic.IReadOnlyList<StrongboxWeightedIntOutcome> outcomes)
+        {
+            ulong total = 0UL;
+            for (int index = 0; index < outcomes.Count; index++)
+            {
+                total += outcomes[index].Weight;
+            }
+            return total;
+        }
+
+        private static ulong OutcomeWeight(
+            System.Collections.Generic.IReadOnlyList<StrongboxWeightedIntOutcome> outcomes,
+            int value)
+        {
+            for (int index = 0; index < outcomes.Count; index++)
+            {
+                if (outcomes[index].Value == value)
+                {
+                    return outcomes[index].Weight;
+                }
+            }
+            return 0UL;
         }
     }
 }
