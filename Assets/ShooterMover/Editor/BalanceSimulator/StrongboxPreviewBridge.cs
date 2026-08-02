@@ -66,6 +66,27 @@ namespace ShooterMover.Editor.BalanceSimulator
         }
 
         [Serializable]
+        private sealed class WeaponBreakdown
+        {
+            public string definitionId;
+            public string displayName;
+            public int count;
+            public double percentage;
+            public List<DistributionEntry> targetLevelDistribution =
+                new List<DistributionEntry>();
+            public List<DistributionEntry> itemLevelDistribution =
+                new List<DistributionEntry>();
+            public List<DistributionEntry> qualityDistribution =
+                new List<DistributionEntry>();
+            public List<DistributionEntry> augmentSlotDistribution =
+                new List<DistributionEntry>();
+            public List<DistributionEntry> augmentLevelDistribution =
+                new List<DistributionEntry>();
+            public List<DistributionEntry> augmentSignatureDistribution =
+                new List<DistributionEntry>();
+        }
+
+        [Serializable]
         private sealed class Response
         {
             public bool ok;
@@ -109,6 +130,8 @@ namespace ShooterMover.Editor.BalanceSimulator
             public int maximumItemLevel;
             public List<DistributionEntry> weaponDistribution =
                 new List<DistributionEntry>();
+            public List<WeaponBreakdown> weaponBreakdowns =
+                new List<WeaponBreakdown>();
             public List<DistributionEntry> rarityDistribution =
                 new List<DistributionEntry>();
             public List<DistributionEntry> qualityDistribution =
@@ -171,6 +194,78 @@ namespace ShooterMover.Editor.BalanceSimulator
                         : string.CompareOrdinal(left.key, right.key);
                 });
                 return values;
+            }
+        }
+
+        private sealed class WeaponAccumulator
+        {
+            private readonly string definitionId;
+            private readonly string displayName;
+            private readonly Counter targetLevels = new Counter();
+            private readonly Counter itemLevels = new Counter();
+            private readonly Counter qualities = new Counter();
+            private readonly Counter augmentSlots = new Counter();
+            private readonly Counter augmentLevels = new Counter();
+            private readonly Counter augmentSignatures = new Counter();
+            private int count;
+
+            public WeaponAccumulator(string definitionId, string displayName)
+            {
+                this.definitionId = definitionId ?? string.Empty;
+                this.displayName = string.IsNullOrWhiteSpace(displayName)
+                    ? this.definitionId
+                    : displayName;
+            }
+
+            public void Add(
+                StrongboxGeneratedEquipmentObservation observation,
+                string qualityId)
+            {
+                count++;
+                string targetLevel = observation.TargetLevel.ToString(
+                    CultureInfo.InvariantCulture);
+                string itemLevel = observation.ItemLevel.ToString(
+                    CultureInfo.InvariantCulture);
+                string slots = observation.AugmentSlotCount.ToString(
+                    CultureInfo.InvariantCulture);
+                targetLevels.Add(targetLevel, targetLevel);
+                itemLevels.Add(itemLevel, itemLevel);
+                qualities.Add(qualityId, qualityId);
+                augmentSlots.Add(slots, slots);
+
+                if (observation.AugmentSlotCount > 0)
+                {
+                    string level = observation.SharedAugmentLevel.ToString(
+                        CultureInfo.InvariantCulture);
+                    augmentLevels.Add(level, level);
+                    string signature = level + "/" + slots;
+                    augmentSignatures.Add(signature, signature);
+                }
+                else
+                {
+                    augmentLevels.Add("none", "none");
+                    augmentSignatures.Add("none", "none");
+                }
+            }
+
+            public WeaponBreakdown Build(int successfulOpenings)
+            {
+                return new WeaponBreakdown
+                {
+                    definitionId = definitionId,
+                    displayName = displayName,
+                    count = count,
+                    percentage = successfulOpenings <= 0
+                        ? 0d
+                        : 100d * count / successfulOpenings,
+                    targetLevelDistribution = targetLevels.Build(count),
+                    itemLevelDistribution = itemLevels.Build(count),
+                    qualityDistribution = qualities.Build(count),
+                    augmentSlotDistribution = augmentSlots.Build(count),
+                    augmentLevelDistribution = augmentLevels.Build(count),
+                    augmentSignatureDistribution =
+                        augmentSignatures.Build(count),
+                };
             }
         }
 
@@ -560,6 +655,9 @@ namespace ShooterMover.Editor.BalanceSimulator
             var augmentLevels = new Counter();
             var augmentSignatures = new Counter();
             var rejections = new Counter();
+            var weaponDetails =
+                new Dictionary<string, WeaponAccumulator>(
+                    StringComparer.Ordinal);
 
             long targetTotal = 0L;
             long itemTotal = 0L;
@@ -601,6 +699,18 @@ namespace ShooterMover.Editor.BalanceSimulator
                     ? string.Empty
                     : observation.QualityId.ToString();
 
+                WeaponAccumulator weaponDetail;
+                if (!weaponDetails.TryGetValue(
+                        definitionId,
+                        out weaponDetail))
+                {
+                    weaponDetail = new WeaponAccumulator(
+                        definitionId,
+                        equipment.DisplayName);
+                    weaponDetails.Add(definitionId, weaponDetail);
+                }
+                weaponDetail.Add(observation, qualityId);
+
                 weapons.Add(definitionId, equipment.DisplayName);
                 rarities.Add(rarityId, rarityId);
                 qualities.Add(qualityId, qualityId);
@@ -636,6 +746,7 @@ namespace ShooterMover.Editor.BalanceSimulator
                 }
                 else
                 {
+                    augmentLevels.Add("none", "none");
                     augmentSignatures.Add("none", "none");
                 }
 
@@ -676,6 +787,22 @@ namespace ShooterMover.Editor.BalanceSimulator
                 ? 0
                 : maximumItem;
             response.weaponDistribution = weapons.Build(success);
+            foreach (KeyValuePair<string, WeaponAccumulator> pair
+                     in weaponDetails)
+            {
+                response.weaponBreakdowns.Add(pair.Value.Build(success));
+            }
+            response.weaponBreakdowns.Sort(delegate(
+                WeaponBreakdown left,
+                WeaponBreakdown right)
+            {
+                int byCount = right.count.CompareTo(left.count);
+                return byCount != 0
+                    ? byCount
+                    : string.CompareOrdinal(
+                        left.definitionId,
+                        right.definitionId);
+            });
             response.rarityDistribution = rarities.Build(success);
             response.qualityDistribution = qualities.Build(success);
             response.targetLevelDistribution = targetLevels.Build(success);
