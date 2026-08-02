@@ -1,0 +1,36 @@
+/* Rectangular floor brush controls. */
+#brushControls{
+  display:none;
+  align-items:center;
+  gap:5px;
+}
+#brushControls.active{
+  display:inline-flex;
+}
+#brushControls label{
+  margin:0;
+  color:#cbd7e7;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+}
+#brushControls input{
+  width:48px;
+  min-width:48px;
+  padding:5px 4px;
+  text-align:center;
+}
+#brushControls .brush-times{
+  color:var(--muted);
+  font-weight:800;
+}
+#brushControls #swapBrush{
+  min-width:31px;
+  padding-inline:7px;
+  font-weight:900;
+}
+@media(max-width:820px){
+  #brushControls label{display:none}
+  #brushControls input{width:43px;min-width:43px}
+}
