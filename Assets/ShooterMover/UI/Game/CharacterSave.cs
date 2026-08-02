@@ -59,7 +59,7 @@ namespace ShooterMover.UI.Game
             "active=" + OldGunInventoryPayloadInvalid
                 + ";backup=" + OldGunInventoryPayloadInvalid;
         private static readonly StableId AccountStableId =
-            StableId.Parse("account.production-player-v1");
+            StableId.Parse("account-production-player-v1");
         private static CharacterSave instance;
 
         private GameFlow flow;
