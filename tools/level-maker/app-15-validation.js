@@ -1,8 +1,89 @@
 "use strict";
+
 (() => {
- const base=showValidation;
- function target(issue){const m=String(issue?.message||"");for(const room of state.rooms){for(const e of room.entities)if(m.includes(e.id))return{room,id:e.id};for(const d of room.doors)if(m.includes(d.id))return{room,id:d.id};if(m.includes(room.id))return{room,id:""}}const hit=String(issue?.path||"").match(/rooms\[(\d+)\]/);if(hit&&state.rooms[+hit[1]])return{room:state.rooms[+hit[1]],id:""};if(issue?.path==="level.startRoomId")return{room:state.rooms.find(r=>r.id===state.level.startRoomId),id:""};if(issue?.path==="level.finalRoomId")return{room:state.rooms.find(r=>r.id===state.level.finalRoomId),id:""};if(m.includes("door")||m.includes("connection")||issue?.path==="level.finalExitDoorId")return{map:true};return null}
- function focus(t){document.querySelector("#validationDialog")?.close();if(t.map){state.editor.selectedId=null;setViewMode("map",{focus:false});fitMap();renderAll();return}if(!t.room)return;state.activeRoomId=t.room.id;state.editor.selectedId=t.id||null;setViewMode("room",{focus:true});fitRoom();renderAll();if(t.id){document.body.classList.add("right-drawer-open","drawer-open");requestAnimationFrame(resizeCanvas)}}
- showValidation=function(){const issues=validate(),result=base();requestAnimationFrame(()=>[...document.querySelectorAll("#validationList .validation-item")].forEach((el,i)=>{const t=target(issues[i]);if(!t)return;el.classList.add("validation-jump");el.title="Show this in the editor";el.onclick=()=>focus(t)}));return result};
- const button=document.querySelector("#validateBtn");if(button)button.onclick=showValidation;
+  const baseShowValidation = showValidation;
+
+  function targetForIssue(issue) {
+    const message = String(issue?.message || "");
+    for (const room of state.rooms) {
+      for (const entity of room.entities) {
+        if (message.includes(entity.id)) return { room, id: entity.id };
+      }
+      for (const door of room.doors) {
+        if (message.includes(door.id)) return { room, id: door.id };
+      }
+      if (message.includes(room.id)) return { room, id: "" };
+    }
+
+    const roomIndex = String(issue?.path || "").match(/rooms\[(\d+)\]/);
+    if (roomIndex && state.rooms[Number(roomIndex[1])]) {
+      return { room: state.rooms[Number(roomIndex[1])], id: "" };
+    }
+
+    if (issue?.path === "level.startRoomId") {
+      const room = state.rooms.find(value => value.id === state.level.startRoomId);
+      return room ? { room, id: "" } : { map: true };
+    }
+    if (issue?.path === "level.finalRoomId") {
+      const room = state.rooms.find(value => value.id === state.level.finalRoomId);
+      return room ? { room, id: "" } : { map: true };
+    }
+    if (
+      message.toLowerCase().includes("door")
+      || message.toLowerCase().includes("connection")
+      || issue?.path === "level.finalExitDoorId"
+    ) {
+      return { map: true };
+    }
+    return null;
+  }
+
+  function focusTarget(target) {
+    document.querySelector("#validationDialog")?.close();
+    document.body.classList.remove(
+      "left-drawer-open",
+      "right-drawer-open",
+      "drawer-open",
+      "tools-popover-open",
+      "view-menu-open"
+    );
+
+    if (target.map) {
+      state.editor.selectedId = null;
+      setViewMode("map", { focus: false });
+      fitMap();
+      renderAll();
+      return;
+    }
+    if (!target.room) return;
+
+    state.activeRoomId = target.room.id;
+    setViewMode("room", { focus: true });
+    state.editor.selectedId = target.id || null;
+    fitRoom();
+    renderAll();
+
+    if (target.id) {
+      document.body.classList.add("right-drawer-open", "drawer-open");
+      requestAnimationFrame(resizeCanvas);
+    }
+  }
+
+  showValidation = function () {
+    const result = baseShowValidation();
+    const issues = result?.issues || [];
+    requestAnimationFrame(() => {
+      [...document.querySelectorAll("#validationList .validation-item")].forEach((element, index) => {
+        const target = targetForIssue(issues[index]);
+        if (!target) return;
+        element.classList.add("validation-jump");
+        element.title = "Show this in the editor";
+        element.addEventListener("click", () => focusTarget(target));
+      });
+    });
+    return result;
+  };
+
+  const button = document.querySelector("#validateBtn");
+  if (button) button.onclick = showValidation;
 })();
