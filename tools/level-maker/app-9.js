@@ -56,6 +56,16 @@
   }
   return ids;
  }
+ function removeEnemyPlacements(project){
+  let removed=0;
+  for(const room of project?.rooms||[]){
+   const entities=Array.isArray(room.entities)?room.entities:[];
+   const kept=entities.filter(entity=>!String(entity?.object||"").startsWith("enemy."));
+   removed+=entities.length-kept.length;
+   room.entities=kept;
+  }
+  return removed;
+ }
  function catalogueForProject(project){
   if(!sharedCatalogCaptured)captureScannedCatalog();
   const current=clone(project?.catalog||[]);
@@ -78,11 +88,15 @@
  }
  function sanitizeCurrentProject(){
   if(!state?.rooms?.length)return;
+  const removedEnemyPlacements=removeEnemyPlacements(state);
   state.catalog=catalogueForProject(state);
   repairSelectedAsset();
   normalize();
   renderAll();
   writeRecoveryDraft();
+  if(removedEnemyPlacements>0){
+   console.warn(`Removed ${removedEnemyPlacements} obsolete enemy placement${removedEnemyPlacements===1?"":"s"} because this reset contains no authored enemy definitions.`);
+  }
  }
 
  normalize=function(){
