@@ -90,7 +90,9 @@
       assets: copy(assets || []),
     };
 
-    return addOldNames(state);
+    addOldNames(state);
+    fixEditor(state);
+    return state;
   }
 
   function levelFile(state) {
@@ -145,7 +147,10 @@
   function fixEditor(state) {
     const rooms = state.level.rooms || [];
     if (!rooms.some(room => room.id === state.editor.activeRoomId)) {
-      state.editor.activeRoomId = state.level.startRoomId || rooms[0]?.id || null;
+      const startRoomExists = rooms.some(room => room.id === state.level.startRoomId);
+      state.editor.activeRoomId = startRoomExists
+        ? state.level.startRoomId
+        : rooms[0]?.id || null;
     }
 
     if (!state.editor.selectedId) return;
