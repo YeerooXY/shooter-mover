@@ -132,6 +132,7 @@
       customAssets: manualAssets(levelFile.catalog),
     };
     const chosenEditor = matchingEditor || oldEditorFile;
+    const customAssets = manualAssets(chosenEditor.customAssets);
     const openFile = {
       format: LEVEL_FORMAT,
       schemaVersion: Number(levelFile.schemaVersion || 2),
@@ -141,8 +142,9 @@
       logic: copy(levelFile.logic || levelFile.level.logic || []),
     };
 
-    const state = LevelState.makeState(openFile, chosenEditor, [], defaultEditor);
-    state.editor.customAssets = manualAssets(chosenEditor.customAssets);
+    const state = LevelState.makeState(openFile, chosenEditor, customAssets, defaultEditor);
+    state.editor.customAssets = copy(customAssets);
+    LevelState.addOldNames(state);
     return state;
   }
 
