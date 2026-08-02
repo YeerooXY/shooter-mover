@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="weapon-gameplay-maker.css">
   <link rel="stylesheet" href="weapon-balance.css">
+  <link rel="stylesheet" href="weapon-maker-usability.css">
 </head>
 <body>
   <header class="app-header weapon-header">
@@ -28,6 +29,9 @@
         <div class="panel-body">
           <div id="repoStatus" class="repo-state">Checking local helper…</div>
           <div class="divider"></div>
+          <div class="weapon-list-tools">
+            <input id="weaponSearchInput" type="search" placeholder="Search name, rarity, type or level" aria-label="Search weapons">
+          </div>
           <div id="weaponList" class="weapon-list"></div>
         </div>
       </section>
@@ -38,7 +42,7 @@
           <div id="weaponGlobalEditor" class="weapon-global-editor">
             <div class="help">Loading weapon setup…</div>
           </div>
-          <input id="categoryInput" type="hidden" value="orb">
+          <input id="categoryInput" type="hidden" value="normal-firearm">
           <div class="field weapon-key-field">
             <label for="folderInput">Weapon key</label>
             <input id="folderInput" class="mono" value="new_weapon" readonly>
@@ -82,6 +86,7 @@
   </main>
 
   <script src="weapon-folder.js"></script>
+  <script src="weapon-maker-usability.js"></script>
   <script src="weapon-dps.js"></script>
   <script src="weapon-gameplay-maker.js"></script>
   <script src="weapon-balance.js"></script>
