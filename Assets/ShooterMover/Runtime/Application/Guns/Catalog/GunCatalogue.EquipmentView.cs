@@ -36,7 +36,7 @@ namespace ShooterMover.Application.Guns.Catalog
                         EquipmentCategoryIds.Gun,
                         StableId.Create(
                             "gun-family",
-                            family.FamilyId),
+                            StableFamilyToken(family.FamilyId)),
                         mark.Blueprint.DisplayName,
                         mark.Blueprint.DefinitionId.ToRuntimeReference(),
                         InclusiveIntRange.Create(1, 200),
