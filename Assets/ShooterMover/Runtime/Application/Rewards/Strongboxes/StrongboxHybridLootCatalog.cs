@@ -8,10 +8,10 @@ namespace ShooterMover.Application.Rewards.Strongboxes
 {
     /// <summary>
     /// Authored hybrid loot-selection and augment-signature balance for the eleven
-    /// production strongbox tiers. Every policy exposes all seven canonical gun-
-    /// definition rarity bands. Uncommon and Mythic use an explicit midpoint mapping
-    /// between their neighboring authored bands; equipment quality remains a separate
-    /// Common/Rare/Exceptional roll owned by BOX/GEN.
+    /// production strongbox tiers. Rarity values are direct first-stage selection
+    /// weights; definition level affinity and base weight are applied only after a
+    /// rarity with eligible candidates has been selected. Equipment quality remains
+    /// a separate Common/Rare/Exceptional roll owned by BOX/GEN.
     /// </summary>
     public static class StrongboxHybridLootCatalog
     {
@@ -56,55 +56,55 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 new List<StrongboxHybridLootPolicy>
                 {
                     Policy(1, 0, 0, 1,
-                        Slots(65, 28, 6, 1),
+                        Slots(70, 25, 4, 1),
                         Levels(new[] { 1, 2, 3, 4, 5 }, new ulong[] { 45, 30, 15, 7, 3 }),
-                        Rarities(1300, 500, 100, 10, 0)),
+                        Rarities(80000, 16000, 3500, 500, 0)),
                     Policy(2, 0, 1, 2,
-                        Slots(45, 35, 16, 4),
+                        Slots(52, 34, 12, 2),
                         Levels(new[] { 1, 2, 3, 4, 5, 6 }, new ulong[] { 20, 30, 25, 15, 7, 3 }),
-                        Rarities(1200, 650, 180, 20, 0)),
+                        Rarities(72000, 21000, 6000, 1000, 0)),
                     Policy(3, 0, 1, 3,
-                        Slots(25, 38, 27, 10),
+                        Slots(35, 38, 22, 5),
                         Levels(
                             new[] { 2, 3, 4, 5, 6, 7, 8, 9, 10 },
                             new ulong[] { 1500, 2500, 2500, 1800, 1000, 500, 170, 25, 5 }),
-                        Rarities(1100, 800, 300, 50, 0)),
+                        Rarities(63000, 26000, 9000, 2000, 0)),
                     Policy(4, 0, 2, 4,
-                        Slots(10, 30, 38, 22),
+                        Slots(20, 35, 32, 13),
                         Levels(
                             new[] { 3, 4, 5, 6, 7, 8, 9, 10 },
                             new ulong[] { 120, 200, 250, 200, 130, 70, 25, 5 }),
-                        Rarities(1000, 1000, 500, 100, 0)),
+                        Rarities(54000, 29000, 13000, 4000, 0)),
                     Policy(5, 1, 3, 5,
-                        Slots(0, 25, 45, 30),
+                        Slots(0, 35, 45, 20),
                         Levels(
                             new[] { 4, 5, 6, 7, 8, 9, 10 },
                             new ulong[] { 10, 18, 24, 20, 15, 9, 4 }),
-                        Rarities(900, 1150, 750, 200, 5)),
+                        Rarities(45000, 31000, 18000, 5999, 1)),
                     Policy(6, 2, 4, 6,
-                        Slots(0, 10, 42, 48),
+                        Slots(0, 15, 45, 40),
                         Levels(
                             new[] { 5, 6, 7, 8, 9, 10 },
                             new ulong[] { 8, 15, 20, 22, 23, 12 }),
-                        Rarities(750, 1300, 1000, 400, 15)),
+                        Rarities(36000, 32000, 23000, 8995, 5)),
                     Policy(7, 3, 5, 7,
-                        Slots(0, 0, 35, 65),
+                        Slots(0, 0, 40, 60),
                         Levels(
                             new[] { 6, 7, 8, 9, 10 },
                             new ulong[] { 8, 14, 20, 30, 28 }),
-                        Rarities(550, 1300, 1300, 750, 50)),
+                        Rarities(28000, 31000, 27000, 13980, 20)),
                     Policy(8, 4, 6, 8,
                         Slots(0, 0, 0, 100),
                         Levels(
                             new[] { 6, 7, 8, 9, 10 },
                             new ulong[] { 8, 12, 20, 25, 35 }),
-                        Rarities(350, 1100, 1600, 1200, 150)),
+                        Rarities(20000, 28000, 31000, 20950, 50)),
                     Policy(9, 5, 7, 9,
                         Slots(0, 0, 0, 100),
                         Levels(
                             new[] { 8, 9, 10 },
                             new ulong[] { 8, 27, 65 }),
-                        Rarities(200, 800, 1700, 1800, 400)),
+                        Rarities(13000, 23000, 32000, 31750, 250)),
                     Policy(10, 6, 8, 10,
                         SlotOutcomes(
                             new[] { 3, 4 },
@@ -112,15 +112,15 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                         Levels(
                             new[] { 9, 10, 11 },
                             new ulong[] { 8, 77, 15 }),
-                        Rarities(100, 500, 1400, 2300, 1000)),
+                        Rarities(7000, 15000, 30000, 47000, 1000)),
                     Policy(11, 8, 10, 12,
                         SlotOutcomes(
                             new[] { 3, 4 },
                             new ulong[] { 70, 30 }),
                         Levels(
-                            new[] { 10, 11 },
-                            new ulong[] { 30, 70 }),
-                        Rarities(50, 250, 1000, 2500, 2500)),
+                            new[] { 10, 11, 12 },
+                            new ulong[] { 597, 1393, 10 }),
+                        Rarities(2000, 7000, 24000, 64500, 2500)),
                 });
 
         public static IReadOnlyList<StrongboxHybridLootPolicy> Policies
@@ -230,10 +230,11 @@ namespace ShooterMover.Application.Rewards.Strongboxes
         }
 
         /// <summary>
-        /// The five original authored anchors remain unchanged. Uncommon receives the
-        /// rounded midpoint of Common/Rare selection multipliers and Mythic receives
-        /// the rounded midpoint of Legendary/Artifact. This is an explicit mapping,
-        /// not a merge: all seven stable rarity identities participate independently.
+        /// The five game-facing rarity anchors are authored as direct first-stage
+        /// selection weights. Uncommon and Mythic retain explicit midpoint mappings
+        /// so future definitions in those bands participate without a second policy.
+        /// Rarities with no eligible definitions are omitted from the roll and the
+        /// remaining authored weights are normalized automatically.
         /// </summary>
         private static IEnumerable<StrongboxRarityProfile> Rarities(
             int common,
