@@ -3,130 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Shooter Mover Item Maker</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta http-equiv="refresh" content="0; url=weapon-folder.html">
+  <title>Opening Weapon Maker</title>
+  <script>
+    window.location.replace("weapon-folder.html");
+  </script>
 </head>
 <body>
-  <header class="app-header">
-    <div class="brand">
-      <strong>Shooter Mover Item Maker</strong>
-      <span>Standalone gun and gear package editor</span>
-    </div>
-    <button id="newGunButton">New Gun</button>
-    <button id="newGearButton">New Gear</button>
-    <button type="button" onclick="location.href='weapon-folder.html'">Weapon Maker</button>
-    <button id="importButton">Import JSON</button>
-    <input id="importInput" type="file" accept="application/json,.json" hidden>
-    <div class="spacer"></div>
-    <button id="saveRepoButton">Save to Repository</button>
-    <div id="saveStatus" class="status-pill">Not saved</div>
-    <button id="exportButton" class="primary">Export JSON</button>
-  </header>
-
-  <main class="workspace">
-    <aside class="sidebar">
-      <section class="panel">
-        <div class="panel-head">Repository</div>
-        <div class="panel-body">
-          <div id="repoStatus" class="repo-state">Checking local helper…</div>
-          <div class="repo-actions">
-            <button id="fetchButton" class="small">Fetch</button>
-            <button id="pullButton" class="small">Pull (fast-forward only)</button>
-          </div>
-          <div class="divider"></div>
-          <div id="packageList" class="package-list"></div>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">Item</div>
-        <div class="panel-body">
-          <div class="kind-card">
-            <button id="gunKindButton" class="active">Gun</button>
-            <button id="gearKindButton">Gear</button>
-          </div>
-          <div class="divider"></div>
-          <div class="field">
-            <label for="itemName">Item Name</label>
-            <input id="itemName" autocomplete="off" placeholder="Sweeper">
-          </div>
-          <div class="field" style="margin-top:10px">
-            <label for="itemId">Item ID</label>
-            <input id="itemId" class="mono" autocomplete="off" placeholder="sweeper">
-            <div class="hint">Used to create <span id="idExample" class="mono">sweeper.mk1</span>.</div>
-          </div>
-          <button id="useNameForId" class="small ghost" style="margin-top:8px">Use Name for ID</button>
-          <div class="divider"></div>
-          <div class="field">
-            <label for="intendedUse">Intended Use</label>
-            <textarea id="intendedUse" placeholder="What is this item meant to do?"></textarea>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">Package</div>
-        <div class="panel-body">
-          <div class="stats">
-            <div class="stat-row"><span>Type</span><strong id="packageKind">Gun</strong></div>
-            <div class="stat-row"><span>File</span><strong id="packageFile" class="mono">item.item.json</strong></div>
-            <div class="stat-row"><span>Marks</span><strong>MK1–MK3</strong></div>
-          </div>
-          <div class="divider"></div>
-          <div class="help">Repository saves compile deterministic package source into Unity-readable generated content. Export remains available offline.</div>
-        </div>
-      </section>
-    </aside>
-
-    <section class="editor-column">
-      <section class="panel">
-        <div class="mark-bar">
-          <div class="mark-tabs">
-            <button data-mark="mk1" class="active">MK1</button>
-            <button data-mark="mk2">MK2</button>
-            <button data-mark="mk3">MK3</button>
-          </div>
-          <span id="activeMarkId" class="mark-id mono">item.mk1</span>
-          <div class="spacer"></div>
-          <button id="copyPreviousButton" class="small hidden">Copy Previous Mark</button>
-          <button id="copyFirstToAllButton" class="small">Copy MK1 to MK2 & MK3</button>
-        </div>
-        <div id="markEditor"></div>
-      </section>
-    </section>
-
-    <aside class="summary-column">
-      <section class="panel">
-        <div class="panel-head">Preview</div>
-        <div id="previewPanel" class="panel-body"></div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">Calculated</div>
-        <div id="calculatedPanel" class="panel-body stats"></div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">Checks</div>
-        <div id="checksPanel" class="panel-body issues"></div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head" style="display:flex;align-items:center;gap:8px">
-          <span>JSON Preview</span>
-          <div class="spacer"></div>
-          <button id="copyJsonButton" class="small">Copy</button>
-        </div>
-        <div class="panel-body">
-          <div id="jsonPreview" class="json-preview"></div>
-        </div>
-      </section>
-    </aside>
-  </main>
-
-  <script src="item-data.js"></script>
-  <script src="item-ui.js"></script>
-  <script src="item-checks.js"></script>
-  <script src="app.js"></script>
+  <p>Opening the <a href="weapon-folder.html">Weapon Maker</a>…</p>
 </body>
 </html>
