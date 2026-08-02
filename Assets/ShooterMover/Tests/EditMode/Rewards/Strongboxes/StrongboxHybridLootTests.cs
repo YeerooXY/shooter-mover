@@ -63,16 +63,28 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
         }
 
         [Test]
-        public void LowBoxesTrailAndPremiumBoxesLeadPlayerLevelOnAverage()
+        public void TierOneStaysNearPlayerAndHigherBoxesLeadProgressively()
         {
             StrongboxHybridLootPolicy tierOne =
                 StrongboxHybridLootCatalog.GetByTierNumber(1);
             StrongboxHybridLootPolicy tierEight =
                 StrongboxHybridLootCatalog.GetByTierNumber(8);
+            StrongboxHybridLootPolicy tierEleven =
+                StrongboxHybridLootCatalog.GetByTierNumber(11);
+
+            Assert.That(tierOne.MinimumTargetDelta, Is.EqualTo(0));
+            Assert.That(tierOne.MostLikelyTargetDelta, Is.EqualTo(0));
+            Assert.That(tierOne.MaximumTargetDelta, Is.EqualTo(1));
+            Assert.That(tierEight.MinimumTargetDelta, Is.EqualTo(4));
+            Assert.That(tierEight.MostLikelyTargetDelta, Is.EqualTo(6));
+            Assert.That(tierEight.MaximumTargetDelta, Is.EqualTo(8));
+            Assert.That(tierEleven.MinimumTargetDelta, Is.EqualTo(8));
+            Assert.That(tierEleven.MostLikelyTargetDelta, Is.EqualTo(10));
+            Assert.That(tierEleven.MaximumTargetDelta, Is.EqualTo(12));
+
             long tierOneTotal = 0L;
             long tierEightTotal = 0L;
             const int samples = 4096;
-
             for (ulong ordinal = 0UL; ordinal < samples; ordinal++)
             {
                 tierOneTotal += tierOne.RollTargetLevel(
@@ -89,8 +101,8 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
 
             double tierOneAverage = tierOneTotal / (double)samples;
             double tierEightAverage = tierEightTotal / (double)samples;
-            Assert.That(tierOneAverage, Is.LessThan(47.0));
-            Assert.That(tierEightAverage, Is.GreaterThan(51.0));
+            Assert.That(tierOneAverage, Is.InRange(50.0, 51.0));
+            Assert.That(tierEightAverage, Is.InRange(55.0, 57.0));
             Assert.That(tierEightAverage, Is.GreaterThan(tierOneAverage + 5.0));
         }
 
@@ -128,34 +140,27 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
         {
             StrongboxHybridLootPolicy policy =
                 StrongboxHybridLootCatalog.GetByTierNumber(4);
-            StrongboxTargetLevelRoll target = null;
-            ulong ordinal = 0UL;
-            for (; ordinal < 4096UL; ordinal++)
-            {
-                StrongboxTargetLevelRoll candidate = policy.RollTargetLevel(
-                    7,
-                    123456UL,
-                    1,
-                    ordinal);
-                if (candidate.TargetLevel == 7)
-                {
-                    target = candidate;
-                    break;
-                }
-            }
+            StrongboxTargetLevelRoll target =
+                policy.RollTargetLevel(7, 123456UL, 1, 0UL);
+            int definitionPeakLevel = target.TargetLevel + 12;
 
-            Assert.That(target, Is.Not.Null);
             StrongboxInstanceLevelRoll item = policy.RollInstanceLevel(
                 target,
-                19,
+                definitionPeakLevel,
                 StrongboxDefinitionRarityIds.Legendary,
                 123456UL,
                 1,
-                ordinal);
+                0UL);
 
-            Assert.That(item.HybridCenterLevel, Is.EqualTo(9));
+            Assert.That(
+                item.HybridCenterLevel,
+                Is.EqualTo(target.TargetLevel + 2));
             Assert.That(item.VariationOffset, Is.InRange(-4, 4));
-            Assert.That(item.ItemLevel, Is.InRange(5, 13));
+            Assert.That(
+                item.ItemLevel,
+                Is.InRange(
+                    item.HybridCenterLevel - 4,
+                    item.HybridCenterLevel + 4));
             Assert.That(item.DefinitionDistanceFromTarget, Is.EqualTo(12));
         }
 
