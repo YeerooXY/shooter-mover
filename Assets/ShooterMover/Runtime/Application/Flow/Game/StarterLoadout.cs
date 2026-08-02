@@ -19,7 +19,7 @@ namespace ShooterMover.Application.Flow.Game
             PlayerHoldingsSnapshot genericHoldings,
             GunInventorySnapshot gunHoldings,
             LoadoutSnapshot gunMountLoadout,
-            InventoryLoadoutStateSnapshot loadout)
+            InventoryLoadoutStateSnapshot retiredLoadout)
         {
             RoutePayload = routePayload
                 ?? throw new ArgumentNullException(nameof(routePayload));
@@ -29,14 +29,20 @@ namespace ShooterMover.Application.Flow.Game
                 ?? throw new ArgumentNullException(nameof(gunHoldings));
             EquippedGuns = gunMountLoadout
                 ?? throw new ArgumentNullException(nameof(gunMountLoadout));
-            LegacyLoadout = loadout ?? throw new ArgumentNullException(nameof(loadout));
+            RetiredLoadout = retiredLoadout
+                ?? throw new ArgumentNullException(nameof(retiredLoadout));
         }
 
         public PlayerRouteProfilePayload RoutePayload { get; }
         public PlayerHoldingsSnapshot GenericHoldings { get; }
         public GunInventorySnapshot GunInventory { get; }
         public LoadoutSnapshot EquippedGuns { get; }
-        public InventoryLoadoutStateSnapshot LegacyLoadout { get; }
+
+        /// <summary>
+        /// Empty compatibility projection retained only while the old save component is retired.
+        /// It is not an armor or equipment authority.
+        /// </summary>
+        public InventoryLoadoutStateSnapshot RetiredLoadout { get; }
     }
 
     /// <summary>
@@ -174,13 +180,6 @@ namespace ShooterMover.Application.Flow.Game
                 LoadoutSnapshot.CreateCanonical(
                     0L,
                     mountBindings);
-            InventoryLoadoutStateSnapshot loadout =
-                LoadoutView.ToLegacyProjection(
-                    layout,
-                    gunMountLoadout,
-                    InventoryLoadoutStateSnapshot.CreateCanonical(
-                        0L,
-                        EmptyBindings()));
             PlayerRouteProfilePayload route =
                 LoadoutView.Route(
                     characterInstanceStableId,
@@ -193,10 +192,8 @@ namespace ShooterMover.Application.Flow.Game
                 new EquipmentCatalogBridge(
                     GunCatalogProvider.EquipmentCatalog));
 
-            // The V2 gun authority owns canonical gun state, but the generic holdings
-            // ledger remains the compatibility/receipt projection consumed by the run-start
-            // boundary and older reward paths. Starter creation must publish every exact
-            // canonical instance to both projections without making the receipt ledger authoritative.
+            // The gun authority owns canonical gun state, while generic holdings retain
+            // immutable reward/onboarding receipts and future non-gun inventory.
             for (int index = 0; index < owned.Count; index++)
             {
                 GunItem gun = owned[index];
@@ -257,7 +254,7 @@ namespace ShooterMover.Application.Flow.Game
                 genericHoldings.ExportSnapshot(),
                 gunHoldings,
                 gunMountLoadout,
-                loadout);
+                RetiredArmorLoadoutCompatibility.Empty());
         }
 
         public static StarterInventory Restore(
@@ -265,7 +262,7 @@ namespace ShooterMover.Application.Flow.Game
             StableId classDefinitionStableId,
             PlayerHoldingsSnapshot genericHoldings,
             GunInventorySnapshot canonicalGunInventory,
-            InventoryLoadoutStateSnapshot loadout)
+            InventoryLoadoutStateSnapshot retiredLoadout)
         {
             return Restore(
                 characterInstanceStableId,
@@ -273,7 +270,7 @@ namespace ShooterMover.Application.Flow.Game
                 genericHoldings,
                 canonicalGunInventory,
                 null,
-                loadout);
+                retiredLoadout);
         }
 
         public static StarterInventory Restore(
@@ -282,7 +279,7 @@ namespace ShooterMover.Application.Flow.Game
             PlayerHoldingsSnapshot genericHoldings,
             GunInventorySnapshot canonicalGunInventory,
             LoadoutSnapshot canonicalLoadout,
-            InventoryLoadoutStateSnapshot loadout)
+            InventoryLoadoutStateSnapshot retiredLoadout)
         {
             if (characterInstanceStableId == null)
             {
@@ -296,11 +293,11 @@ namespace ShooterMover.Application.Flow.Game
             {
                 throw new ArgumentNullException(nameof(genericHoldings));
             }
-            if (loadout == null || !loadout.HasValidFingerprint())
+            if (retiredLoadout == null || !retiredLoadout.HasValidFingerprint())
             {
                 throw new ArgumentException(
-                    "A valid legacy loadout/armor projection is required.",
-                    nameof(loadout));
+                    "A valid retired loadout projection is required for save migration.",
+                    nameof(retiredLoadout));
             }
 
             GunInventorySnapshot guns = canonicalGunInventory
@@ -314,22 +311,16 @@ namespace ShooterMover.Application.Flow.Game
                 ?? LoadoutView.MigrateLegacy(
                     layout,
                     gunAuthority,
-                    loadout);
+                    retiredLoadout);
 
-            // V2 is strict: unknown, missing, locked, duplicate or unowned mount bindings reject
-            // restore instead of being silently repaired. Only the V1 conversion normalizes legacy
-            // placeholders as part of deterministic dual-read migration.
+            // Canonical mount state is strict. The retired fixed-slot snapshot may still
+            // migrate legacy gun positions, but all former armor bindings are discarded.
             var mountAuthority = new LoadoutState(
                 layout,
                 gunAuthority,
                 mounts);
             LoadoutSnapshot canonicalMounts =
                 mountAuthority.ExportSnapshot();
-            InventoryLoadoutStateSnapshot compatibilityLoadout =
-                LoadoutView.ToLegacyProjection(
-                    layout,
-                    canonicalMounts,
-                    loadout);
             PlayerRouteProfilePayload route =
                 LoadoutView.Route(
                     characterInstanceStableId,
@@ -342,22 +333,7 @@ namespace ShooterMover.Application.Flow.Game
                 genericHoldings,
                 guns,
                 canonicalMounts,
-                compatibilityLoadout);
-        }
-
-        private static IEnumerable<InventoryLoadoutSlotBinding> EmptyBindings()
-        {
-            var bindings = new List<InventoryLoadoutSlotBinding>(
-                InventoryLoadoutSlots.All.Count);
-            for (int index = 0;
-                 index < InventoryLoadoutSlots.All.Count;
-                 index++)
-            {
-                bindings.Add(new InventoryLoadoutSlotBinding(
-                    InventoryLoadoutSlots.All[index].SlotStableId,
-                    null));
-            }
-            return bindings;
+                RetiredArmorLoadoutCompatibility.Empty());
         }
 
         private static StableId NextOpaqueId(
