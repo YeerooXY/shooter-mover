@@ -20,6 +20,7 @@ using ShooterMover.Domain.Rewards.Generation;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Rewards.Strongboxes;
 using ShooterMover.Domain.Guns.Catalog;
+using ShooterMover.Domain.Guns.Execution;
 
 namespace ShooterMover.Editor.BalanceSimulator
 {
