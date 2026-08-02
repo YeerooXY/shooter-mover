@@ -35,16 +35,21 @@ assert.deepStrictEqual(crossAreas, [
   { tile: "tile.floor-industrial", x: 24, y: 25, width: 1, height: 25 },
 ]);
 
-const crossRoom = makeRoom(width, height, cross);
+const crossRoom = FloorData.prepareRoom(makeRoom(width, height, cross));
+assert.ok(crossRoom.floor.cells instanceof Uint16Array);
+assert.strictEqual(crossRoom.floor.cells.length, width * height);
+assert.strictEqual(crossRoom.floor.count, 99);
+assert.ok(!Object.keys(crossRoom).includes("tiles"));
+assert.ok(!Object.keys(crossRoom).includes("tileGridEnabled"));
+assert.ok(!Object.keys(crossRoom).includes("floorObject"));
+assert.strictEqual(crossRoom.tiles.length, 99);
+
 const savedCrossRoom = FloorData.saveRoom(crossRoom);
 assert.strictEqual(savedCrossRoom.floor.format, "grid");
 assert.strictEqual(savedCrossRoom.floor.rows.length, height);
 assert.strictEqual(savedCrossRoom.floor.rows[0].length, width);
 assert.ok(!("tiles" in savedCrossRoom));
-assert.deepStrictEqual(
-  FloorData.readFloor(FloorData.openRoom(savedCrossRoom)),
-  cross
-);
+assert.deepStrictEqual(FloorData.readFloor(FloorData.openRoom(savedCrossRoom)), cross);
 
 const unityTiles = FloorData.buildUnityTiles(crossRoom);
 assert.strictEqual(unityTiles.length, 3);
@@ -54,19 +59,64 @@ const rebuiltFromUnity = FloorData.openUnityTiles(
 );
 assert.deepStrictEqual(FloorData.readFloor(rebuiltFromUnity), cross);
 
-const fullRoom = {
+const fullRoom = FloorData.prepareRoom({
   id: "room.full",
   bounds: { width: 12, height: 8 },
   floorObject: "tile.floor-metal",
   tileGridEnabled: false,
   tiles: [],
-};
+});
+assert.ok(fullRoom.floor.cells instanceof Uint16Array);
+assert.strictEqual(fullRoom.floor.count, 96);
+assert.strictEqual(FloorData.isFullFloor(fullRoom), true);
 assert.deepStrictEqual(FloorData.buildUnityTiles(fullRoom), [
   {
     object: "tile.floor-metal",
     fill: { from: [-6, -4], to: [6, 4] },
   },
 ]);
+
+const largeRoom = FloorData.prepareRoom({
+  id: "room.large",
+  bounds: { width: 200, height: 200 },
+  floorObject: "tile.floor-industrial",
+  tileGridEnabled: false,
+  tiles: [],
+});
+assert.ok(largeRoom.floor.cells instanceof Uint16Array);
+assert.strictEqual(largeRoom.floor.cells.length, 40_000);
+assert.strictEqual(largeRoom.floor.cells.byteLength, 80_000);
+assert.strictEqual(largeRoom.floor.count, 40_000);
+assert.strictEqual(Object.prototype.hasOwnProperty.call(largeRoom.floor, "0"), false);
+
+FloorData.clearFloorTile(largeRoom, 10, 12);
+assert.strictEqual(FloorData.getFloorTile(largeRoom, 10, 12), null);
+assert.strictEqual(largeRoom.floor.count, 39_999);
+FloorData.setFloorTile(largeRoom, 10, 12, "tile.floor-metal");
+assert.strictEqual(FloorData.getFloorTile(largeRoom, 10, 12), "tile.floor-metal");
+assert.strictEqual(largeRoom.floor.count, 40_000);
+
+const resizeRoom = FloorData.prepareRoom({
+  id: "room.resize",
+  bounds: { width: 3, height: 2 },
+  floorObject: "tile.floor-industrial",
+  tileGridEnabled: true,
+  tiles: [
+    { x: 0, y: 0, object: "tile.floor-a" },
+    { x: 2, y: 1, object: "tile.floor-b" },
+  ],
+});
+resizeRoom.bounds = { width: 5, height: 4 };
+FloorData.prepareRoom(resizeRoom);
+assert.strictEqual(resizeRoom.floor.width, 5);
+assert.strictEqual(resizeRoom.floor.height, 4);
+assert.strictEqual(FloorData.getFloorTile(resizeRoom, 0, 0), "tile.floor-a");
+assert.strictEqual(FloorData.getFloorTile(resizeRoom, 2, 1), "tile.floor-b");
+assert.strictEqual(FloorData.getFloorTile(resizeRoom, 4, 3), null);
+resizeRoom.bounds = { width: 2, height: 1 };
+FloorData.prepareRoom(resizeRoom);
+assert.strictEqual(FloorData.getFloorTile(resizeRoom, 0, 0), "tile.floor-a");
+assert.strictEqual(resizeRoom.floor.count, 1);
 
 const checkerWidth = 20;
 const checkerHeight = 20;
@@ -81,12 +131,12 @@ assert.strictEqual(
 );
 
 const manyTiles = Array.from({ length: 65 }, (_, index) => `tile.floor-${index}`);
-const manyTileRoom = makeRoom(65, 1, manyTiles);
+const manyTileRoom = FloorData.prepareRoom(makeRoom(65, 1, manyTiles));
 const manyTileSave = FloorData.writeFloor(manyTileRoom);
 assert.strictEqual(manyTileSave.format, "number-grid");
 assert.strictEqual(manyTileSave.legend.length, 66);
 assert.deepStrictEqual(
-  FloorData.readFloor(FloorData.openRoom({ ...manyTileRoom, floor: manyTileSave })),
+  FloorData.readFloor(FloorData.openRoom({ ...FloorData.saveRoom(manyTileRoom), floor: manyTileSave })),
   manyTiles
 );
 
