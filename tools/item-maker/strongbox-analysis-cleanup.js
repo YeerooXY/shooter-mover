@@ -43,8 +43,28 @@
     return "common";
   }
 
-  function sampleCandidate(candidates, totalWeight) {
-    let cursor = Math.random() * totalWeight;
+  function seedHash(value) {
+    let hash = 2166136261;
+    for (const character of String(value || "")) {
+      hash ^= character.charCodeAt(0);
+      hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+  }
+
+  function deterministicRandom(seed) {
+    let state = seedHash(seed);
+    return () => {
+      state = (state + 0x6D2B79F5) >>> 0;
+      let value = state;
+      value = Math.imul(value ^ (value >>> 15), value | 1);
+      value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+      return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function sampleCandidate(candidates, totalWeight, random) {
+    let cursor = random() * totalWeight;
     for (const candidate of candidates) {
       cursor -= Number(candidate.finalWeight);
       if (cursor <= 0) return candidate;
@@ -65,11 +85,18 @@
     );
     if (!candidates.length || totalWeight <= 0) return;
 
+    const random = deterministicRandom([
+      "strongbox-candidate-reel-v1",
+      run.reward.seed,
+      run.reward.targetLevel,
+      run.reward.selectedDefinitionId
+    ].join(":"));
+
     run.previewWeapons = run.items.map(() => {
-      const candidate = sampleCandidate(candidates, totalWeight);
+      const candidate = sampleCandidate(candidates, totalWeight, random);
       return {
-        definitionId: candidate.definitionId,
-        displayName: candidate.displayName,
+        definitionId: String(candidate.definitionId || ""),
+        displayName: String(candidate.displayName || candidate.definitionId || "Unknown weapon"),
         rarityVisualId: visualRarityId(candidate.rarityId),
         peakLevel: candidate.peakLevel,
         chancePercent: candidate.chancePercent,
@@ -81,8 +108,8 @@
     const selected = candidates.find(candidate => candidate.selected)
       || candidates.find(candidate => candidate.definitionId === run.reward.selectedDefinitionId);
     run.previewWeapons[winnerIndex] = {
-      definitionId: run.reward.selectedDefinitionId,
-      displayName: run.reward.selectedName,
+      definitionId: String(run.reward.selectedDefinitionId || ""),
+      displayName: String(run.reward.selectedName || run.reward.selectedDefinitionId || "Unknown weapon"),
       rarityVisualId: run.reward.selectedRarityVisualId || visualRarityId(run.reward.selectedRarityId),
       peakLevel: selected?.peakLevel ?? run.reward.targetLevel,
       chancePercent: selected?.chancePercent ?? 0,
