@@ -7,9 +7,10 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
 {
     /// <summary>
     /// Engine-neutral, deterministic strongbox policy foundation. A tier first rolls
-    /// a triangular target around the player. Definitions receive a bell-shaped
-    /// affinity around that target. The selected definition then receives a hybrid
-    /// instance level and one SAS-style shared augment signature such as 10/3.
+    /// a triangular target around the player. Rarity is selected from the eligible
+    /// authored rarity bands, then definitions inside that rarity receive a bell-shaped
+    /// affinity around the target. The selected definition receives a hybrid instance
+    /// level and one SAS-style shared augment signature such as 10/3.
     /// Installed augment identities remain owned by the equipment/augment authority.
     /// </summary>
     public sealed class StrongboxHybridLootPolicy :
@@ -178,11 +179,10 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
                 equipmentSlotOrdinal);
         }
 
-        public double EvaluateDefinitionWeight(
+        public double EvaluateDefinitionAffinity(
             StrongboxTargetLevelRoll targetRoll,
             int definitionPeakLevel,
-            double baseDefinitionWeight,
-            StableId rarityId)
+            double baseDefinitionWeight)
         {
             RequireTargetRoll(targetRoll);
             if (definitionPeakLevel < 1)
@@ -196,19 +196,41 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
                 throw new ArgumentOutOfRangeException(nameof(baseDefinitionWeight));
             }
 
-            StrongboxRarityProfile rarity = RequireRarity(rarityId);
             int distance = Math.Abs(definitionPeakLevel - targetRoll.TargetLevel);
-            if (distance > DefinitionSelectionRadius
-                || rarity.SelectionMultiplierMilli == 0)
+            if (distance > DefinitionSelectionRadius)
             {
                 return 0.0;
             }
 
             double levelAffinity = definitionBellWeights[distance].WeightMillionths
                 / (double)DefinitionWeightScale;
+            return baseDefinitionWeight * levelAffinity;
+        }
+
+        public int GetRaritySelectionWeight(StableId rarityId)
+        {
+            return RequireRarity(rarityId).SelectionMultiplierMilli;
+        }
+
+        public double EvaluateDefinitionWeight(
+            StrongboxTargetLevelRoll targetRoll,
+            int definitionPeakLevel,
+            double baseDefinitionWeight,
+            StableId rarityId)
+        {
+            StrongboxRarityProfile rarity = RequireRarity(rarityId);
+            double affinity = EvaluateDefinitionAffinity(
+                targetRoll,
+                definitionPeakLevel,
+                baseDefinitionWeight);
+            if (affinity <= 0.0 || rarity.SelectionMultiplierMilli == 0)
+            {
+                return 0.0;
+            }
+
             double rarityMultiplier = rarity.SelectionMultiplierMilli
                 / (double)RarityMultiplierScale;
-            return baseDefinitionWeight * levelAffinity * rarityMultiplier;
+            return affinity * rarityMultiplier;
         }
 
         public StrongboxInstanceLevelRoll RollInstanceLevel(
