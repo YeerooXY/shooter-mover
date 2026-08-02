@@ -33,7 +33,8 @@
     .distribution-bar{display:inline-block;width:90px;height:7px;margin-right:8px;border-radius:99px;background:rgba(145,220,255,.12);vertical-align:middle;overflow:hidden}.distribution-bar i{display:block;height:100%;background:#73d8ff}
     .analysis-meta{margin:0 0 14px;color:#b8d7e8;font-size:12px}.analysis-meta code{color:#8de1ff}
     .weapon-analysis-picker{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px;padding:12px 14px;border:1px solid rgba(145,220,255,.18);border-radius:12px;background:rgba(8,35,57,.72)}.weapon-analysis-picker label{color:#9fc3d7;font-size:11px;font-weight:850;letter-spacing:.08em;text-transform:uppercase}.weapon-analysis-picker select{min-width:240px;min-height:38px;padding:0 10px;border:1px solid rgba(145,220,255,.3);border-radius:9px;background:#092c47;color:#eefaff}.weapon-analysis-summary{margin-left:auto;color:#cbe5f4;font-size:12px}.distribution .weapon-link{padding:0;border:0;background:none;color:#8de1ff;font:inherit;font-weight:800;text-align:left;cursor:pointer}.distribution .weapon-link:hover,.distribution .weapon-link:focus{text-decoration:underline}.weapon-drilldown{margin-top:14px}.weapon-drilldown-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:10px}.weapon-drilldown-head h2{margin:0;font-size:22px}.weapon-drilldown-head p{margin:0;color:#9fc3d7;font-size:12px}
-    @media(max-width:1000px){.analysis-metrics{grid-template-columns:repeat(3,1fr)}.analysis-grid{grid-template-columns:1fr}.analysis-section.full{grid-column:auto}}
+    .augment-matrix-section{grid-column:1/-1;min-width:0;padding:14px;border:1px solid rgba(145,220,255,.18);border-radius:12px;background:rgba(8,35,57,.55)}.augment-matrix-section h3{margin:0 0 6px;font-size:14px;letter-spacing:.1em;text-transform:uppercase}.augment-matrix-note{margin:0 0 10px;color:#9fc3d7;font-size:11px}.augment-matrix-wrap{overflow:auto;border:1px solid rgba(145,220,255,.16);border-radius:10px}.augment-matrix{width:100%;min-width:900px;border-collapse:collapse;table-layout:fixed;font-size:11px}.augment-matrix th,.augment-matrix td{padding:7px 5px;border-left:1px solid rgba(145,220,255,.1);border-top:1px solid rgba(145,220,255,.1);text-align:center}.augment-matrix thead th{position:sticky;top:0;background:#082b46;color:#addcf4}.augment-matrix th:first-child{position:sticky;left:0;z-index:2;width:86px;background:#082b46;text-align:left}.augment-matrix tbody th{color:#addcf4}.augment-matrix td strong{display:block;font-size:12px}.augment-matrix td small{display:block;margin-top:2px;color:#8eafc5;font-size:9px}.augment-matrix td.empty{color:rgba(169,196,213,.36)}
+    @media(max-width:1000px){.analysis-metrics{grid-template-columns:repeat(3,1fr)}.analysis-grid{grid-template-columns:1fr}.analysis-section.full{grid-column:auto}.augment-matrix-section{grid-column:auto}}
     @media(max-width:900px){.presentation-head{grid-template-columns:1fr}.presentation{inset:60px 8px 80px;width:auto;max-height:none}.production-fields label span{display:none}}
     @media(max-width:560px){.analysis-metrics{grid-template-columns:repeat(2,1fr)}}
   `;
@@ -93,26 +94,31 @@
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
   }
+
   function formatNumber(value, digits = 6) {
     const number = Number(value || 0);
     if (number === 0) return "0";
     if (Math.abs(number) < 0.0001) return number.toExponential(3);
     return number.toLocaleString(undefined, { maximumFractionDigits: digits });
   }
+
   function rarityView(id) {
     return rarityById(id || "common");
   }
+
   function setLoading(loading, message = "RESOLVING IN UNITY") {
     controls.classList.toggle("production-loading", loading);
     openBtn.disabled = loading;
     replayBtn.disabled = loading || !lastRun;
     statusEl.textContent = loading ? message : statusEl.textContent;
   }
+
   function showReel() {
     presentation.classList.remove("visible");
     reelShell.style.display = "";
     meterShell.style.display = "";
   }
+
   function showPanel() {
     reelShell.style.display = "none";
     meterShell.style.display = "none";
@@ -192,7 +198,9 @@
 
   function distributionTable(title, entries, options = {}) {
     const rows = (entries || []).slice(0, options.limit || 1000);
-    if (!rows.length) return `<section class="analysis-section"><h3>${escapeText(title)}</h3><p>No results.</p></section>`;
+    if (!rows.length) {
+      return `<section class="analysis-section"><h3>${escapeText(title)}</h3><p>No results.</p></section>`;
+    }
     const maximum = Math.max(...rows.map(entry => Number(entry.percentage) || 0), 0.0001);
     return `
       <section class="analysis-section ${options.full ? "full" : ""}">
@@ -211,7 +219,9 @@
 
   function weaponDistributionTable(entries) {
     const rows = entries || [];
-    if (!rows.length) return `<section class="analysis-section full"><h3>Weapon results</h3><p>No results.</p></section>`;
+    if (!rows.length) {
+      return `<section class="analysis-section full"><h3>Weapon results</h3><p>No results.</p></section>`;
+    }
     const maximum = Math.max(...rows.map(entry => Number(entry.percentage) || 0), 0.0001);
     return `
       <section class="analysis-section full">
@@ -228,6 +238,32 @@
       </section>`;
   }
 
+  function augmentMatrixTable(detail) {
+    const cells = new Map(
+      (detail.augmentMatrix || []).map(cell => [`${cell.slots}:${cell.level}`, cell])
+    );
+    const levels = Array.from({ length: 12 }, (_, index) => index + 1);
+    const slots = Array.from({ length: 5 }, (_, index) => index);
+    return `
+      <section class="augment-matrix-section">
+        <h3>Augment slots × augment level</h3>
+        <p class="augment-matrix-note">Rows are slot counts 0–4. Columns are shared augment levels 1–12. Each cell shows drops and share of this weapon's drops.</p>
+        <div class="augment-matrix-wrap">
+          <table class="augment-matrix">
+            <thead><tr><th>Slots \\ Level</th>${levels.map(level => `<th>${level}</th>`).join("")}</tr></thead>
+            <tbody>${slots.map(slot => `
+              <tr>
+                <th>${slot}</th>
+                ${levels.map(level => {
+                  const cell = cells.get(`${slot}:${level}`) || { count: 0, percentage: 0 };
+                  return `<td class="${Number(cell.count) ? "" : "empty"}">${Number(cell.count) ? `<strong>${formatNumber(cell.count, 0)}</strong><small>${formatNumber(cell.percentage, 2)}%</small>` : "—"}</td>`;
+                }).join("")}
+              </tr>`).join("")}</tbody>
+          </table>
+        </div>
+      </section>`;
+  }
+
   function renderWeaponDrilldown(report, definitionId) {
     const detail = (report.weaponBreakdowns || []).find(value => value.definitionId === definitionId);
     const target = presentation.querySelector("#weaponDrilldown");
@@ -238,16 +274,16 @@
       if (summary) summary.textContent = "";
       return;
     }
-    if (summary) summary.textContent = `${formatNumber(detail.count, 0)} drops · ${formatNumber(detail.percentage, 3)}% of successful openings`;
+    if (summary) {
+      summary.textContent = `${formatNumber(detail.count, 0)} drops · ${formatNumber(detail.percentage, 3)}% of successful openings`;
+    }
     target.innerHTML = `
       <div class="weapon-drilldown-head">
         <div><h2>${escapeText(detail.displayName)}</h2><p>${escapeText(detail.definitionId)}</p></div>
         <p>${formatNumber(detail.count, 0)} of ${formatNumber(report.successfulOpenings, 0)} successful openings</p>
       </div>
       <div class="analysis-grid">
-        ${distributionTable("Augment signatures (level/slots)", detail.augmentSignatureDistribution, { full: true })}
-        ${distributionTable("Augment levels", detail.augmentLevelDistribution)}
-        ${distributionTable("Augment slots", detail.augmentSlotDistribution)}
+        ${augmentMatrixTable(detail)}
         ${distributionTable("Item levels", detail.itemLevelDistribution)}
         ${distributionTable("Target levels", detail.targetLevelDistribution)}
         ${distributionTable("Quality", detail.qualityDistribution)}
@@ -320,14 +356,19 @@
     if (!card) return;
     const swatch = card.querySelector(".swatch");
     const label = card.querySelector(".label");
-    if (swatch) swatch.innerHTML = `<div class="weapon-result-name">${escapeText(run.reward.selectedName)}</div>`;
-    if (label) label.textContent = `${rarityView(run.reward.selectedRarityVisualId).label} · LV ${run.reward.itemLevel}`;
+    if (swatch) {
+      swatch.innerHTML = `<div class="weapon-result-name">${escapeText(run.reward.selectedName)}</div>`;
+    }
+    if (label) {
+      label.textContent = `${rarityView(run.reward.selectedRarityVisualId).label} · LV ${run.reward.itemLevel}`;
+    }
   }
 
   prepare = function productionPrepare(run) {
     prototypePrepare(run);
     decorateWinner(run);
   };
+
   finishRun = function productionFinish(run) {
     prototypeFinishRun(run);
     if (!run?.reward) return;
@@ -358,7 +399,9 @@
       })
     });
     const payload = await response.json();
-    if (!response.ok || !payload.ok) throw new Error(payload.error || "Strongbox preview failed.");
+    if (!response.ok || !payload.ok) {
+      throw new Error(payload.error || "Strongbox preview failed.");
+    }
     return payload;
   }
 
@@ -467,8 +510,9 @@
   openBtn.onclick = productionOpenOrPrepare;
   replayBtn.onclick = () => {
     if (!lastRun) return;
-    if (selectedMode === "presentation") showPresentation(lastRun);
-    else if (selectedMode !== "analysis") {
+    if (selectedMode === "presentation") {
+      showPresentation(lastRun);
+    } else if (selectedMode !== "analysis") {
       showReel();
       play(lastRun, selectedMode);
     }
@@ -482,9 +526,13 @@
 
   newSeedButton.onclick = async () => {
     seedInput.value = freshSeed();
-    if (selectedMode === "analysis") await runAnalysis(false);
-    else await productionPrepareNextRun(false);
+    if (selectedMode === "analysis") {
+      await runAnalysis(false);
+    } else {
+      await productionPrepareNextRun(false);
+    }
   };
+
   [playerLevelInput, tierInput, seedInput].forEach(input => input.addEventListener("change", () => {
     if (selectedMode === "analysis") return;
     productionPrepareNextRun(false);
