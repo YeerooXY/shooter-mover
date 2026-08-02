@@ -10,24 +10,100 @@ From the repository root on Windows:
 .\tools\level-maker\Start-LevelMaker.ps1
 ```
 
-Or run `serve.bat` from this folder. Node.js serves the editor on
-`http://127.0.0.1:4174` and exposes a project-local save API. The API listens only
-on localhost and requires the mutation token supplied to the loaded editor.
+Or run `serve.bat` from this folder. Both launch `start-server.js`, which serves
+the editor on `http://127.0.0.1:4174`, keeps the existing level publishing API,
+and adds local editor-state storage beneath Unity's ignored `Library` folder.
+
+## Saved data
+
+The Level Maker keeps three kinds of data separate:
+
+- **Level data** — rooms, floors, entities, doors, encounters, connections, and
+  level settings. This is saved to `Content/Levels/<target>.level.json`.
+- **Editor data** — active room, selected object and asset, tool, brush, zoom,
+  pan, snap, and custom asset shortcuts. This is saved locally to
+  `Library/ShooterMover/LevelMaker/<target>.editor.json`.
+- **Project assets** — the current enemy, prop, floor, door, and decor catalogue.
+  This is rebuilt from the repository when the editor opens.
+
+Editor data does not enter the committed level file. The browser also keeps a
+local-storage copy and uses `navigator.sendBeacon()` during `pagehide` so a small
+pending editor update can still reach the local server while the tab closes.
 
 ## Project flow
 
-- **Open project level** loads an existing canonical level package.
-- **Save to project** validates and atomically writes the editable project plus
-  canonical JSON beneath the repository's level-content roots.
-- **Publish to Unity** performs the same validated write and refreshes the
-  playable-level catalogue.
-- **Export project file** downloads a portable `.smlvl.json` backup. It does not
-  inject C# or Unity metadata.
+- **Open level** loads an editable project when one exists. Older combined
+  project files remain supported.
+- When rebuilding from generated Unity room files, every floor area is expanded
+  back into the editable floor grid, preserving holes and multiple floor types.
+- **Save to project** validates and atomically writes the compact editable level
+  plus the generated Unity source JSON.
+- **Playtest** performs the same validated write and refreshes the playable-level
+  catalogue.
+- **Export project file** downloads the compact editable level without editor
+  state or the discovered asset catalogue.
 
 Unity owns compilation. The project postprocessor notices imported `level.json`
-files and invokes the existing `LevelGridAssetCompiler`. The browser never scans
-arbitrary Unity folders, generates C#, edits `.meta` files, or writes compiled
-assets.
+files and invokes the existing `LevelGridAssetCompiler`. The browser does not
+generate C#, edit `.meta` files, or write compiled Unity assets.
+
+## Floor storage
+
+Editable level files use a compact grid instead of one JSON object per cell.
+Most rooms use string rows with a short legend:
+
+```json
+{
+  "floor": {
+    "format": "grid",
+    "legend": {
+      ".": null,
+      "0": "tile.floor-industrial",
+      "1": "tile.floor-metal"
+    },
+    "rows": [
+      "....0....",
+      "....0....",
+      "000010000"
+    ]
+  }
+}
+```
+
+`.` means no floor. When a room uses more than 64 floor types, the Level Maker
+uses `number-grid` rows containing numeric legend indexes instead.
+
+The live editor expands either format into normal floor cells. During Unity
+export, `buildFloorAreas()` reads horizontal sections and extends matching
+sections downward to create deterministic, non-overlapping rectangular areas.
+Unity therefore continues receiving the existing `floor.json` structure:
+
+```json
+{
+  "object": "tile.floor-industrial",
+  "fill": {
+    "from": [-12, -7],
+    "to": [12, 7]
+  }
+}
+```
+
+Enemies, props, doors, encounters, and other individual gameplay objects remain
+ordinary JSON objects.
+
+## State and undo
+
+The live browser state is divided into:
+
+```text
+state.level
+state.editor
+state.assets
+```
+
+Undo and redo store only `state.level`. Changing zoom, pan, the active room, the
+selected asset, or brush settings does not add gameplay undo entries and does
+not alter the committed level file.
 
 ## Level graph
 
@@ -71,7 +147,7 @@ Useful shortcuts:
 
 ## Canonical output
 
-Publishing writes only repository-owned JSON:
+Publishing writes repository-owned JSON:
 
 - `level.json`
 - `map.json`
@@ -82,10 +158,25 @@ Publishing writes only repository-owned JSON:
 - `props.json`
 - `decor.json`
 - `encounter.json`
-- the editable project document
+- the compact editable project document
 - the generated playable-level catalogue JSON
 
 The runtime package includes room size and player start, tiled floors, enemy
 definitions and tiers, props, walls, doors, clear conditions, and room graph
-connections. Unsupported metadata remains in the editable project document until
+connections. Unsupported gameplay metadata remains in the editable project until
 the runtime gains a typed representation.
+
+## Tests
+
+From `tools/level-maker`:
+
+```powershell
+node floor-data.test.js
+node level-state.test.js
+node level-save.test.js
+node app-19-save.test.js
+node editor-file.test.js
+```
+
+The GitHub Actions workflow runs the same tests and syntax-checks the new browser
+and server modules.
