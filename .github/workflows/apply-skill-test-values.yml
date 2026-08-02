@@ -1,0 +1,32 @@
+name: Apply skill test values
+
+on:
+  push:
+    branches:
+      - agent/add-basic-ranked-skills
+    paths:
+      - tools/patch-skill-test-values.py
+      - .github/workflows/apply-skill-test-values.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/add-basic-ranked-skills
+          fetch-depth: 0
+      - name: Apply test tuning
+        run: python tools/patch-skill-test-values.py
+      - name: Commit production-only result
+        run: |
+          rm tools/patch-skill-test-values.py
+          rm .github/workflows/apply-skill-test-values.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Set new skills to 100 percent per rank"
+          git push origin HEAD:agent/add-basic-ranked-skills
