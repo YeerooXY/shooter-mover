@@ -6,6 +6,7 @@ const http = require("http");
 const path = require("path");
 const { execFileSync } = require("child_process");
 const { URL } = require("url");
+const { createAssetPreviewService } = require("./asset-preview-service");
 
 const args = process.argv.slice(2);
 const repo = path.resolve(argument("--repo") || path.join(__dirname, "..", ".."));
@@ -24,6 +25,7 @@ const levelSourcesRoot = path.join(
 );
 const levelSourcePrefix =
   "Assets/ShooterMover/Content/Definitions/Missions/Rooms/Levels/";
+const assetPreviews = createAssetPreviewService(repo);
 
 function argument(name) {
   const index = args.indexOf(name);
@@ -389,6 +391,13 @@ function rebuildPlayableCatalog() {
 }
 
 async function api(request, response, url) {
+  if (request.method === "GET" && url.pathname === "/api/asset-previews") {
+    return send(response, 200, assetPreviews.previews(projectAssets()));
+  }
+  if (request.method === "GET" && url.pathname === "/api/asset-image") {
+    assetPreviews.sendImage(response, url.searchParams.get("path") || "");
+    return;
+  }
   if (request.method === "GET" && url.pathname === "/api/status") {
     return send(response, 200, {
       branch: git(["branch", "--show-current"]),
