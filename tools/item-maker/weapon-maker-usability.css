@@ -1,0 +1,78 @@
+.weapon-list-tools {
+  margin-bottom: 7px;
+}
+.weapon-list-tools input {
+  min-height: 32px;
+  padding: 5px 7px;
+  font-size: 12px;
+}
+.weapon-list {
+  max-height: 430px;
+}
+.weapon-entry {
+  display: block;
+  border-color: rgba(70, 86, 108, .72);
+  background: #111821;
+}
+.weapon-entry:hover {
+  background: #172434;
+}
+.weapon-entry.active {
+  border-color: var(--accent);
+  background: rgba(87, 199, 255, .13);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.weapon-entry-title {
+  display: block;
+  font-weight: 800;
+  color: var(--text);
+}
+.weapon-entry-meta {
+  display: block;
+  margin-top: 2px;
+  color: #bdc9d5;
+  font-size: 10px;
+  line-height: 1.35;
+}
+.weapon-entry-meta b {
+  font-size: 9px;
+  letter-spacing: .05em;
+}
+.rarity-common { color: #c5cbd3; }
+.rarity-rare { color: #72b2ff; }
+.rarity-epic { color: #c4b5fd; }
+.rarity-legendary { color: #ffe67a; }
+.rarity-artifact { color: #ff7a7f; }
+.rarity-unknown { color: var(--muted); }
+
+/* Three readable columns are easier to scan than four compressed fields. */
+.editor-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.editor-grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.editor-grid.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+#saveButton:disabled {
+  transform: none;
+}
+
+@media (max-width: 1180px) {
+  .weapon-list { max-height: 330px; }
+  .editor-grid,
+  .editor-grid.three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 780px) {
+  .weapon-list-tools input { min-height: 44px; font-size: 16px; }
+  .weapon-list { max-height: none; }
+}
+
+@media (max-width: 520px) {
+  .editor-grid,
+  .editor-grid.two,
+  .editor-grid.three { grid-template-columns: 1fr; }
+}
