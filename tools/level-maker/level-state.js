@@ -10,6 +10,22 @@
   }
 
   function addOldNames(state) {
+    state.level ||= {};
+    state.editor ||= {};
+
+    const oldRooms = Array.isArray(state.rooms) ? copy(state.rooms) : null;
+    const oldConnections = Array.isArray(state.connections) ? copy(state.connections) : null;
+    const oldLogic = Array.isArray(state.logic) ? copy(state.logic) : null;
+    const oldAssets = Array.isArray(state.catalog) ? copy(state.catalog) : null;
+    const oldActiveRoomId = state.activeRoomId;
+
+    state.level.rooms ||= oldRooms || [];
+    state.level.connections ||= oldConnections || [];
+    state.level.logic ||= oldLogic || [];
+    state.assets ||= oldAssets || [];
+    state.editor.activeRoomId ||= oldActiveRoomId || state.level.startRoomId || state.level.rooms[0]?.id || null;
+    state.editor.customAssets ||= [];
+
     const names = {
       rooms: {
         get: () => state.level.rooms,
@@ -78,6 +94,7 @@
   }
 
   function levelFile(state) {
+    addOldNames(state);
     return {
       format: state.format || "shooter-mover-web-level-project",
       schemaVersion: Number(state.schemaVersion || 4),
@@ -89,6 +106,7 @@
   }
 
   function editorFile(state) {
+    addOldNames(state);
     return {
       version: 1,
       levelId: state.level.id,
@@ -114,11 +132,13 @@
   }
 
   function levelSnapshot(state) {
+    addOldNames(state);
     return JSON.stringify(copy(state.level));
   }
 
   function restoreLevel(state, text) {
     state.level = JSON.parse(text);
+    fixEditor(state);
     return addOldNames(state);
   }
 
