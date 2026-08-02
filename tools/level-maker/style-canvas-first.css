@@ -1,0 +1,93 @@
+/* Canvas-first Level Maker pass. Keeps authoring behaviour intact and quiets permanent chrome. */
+[hidden]{display:none!important}
+
+#app{grid-template-rows:48px 1fr 24px}
+header{
+  gap:8px;
+  min-width:0;
+  padding:6px 10px;
+}
+.brand{
+  margin-right:10px;
+  font-size:15px;
+  letter-spacing:.02em;
+}
+.header-group{
+  display:flex;
+  align-items:center;
+  gap:5px;
+}
+.header-group + .header-group{
+  padding-left:8px;
+  border-left:1px solid var(--line);
+}
+header button{min-height:34px;padding:6px 11px}
+#undoBtn,#redoBtn{padding-inline:9px}
+#exportBtn{
+  min-width:116px;
+  font-weight:800;
+  box-shadow:0 0 0 1px rgba(159,240,189,.12) inset;
+}
+
+.project-menu{position:relative}
+.project-menu summary{
+  min-height:34px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 11px;
+  border:1px solid var(--line);
+  border-radius:7px;
+  background:var(--panel2);
+  cursor:pointer;
+  list-style:none;
+  user-select:none;
+}
+.project-menu summary::-webkit-details-marker{display:none}
+.project-menu summary::after{content:"▾";color:var(--muted);font-size:10px}
+.project-menu[open] summary{border-color:#52627a;background:#293242}
+.project-menu-popover{
+  position:absolute;
+  z-index:60;
+  top:calc(100% + 7px);
+  right:0;
+  width:210px;
+  display:grid;
+  gap:5px;
+  padding:7px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:#171c24;
+  box-shadow:var(--shadow);
+}
+.project-menu-popover button{text-align:left;width:100%}
+
+#mode-switch button{min-width:84px}
+#map-mode-help{display:none!important}
+#selected-asset-chip:empty,#selection-hud:empty{display:none!important}
+#room-hud{max-width:min(520px,calc(100% - 20px));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#selection-hud{max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+footer{gap:10px;padding:0 10px;font-size:10px}
+#status{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#counts{white-space:nowrap}
+
+body.room-focus.left-drawer-open #left,
+body.room-focus.right-drawer-open #right{
+  top:48px;
+  bottom:24px;
+}
+
+@media(max-width:900px){
+  .brand{margin-right:2px}
+  .header-group.secondary{display:none}
+  header{gap:5px}
+  header button,.project-menu summary{padding-inline:8px}
+  #exportBtn{min-width:104px}
+}
+@media(max-width:620px){
+  .brand{font-size:0;width:28px;margin:0}
+  .brand::after{content:"SM";font-size:13px}
+  #validateBtn{display:none}
+  #exportBtn{min-width:96px}
+}
