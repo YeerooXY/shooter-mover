@@ -195,7 +195,7 @@ namespace ShooterMover.Application.Guns.Catalog
             bool provisionalCombat)
         {
             string definitionId = familyId + ".mk" + mark;
-            string equipmentValue = "gun-" + slug + "-mk" + mark;
+            string equipmentValue = "gun-" + StableFamilyToken(slug) + "-mk" + mark;
             string presentationKey = slug + ".mk" + mark;
             ProvisionalCombatProfile combat = BuildCombatProfile(profile, mark);
             Gun blueprint = Gun.CreateAuthored(
@@ -228,6 +228,21 @@ namespace ShooterMover.Application.Guns.Catalog
                 craftUnlockLevel,
                 provisionalCombat,
                 blueprint);
+        }
+
+        // Authoring family IDs use underscore-safe folder keys, while StableId
+        // components require single hyphens. Keep the authored identity unchanged and
+        // convert only the namespace-local equipment token.
+        private static string StableFamilyToken(string familyId)
+        {
+            if (string.IsNullOrWhiteSpace(familyId))
+            {
+                throw new ArgumentException(
+                    "A gun family ID is required.",
+                    nameof(familyId));
+            }
+
+            return familyId.Replace('_', '-');
         }
 
         private static ProvisionalCombatProfile BuildCombatProfile(

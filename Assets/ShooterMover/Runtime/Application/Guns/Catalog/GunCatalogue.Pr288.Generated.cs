@@ -169,7 +169,7 @@ namespace ShooterMover.Application.Guns.Catalog
             {
                 Pr288MarkSource source = sources[index];
                 string definitionId = familyId + ".mk" + source.Mark;
-                string equipmentValue = "gun-" + familyId + "-mk" + source.Mark;
+                string equipmentValue = "gun-" + StableFamilyToken(familyId) + "-mk" + source.Mark;
                 ProvisionalCombatProfile combat = new ProvisionalCombatProfile(
                     source.Fire,
                     source.Shot,
