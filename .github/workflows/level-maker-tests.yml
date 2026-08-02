@@ -1,0 +1,45 @@
+name: Level Maker tests
+
+on:
+  pull_request:
+    paths:
+      - "tools/level-maker/**"
+      - ".github/workflows/level-maker-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "tools/level-maker/**"
+      - ".github/workflows/level-maker-tests.yml"
+
+jobs:
+  level-maker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check scripts
+        working-directory: tools/level-maker
+        run: |
+          node --check floor-data.js
+          node --check level-state.js
+          node --check level-save.js
+          node --check editor-file.js
+          node --check start-server.js
+          node --check app-19-save.js
+          node --check app-20-plan.js
+          node --check app-21-editor.js
+
+      - name: Run tests
+        working-directory: tools/level-maker
+        run: |
+          node floor-data.test.js
+          node level-state.test.js
+          node level-save.test.js
+          node app-19-save.test.js
+          node editor-file.test.js
