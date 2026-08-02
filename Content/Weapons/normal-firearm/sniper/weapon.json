@@ -1,0 +1,13 @@
+{
+  "name": "Sniper",
+  "description": "Piercing precision hit. High per-shot damage.",
+  "category": "normal-firearm",
+  "rarity": "rare",
+  "projectileType": "bullet",
+  "damageType": "physical",
+  "art": {
+    "delivery": "gun-delivery-art.normal-physical.v1",
+    "trail": "gun-trail-art.normal-physical.v1",
+    "impact": "gun-impact-art.normal-physical.v1"
+  }
+}

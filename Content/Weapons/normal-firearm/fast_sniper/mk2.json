@@ -1,0 +1,26 @@
+{
+  "peakLevel": 49,
+  "damage": 77.94746179113703,
+  "fire": {
+    "mode": "semi-automatic",
+    "rate": 2.2145
+  },
+  "shot": {
+    "projectiles": 1,
+    "spread": 0.33249999999999996
+  },
+  "projectile": {
+    "speed": 86.10000000000001,
+    "radius": 0.1,
+    "range": 49.44
+  },
+  "impact": {
+    "pierce": 1,
+    "ricochet": 0,
+    "knockback": 0.5184
+  },
+  "art": {
+    "side": "gun-art.fast_sniper.mk2.side-v1",
+    "mounted": "gun-art.fast_sniper.mk2.mounted-top-v1"
+  }
+}

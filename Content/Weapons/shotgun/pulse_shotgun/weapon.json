@@ -1,0 +1,13 @@
+{
+  "name": "Pulse Shotgun",
+  "description": "Charged pellet spread. Elemental shotgun cousin.",
+  "category": "shotgun",
+  "rarity": "rare",
+  "projectileType": "bullet",
+  "damageType": "energy",
+  "art": {
+    "delivery": "gun-delivery-art.shotgun-energy.v1",
+    "trail": "gun-trail-art.shotgun-energy.v1",
+    "impact": "gun-impact-art.shotgun-energy.v1"
+  }
+}

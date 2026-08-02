@@ -1,0 +1,26 @@
+{
+  "peakLevel": 44,
+  "damage": 13.376290161632655,
+  "fire": {
+    "mode": "semi-automatic",
+    "rate": 1.4935
+  },
+  "shot": {
+    "projectiles": 7,
+    "spread": 18.05
+  },
+  "projectile": {
+    "speed": 26.25,
+    "radius": 0.1,
+    "range": 16.48
+  },
+  "impact": {
+    "pierce": 0,
+    "ricochet": 0,
+    "knockback": 0.5184
+  },
+  "art": {
+    "side": "gun-art.pulse_shotgun.mk2.side-v1",
+    "mounted": "gun-art.pulse_shotgun.mk2.mounted-top-v1"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "peakLevel": 52,
+  "damage": 16.10189087332782,
+  "fire": {
+    "mode": "semi-automatic",
+    "rate": 1.537
+  },
+  "shot": {
+    "projectiles": 7,
+    "spread": 17.1
+  },
+  "projectile": {
+    "speed": 27.500000000000004,
+    "radius": 0.1,
+    "range": 16.96
+  },
+  "impact": {
+    "pierce": 1,
+    "ricochet": 0,
+    "knockback": 0.5568
+  },
+  "art": {
+    "side": "gun-art.shotgun.mk3.side-v1",
+    "mounted": "gun-art.shotgun.mk3.mounted-top-v1"
+  }
+}

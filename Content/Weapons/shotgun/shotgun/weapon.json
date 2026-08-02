@@ -1,0 +1,13 @@
+{
+  "name": "Shotgun",
+  "description": "Pellet impact. Reliable baseline spread weapon.",
+  "category": "shotgun",
+  "rarity": "common",
+  "projectileType": "bullet",
+  "damageType": "physical",
+  "art": {
+    "delivery": "gun-delivery-art.shotgun-physical.v1",
+    "trail": "gun-trail-art.shotgun-physical.v1",
+    "impact": "gun-impact-art.shotgun-physical.v1"
+  }
+}

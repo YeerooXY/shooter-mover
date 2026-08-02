@@ -1,0 +1,26 @@
+{
+  "peakLevel": 10,
+  "damage": 3.0170386277171786,
+  "fire": {
+    "mode": "automatic",
+    "rate": 7.5
+  },
+  "shot": {
+    "projectiles": 1,
+    "spread": 2
+  },
+  "projectile": {
+    "speed": 32,
+    "radius": 0.1,
+    "range": 32
+  },
+  "impact": {
+    "pierce": 0,
+    "ricochet": 0,
+    "knockback": 0.25
+  },
+  "art": {
+    "side": "gun-art.arc_rifle.mk1.side-v1",
+    "mounted": "gun-art.arc_rifle.mk1.mounted-top-v1"
+  }
+}

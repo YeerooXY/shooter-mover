@@ -1,0 +1,26 @@
+{
+  "peakLevel": 14,
+  "damage": 37.436299190750226,
+  "fire": {
+    "mode": "semi-automatic",
+    "rate": 0.72
+  },
+  "shot": {
+    "projectiles": 1,
+    "spread": 0.15
+  },
+  "projectile": {
+    "speed": 75,
+    "radius": 0.1,
+    "range": 58
+  },
+  "impact": {
+    "pierce": 2,
+    "ricochet": 0,
+    "knockback": 0.75
+  },
+  "art": {
+    "side": "gun-art.sniper.mk1.side-v1",
+    "mounted": "gun-art.sniper.mk1.mounted-top-v1"
+  }
+}

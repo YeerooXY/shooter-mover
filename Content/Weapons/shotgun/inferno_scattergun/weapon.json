@@ -1,0 +1,13 @@
+{
+  "name": "Inferno Scattergun",
+  "description": "Slow high-damage thermal spread. Variant does not imply trash.",
+  "category": "shotgun",
+  "rarity": "rare",
+  "projectileType": "bullet",
+  "damageType": "thermal",
+  "art": {
+    "delivery": "gun-delivery-art.shotgun-thermal.v1",
+    "trail": "gun-trail-art.shotgun-thermal.v1",
+    "impact": "gun-impact-art.shotgun-thermal.v1"
+  }
+}

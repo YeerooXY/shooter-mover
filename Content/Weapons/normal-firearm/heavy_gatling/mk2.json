@@ -1,0 +1,26 @@
+{
+  "peakLevel": 57,
+  "damage": 24.134411076114308,
+  "fire": {
+    "mode": "automatic",
+    "rate": 14.42
+  },
+  "shot": {
+    "projectiles": 1,
+    "spread": 2.375
+  },
+  "projectile": {
+    "speed": 44.1,
+    "radius": 0.1,
+    "range": 37.08
+  },
+  "impact": {
+    "pierce": 1,
+    "ricochet": 0,
+    "knockback": 0.6696000000000001
+  },
+  "art": {
+    "side": "gun-art.heavy_gatling.mk2.side-v1",
+    "mounted": "gun-art.heavy_gatling.mk2.mounted-top-v1"
+  }
+}

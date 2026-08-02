@@ -1,0 +1,13 @@
+{
+  "name": "Bio-Needler",
+  "description": "Rapid toxic darts. Chemical baseline.",
+  "category": "normal-firearm",
+  "rarity": "common",
+  "projectileType": "bullet",
+  "damageType": "chemical",
+  "art": {
+    "delivery": "gun-delivery-art.normal-chemical.v1",
+    "trail": "gun-trail-art.normal-chemical.v1",
+    "impact": "gun-impact-art.normal-chemical.v1"
+  }
+}

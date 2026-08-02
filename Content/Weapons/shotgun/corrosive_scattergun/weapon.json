@@ -1,0 +1,13 @@
+{
+  "name": "Corrosive Scattergun",
+  "description": "Wide acid spread. Lower impact, stronger corrosion identity.",
+  "category": "shotgun",
+  "rarity": "rare",
+  "projectileType": "bullet",
+  "damageType": "chemical",
+  "art": {
+    "delivery": "gun-delivery-art.shotgun-chemical.v1",
+    "trail": "gun-trail-art.shotgun-chemical.v1",
+    "impact": "gun-impact-art.shotgun-chemical.v1"
+  }
+}

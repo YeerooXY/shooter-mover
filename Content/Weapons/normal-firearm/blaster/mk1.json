@@ -1,0 +1,26 @@
+{
+  "peakLevel": 3,
+  "damage": 1.764,
+  "fire": {
+    "mode": "automatic",
+    "rate": 7.5
+  },
+  "shot": {
+    "projectiles": 1,
+    "spread": 2
+  },
+  "projectile": {
+    "speed": 32,
+    "radius": 0.1,
+    "range": 32
+  },
+  "impact": {
+    "pierce": 0,
+    "ricochet": 0,
+    "knockback": 0.25
+  },
+  "art": {
+    "side": "gun-art.blaster.mk1.side-v1",
+    "mounted": "gun-art.blaster.mk1.mounted-top-v1"
+  }
+}
