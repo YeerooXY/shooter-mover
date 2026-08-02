@@ -302,6 +302,44 @@ namespace ShooterMover.Domain.Guns.Execution
                 effectiveGun.EffectiveMovementPenaltyPercent);
         }
 
+        public ProjectileExecutionProfile WithDamageMultiplier(
+            double multiplier)
+        {
+            if (double.IsNaN(multiplier)
+                || double.IsInfinity(multiplier)
+                || multiplier <= 0d)
+            {
+                throw new ArgumentOutOfRangeException(nameof(multiplier));
+            }
+            if (Math.Abs(multiplier - 1d) < 0.0000001d)
+            {
+                return this;
+            }
+
+            GunDamageSpec scaledDamage = GunDamageSpec.Create(
+                Damage.Category,
+                Damage.DirectDamage * multiplier,
+                Damage.AreaDamage * multiplier,
+                Damage.DamageOverTimePerSecond * multiplier,
+                Damage.DamageOverTimeDurationSeconds,
+                Damage.Knockback);
+            return new ProjectileExecutionProfile(
+                SourceBlueprint,
+                DefinitionId,
+                EquipmentInstanceId,
+                ExecutionMode,
+                CanonicalDeliveryType,
+                Projectile,
+                MaximumAttackDistance,
+                Pierce,
+                Ricochet,
+                Guidance,
+                Impact,
+                scaledDamage,
+                Effects,
+                MovementPenaltyPercent);
+        }
+
         private static void ValidateDeliveryProjection(
             GunDeliveryType deliveryType,
             ProjectileSettings projectile)

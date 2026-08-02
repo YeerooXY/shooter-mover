@@ -6,6 +6,7 @@ using ShooterMover.Contracts.Combat;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Progression.Skills;
 using ShooterMover.GameplayEntities;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -249,6 +250,7 @@ namespace ShooterMover.UI.Game
     [DisallowMultipleComponent]
     public sealed class PlayerHUDInstaller : MonoBehaviour
     {
+        private const string MaximumHealthSkillId = "generic.max_health";
         private bool bindingComplete;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -331,6 +333,25 @@ namespace ShooterMover.UI.Game
                 return;
             }
 
+            CharacterLiveGraph graph;
+            FlowProfileRecord profile;
+            RankedSkillAllocationSnapshot allocation;
+            if (!CharacterSave.TryResolveCurrent(out graph, out profile)
+                || graph == null
+                || graph.IsDisposed
+                || graph.Character == null
+                || graph.Character.CharacterInstanceStableId
+                    != marker.CharacterInstanceStableId
+                || !graph.SkillAuthority.TryGet(
+                    graph.SkillProfileId,
+                    out allocation)
+                || allocation == null)
+            {
+                return;
+            }
+
+            double maximumHealth = PlayerHUD.ProvisionalMaximumHealth
+                * (1d + allocation.RankOf(MaximumHealthSkillId) * 0.01d);
             Rigidbody2D body = marker.GetComponent<Rigidbody2D>();
             TopDownMovement movement = marker.GetComponent<
                 TopDownMovement>();
@@ -347,7 +368,7 @@ namespace ShooterMover.UI.Game
             }
             if (!vitals.IsBound)
             {
-                vitals.Bind(marker, body, movement);
+                vitals.Bind(marker, body, movement, maximumHealth);
             }
             bindingComplete = vitals.IsBound;
         }
@@ -388,7 +409,15 @@ namespace ShooterMover.UI.Game
         public event Action<PlayablePlayerDefeatedFact> Defeated;
 
         public bool IsBound { get { return authority != null; } }
-        public bool UsesProvisionalMaximumHealth { get { return true; } }
+        public bool UsesProvisionalMaximumHealth
+        {
+            get
+            {
+                return IsBound
+                    && Math.Abs(MaximumHealth - ProvisionalMaximumHealth)
+                        < 0.000001d;
+            }
+        }
         public bool IsHubReturnAccepted { get { return hubReturnAccepted; } }
         public int HubReturnAttemptCount { get { return hubReturnAttemptCount; } }
         public string Diagnostic { get { return diagnostic; } }
@@ -436,6 +465,7 @@ namespace ShooterMover.UI.Game
                 configuredMarker,
                 configuredBody,
                 configuredMovement,
+                ProvisionalMaximumHealth,
                 new PlayablePlayerHubReturnRequest());
         }
 
@@ -443,6 +473,35 @@ namespace ShooterMover.UI.Game
             PlayerMarker configuredMarker,
             Rigidbody2D configuredBody,
             TopDownMovement configuredMovement,
+            double maximumHealth)
+        {
+            Bind(
+                configuredMarker,
+                configuredBody,
+                configuredMovement,
+                maximumHealth,
+                new PlayablePlayerHubReturnRequest());
+        }
+
+        public void Bind(
+            PlayerMarker configuredMarker,
+            Rigidbody2D configuredBody,
+            TopDownMovement configuredMovement,
+            IPlayablePlayerHubReturnRequest configuredHubReturnRequest)
+        {
+            Bind(
+                configuredMarker,
+                configuredBody,
+                configuredMovement,
+                ProvisionalMaximumHealth,
+                configuredHubReturnRequest);
+        }
+
+        private void Bind(
+            PlayerMarker configuredMarker,
+            Rigidbody2D configuredBody,
+            TopDownMovement configuredMovement,
+            double maximumHealth,
             IPlayablePlayerHubReturnRequest configuredHubReturnRequest)
         {
             if (IsBound)
@@ -460,6 +519,12 @@ namespace ShooterMover.UI.Game
             hubReturnRequest = configuredHubReturnRequest
                 ?? throw new ArgumentNullException(
                     nameof(configuredHubReturnRequest));
+            if (double.IsNaN(maximumHealth)
+                || double.IsInfinity(maximumHealth)
+                || maximumHealth <= 0d)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maximumHealth));
+            }
             if (marker.CharacterInstanceStableId == null
                 || marker.ClassDefinitionStableId == null
                 || marker.RoutePayload == null
@@ -483,7 +548,7 @@ namespace ShooterMover.UI.Game
                     participantStableId,
                     marker.CharacterInstanceStableId,
                     PlayerFactionStableId,
-                    ProvisionalMaximumHealth,
+                    maximumHealth,
                     0L));
             if (creation == null || !creation.IsCreated || creation.Authority == null)
             {
