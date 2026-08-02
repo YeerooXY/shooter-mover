@@ -5,7 +5,6 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using ShooterMover.Application.Flow.Game;
-using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Accounts;
 using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Application.Persistence.Composition;
@@ -816,84 +815,38 @@ namespace ShooterMover.UI.Game
         {
             profile = null;
             rejectionCode = string.Empty;
-            SavePartSnapshot component;
-            if (!character.TryGetComponent(
-                    GameSaveParts.ExactInstanceLoadout()
-                        .ComponentStableId,
-                    out component))
-            {
-                rejectionCode = "character-projection-loadout-missing";
-                return false;
-            }
-
-            InventoryLoadoutStateSnapshot loadout;
-            if (!GameSaveFormats.ExactInstanceLoadout.TryDecode(
-                    component.CanonicalPayload,
-                    out loadout,
-                    out rejectionCode))
-            {
-                rejectionCode =
-                    "character-projection-loadout-invalid:" + rejectionCode;
-                return false;
-            }
-
-            PlayerRouteProfilePayload routePayload;
             SavePartSnapshot mountComponent;
-            if (character.TryGetComponent(
+            if (!character.TryGetComponent(
                     LoadoutSavePart.Definition()
                         .ComponentStableId,
                     out mountComponent))
             {
-                LoadoutSnapshot mounts;
-                if (!LoadoutSavePart.Codec.TryDecode(
-                        mountComponent.CanonicalPayload,
-                        out mounts,
-                        out rejectionCode))
-                {
-                    rejectionCode =
-                        "character-projection-mount-v2-invalid:"
-                            + rejectionCode;
-                    return false;
-                }
-
-                try
-                {
-                    routePayload = LoadoutView
-                        .Route(
-                            character.CharacterInstanceStableId,
-                            character.ClassDefinitionStableId,
-                            GunMountPolicy.ResolveLayout(
-                                character.ClassDefinitionStableId),
-                            mounts);
-                }
-                catch (Exception exception)
-                {
-                    rejectionCode = "character-projection-mount-v2-threw:"
-                        + exception.GetType().Name;
-                    return false;
-                }
+                rejectionCode =
+                    "character-projection-canonical-loadout-missing";
+                return false;
             }
-            else
+
+            LoadoutSnapshot mounts;
+            if (!LoadoutSavePart.Codec.TryDecode(
+                    mountComponent.CanonicalPayload,
+                    out mounts,
+                    out rejectionCode))
             {
-                var instances = new List<StableId>(
-                    PlayerRouteProfilePayload.GunSlotCount);
-                for (int index = 0;
-                     index < PlayerRouteProfilePayload.GunSlotCount;
-                     index++)
-                {
-                    instances.Add(loadout.GetBinding(
-                        InventoryLoadoutSlots.All[index].SlotStableId)
-                        .EquipmentInstanceStableId);
-                }
-
-                routePayload = PlayerRouteProfilePayload.Create(
-                    character.CharacterInstanceStableId,
-                    character.ClassDefinitionStableId,
-                    instances);
+                rejectionCode =
+                    "character-projection-canonical-loadout-invalid:"
+                        + rejectionCode;
+                return false;
             }
 
+            PlayerRouteProfilePayload routePayload;
             try
             {
+                routePayload = LoadoutView.Route(
+                    character.CharacterInstanceStableId,
+                    character.ClassDefinitionStableId,
+                    GunMountPolicy.ResolveLayout(
+                        character.ClassDefinitionStableId),
+                    mounts);
                 profile = new FlowProfileRecord(
                     character.DisplayName,
                     routePayload);

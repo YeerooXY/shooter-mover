@@ -98,13 +98,15 @@ namespace ShooterMover.Application.Persistence.Composition
                         .ComponentStableId,
                     GameSaveParts.PlayerHoldings()
                         .ComponentStableId,
+                    GunInventorySavePart.Definition()
+                        .ComponentStableId,
+                    LoadoutSavePart.Definition()
+                        .ComponentStableId,
                     GameSaveParts.MoneyWallet()
                         .ComponentStableId,
                     GameSaveParts.ScrapWallet()
                         .ComponentStableId,
                     GameSaveParts.RankedSkillAllocation()
-                        .ComponentStableId,
-                    GameSaveParts.ExactInstanceLoadout()
                         .ComponentStableId,
                 });
         private static readonly ConditionalWeakTable<

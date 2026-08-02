@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ShooterMover.Application.Flow.Game;
-using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Rewards;
@@ -50,7 +49,6 @@ namespace ShooterMover.Application.Persistence.SaveParts
             PlayerHoldingsSnapshot holdings = null;
             GunInventorySnapshot gunHoldings = null;
             LoadoutSnapshot gunMountLoadout = null;
-            InventoryLoadoutStateSnapshot loadout = null;
             StrongboxOpeningSnapshot strongboxes = null;
             GeneratedEquipmentAugmentSignatureSnapshot augmentSignatures = null;
             ShopReceiptSnapshot shopReceipts = null;
@@ -98,16 +96,6 @@ namespace ShooterMover.Application.Persistence.SaveParts
             }
 
             if (character.TryGetComponent(
-                GameSaveParts.ExactInstanceLoadout().ComponentStableId,
-                out component)
-                && !GameSaveFormats.ExactInstanceLoadout.TryDecode(
-                    component.CanonicalPayload,
-                    out loadout,
-                    out error))
-            {
-                return SavePartValidationResult.Reject(error);
-            }
-            if (character.TryGetComponent(
                 GunAugmentSavePart.Definition()
                     .ComponentStableId,
                 out component)
@@ -148,61 +136,10 @@ namespace ShooterMover.Application.Persistence.SaveParts
                     ValidateCanonicalMountLoadout(
                         character,
                         gunHoldings,
-                        gunMountLoadout,
-                        loadout);
+                        gunMountLoadout);
                 if (!mountValidation.Succeeded)
                 {
                     return mountValidation;
-                }
-            }
-
-            if (loadout != null)
-            {
-                if (holdings == null)
-                {
-                    return SavePartValidationResult.Reject(
-                        "loadout-requires-holdings-component");
-                }
-                var equipmentIds = new HashSet<StableId>(
-                    holdings.UniqueHoldings
-                        .Where(item => item.RewardKind
-                            == RewardGrantKind.EquipmentReference)
-                        .Select(item => item.InstanceStableId));
-                for (int index = 0; index < loadout.Bindings.Count; index++)
-                {
-                    StableId instanceId = loadout.Bindings[index]
-                        .EquipmentInstanceStableId;
-                    bool gunSlot = index < InventoryLoadoutSlots.All.Count
-                        && InventoryLoadoutSlots.All[index].Kind
-                            == InventoryLoadoutSlotKind.Gun;
-
-                    if (hasLoadout && gunSlot)
-                    {
-                        if (instanceId != null)
-                        {
-                            return SavePartValidationResult.Reject(
-                                "legacy-gun-slot-must-be-empty-when-mount-v2-present:"
-                                    + loadout.Bindings[index].SlotStableId);
-                        }
-                        continue;
-                    }
-                    if (instanceId == null)
-                    {
-                        continue;
-                    }
-
-                    bool present = gunSlot && gunHoldings != null
-                        ? gunHoldings.Find(instanceId) != null
-                        : equipmentIds.Contains(instanceId);
-                    if (!present && !IsRetiredGunSaveInstance(instanceId))
-                    {
-                        return SavePartValidationResult.Reject(
-                            gunSlot && gunHoldings != null
-                                ? "loadout-gun-instance-absent-from-canonical-holdings:"
-                                    + instanceId
-                                : "loadout-equipment-instance-absent-from-holdings:"
-                                    + instanceId);
-                    }
                 }
             }
 
@@ -235,14 +172,8 @@ namespace ShooterMover.Application.Persistence.SaveParts
             ValidateCanonicalMountLoadout(
                 CharacterInstanceSnapshot character,
                 GunInventorySnapshot gunHoldings,
-                LoadoutSnapshot gunMountLoadout,
-                InventoryLoadoutStateSnapshot legacyArmorLoadout)
+                LoadoutSnapshot gunMountLoadout)
         {
-            if (legacyArmorLoadout == null)
-            {
-                return SavePartValidationResult.Reject(
-                    "gun-mount-loadout-v2-requires-armor-loadout-component");
-            }
             try
             {
                 var holdingsAuthority =

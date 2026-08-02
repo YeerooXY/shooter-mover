@@ -261,10 +261,7 @@ namespace ShooterMover.UI.Game
                 runtime.GunInventory,
                 runtime.MountLoadoutAuthority);
             controller.ConnectCanonicalAuthorities(
-                runtime.Holdings,
-                runtime.CatalogBridge,
                 runtime.GunInventory,
-                runtime.LoadoutAuthority,
                 runtime.MountLayout,
                 runtime.GunCatalog);
             controller.ConfigureGunPresentation(

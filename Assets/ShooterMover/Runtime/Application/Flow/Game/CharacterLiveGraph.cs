@@ -4,9 +4,8 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Economy.Scrap;
-using ShooterMover.Application.Inventory.LoadoutScreen;
-using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Application.Persistence.Composition;
+using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Application.Progression.Experience;
 using ShooterMover.Application.Progression.Skills;
 using ShooterMover.Application.Rewards.Strongboxes;
@@ -219,11 +218,6 @@ namespace ShooterMover.Application.Flow.Game
                     character,
                     GameSaveParts.PlayerHoldings(),
                     GameSaveFormats.PlayerHoldings);
-            InventoryLoadoutStateSnapshot loadout =
-                CharacterStateAdapters.DecodeRequired(
-                    character,
-                    GameSaveParts.ExactInstanceLoadout(),
-                    GameSaveFormats.ExactInstanceLoadout);
             RankedSkillAllocationSnapshot skills =
                 CharacterStateAdapters.DecodeRequired(
                     character,
@@ -237,32 +231,28 @@ namespace ShooterMover.Application.Flow.Game
 
             GunInventorySnapshot gunHoldings;
             string gunError;
-            bool hasGunInventory = GunInventorySavePart.TryRead(
-                character,
-                out gunHoldings,
-                out gunError);
-            if (!hasGunInventory && !string.IsNullOrEmpty(gunError))
+            if (!GunInventorySavePart.TryRead(
+                    character,
+                    out gunHoldings,
+                    out gunError))
             {
                 throw new InvalidOperationException(
-                    "Canonical gun holdings are corrupt: " + gunError);
+                    string.IsNullOrEmpty(gunError)
+                        ? "Required canonical gun holdings are missing."
+                        : "Canonical gun holdings are corrupt: " + gunError);
             }
 
             LoadoutSnapshot gunMountLoadout;
             string mountError;
-            bool hasLoadout =
-                LoadoutSavePart.TryRead(
+            if (!LoadoutSavePart.TryRead(
                     character,
                     out gunMountLoadout,
-                    out mountError);
-            if (!hasLoadout && !string.IsNullOrEmpty(mountError))
+                    out mountError))
             {
                 throw new InvalidOperationException(
-                    "Canonical gun mount loadout is corrupt: " + mountError);
-            }
-            if (hasLoadout && !hasGunInventory)
-            {
-                throw new InvalidOperationException(
-                    "Canonical gun mount loadout requires canonical holdings.");
+                    string.IsNullOrEmpty(mountError)
+                        ? "Required canonical gun mount loadout is missing."
+                        : "Canonical gun mount loadout is corrupt: " + mountError);
             }
 
             PlayerLoadoutLive inventory =
@@ -271,8 +261,7 @@ namespace ShooterMover.Application.Flow.Game
                     character.ClassDefinitionStableId,
                     holdings,
                     gunHoldings,
-                    gunMountLoadout,
-                    loadout);
+                    gunMountLoadout);
             return CreateGraph(
                 character,
                 inventory,
