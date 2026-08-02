@@ -8,18 +8,27 @@
   <link rel="stylesheet" href="weapon-gameplay-maker.css">
   <link rel="stylesheet" href="weapon-balance.css">
   <style>
-    .weapon-workspace { display:grid; grid-template-columns:280px minmax(0,1fr) 300px; gap:16px; padding:16px; }
-    .weapon-editor { min-height:70vh; width:100%; resize:vertical; font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; }
-    .file-tabs { display:flex; gap:8px; flex-wrap:wrap; padding:12px; border-bottom:1px solid var(--border); }
+    .weapon-workspace { display:grid; grid-template-columns:230px minmax(0,1fr) 270px; gap:10px; padding:10px; align-items:start; }
+    .weapon-workspace > aside { min-width:0; }
+    .weapon-editor { min-height:62vh; width:100%; resize:vertical; font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace; }
+    .file-tabs { display:flex; gap:5px; flex-wrap:wrap; padding:7px 9px; border-bottom:1px solid var(--line); }
     .file-tabs button.active { background:var(--accent); color:white; }
-    .weapon-entry { width:100%; text-align:left; margin-bottom:6px; }
-    .weapon-entry small { display:block; opacity:.65; margin-top:2px; }
+    .weapon-entry { width:100%; text-align:left; margin-bottom:4px; }
+    .weapon-entry small { display:block; opacity:.65; margin-top:1px; }
     .generated-id { overflow-wrap:anywhere; }
-    @media (max-width:1000px) { .weapon-workspace { grid-template-columns:240px minmax(0,1fr); } .weapon-summary { grid-column:1 / -1; } }
-    @media (max-width:720px) { .weapon-workspace { grid-template-columns:1fr; } }
+    @media (max-width:1100px) {
+      .weapon-workspace { grid-template-columns:210px minmax(0,1fr); }
+      .weapon-summary { grid-column:1 / -1; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+      .weapon-summary .panel + .panel { margin-top:0; }
+    }
+    @media (max-width:720px) {
+      .weapon-workspace { grid-template-columns:1fr; padding:8px; }
+      .weapon-summary { display:block; }
+      .weapon-summary .panel + .panel { margin-top:8px; }
+    }
   </style>
 </head>
-<body>
+<body class="weapon-maker">
   <header class="app-header">
     <div class="brand">
       <strong>Weapon Maker</strong>
@@ -50,7 +59,7 @@
             <label for="categoryInput">Weapon category</label>
             <input id="categoryInput" class="mono" value="orb">
           </div>
-          <div class="field" style="margin-top:10px">
+          <div class="field" style="margin-top:7px">
             <label for="folderInput">Weapon key</label>
             <input id="folderInput" class="mono" value="new_weapon">
             <div class="hint">Created from the weapon name, then kept stable.</div>
