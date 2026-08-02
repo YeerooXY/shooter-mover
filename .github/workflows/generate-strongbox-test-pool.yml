@@ -1,0 +1,40 @@
+name: Generate Strongbox test pool
+
+on:
+  push:
+    branches:
+      - codex/pr288-weapon-migration
+    paths:
+      - tools/migrations/generate-strongbox-test-pool.js
+      - .github/workflows/generate-strongbox-test-pool.yml
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Generate and validate
+        run: |
+          node --check tools/migrations/generate-strongbox-test-pool.js
+          node tools/migrations/generate-strongbox-test-pool.js
+          git diff --check
+      - name: Commit generated pool
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Assets/ShooterMover/Runtime/Application/Guns/Catalog/GunCatalogue.Content.cs
+          git add Assets/ShooterMover/Runtime/Application/Guns/Catalog/GunCatalogue.StrongboxTestPool.cs
+          git add Assets/ShooterMover/Tests/EditMode/Guns/Catalog/StrongboxTestPoolTests.cs
+          git add Content/Weapons Documentation/Weapons/STRONGBOX_TEST_POOL.md
+          git rm .github/workflows/generate-strongbox-test-pool.yml
+          git commit -m "Add deterministic Strongbox rarity test pool"
+          git push
