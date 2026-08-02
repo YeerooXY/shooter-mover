@@ -261,11 +261,11 @@ namespace ShooterMover.Domain.Progression.Skills
                 new[] { new SkillClassOverride("combat_medic", 6, Enumerable.Range(1, 6).Select(x => x * 0.01m)), new SkillClassOverride("juggernaut", 9, Enumerable.Range(1, 9).Select(x => x * 0.01m)) }, Enumerable.Range(1, 18).Select(x => x * 0.01m),
                 new[] { new SkillEffectDescriptor("movement.speed", SkillModifierKind.Percentage, 1m) }, null);
             var health = new RankedSkillDefinition("generic.max_health", "defense", 15, null, null, null,
-                null, fifteen(0.01m), new[] { new SkillEffectDescriptor("character.maximum_health", SkillModifierKind.Percentage, 1m) }, null);
+                null, fifteen(1m), new[] { new SkillEffectDescriptor("character.maximum_health", SkillModifierKind.Percentage, 1m) }, null);
             var damage = new RankedSkillDefinition("striker.damage_bonus", "offense", 15, new[] { "striker" }, null, null,
-                null, fifteen(0.01m), new[] { new SkillEffectDescriptor("combat.damage", SkillModifierKind.Percentage, 1m) }, null);
+                null, fifteen(1m), new[] { new SkillEffectDescriptor("combat.damage", SkillModifierKind.Percentage, 1m) }, null);
             var cash = new RankedSkillDefinition("generic.cash_drop_size", "economy", 15, null, null, null,
-                null, fifteen(0.01m), new[] { new SkillEffectDescriptor("rewards.cash", SkillModifierKind.Percentage, 1m) }, null);
+                null, fifteen(1m), new[] { new SkillEffectDescriptor("rewards.cash", SkillModifierKind.Percentage, 1m) }, null);
             var recovery = new RankedSkillDefinition("striker.thruster_recovery", "mobility", 15, new[] { "striker" }, null, null, null, fifteen(0.01m), new[] { new SkillEffectDescriptor("movement.thruster_recovery", SkillModifierKind.Percentage, 1m) }, new[] { new SkillRankMilestone(5, new[] { new SkillEffectDescriptor("movement.recovery_delay", SkillModifierKind.Flat, -0.1m) }) });
             var efficiency = new RankedSkillDefinition("striker.movement_efficiency", "mobility", 15, new[] { "striker" }, new[] { new SkillPrerequisite("generic.movement_speed", 3) }, null, null, fifteen(0.01m), new[] { new SkillEffectDescriptor("movement.energy_efficiency", SkillModifierKind.Percentage, 1m) }, null);
             var synergy = new SkillSynergyDefinition("striker.third_movement_charge", new[] { new SkillSynergyRequirement(recovery.Id, 8), new SkillSynergyRequirement(efficiency.Id, 8) }, new[] { new SkillEffectDescriptor("movement.maximum_charges", SkillModifierKind.IntegerCapacity, 1m) });

@@ -185,7 +185,7 @@ namespace ShooterMover.UI.Game
                     "The selected character skill allocation is unavailable at run start.");
             }
             int cashMultiplier = checked(
-                1000 + allocation.RankOf(CashDropSkillId) * 10);
+                1000 + allocation.RankOf(CashDropSkillId) * 1000);
             run.ConfigureRewardEnvironment(new RunRewardEnvironmentSnapshot(
                 gameModeId,
                 Array.Empty<StableId>(),
