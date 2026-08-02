@@ -31,6 +31,7 @@ jobs:
           node --check level-save.js
           node --check editor-file.js
           node --check start-server.js
+          node --check app-16-brush.js
           node --check app-19-save.js
           node --check app-20-plan.js
           node --check app-21-editor.js
