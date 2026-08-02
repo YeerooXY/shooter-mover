@@ -32,6 +32,7 @@
   if (!presentation) return;
 
   const productionPrepare = prepare;
+  const epicAnalysisDefinitions = new Set();
   let scheduled = false;
 
   function visualRarityId(rarityId) {
@@ -172,6 +173,27 @@
     return digits ? Number(digits) : 0;
   }
 
+  function applyAnalysisEpicPalette() {
+    presentation.querySelectorAll("[data-analysis-weapon]").forEach(button => {
+      const chip = button.querySelector(".analysis-rarity-chip");
+      if (chip?.textContent?.trim().toLowerCase() !== "epic") return;
+      const definitionId = button.dataset.analysisWeapon || "";
+      if (definitionId) epicAnalysisDefinitions.add(definitionId);
+      button.style.color = epicGlow;
+      button.style.textShadow = `0 0 12px ${epicColor}55`;
+      chip.style.color = epicColor;
+      const distributionFill = button.closest("td")?.querySelector(".distribution-bar i");
+      if (distributionFill) distributionFill.style.background = epicColor;
+    });
+
+    const selectedDefinitionId = presentation.querySelector("#analysisWeaponFilter")?.value || "";
+    if (!epicAnalysisDefinitions.has(selectedDefinitionId)) return;
+    const heading = presentation.querySelector(".analysis-weapon-head h2");
+    if (!heading) return;
+    heading.style.color = epicGlow;
+    heading.style.textShadow = `0 0 16px ${epicColor}66`;
+  }
+
   function showNoAugmentBucket() {
     const summary = presentation.querySelector(".weapon-analysis-summary")?.textContent || "";
     const totalMatch = summary.match(/^(.+?)\s+drops\b/);
@@ -201,6 +223,7 @@
 
   function cleanReport() {
     scheduled = false;
+    applyAnalysisEpicPalette();
 
     const activeTab = presentation.querySelector(".analysis-tab.active")?.dataset.analysisTab || "";
     const rarityTab = presentation.querySelector('[data-analysis-tab="rarity"]');
