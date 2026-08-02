@@ -306,7 +306,7 @@ namespace ShooterMover.UI.Game
                 return false;
             }
             double damageMultiplier = 1d
-                + allocation.RankOf(DamageSkillId) * 0.01d;
+                + allocation.RankOf(DamageSkillId) * 1d;
 
             List<GunPlay> resolved;
             string error;

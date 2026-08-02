@@ -351,7 +351,7 @@ namespace ShooterMover.UI.Game
             }
 
             double maximumHealth = PlayerHUD.ProvisionalMaximumHealth
-                * (1d + allocation.RankOf(MaximumHealthSkillId) * 0.01d);
+                * (1d + allocation.RankOf(MaximumHealthSkillId) * 1d);
             Rigidbody2D body = marker.GetComponent<Rigidbody2D>();
             TopDownMovement movement = marker.GetComponent<
                 TopDownMovement>();
