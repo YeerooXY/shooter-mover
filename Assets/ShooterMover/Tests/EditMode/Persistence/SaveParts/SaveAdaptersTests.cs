@@ -8,7 +8,6 @@ using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Economy.Scrap;
 using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Holdings;
-using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Application.Progression.Experience;
 using ShooterMover.Application.Progression.Skills;
@@ -256,92 +255,6 @@ namespace ShooterMover.Tests.EditMode.Persistence.SaveParts
         }
 
         [Test]
-        public void LoadoutRealAuthorityRoundTripPreservesExactSlotBindingAndReplay()
-        {
-            PlayerRouteProfilePayload route = Route("real-loadout");
-            var source = new PlayerLoadoutLive(route);
-            InventoryLoadoutStateSnapshot before =
-                source.LoadoutAuthority.ExportSnapshot();
-            List<InventoryLoadoutSlotBinding> bindings = CopyBindings(before);
-            bindings[3] = new InventoryLoadoutSlotBinding(
-                InventoryLoadoutSlotIds.GunFour,
-                StableId.Parse("equipment-instance.test-ricochet"));
-            var originalCommand = new InventoryLoadoutStateCommand(
-                before.Sequence,
-                source.Holdings.Sequence,
-                bindings);
-            Assert.That(source.LoadoutAuthority.Apply(originalCommand).Status,
-                Is.EqualTo(InventoryLoadoutStateMutationStatus.Applied));
-
-            var target = new PlayerLoadoutLive(route);
-            PlayerAccountSnapshot decoded = FileRoundTrip(
-                LoadoutAdapter(source).ExportComponent());
-            PlayerAccountRestoreResult restored = Restore(
-                decoded,
-                LoadoutAdapter(target));
-
-            Assert.That(restored.Succeeded, Is.True, restored.RejectionCode);
-            InventoryLoadoutStateSnapshot restoredSnapshot =
-                target.LoadoutAuthority.ExportSnapshot();
-            Assert.That(restoredSnapshot.Fingerprint,
-                Is.EqualTo(source.LoadoutAuthority.ExportSnapshot().Fingerprint));
-            Assert.That(restoredSnapshot.GetBinding(
-                InventoryLoadoutSlotIds.GunFour)
-                .EquipmentInstanceStableId,
-                Is.EqualTo(StableId.Parse("equipment-instance.test-ricochet")));
-            InventoryLoadoutStateResult replay =
-                target.LoadoutAuthority.Apply(originalCommand);
-            Assert.That(replay.Status,
-                Is.EqualTo(InventoryLoadoutStateMutationStatus
-                    .ExactRepeatNoChange));
-            Assert.That(target.LoadoutAuthority.ExportSnapshot().Fingerprint,
-                Is.EqualTo(restoredSnapshot.Fingerprint));
-        }
-
-        [Test]
-        public void SemanticValidatorRejectsLoadoutInstanceAbsentFromHoldings()
-        {
-            StableId authorityId = Id("authority.holdings.semantic-test");
-            var holdings = new PlayerHoldingsActions(
-                authorityId,
-                1000L,
-                new AcceptingEquipmentValidator());
-            PlayerHoldingsSnapshot holdingsSnapshot = holdings.ExportSnapshot();
-            var bindings = new List<InventoryLoadoutSlotBinding>();
-            for (int index = 0; index < InventoryLoadoutSlots.All.Count; index++)
-            {
-                InventoryLoadoutSlotDescriptor slot =
-                    InventoryLoadoutSlots.All[index];
-                bindings.Add(new InventoryLoadoutSlotBinding(
-                    slot.SlotStableId,
-                    index == 0
-                        ? Id("equipment-instance.absent")
-                        : null));
-            }
-            InventoryLoadoutStateSnapshot loadout =
-                InventoryLoadoutStateSnapshot.CreateCanonical(0L, bindings);
-            CharacterInstanceSnapshot character = Character(
-                new SavePartSnapshot[]
-                {
-                    Component(
-                        GameSaveParts.PlayerHoldings(),
-                        GameSaveFormats.PlayerHoldings.Encode(
-                            holdingsSnapshot)),
-                    Component(
-                        GameSaveParts.ExactInstanceLoadout(),
-                        GameSaveFormats.ExactInstanceLoadout.Encode(
-                            loadout)),
-                });
-
-            SavePartValidationResult result =
-                GameSaveRules.ValidateCharacter(character);
-
-            Assert.That(result.Succeeded, Is.False);
-            Assert.That(result.RejectionCode,
-                Does.StartWith("loadout-equipment-instance-absent-from-holdings"));
-        }
-
-        [Test]
         public void ExplicitCodecGoldenPayloadsAreStableAndDoNotUseClrTypes()
         {
             PlayerExperienceCurve curve = ConstantCurve();
@@ -569,41 +482,6 @@ namespace ShooterMover.Tests.EditMode.Persistence.SaveParts
                 });
         }
 
-        private static ISavePart LoadoutAdapter(
-            PlayerLoadoutLive runtime)
-        {
-            return KnownSavePartAdapters.ExactInstanceLoadout(
-                runtime.LoadoutAuthority.ExportSnapshot,
-                snapshot => GameSaveFormats.ExactInstanceLoadout
-                    .Validate(snapshot),
-                snapshot =>
-                {
-                    InventoryLoadoutStateSnapshot current =
-                        runtime.LoadoutAuthority.ExportSnapshot();
-                    if (current.Fingerprint == snapshot.Fingerprint)
-                    {
-                        return SavePartApplyResult.Applied();
-                    }
-                    if (snapshot.Sequence != current.Sequence + 1L)
-                    {
-                        return SavePartApplyResult.Rejected(
-                            "loadout-import-sequence-not-replayable");
-                    }
-                    var command = new InventoryLoadoutStateCommand(
-                        current.Sequence,
-                        runtime.Holdings.Sequence,
-                        snapshot.Bindings);
-                    InventoryLoadoutStateResult result =
-                        runtime.LoadoutAuthority.Apply(command);
-                    return result.Status
-                                == InventoryLoadoutStateMutationStatus.Applied
-                            && result.Snapshot.Fingerprint == snapshot.Fingerprint
-                        ? SavePartApplyResult.Applied()
-                        : SavePartApplyResult.Rejected(
-                            result.RejectionCode);
-                });
-        }
-
         private static PlayerExperienceCurve ConstantCurve()
         {
             return new PlayerExperienceCurve(
@@ -711,15 +589,6 @@ namespace ShooterMover.Tests.EditMode.Persistence.SaveParts
                     Id("equipment-instance." + suffix + "-3"),
                     Id("equipment-instance." + suffix + "-4"),
                 });
-        }
-
-        private static List<InventoryLoadoutSlotBinding> CopyBindings(
-            InventoryLoadoutStateSnapshot snapshot)
-        {
-            return snapshot.Bindings.Select(binding =>
-                new InventoryLoadoutSlotBinding(
-                    binding.SlotStableId,
-                    binding.EquipmentInstanceStableId)).ToList();
         }
 
         private static string Sha256(string value)

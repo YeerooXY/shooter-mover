@@ -114,7 +114,6 @@ namespace ShooterMover.Application.Persistence.SaveParts
                 GameSaveParts.MoneyWallet(),
                 GameSaveParts.ScrapWallet(),
                 GameSaveParts.RankedSkillAllocation(),
-                GameSaveParts.ExactInstanceLoadout(),
                 GunAugmentSavePart.Definition(),
                 GameSaveParts.StrongboxState(),
                 RewardClaimPreparedTransferSavePart.Definition(),

@@ -133,7 +133,8 @@ namespace ShooterMover.Tests.EditMode.Persistence.Composition
                 GameSaveParts.MoneyWallet(),
                 GameSaveParts.ScrapWallet(),
                 GameSaveParts.RankedSkillAllocation(),
-                GameSaveParts.ExactInstanceLoadout(),
+                GunInventorySavePart.Definition(),
+                LoadoutSavePart.Definition(),
                 GameSaveParts.StrongboxState(),
             };
         }

@@ -41,9 +41,7 @@ namespace ShooterMover.Tests.PlayMode.Guns.Live
                 .Find(secondPosition.MountStableId).InstanceId;
             var inventory = new InventoryMenuActions(
                 runtime.CurrentRoutePayload,
-                runtime.Holdings,
                 runtime.GunInventory,
-                runtime.LoadoutAuthority,
                 runtime.MountLayout,
                 runtime.GunCatalog);
 

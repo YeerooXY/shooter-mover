@@ -1,6 +1,5 @@
 using System;
 using System.Text;
-using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Holdings;
 using ShooterMover.Contracts.Progression.Experience;
@@ -649,16 +648,6 @@ namespace ShooterMover.Application.Persistence.SaveParts
                 500);
         }
 
-        public static SavePartDefinition ExactInstanceLoadout(
-            bool required = true)
-        {
-            return Definition(
-                "exact-instance-loadout",
-                "inventory-loadout-explicit-v1",
-                required,
-                600);
-        }
-
         public static SavePartDefinition StrongboxState(
             bool required = false)
         {
@@ -766,23 +755,6 @@ namespace ShooterMover.Application.Persistence.SaveParts
             return Adapter(
                 GameSaveParts.RankedSkillAllocation(required),
                 GameSaveFormats.RankedSkillAllocation,
-                exportSnapshot,
-                validateSnapshot,
-                applySnapshot);
-        }
-
-        public static SnapshotSavePart<
-            InventoryLoadoutStateSnapshot> ExactInstanceLoadout(
-            Func<InventoryLoadoutStateSnapshot> exportSnapshot,
-            Func<InventoryLoadoutStateSnapshot,
-                SavePartValidationResult> validateSnapshot,
-            Func<InventoryLoadoutStateSnapshot,
-                SavePartApplyResult> applySnapshot,
-            bool required = true)
-        {
-            return Adapter(
-                GameSaveParts.ExactInstanceLoadout(required),
-                GameSaveFormats.ExactInstanceLoadout,
                 exportSnapshot,
                 validateSnapshot,
                 applySnapshot);

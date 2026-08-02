@@ -4,7 +4,6 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
-using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
@@ -378,78 +377,39 @@ namespace ShooterMover.Application.Flow.Game
 
     public static class LoadoutView
     {
-        public static LoadoutSnapshot MigrateLegacy(
+        public static PlayerRouteProfilePayload Route(
+            StableId characterId,
+            StableId loadoutProfileId,
             GunSlots layout,
-            GunInventoryState holdings,
-            InventoryLoadoutStateSnapshot legacy)
+            LoadoutSnapshot mounts)
         {
-            if (layout == null) throw new ArgumentNullException(nameof(layout));
-            if (holdings == null) throw new ArgumentNullException(nameof(holdings));
-            if (legacy == null || !legacy.HasValidFingerprint())
+            if (characterId == null)
             {
-                throw new ArgumentException(
-                    "A valid legacy loadout snapshot is required.",
-                    nameof(legacy));
+                throw new ArgumentNullException(nameof(characterId));
             }
-
-            var selected = new HashSet<StableId>();
-            var bindings = new List<EquippedGun>(
-                layout.PhysicalPositions.Count);
-            for (int index = 0; index < layout.PhysicalPositions.Count; index++)
+            if (loadoutProfileId == null)
             {
-                GunSlot position =
-                    layout.PhysicalPositions[index];
-                StableId instanceId = legacy.GetBinding(
-                    position.LoadoutSlotStableId).EquipmentInstanceStableId;
-                if (!position.IsActive
-                    || instanceId == null
-                    || holdings.Find(instanceId) == null
-                    || !selected.Add(instanceId))
-                {
-                    instanceId = null;
-                }
-                bindings.Add(new EquippedGun(
-                    position.MountStableId,
-                    instanceId));
+                throw new ArgumentNullException(nameof(loadoutProfileId));
             }
-            return LoadoutSnapshot.CreateCanonical(
-                legacy.Sequence,
-                bindings);
-        }
-
-        public static InventoryLoadoutStateSnapshot ToLegacyProjection(
-            GunSlots layout,
-            LoadoutSnapshot mounts,
-            InventoryLoadoutStateSnapshot armorTemplate)
-        {
-            if (layout == null) throw new ArgumentNullException(nameof(layout));
+            if (layout == null)
+            {
+                throw new ArgumentNullException(nameof(layout));
+            }
             if (mounts == null || !mounts.HasValidFingerprint())
             {
                 throw new ArgumentException(
-                    "A valid canonical mount loadout is required.",
+                    "A valid canonical gun mount snapshot is required.",
                     nameof(mounts));
             }
-            if (armorTemplate == null || !armorTemplate.HasValidFingerprint())
+            if (mounts.Bindings.Count != layout.PhysicalPositions.Count)
             {
                 throw new ArgumentException(
-                    "A valid legacy armor projection is required.",
-                    nameof(armorTemplate));
+                    "The canonical gun mount count does not match the class layout.",
+                    nameof(mounts));
             }
 
-            var bindings = new List<InventoryLoadoutSlotBinding>(
-                InventoryLoadoutSlots.All.Count);
-            for (int index = 0; index < InventoryLoadoutSlots.All.Count; index++)
-            {
-                InventoryLoadoutSlotDescriptor slot = InventoryLoadoutSlots.All[index];
-                StableId instanceId = slot.Kind == InventoryLoadoutSlotKind.Gun
-                    ? null
-                    : armorTemplate.GetBinding(slot.SlotStableId)
-                        .EquipmentInstanceStableId;
-                bindings.Add(new InventoryLoadoutSlotBinding(
-                    slot.SlotStableId,
-                    instanceId));
-            }
-
+            var routeInstances = new StableId[
+                PlayerRouteProfilePayload.GunSlotCount];
             for (int index = 0; index < layout.PhysicalPositions.Count; index++)
             {
                 GunSlot position = layout.PhysicalPositions[index];
@@ -460,83 +420,23 @@ namespace ShooterMover.Application.Flow.Game
                         "The canonical loadout is missing a physical mount.",
                         nameof(mounts));
                 }
-                int slotIndex = FindLegacySlotIndex(position.LoadoutSlotStableId);
-                bindings[slotIndex] = new InventoryLoadoutSlotBinding(
-                    position.LoadoutSlotStableId,
-                    position.IsActive ? binding.InstanceId : null);
+                int routeIndex = GunLoadoutSlotIds.IndexOf(
+                    position.LoadoutSlotStableId);
+                if (routeIndex < 0
+                    || routeIndex >= routeInstances.Length)
+                {
+                    throw new InvalidOperationException(
+                        "A physical gun mount has no route slot identity.");
+                }
+                routeInstances[routeIndex] = position.IsActive
+                    ? binding.InstanceId
+                    : null;
             }
-            return InventoryLoadoutStateSnapshot.CreateCanonical(
-                mounts.Sequence,
-                bindings);
-        }
 
-        public static InventoryLoadoutStateSnapshot ArmorOnly(
-            InventoryLoadoutStateSnapshot source)
-        {
-            if (source == null || !source.HasValidFingerprint())
-            {
-                throw new ArgumentException(
-                    "A valid loadout snapshot is required.",
-                    nameof(source));
-            }
-            var bindings = new List<InventoryLoadoutSlotBinding>(
-                InventoryLoadoutSlots.All.Count);
-            for (int index = 0; index < InventoryLoadoutSlots.All.Count; index++)
-            {
-                InventoryLoadoutSlotDescriptor slot = InventoryLoadoutSlots.All[index];
-                bindings.Add(new InventoryLoadoutSlotBinding(
-                    slot.SlotStableId,
-                    slot.Kind == InventoryLoadoutSlotKind.Gun
-                        ? null
-                        : source.GetBinding(slot.SlotStableId)
-                            .EquipmentInstanceStableId));
-            }
-            return InventoryLoadoutStateSnapshot.CreateCanonical(
-                source.Sequence,
-                bindings);
-        }
-
-        public static PlayerRouteProfilePayload Route(
-            StableId characterId,
-            StableId loadoutProfileId,
-            GunSlots layout,
-            LoadoutSnapshot mounts)
-        {
-            InventoryLoadoutStateSnapshot emptyArmor =
-                InventoryLoadoutStateSnapshot.CreateCanonical(
-                    mounts.Sequence,
-                    EmptyLegacyBindings());
-            InventoryLoadoutStateSnapshot projection = ToLegacyProjection(
-                layout,
-                mounts,
-                emptyArmor);
-            return LegacyGunSetup.RouteFromLoadout(
+            return PlayerRouteProfilePayload.Create(
                 characterId,
                 loadoutProfileId,
-                projection);
-        }
-
-        private static int FindLegacySlotIndex(StableId slotId)
-        {
-            for (int index = 0; index < InventoryLoadoutSlots.All.Count; index++)
-            {
-                if (InventoryLoadoutSlots.All[index].SlotStableId == slotId) return index;
-            }
-            throw new InvalidOperationException(
-                "A physical mount has no legacy route projection slot.");
-        }
-
-        private static IEnumerable<InventoryLoadoutSlotBinding> EmptyLegacyBindings()
-        {
-            var values = new List<InventoryLoadoutSlotBinding>(
-                InventoryLoadoutSlots.All.Count);
-            for (int index = 0; index < InventoryLoadoutSlots.All.Count; index++)
-            {
-                values.Add(new InventoryLoadoutSlotBinding(
-                    InventoryLoadoutSlots.All[index].SlotStableId,
-                    null));
-            }
-            return values;
+                routeInstances);
         }
     }
 
