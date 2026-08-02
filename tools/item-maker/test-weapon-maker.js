@@ -12,7 +12,6 @@ const validator = path.join(toolRoot, "validate-weapon-folder.js");
 const gameplayScript = path.join(toolRoot, "weapon-gameplay-maker.js");
 const qolScript = path.join(toolRoot, "weapon-maker-qol.js");
 const balanceScript = path.join(toolRoot, "weapon-balance.js");
-const targetFile = path.join(toolRoot, "..", "..", "Content", "Balance", "weapon-dps-targets.json");
 
 function baseWeapon(overrides = {}) {
   return {
@@ -161,7 +160,6 @@ assert.strictEqual(WeaponDps.calculate({ fire: { mode: "burst", rate: 4 / 3, sho
   const curve = WeaponDps.generateCurve(4, 114, 110, "linear");
   assert.strictEqual(curve.targets["1"], 4);
   assert.strictEqual(curve.targets["110"], 114);
-  assert.deepStrictEqual(WeaponDps.validateTargets(curve), []);
 }
 
 {
@@ -170,7 +168,6 @@ assert.strictEqual(WeaponDps.calculate({ fire: { mode: "burst", rate: 4 / 3, sho
   assert.strictEqual(curve.targets["110"], 400);
 }
 
-const storedTargets = JSON.parse(fs.readFileSync(targetFile, "utf8"));
-assert.deepStrictEqual(WeaponDps.validateTargets(storedTargets), []);
+assert.deepStrictEqual(WeaponDps.validateSettings(WeaponDps.defaultSettings()), []);
 
-console.log("Weapon Maker checks passed: gameplay shapes, invalid burst rejection, DPS math, and 110-level target curves.");
+console.log("Weapon Maker checks passed: gameplay shapes, invalid burst rejection, DPS math, and browser-only curve calculations.");

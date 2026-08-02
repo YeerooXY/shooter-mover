@@ -1,23 +1,20 @@
 "use strict";
 
 const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
 const WeaponDps = require("./weapon-dps");
 
-const balanceFile = path.join(__dirname, "..", "..", "Content", "Balance", "weapon-dps-targets.json");
-const stored = JSON.parse(fs.readFileSync(balanceFile, "utf8"));
+const settings = WeaponDps.defaultSettings();
 
-assert.deepStrictEqual(WeaponDps.validateTargets(stored), []);
-assert.strictEqual(WeaponDps.targetAtLevel(stored, 1), 4);
-assert.strictEqual(WeaponDps.targetAtLevel(stored, 110), 200);
-assert.ok(Math.abs(WeaponDps.targetAtLevel(stored, 122) - 307.6611) < 0.0001);
-assert.strictEqual(WeaponDps.rarityTargetAtLevel(stored, 110, "common"), 200);
-assert.strictEqual(WeaponDps.rarityTargetAtLevel(stored, 110, "epic"), 332);
-assert.strictEqual(WeaponDps.rarityTargetAtLevel(stored, 110, "artifact"), 600);
+assert.deepStrictEqual(WeaponDps.validateSettings(settings), []);
+assert.strictEqual(WeaponDps.targetAtLevel(settings, 1), 4);
+assert.strictEqual(WeaponDps.targetAtLevel(settings, 110), 200);
+assert.ok(Math.abs(WeaponDps.targetAtLevel(settings, 122) - 307.6611) < 0.0001);
+assert.strictEqual(WeaponDps.rarityTargetAtLevel(settings, 110, "common"), 200);
+assert.strictEqual(WeaponDps.rarityTargetAtLevel(settings, 110, "epic"), 332);
+assert.strictEqual(WeaponDps.rarityTargetAtLevel(settings, 110, "artifact"), 600);
 
 {
-  const estimates = WeaponDps.buildEstimates(200, stored);
+  const estimates = WeaponDps.buildEstimates(200, settings);
   assert.strictEqual(estimates.developedWeapon, 600);
   assert.strictEqual(estimates.withGear, 1200);
   assert.strictEqual(estimates.withSkills, 1800);
@@ -38,4 +35,11 @@ assert.strictEqual(WeaponDps.rarityTargetAtLevel(stored, 110, "artifact"), 600);
   assert.strictEqual(result.suggestedDamage, 1);
 }
 
-console.log("Weapon balance checks passed: 4→200 raw curve, future-level extrapolation, rarity suggestions, and build layers.");
+{
+  const temporary = WeaponDps.defaultSettings();
+  temporary.rawWeaponCurve.startDps = 8;
+  assert.strictEqual(WeaponDps.targetAtLevel(temporary, 1), 8);
+  assert.strictEqual(WeaponDps.targetAtLevel(WeaponDps.defaultSettings(), 1), 4);
+}
+
+console.log("Weapon balance checks passed: browser-only defaults, 4→200 raw curve, future-level extrapolation, rarity suggestions, and build layers.");
