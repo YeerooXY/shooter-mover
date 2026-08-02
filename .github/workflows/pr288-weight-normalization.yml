@@ -3,7 +3,7 @@ name: PR288 weight normalization
 on:
   push:
     branches:
-      - codex/pr288-weapon-migration
+      - codex/pr288-weapon-migration-v2
 
 permissions:
   contents: write
@@ -38,5 +38,3 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git commit -m "Normalize PR #288 drop weights to current scale"
           git push
-
-# Explicit retrigger after the workflow file was added on the branch.
