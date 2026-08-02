@@ -60,8 +60,8 @@ namespace ShooterMover.UI.Common
                     glow = Hex(0x72B2FF);
                     return;
                 case WeaponRarity.Epic:
-                    background = Hex(0x24B85A);
-                    glow = Hex(0x70F09A);
+                    background = Hex(0x8B5CF6);
+                    glow = Hex(0xC4B5FD);
                     return;
                 case WeaponRarity.Legendary:
                     background = Hex(0xF0C419);
