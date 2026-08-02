@@ -16,6 +16,38 @@
     });
   }
 
+  function parseCount(value) {
+    const digits = String(value || "").replace(/[^0-9]/g, "");
+    return digits ? Number(digits) : 0;
+  }
+
+  function showNoAugmentBucket() {
+    const summary = presentation.querySelector(".weapon-analysis-summary")?.textContent || "";
+    const totalMatch = summary.match(/^(.+?)\s+drops\b/);
+    const matrix = presentation.querySelector(".augment-matrix");
+    const zeroSlotsLevelOne = matrix?.querySelector("tbody tr:first-child td:first-of-type");
+    if (!totalMatch || !matrix || !zeroSlotsLevelOne) return;
+
+    const total = parseCount(totalMatch[1]);
+    let represented = 0;
+    matrix.querySelectorAll("tbody td").forEach(cell => {
+      if (cell === zeroSlotsLevelOne) return;
+      represented += parseCount(cell.querySelector("strong")?.textContent);
+    });
+
+    const count = Math.max(0, total - represented);
+    const percentage = total > 0 ? 100 * count / total : 0;
+    const content = count > 0
+      ? `<strong>${count.toLocaleString()}</strong><small>${percentage.toLocaleString(undefined, { maximumFractionDigits: 2 })}%</small>`
+      : "—";
+
+    if (zeroSlotsLevelOne.innerHTML !== content) {
+      zeroSlotsLevelOne.innerHTML = content;
+    }
+    zeroSlotsLevelOne.classList.toggle("empty", count === 0);
+    zeroSlotsLevelOne.title = "No augment slots. Shared augment level is 0; represented in the 0 slots / level 1 bucket.";
+  }
+
   function cleanReport() {
     scheduled = false;
 
@@ -46,6 +78,7 @@
         "Augment slots",
         "Augment levels"
       ]));
+      showNoAugmentBucket();
       return;
     }
 
