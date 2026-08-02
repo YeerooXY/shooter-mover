@@ -106,6 +106,82 @@ function saveWeaponFolder(category, folder, files) {
     throw error;
   }
 }
+function catalogScore(file) {
+  let score = 0;
+  const normalized = file.replace(/\\/g, "/").toLowerCase();
+  if (normalized.includes("assets/shootermover/resources/")) score += 100;
+  if (normalized.includes("weapon_baseline") || normalized.includes("gun_baseline")) score += 60;
+  if (normalized.includes("catalog")) score += 30;
+  if (normalized.includes("generated")) score += 10;
+  return score;
+}
+function looksLikeGunCatalog(raw) {
+  const lower = raw.toLowerCase();
+  if (!lower.includes("rarity") || !lower.includes("peak") || !lower.includes("weight")) return false;
+  try {
+    const value = JSON.parse(raw);
+    if (Array.isArray(value)) return value.length > 0;
+    if (!value || typeof value !== "object") return false;
+    return [value.definitions, value.weapons, value.guns, value.families].some(Array.isArray);
+  } catch (_) {
+    return false;
+  }
+}
+function findProductionGunCatalog() {
+  const preferred = [
+    "Assets/ShooterMover/Resources/WeaponCatalog/weapon_baseline_v01.json",
+    "Assets/ShooterMover/Resources/GunCatalog/gun_baseline_v01.json",
+    "Assets/ShooterMover/Resources/GunCatalog/weapon_baseline_v01.json",
+    "Assets/ShooterMover/Resources/WeaponCatalog/gun_baseline_v01.json"
+  ];
+  const tracked = git(["ls-files", "*.json"]).split(/\r?\n/).filter(Boolean);
+  const candidates = [...new Set([...preferred, ...tracked])]
+    .filter(file => /(?:weapon|gun)/i.test(file) && /(?:catalog|baseline)/i.test(file))
+    .sort((left, right) => catalogScore(right) - catalogScore(left) || left.localeCompare(right));
+  for (const relative of candidates) {
+    const file = path.resolve(root, relative);
+    if (!file.startsWith(root + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) continue;
+    const raw = fs.readFileSync(file, "utf8");
+    if (looksLikeGunCatalog(raw)) return { source: relative.replace(/\\/g, "/"), json: raw };
+  }
+  throw new Error("Production gun catalog JSON was not found. The Strongbox preview refuses to use Content/Weapons as a fake replacement for the production catalog.");
+}
+function wait(milliseconds) { return new Promise(resolve => setTimeout(resolve, milliseconds)); }
+async function requestStrongboxPreview(body) {
+  const playerLevel = Number(body.playerLevel);
+  const tierNumber = Number(body.tierNumber);
+  if (!Number.isInteger(playerLevel) || playerLevel < 0) throw new Error("Player level must be a non-negative integer.");
+  if (!Number.isInteger(tierNumber) || tierNumber < 1 || tierNumber > 11) throw new Error("Strongbox tier must be between 1 and 11.");
+  const seed = String(body.seed ?? "").trim();
+  if (!/^\d+$/.test(seed)) throw new Error("Seed must be an unsigned integer.");
+
+  const catalog = findProductionGunCatalog();
+  const requestId = crypto.randomUUID();
+  const folder = path.join(root, "Temp", "ShooterMoverStrongboxPreview");
+  const requestFile = path.join(folder, `${requestId}.request.json`);
+  const responseFile = path.join(folder, `${requestId}.response.json`);
+  fs.mkdirSync(folder, { recursive: true });
+  const temporary = requestFile + ".tmp";
+  fs.writeFileSync(temporary, JSON.stringify({
+    requestId,
+    playerLevel,
+    tierNumber,
+    seed,
+    catalogSource: catalog.source,
+    gunCatalogJson: catalog.json
+  }));
+  fs.renameSync(temporary, requestFile);
+
+  const deadline = Date.now() + 15000;
+  while (Date.now() < deadline && !fs.existsSync(responseFile)) await wait(50);
+  if (!fs.existsSync(responseFile)) {
+    fs.rmSync(requestFile, { force: true });
+    throw new Error("Unity Strongbox bridge did not answer. Open this project in Unity and wait for scripts to finish compiling.");
+  }
+  const response = JSON.parse(fs.readFileSync(responseFile, "utf8"));
+  fs.rmSync(responseFile, { force: true });
+  return response;
+}
 async function api(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/status") return send(res, 200, { ...status(), mutationToken });
   if (req.method === "GET" && url.pathname === "/api/packages") {
@@ -128,6 +204,11 @@ async function api(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/weapon-folder") {
     const category = url.searchParams.get("category"), folder = url.searchParams.get("folder");
     return send(res, 200, { category, folder, files: readWeaponFolder(category, folder) });
+  }
+  if (req.method === "POST" && url.pathname === "/api/strongbox-preview") {
+    const body = await readBody(req);
+    const result = await requestStrongboxPreview(body);
+    return send(res, result.ok ? 200 : 400, result);
   }
   if (req.method !== "GET" && req.headers["x-item-maker-token"] !== mutationToken) throw new Error("Mutation token is missing or invalid.");
   if (req.method === "POST" && url.pathname === "/api/fetch") { git(["fetch", "--prune", "origin"]); return send(res, 200, status()); }
@@ -159,6 +240,10 @@ http.createServer(async (req, res) => {
     const requested = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
     const file = path.resolve(__dirname, requested);
     if (!file.startsWith(__dirname + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) return send(res, 404, { error: "Not found." });
-    const body = fs.readFileSync(file); res.writeHead(200, { "Content-Type": mime[path.extname(file)] || "application/octet-stream", "Content-Length": body.length }); res.end(body);
+    let body = fs.readFileSync(file);
+    if (requested === "strongbox-simulator.html") {
+      body = Buffer.from(body.toString("utf8").replace("</body>", '<script src="strongbox-production.js"></script></body>'));
+    }
+    res.writeHead(200, { "Content-Type": mime[path.extname(file)] || "application/octet-stream", "Content-Length": body.length }); res.end(body);
   } catch (error) { send(res, 400, { error: error.message }); }
 }).listen(port, "127.0.0.1", () => console.log(`Item Maker: http://127.0.0.1:${port}\nRepository: ${root}`));
