@@ -1,0 +1,10 @@
+/* Multi-selection and group editing. */
+.multi-selection-inspector h2{margin-bottom:8px}
+.multi-kind-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.multi-kind-list span{padding:4px 7px;border:1px solid #465b74;border-radius:99px;background:#172130;color:#cfe3f8;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.multi-bounds{font-size:13px;font-weight:850;color:#eef6ff;margin-bottom:6px}
+.multi-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.multi-actions button{min-width:0}
+.multi-actions kbd{margin-left:4px}
+body.multi-select-active #selection-hud{display:block!important;border-color:#79c9ff;color:#dceeff;background:rgba(17,31,45,.94)}
+@media(max-width:680px){.multi-actions{grid-template-columns:1fr}}
