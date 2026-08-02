@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Guns.Catalog;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Application.Rewards.Strongboxes.Simulation;
@@ -24,6 +25,10 @@ namespace ShooterMover.Editor.BalanceSimulator
         private const string LiveCatalogAuthority =
             "GunCatalogProvider.GunCatalog";
         private const int MaximumAnalysisSamples = 10000;
+        private const int MinimumMatrixLevel = 1;
+        private const int MaximumMatrixLevel = 12;
+        private const int MinimumMatrixSlots = 0;
+        private const int MaximumMatrixSlots = 4;
 
         [Serializable]
         private sealed class Request
@@ -66,6 +71,15 @@ namespace ShooterMover.Editor.BalanceSimulator
         }
 
         [Serializable]
+        private sealed class AugmentMatrixCell
+        {
+            public int slots;
+            public int level;
+            public int count;
+            public double percentage;
+        }
+
+        [Serializable]
         private sealed class WeaponBreakdown
         {
             public string definitionId;
@@ -84,6 +98,8 @@ namespace ShooterMover.Editor.BalanceSimulator
                 new List<DistributionEntry>();
             public List<DistributionEntry> augmentSignatureDistribution =
                 new List<DistributionEntry>();
+            public List<AugmentMatrixCell> augmentMatrix =
+                new List<AugmentMatrixCell>();
         }
 
         [Serializable]
@@ -207,6 +223,10 @@ namespace ShooterMover.Editor.BalanceSimulator
             private readonly Counter augmentSlots = new Counter();
             private readonly Counter augmentLevels = new Counter();
             private readonly Counter augmentSignatures = new Counter();
+            private readonly int[,] augmentMatrix =
+                new int[
+                    MaximumMatrixSlots - MinimumMatrixSlots + 1,
+                    MaximumMatrixLevel - MinimumMatrixLevel + 1];
             private int count;
 
             public WeaponAccumulator(string definitionId, string displayName)
@@ -228,6 +248,8 @@ namespace ShooterMover.Editor.BalanceSimulator
                     CultureInfo.InvariantCulture);
                 string slots = observation.AugmentSlotCount.ToString(
                     CultureInfo.InvariantCulture);
+                string level = observation.SharedAugmentLevel.ToString(
+                    CultureInfo.InvariantCulture);
                 targetLevels.Add(targetLevel, targetLevel);
                 itemLevels.Add(itemLevel, itemLevel);
                 qualities.Add(qualityId, qualityId);
@@ -235,8 +257,6 @@ namespace ShooterMover.Editor.BalanceSimulator
 
                 if (observation.AugmentSlotCount > 0)
                 {
-                    string level = observation.SharedAugmentLevel.ToString(
-                        CultureInfo.InvariantCulture);
                     augmentLevels.Add(level, level);
                     string signature = level + "/" + slots;
                     augmentSignatures.Add(signature, signature);
@@ -246,11 +266,21 @@ namespace ShooterMover.Editor.BalanceSimulator
                     augmentLevels.Add("none", "none");
                     augmentSignatures.Add("none", "none");
                 }
+
+                if (observation.AugmentSlotCount >= MinimumMatrixSlots
+                    && observation.AugmentSlotCount <= MaximumMatrixSlots
+                    && observation.SharedAugmentLevel >= MinimumMatrixLevel
+                    && observation.SharedAugmentLevel <= MaximumMatrixLevel)
+                {
+                    augmentMatrix[
+                        observation.AugmentSlotCount - MinimumMatrixSlots,
+                        observation.SharedAugmentLevel - MinimumMatrixLevel]++;
+                }
             }
 
             public WeaponBreakdown Build(int successfulOpenings)
             {
-                return new WeaponBreakdown
+                var result = new WeaponBreakdown
                 {
                     definitionId = definitionId,
                     displayName = displayName,
@@ -266,6 +296,31 @@ namespace ShooterMover.Editor.BalanceSimulator
                     augmentSignatureDistribution =
                         augmentSignatures.Build(count),
                 };
+
+                for (int slots = MinimumMatrixSlots;
+                     slots <= MaximumMatrixSlots;
+                     slots++)
+                {
+                    for (int level = MinimumMatrixLevel;
+                         level <= MaximumMatrixLevel;
+                         level++)
+                    {
+                        int cellCount = augmentMatrix[
+                            slots - MinimumMatrixSlots,
+                            level - MinimumMatrixLevel];
+                        result.augmentMatrix.Add(new AugmentMatrixCell
+                        {
+                            slots = slots,
+                            level = level,
+                            count = cellCount,
+                            percentage = count <= 0
+                                ? 0d
+                                : 100d * cellCount / count,
+                        });
+                    }
+                }
+
+                return result;
             }
         }
 
@@ -281,7 +336,7 @@ namespace ShooterMover.Editor.BalanceSimulator
             get
             {
                 string projectRoot = Path.GetFullPath(
-                    Path.Combine(Application.dataPath, ".."));
+                    Path.Combine(UnityEngine.Application.dataPath, ".."));
                 return Path.Combine(
                     projectRoot,
                     "Temp",
@@ -768,24 +823,28 @@ namespace ShooterMover.Editor.BalanceSimulator
 
             response.sampleCount = sampleCount;
             int success = response.successfulOpenings;
-            response.averageTargetLevel = success == 0
-                ? 0d
-                : targetTotal / (double)success;
-            response.minimumTargetLevel = success == 0
-                ? 0
-                : minimumTarget;
-            response.maximumTargetLevel = success == 0
-                ? 0
-                : maximumTarget;
-            response.averageItemLevel = success == 0
-                ? 0d
-                : itemTotal / (double)success;
-            response.minimumItemLevel = success == 0
-                ? 0
-                : minimumItem;
-            response.maximumItemLevel = success == 0
-                ? 0
-                : maximumItem;
+            response.rejectionDistribution =
+                rejections.Build(response.rejectedOpenings);
+            if (success == 0)
+            {
+                string rejection = response.rejectionDistribution.Count == 0
+                    ? "unknown"
+                    : response.rejectionDistribution[0].key;
+                response.ok = false;
+                response.error =
+                    "strongbox-preview-analysis-no-successful-openings:"
+                    + rejection;
+                return response;
+            }
+
+            response.averageTargetLevel =
+                targetTotal / (double)success;
+            response.minimumTargetLevel = minimumTarget;
+            response.maximumTargetLevel = maximumTarget;
+            response.averageItemLevel =
+                itemTotal / (double)success;
+            response.minimumItemLevel = minimumItem;
+            response.maximumItemLevel = maximumItem;
             response.weaponDistribution = weapons.Build(success);
             foreach (KeyValuePair<string, WeaponAccumulator> pair
                      in weaponDetails)
@@ -811,8 +870,6 @@ namespace ShooterMover.Editor.BalanceSimulator
             response.augmentLevelDistribution = augmentLevels.Build(success);
             response.augmentSignatureDistribution =
                 augmentSignatures.Build(success);
-            response.rejectionDistribution =
-                rejections.Build(response.rejectedOpenings);
             return response;
         }
 
