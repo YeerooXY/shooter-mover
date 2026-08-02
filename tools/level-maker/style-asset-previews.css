@@ -1,0 +1,42 @@
+.real-asset-thumbnail {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  object-fit: contain;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.palette-asset .real-asset-thumbnail {
+  width: 42px;
+  height: 42px;
+  margin: 0 auto 4px;
+}
+
+.asset-icon .real-asset-thumbnail {
+  width: 34px;
+  height: 34px;
+}
+
+.real-asset-inspector-preview {
+  display: grid;
+  place-items: center;
+  min-height: 112px;
+  margin: 8px 0 12px;
+  padding: 8px;
+  border: 1px solid rgba(121, 201, 255, .28);
+  border-radius: 8px;
+  background:
+    linear-gradient(45deg, rgba(255,255,255,.035) 25%, transparent 25%) 0 0 / 16px 16px,
+    linear-gradient(-45deg, rgba(255,255,255,.035) 25%, transparent 25%) 0 8px / 16px 16px,
+    linear-gradient(45deg, transparent 75%, rgba(255,255,255,.035) 75%) 8px -8px / 16px 16px,
+    linear-gradient(-45deg, transparent 75%, rgba(255,255,255,.035) 75%) -8px 0 / 16px 16px,
+    rgba(7, 12, 18, .38);
+}
+
+.real-asset-inspector-preview .real-asset-thumbnail {
+  width: 104px;
+  height: 104px;
+}
