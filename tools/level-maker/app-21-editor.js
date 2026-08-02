@@ -99,6 +99,26 @@
     }
   }
 
+  async function rebuildFloorsFromUnity() {
+    if (Number(state.schemaVersion || 0) >= LevelSave.LEVEL_VERSION) return;
+
+    const target = cleanSlug(state.level.targetFolder).toLowerCase();
+    const result = await helper(
+      `/api/level-floors?target=${encodeURIComponent(target)}`
+    );
+    const floors = new Map(
+      (result.rooms || []).map(room => [room.roomId, room.tiles || []])
+    );
+
+    state.level.rooms = state.level.rooms.map(room => {
+      if (!floors.has(room.id)) return room;
+      return FloorData.openUnityTiles(room, floors.get(room.id));
+    });
+    state.schemaVersion = LevelSave.LEVEL_VERSION;
+    LevelState.addOldNames(state);
+    normalize();
+  }
+
   function sendEditorBeforeExit() {
     const body = editorSaveBody();
     try {
@@ -122,6 +142,18 @@
     }
   };
 
+  const openLevelFromRepository = openRepositoryLevel;
+  openRepositoryLevel = async function openRepositoryLevelWithLocalState() {
+    await openLevelFromRepository();
+    try {
+      await rebuildFloorsFromUnity();
+      await loadEditorFromServer();
+      renderAll();
+    } catch (error) {
+      console.warn("Level Maker local room state could not be restored.", error);
+    }
+  };
+
   const publishLevel = publishProject;
   publishProject = async function publishLevelAndEditor() {
     await saveEditorToServer();
@@ -129,6 +161,7 @@
   };
   saveProject = publishProject;
 
+  $("#openRepoBtn").onclick = openRepositoryLevel;
   $("#saveBtn").onclick = saveProject;
   $("#exportBtn").onclick = publishProject;
 
