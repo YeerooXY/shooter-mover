@@ -9,14 +9,15 @@
     <div class="panel-head">Damage balance</div>
     <div class="panel-body">
       <div id="weaponDpsSummary" class="weapon-dps-summary"></div>
-      <button id="toggleDpsTargetsButton" type="button" class="small" style="margin-top:10px">Edit balance settings</button>
+      <button id="toggleDpsTargetsButton" type="button" class="small" style="margin-top:10px">Edit calculation settings</button>
       <details id="dpsTargetEditor" class="dps-target-editor">
         <summary>Raw weapon curve and build layers</summary>
         <div class="dps-target-body">
-          <div class="help">The curve is an authoring suggestion, not a runtime multiplier. It starts at 4 raw DPS and reaches 200 raw DPS at level 110, then continues automatically for future levels.</div>
+          <div class="help"><strong>Browser-only calculator.</strong> These values are not saved into the weapon, repository, or game. Reloading the page restores the defaults.</div>
 
           <div class="dps-config-group">
             <strong>Raw weapon curve</strong>
+            <div class="help">The default suggestion starts at 4 raw DPS and reaches 200 raw DPS at level 110, then continues automatically for future levels.</div>
             <div class="dps-config-grid">
               <div class="field"><label>Starting level</label><input type="number" min="1" step="1" data-balance-path="rawWeaponCurve.startLevel"></div>
               <div class="field"><label>Starting raw DPS</label><input type="number" min="0.0001" step="any" data-balance-path="rawWeaponCurve.startDps"></div>
@@ -28,7 +29,7 @@
 
           <div class="dps-config-group">
             <strong>Rarity suggestions</strong>
-            <div class="help">These guide weapon authoring only. They are not applied again during gameplay.</div>
+            <div class="help">Temporary comparison values only. They are never applied as gameplay multipliers.</div>
             <div class="dps-config-grid compact">
               <div class="field"><label>Common</label><input type="number" min="0.0001" step="any" data-balance-path="rarityMultipliers.common"></div>
               <div class="field"><label>Rare</label><input type="number" min="0.0001" step="any" data-balance-path="rarityMultipliers.rare"></div>
@@ -40,7 +41,7 @@
 
           <div class="dps-config-group">
             <strong>Build-layer estimates</strong>
-            <div class="help">Each normal layer multiplies the previous one. Optimized total is a separate full-build ceiling measured from raw weapon DPS.</div>
+            <div class="help">Each normal layer multiplies the previous one. These estimates only help compare how much power could come from weapon upgrades, gear, skills, and account progression.</div>
             <div class="dps-config-grid compact">
               <div class="field"><label>Weapon upgrades</label><input type="number" min="0.0001" step="any" data-balance-path="buildMultipliers.weaponUpgrades"></div>
               <div class="field"><label>Gear</label><input type="number" min="0.0001" step="any" data-balance-path="buildMultipliers.gear"></div>
@@ -52,8 +53,8 @@
           </div>
 
           <div class="dps-target-actions">
-            <button id="saveDpsTargetsButton" type="button" class="primary">Save balance settings</button>
-            <span id="dpsTargetStatus" class="help">Not loaded</span>
+            <button id="resetBalanceSettingsButton" type="button">Reset calculation defaults</button>
+            <span id="dpsTargetStatus" class="help">Temporary values for this page only</span>
           </div>
         </div>
       </details>
@@ -64,8 +65,7 @@
   const targetEditor = panel.querySelector("#dpsTargetEditor");
   const targetStatus = panel.querySelector("#dpsTargetStatus");
   const normalBuildMultiplier = panel.querySelector("#normalBuildMultiplier");
-  let balance = WeaponDps.emptyTargets();
-  let balanceDirty = false;
+  let balance = WeaponDps.defaultSettings();
   let renderQueued = false;
 
   function formatNumber(value, digits = 2) {
@@ -137,9 +137,9 @@
   }
 
   function renderSummary() {
-    const configErrors = WeaponDps.validateTargets(balance);
+    const configErrors = WeaponDps.validateSettings(balance);
     if (configErrors.length) {
-      summary.innerHTML = `<div class="issue error">Fix the balance settings: ${escapeHtml(configErrors[0])}</div>`;
+      summary.innerHTML = `<div class="issue error">Fix the calculation settings: ${escapeHtml(configErrors[0])}</div>`;
       return;
     }
 
@@ -202,39 +202,14 @@
     });
     const build = balance.buildMultipliers;
     const normalTotal = build.weaponUpgrades * build.gear * build.skills * build.accountProgression;
-    normalBuildMultiplier.textContent = `Normal completed-build multiplier: ${formatNumber(normalTotal, 3)}× raw weapon DPS`;
+    normalBuildMultiplier.textContent = `Normal completed-build estimate: ${formatNumber(normalTotal, 3)}× raw weapon DPS`;
   }
 
-  async function saveTargets() {
-    const errors = WeaponDps.validateTargets(balance);
-    if (errors.length) {
-      targetStatus.textContent = errors[0];
-      return;
-    }
-    try {
-      const result = await api("/api/weapon-dps-targets", {
-        method: "PUT",
-        body: JSON.stringify({ targets: balance })
-      });
-      balanceDirty = false;
-      targetStatus.textContent = `Saved ${result.saved}`;
-    } catch (error) {
-      targetStatus.textContent = error.message;
-    }
-  }
-
-  async function loadTargets() {
-    try {
-      const result = await api("/api/weapon-dps-targets");
-      balance = WeaponDps.normalizeTargets(result.targets);
-      balanceDirty = false;
-      targetStatus.textContent = "Balance settings loaded";
-    } catch (error) {
-      balance = WeaponDps.emptyTargets();
-      targetStatus.textContent = "Using defaults until the local helper is running";
-    }
+  function resetSettings() {
+    balance = WeaponDps.defaultSettings();
     renderConfigControls();
     renderSummary();
+    targetStatus.textContent = "Defaults restored — temporary values for this page only";
   }
 
   function queueRender() {
@@ -249,16 +224,15 @@
   panel.querySelector("#toggleDpsTargetsButton").addEventListener("click", () => {
     targetEditor.open = !targetEditor.open;
   });
-  panel.querySelector("#saveDpsTargetsButton").addEventListener("click", saveTargets);
+  panel.querySelector("#resetBalanceSettingsButton").addEventListener("click", resetSettings);
   panel.querySelectorAll("[data-balance-path]").forEach(input => input.addEventListener("input", () => {
     const value = Number(input.value);
     if (!Number.isFinite(value)) {
-      targetStatus.textContent = "Enter a number for every balance setting.";
+      targetStatus.textContent = "Enter a number for every calculation setting.";
       return;
     }
     setPath(input.dataset.balancePath, value);
-    balanceDirty = true;
-    targetStatus.textContent = "Unsaved balance changes";
+    targetStatus.textContent = "Using temporary calculation values — reload or reset to restore defaults";
     renderConfigControls();
     renderSummary();
   }));
@@ -268,11 +242,7 @@
     if (event.target.closest("#gameplayEditor, #jsonWorkspace") || event.target === elements.categoryInput || event.target === elements.folderInput) queueRender();
   });
   new MutationObserver(queueRender).observe(document.querySelector("#gameplayEditor"), { childList: true, subtree: true });
-  window.addEventListener("beforeunload", event => {
-    if (!balanceDirty) return;
-    event.preventDefault();
-    event.returnValue = "";
-  });
 
-  loadTargets();
+  renderConfigControls();
+  renderSummary();
 })();
