@@ -75,6 +75,11 @@
     levelRecoveryTimer = setTimeout(saveLevelLocally, LEVEL_RECOVERY_DELAY_MS);
   }
 
+  function queuePossibleLevelChange() {
+    queueEditorRecovery();
+    queueLevelRecovery();
+  }
+
   scheduleRecoverySave = queueEditorRecovery;
   writeRecoveryDraft = saveLocalState;
 
@@ -120,9 +125,9 @@
   $("#undoBtn").onclick = undo;
   $("#redoBtn").onclick = redo;
 
-  document.addEventListener("pointerup", queueEditorRecovery);
-  document.addEventListener("change", queueEditorRecovery);
-  document.addEventListener("keyup", queueEditorRecovery);
+  document.addEventListener("pointerup", queuePossibleLevelChange);
+  document.addEventListener("change", queuePossibleLevelChange);
+  document.addEventListener("keyup", queuePossibleLevelChange);
   canvas.addEventListener("wheel", queueEditorRecovery, { passive: true });
   window.addEventListener("pagehide", saveLocalState);
 }
