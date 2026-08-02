@@ -11,6 +11,16 @@ function createEditorFileService(repo, port) {
     "ShooterMover",
     "LevelMaker"
   );
+  const levelRoot = path.join(
+    repo,
+    "Assets",
+    "ShooterMover",
+    "Content",
+    "Definitions",
+    "Missions",
+    "Rooms",
+    "Levels"
+  );
 
   function slug(value) {
     const result = String(value || "").trim().toLowerCase();
@@ -60,6 +70,7 @@ function createEditorFileService(repo, port) {
   }
 
   function isLocalEditor(request) {
+    if (request.headers["sec-fetch-site"] === "same-origin") return true;
     const origin = String(request.headers.origin || "");
     const referer = String(request.headers.referer || "");
     const allowed = [
@@ -81,11 +92,61 @@ function createEditorFileService(repo, port) {
     }
   }
 
+  function walk(folder, visit) {
+    if (!fs.existsSync(folder)) return;
+    for (const entry of fs.readdirSync(folder, { withFileTypes: true })) {
+      const file = path.join(folder, entry.name);
+      if (entry.isDirectory()) walk(file, visit);
+      else visit(file);
+    }
+  }
+
+  function findLevel(target) {
+    const wanted = slug(target);
+    let found = null;
+    walk(levelRoot, file => {
+      if (found || path.basename(file) !== "level.json") return;
+      try {
+        const level = JSON.parse(fs.readFileSync(file, "utf8"));
+        const levelTarget = String(level.level_id || "").replace(/^level\./, "");
+        if (levelTarget === wanted) found = { level, folder: path.dirname(file) };
+      } catch {
+        // The Unity compiler reports malformed source files separately.
+      }
+    });
+    return found;
+  }
+
+  function readLevelFloors(target) {
+    const found = findLevel(target);
+    if (!found) return [];
+
+    return (found.level.rooms || []).map(reference => {
+      const roomFolder = path.join(found.folder, "Rooms", reference.folder);
+      const room = JSON.parse(fs.readFileSync(path.join(roomFolder, "room.json"), "utf8"));
+      const floor = JSON.parse(fs.readFileSync(path.join(roomFolder, "floor.json"), "utf8"));
+      return {
+        roomId: room.room_id,
+        tiles: Array.isArray(floor.tiles) ? floor.tiles : [],
+      };
+    });
+  }
+
   async function handle(request, response) {
     const url = new URL(
       request.url,
       `http://${request.headers.host || `127.0.0.1:${port}`}`
     );
+
+    if (url.pathname === "/api/level-floors") {
+      if (request.method !== "GET") {
+        send(response, 405, { error: "Method not allowed." });
+        return true;
+      }
+      send(response, 200, { rooms: readLevelFloors(url.searchParams.get("target")) });
+      return true;
+    }
+
     if (url.pathname !== "/api/level-editor") return false;
 
     if (request.method === "GET") {
