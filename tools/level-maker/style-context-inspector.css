@@ -1,0 +1,112 @@
+/* Contextual selection inspector and quieter tool access. */
+
+body.room-focus #tools{
+  display:none!important;
+}
+body.room-focus.tools-popover-open #tools{
+  display:flex!important;
+  top:auto!important;
+  right:10px!important;
+  bottom:66px!important;
+  max-height:calc(100% - 86px);
+  z-index:45;
+}
+
+#toggleToolsPopover.active{
+  outline:2px solid var(--accent);
+  border-color:transparent;
+}
+
+#room-focus-tools{
+  max-width:calc(100% - 20px)!important;
+}
+body.room-focus #view-hud{
+  right:10px!important;
+}
+body.room-focus #selection-hud{
+  right:10px!important;
+}
+
+#inspector .primary-config-section{
+  border-color:rgba(121,201,255,.7);
+  box-shadow:0 0 0 1px rgba(121,201,255,.14) inset;
+}
+#inspector h2{
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+.inspector-kind-badge{
+  display:inline-flex;
+  align-items:center;
+  min-height:19px;
+  padding:2px 7px;
+  border:1px solid #4a5d75;
+  border-radius:99px;
+  color:#bcd0e8;
+  font-size:8px;
+  font-weight:850;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+.inspector-kind-badge.final{
+  border-color:#3d9d68;
+  color:#8ff5b7;
+  background:rgba(38,126,78,.16);
+}
+
+.door-connection-panel{
+  display:grid;
+  gap:7px;
+  margin:9px 0;
+  padding:10px;
+  border:1px solid #4d5d73;
+  border-radius:8px;
+  background:#151b24;
+}
+.door-connection-panel>span{
+  color:var(--muted);
+  font-size:10px;
+}
+.door-connection-heading{
+  color:#cbd7e7;
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.door-connection-row{
+  display:grid;
+  grid-template-columns:24px 1fr;
+  gap:7px;
+  align-items:center;
+}
+.door-connection-row b{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:11px;
+}
+.connection-number{
+  width:24px;
+  height:24px;
+  display:grid;
+  place-items:center;
+  border:1px solid #ff9aa5;
+  border-radius:50%;
+  background:#ff5364;
+  color:#28090d;
+  font-size:10px;
+  font-weight:900;
+}
+.door-connection-panel button{
+  width:100%;
+}
+
+@media(max-width:680px){
+  body.room-focus.tools-popover-open #tools{
+    right:8px!important;
+    bottom:72px!important;
+  }
+}

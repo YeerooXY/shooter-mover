@@ -1,0 +1,12 @@
+/* Faster Level Maker editing: view controls and clickable checks. */
+#viewMenu{display:none;right:10px;bottom:62px;width:210px;z-index:24;padding:9px}
+body.view-menu-open #viewMenu{display:grid;gap:7px}
+#viewMenu>b{color:#cbd7e7;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:1px 2px 5px;border-bottom:1px solid var(--line)}
+#viewMenu label{display:flex;align-items:center;gap:7px;margin:0;padding:5px 6px;border-radius:6px;color:#dce7f5;cursor:pointer}
+#viewMenu label:hover{background:#253041}
+#viewMenu input{width:auto;margin:0}
+#viewMenu [data-all]{margin-top:2px;text-align:left}
+.validation-item.validation-jump{position:relative;padding-right:58px;cursor:pointer}
+.validation-item.validation-jump:hover{background:#222c3a;box-shadow:inset 3px 0 0 var(--accent)}
+.validation-item.validation-jump::after{content:"Show";position:absolute;top:50%;right:8px;transform:translateY(-50%);padding:3px 7px;border:1px solid #53627a;border-radius:5px;color:#dce8f7;background:#151c27;font-size:9px;font-weight:800}
+@media(max-width:680px){#viewMenu{right:8px;bottom:72px;width:min(210px,calc(100% - 16px))}}
