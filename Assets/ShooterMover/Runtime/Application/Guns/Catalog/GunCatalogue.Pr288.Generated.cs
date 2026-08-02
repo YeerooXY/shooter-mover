@@ -21,33 +21,9 @@ namespace ShooterMover.Application.Guns.Catalog
                     "shotgun-physical",
                     new[]
                     {
-                        new Pr288MarkSource(
-                            1, 5,
-                            1100d,
-                            FireSettings.SemiAutomatic(1.45d),
-                            GunShotPattern.Canonical(7, 19d),
-                            1.552015862068966d,
-                            GunDamageCategory.Physical,
-                            0, 0.48d,
-                            16d, 25d, 0.1d),
-                        new Pr288MarkSource(
-                            2, 28,
-                            605d,
-                            FireSettings.SemiAutomatic(1.4935d),
-                            GunShotPattern.Canonical(7, 18.05d),
-                            5.679319833641276d,
-                            GunDamageCategory.Physical,
-                            0, 0.5184d,
-                            16.48d, 26.25d, 0.1d),
-                        new Pr288MarkSource(
-                            3, 52,
-                            1100d,
-                            FireSettings.SemiAutomatic(1.537d),
-                            GunShotPattern.Canonical(7, 17.1d),
-                            16.10189087332782d,
-                            GunDamageCategory.Physical,
-                            1, 0.5568d,
-                            16.96d, 27.500000000000004d, 0.1d)
+                        new Pr288MarkSource(1, 5, 1d, FireSettings.SemiAutomatic(1.45d), GunShotPattern.Canonical(7, 19d), 1.552015862068966d, GunDamageCategory.Physical, 0, 0.48d, 16d, 25d, 0.1d),
+                        new Pr288MarkSource(2, 28, 1d, FireSettings.SemiAutomatic(1.4935d), GunShotPattern.Canonical(7, 18.05d), 5.679319833641276d, GunDamageCategory.Physical, 0, 0.5184d, 16.48d, 26.25d, 0.1d),
+                        new Pr288MarkSource(3, 52, 1d, FireSettings.SemiAutomatic(1.537d), GunShotPattern.Canonical(7, 17.1d), 16.10189087332782d, GunDamageCategory.Physical, 1, 0.5568d, 16.96d, 27.500000000000004d, 0.1d)
                     }),
                 BuildPr288Family(
                     "sniper",
@@ -57,33 +33,9 @@ namespace ShooterMover.Application.Guns.Catalog
                     "normal-physical",
                     new[]
                     {
-                        new Pr288MarkSource(
-                            1, 14,
-                            522.5d,
-                            FireSettings.SemiAutomatic(0.72d),
-                            GunShotPattern.Canonical(1, 0.15d),
-                            37.436299190750226d,
-                            GunDamageCategory.Physical,
-                            2, 0.75d,
-                            58d, 75d, 0.1d),
-                        new Pr288MarkSource(
-                            2, 38,
-                            209d,
-                            FireSettings.SemiAutomatic(0.7416d),
-                            GunShotPattern.Canonical(1, 0.1425d),
-                            153.73283204605988d,
-                            GunDamageCategory.Physical,
-                            2, 0.81d,
-                            59.74d, 78.75d, 0.1d),
-                        new Pr288MarkSource(
-                            3, 62,
-                            522.5d,
-                            FireSettings.SemiAutomatic(0.7632d),
-                            GunShotPattern.Canonical(1, 0.135d),
-                            435.8601659639591d,
-                            GunDamageCategory.Physical,
-                            3, 0.8699999999999999d,
-                            61.480000000000004d, 82.5d, 0.1d)
+                        new Pr288MarkSource(1, 14, 1d, FireSettings.SemiAutomatic(0.72d), GunShotPattern.Canonical(1, 0.15d), 37.436299190750226d, GunDamageCategory.Physical, 2, 0.75d, 58d, 75d, 0.1d),
+                        new Pr288MarkSource(2, 38, 1d, FireSettings.SemiAutomatic(0.7416d), GunShotPattern.Canonical(1, 0.1425d), 153.73283204605988d, GunDamageCategory.Physical, 2, 0.81d, 59.74d, 78.75d, 0.1d),
+                        new Pr288MarkSource(3, 62, 1d, FireSettings.SemiAutomatic(0.7632d), GunShotPattern.Canonical(1, 0.135d), 435.8601659639591d, GunDamageCategory.Physical, 3, 0.8699999999999999d, 61.480000000000004d, 82.5d, 0.1d)
                     }),
                 BuildPr288Family(
                     "fast_sniper",
@@ -93,33 +45,9 @@ namespace ShooterMover.Application.Guns.Catalog
                     "normal-physical",
                     new[]
                     {
-                        new Pr288MarkSource(
-                            1, 25,
-                            193.6d,
-                            FireSettings.SemiAutomatic(2.15d),
-                            GunShotPattern.Canonical(1, 0.35d),
-                            27.516298357012836d,
-                            GunDamageCategory.Physical,
-                            1, 0.48d,
-                            48d, 82d, 0.1d),
-                        new Pr288MarkSource(
-                            2, 49,
-                            484d,
-                            FireSettings.SemiAutomatic(2.2145d),
-                            GunShotPattern.Canonical(1, 0.33249999999999996d),
-                            77.94746179113703d,
-                            GunDamageCategory.Physical,
-                            1, 0.5184d,
-                            49.44d, 86.10000000000001d, 0.1d),
-                        new Pr288MarkSource(
-                            3, 73,
-                            880d,
-                            FireSettings.SemiAutomatic(2.279d),
-                            GunShotPattern.Canonical(1, 0.315d),
-                            224.1520663645046d,
-                            GunDamageCategory.Physical,
-                            2, 0.5568d,
-                            50.88d, 90.2d, 0.1d)
+                        new Pr288MarkSource(1, 25, 1d, FireSettings.SemiAutomatic(2.15d), GunShotPattern.Canonical(1, 0.35d), 27.516298357012836d, GunDamageCategory.Physical, 1, 0.48d, 48d, 82d, 0.1d),
+                        new Pr288MarkSource(2, 49, 1d, FireSettings.SemiAutomatic(2.2145d), GunShotPattern.Canonical(1, 0.33249999999999996d), 77.94746179113703d, GunDamageCategory.Physical, 1, 0.5184d, 49.44d, 86.10000000000001d, 0.1d),
+                        new Pr288MarkSource(3, 73, 1d, FireSettings.SemiAutomatic(2.279d), GunShotPattern.Canonical(1, 0.315d), 224.1520663645046d, GunDamageCategory.Physical, 2, 0.5568d, 50.88d, 90.2d, 0.1d)
                     }),
                 BuildPr288Family(
                     "heavy_gatling",
@@ -129,33 +57,9 @@ namespace ShooterMover.Application.Guns.Catalog
                     "normal-physical",
                     new[]
                     {
-                        new Pr288MarkSource(
-                            1, 34,
-                            180.39999999999998d,
-                            FireSettings.Automatic(14d),
-                            GunShotPattern.Canonical(1, 2.5d),
-                            8.9882925089946d,
-                            GunDamageCategory.Physical,
-                            1, 0.62d,
-                            36d, 42d, 0.1d),
-                        new Pr288MarkSource(
-                            2, 57,
-                            451d,
-                            FireSettings.Automatic(14.42d),
-                            GunShotPattern.Canonical(1, 2.375d),
-                            24.134411076114308d,
-                            GunDamageCategory.Physical,
-                            1, 0.6696000000000001d,
-                            37.08d, 44.1d, 0.1d),
-                        new Pr288MarkSource(
-                            3, 81,
-                            820d,
-                            FireSettings.Automatic(14.84d),
-                            GunShotPattern.Canonical(1, 2.25d),
-                            72.07833065445672d,
-                            GunDamageCategory.Physical,
-                            2, 0.7192d,
-                            38.160000000000004d, 46.2d, 0.1d)
+                        new Pr288MarkSource(1, 34, 1d, FireSettings.Automatic(14d), GunShotPattern.Canonical(1, 2.5d), 8.9882925089946d, GunDamageCategory.Physical, 1, 0.62d, 36d, 42d, 0.1d),
+                        new Pr288MarkSource(2, 57, 1d, FireSettings.Automatic(14.42d), GunShotPattern.Canonical(1, 2.375d), 24.134411076114308d, GunDamageCategory.Physical, 1, 0.6696000000000001d, 37.08d, 44.1d, 0.1d),
+                        new Pr288MarkSource(3, 81, 1d, FireSettings.Automatic(14.84d), GunShotPattern.Canonical(1, 2.25d), 72.07833065445672d, GunDamageCategory.Physical, 2, 0.7192d, 38.160000000000004d, 46.2d, 0.1d)
                     }),
                 BuildPr288Family(
                     "blaster",
@@ -165,33 +69,9 @@ namespace ShooterMover.Application.Guns.Catalog
                     "normal-energy",
                     new[]
                     {
-                        new Pr288MarkSource(
-                            1, 3,
-                            1200d,
-                            FireSettings.Automatic(7.5d),
-                            GunShotPattern.Canonical(1, 2d),
-                            1.764d,
-                            GunDamageCategory.Energy,
-                            0, 0.25d,
-                            32d, 32d, 0.1d),
-                        new Pr288MarkSource(
-                            2, 25,
-                            660d,
-                            FireSettings.Automatic(7.7250000000000005d),
-                            GunShotPattern.Canonical(1, 1.9d),
-                            6.089520991780434d,
-                            GunDamageCategory.Energy,
-                            0, 0.27d,
-                            32.96d, 33.6d, 0.1d),
-                        new Pr288MarkSource(
-                            3, 47,
-                            1200d,
-                            FireSettings.Automatic(7.95d),
-                            GunShotPattern.Canonical(1, 1.8d),
-                            15.43816236668627d,
-                            GunDamageCategory.Energy,
-                            1, 0.29d,
-                            33.92d, 35.2d, 0.1d)
+                        new Pr288MarkSource(1, 3, 1d, FireSettings.Automatic(7.5d), GunShotPattern.Canonical(1, 2d), 1.764d, GunDamageCategory.Energy, 0, 0.25d, 32d, 32d, 0.1d),
+                        new Pr288MarkSource(2, 25, 1d, FireSettings.Automatic(7.7250000000000005d), GunShotPattern.Canonical(1, 1.9d), 6.089520991780434d, GunDamageCategory.Energy, 0, 0.27d, 32.96d, 33.6d, 0.1d),
+                        new Pr288MarkSource(3, 47, 1d, FireSettings.Automatic(7.95d), GunShotPattern.Canonical(1, 1.8d), 15.43816236668627d, GunDamageCategory.Energy, 1, 0.29d, 33.92d, 35.2d, 0.1d)
                     }),
                 BuildPr288Family(
                     "arc_rifle",
@@ -201,33 +81,9 @@ namespace ShooterMover.Application.Guns.Catalog
                     "normal-energy",
                     new[]
                     {
-                        new Pr288MarkSource(
-                            1, 10,
-                            550d,
-                            FireSettings.Automatic(7.5d),
-                            GunShotPattern.Canonical(1, 2d),
-                            3.0170386277171786d,
-                            GunDamageCategory.Energy,
-                            0, 0.25d,
-                            32d, 32d, 0.1d),
-                        new Pr288MarkSource(
-                            2, 33,
-                            1000d,
-                            FireSettings.Automatic(7.7250000000000005d),
-                            GunShotPattern.Canonical(1, 1.9d),
-                            7.508095877603602d,
-                            GunDamageCategory.Energy,
-                            0, 0.27d,
-                            32.96d, 33.6d, 0.1d),
-                        new Pr288MarkSource(
-                            3, 56,
-                            220d,
-                            FireSettings.Automatic(7.95d),
-                            GunShotPattern.Canonical(1, 1.8d),
-                            38.36077900641255d,
-                            GunDamageCategory.Energy,
-                            1, 0.29d,
-                            33.92d, 35.2d, 0.1d)
+                        new Pr288MarkSource(1, 10, 1d, FireSettings.Automatic(7.5d), GunShotPattern.Canonical(1, 2d), 3.0170386277171786d, GunDamageCategory.Energy, 0, 0.25d, 32d, 32d, 0.1d),
+                        new Pr288MarkSource(2, 33, 1d, FireSettings.Automatic(7.7250000000000005d), GunShotPattern.Canonical(1, 1.9d), 7.508095877603602d, GunDamageCategory.Energy, 0, 0.27d, 32.96d, 33.6d, 0.1d),
+                        new Pr288MarkSource(3, 56, 1d, FireSettings.Automatic(7.95d), GunShotPattern.Canonical(1, 1.8d), 38.36077900641255d, GunDamageCategory.Energy, 1, 0.29d, 33.92d, 35.2d, 0.1d)
                     }),
                 BuildPr288Family(
                     "pulse_shotgun",
@@ -237,33 +93,9 @@ namespace ShooterMover.Application.Guns.Catalog
                     "shotgun-energy",
                     new[]
                     {
-                        new Pr288MarkSource(
-                            1, 21,
-                            189.2d,
-                            FireSettings.SemiAutomatic(1.45d),
-                            GunShotPattern.Canonical(7, 19d),
-                            5.005406269401396d,
-                            GunDamageCategory.Energy,
-                            0, 0.48d,
-                            16d, 25d, 0.1d),
-                        new Pr288MarkSource(
-                            2, 44,
-                            473d,
-                            FireSettings.SemiAutomatic(1.4935d),
-                            GunShotPattern.Canonical(7, 18.05d),
-                            13.376290161632655d,
-                            GunDamageCategory.Energy,
-                            0, 0.5184d,
-                            16.48d, 26.25d, 0.1d),
-                        new Pr288MarkSource(
-                            3, 67,
-                            860d,
-                            FireSettings.SemiAutomatic(1.537d),
-                            GunShotPattern.Canonical(7, 17.1d),
-                            35.947092855285135d,
-                            GunDamageCategory.Energy,
-                            1, 0.5568d,
-                            16.96d, 27.500000000000004d, 0.1d)
+                        new Pr288MarkSource(1, 21, 1d, FireSettings.SemiAutomatic(1.45d), GunShotPattern.Canonical(7, 19d), 5.005406269401396d, GunDamageCategory.Energy, 0, 0.48d, 16d, 25d, 0.1d),
+                        new Pr288MarkSource(2, 44, 1d, FireSettings.SemiAutomatic(1.4935d), GunShotPattern.Canonical(7, 18.05d), 13.376290161632655d, GunDamageCategory.Energy, 0, 0.5184d, 16.48d, 26.25d, 0.1d),
+                        new Pr288MarkSource(3, 67, 1d, FireSettings.SemiAutomatic(1.537d), GunShotPattern.Canonical(7, 17.1d), 35.947092855285135d, GunDamageCategory.Energy, 1, 0.5568d, 16.96d, 27.500000000000004d, 0.1d)
                     }),
                 BuildPr288Family(
                     "inferno_scattergun",
@@ -273,33 +105,9 @@ namespace ShooterMover.Application.Guns.Catalog
                     "shotgun-thermal",
                     new[]
                     {
-                        new Pr288MarkSource(
-                            1, 20,
-                            517d,
-                            FireSettings.SemiAutomatic(1.45d),
-                            GunShotPattern.Canonical(7, 19d),
-                            3.921866785881265d,
-                            GunDamageCategory.Thermal,
-                            0, 0.48d,
-                            16d, 25d, 0.1d),
-                        new Pr288MarkSource(
-                            2, 43,
-                            206.79999999999998d,
-                            FireSettings.SemiAutomatic(1.4935d),
-                            GunShotPattern.Canonical(7, 18.05d),
-                            15.706993351794498d,
-                            GunDamageCategory.Thermal,
-                            0, 0.5184d,
-                            16.48d, 26.25d, 0.1d),
-                        new Pr288MarkSource(
-                            3, 66,
-                            940d,
-                            FireSettings.SemiAutomatic(1.537d),
-                            GunShotPattern.Canonical(7, 17.1d),
-                            34.0730737964788d,
-                            GunDamageCategory.Thermal,
-                            1, 0.5568d,
-                            16.96d, 27.500000000000004d, 0.1d)
+                        new Pr288MarkSource(1, 20, 1d, FireSettings.SemiAutomatic(1.45d), GunShotPattern.Canonical(7, 19d), 3.921866785881265d, GunDamageCategory.Thermal, 0, 0.48d, 16d, 25d, 0.1d),
+                        new Pr288MarkSource(2, 43, 1d, FireSettings.SemiAutomatic(1.4935d), GunShotPattern.Canonical(7, 18.05d), 15.706993351794498d, GunDamageCategory.Thermal, 0, 0.5184d, 16.48d, 26.25d, 0.1d),
+                        new Pr288MarkSource(3, 66, 1d, FireSettings.SemiAutomatic(1.537d), GunShotPattern.Canonical(7, 17.1d), 34.0730737964788d, GunDamageCategory.Thermal, 1, 0.5568d, 16.96d, 27.500000000000004d, 0.1d)
                     }),
                 BuildPr288Family(
                     "bio_needler",
@@ -309,33 +117,9 @@ namespace ShooterMover.Application.Guns.Catalog
                     "normal-chemical",
                     new[]
                     {
-                        new Pr288MarkSource(
-                            1, 6,
-                            1120d,
-                            FireSettings.Automatic(7.5d),
-                            GunShotPattern.Canonical(1, 2d),
-                            2.0420505000000007d,
-                            GunDamageCategory.Chemical,
-                            0, 0.25d,
-                            32d, 32d, 0.1d),
-                        new Pr288MarkSource(
-                            2, 29,
-                            616.0000000000001d,
-                            FireSettings.Automatic(7.7250000000000005d),
-                            GunShotPattern.Canonical(1, 1.9d),
-                            7.508095877603602d,
-                            GunDamageCategory.Chemical,
-                            0, 0.27d,
-                            32.96d, 33.6d, 0.1d),
-                        new Pr288MarkSource(
-                            3, 52,
-                            1120d,
-                            FireSettings.Automatic(7.95d),
-                            GunShotPattern.Canonical(1, 1.8d),
-                            20.177060785713255d,
-                            GunDamageCategory.Chemical,
-                            1, 0.29d,
-                            33.92d, 35.2d, 0.1d)
+                        new Pr288MarkSource(1, 6, 1d, FireSettings.Automatic(7.5d), GunShotPattern.Canonical(1, 2d), 2.0420505000000007d, GunDamageCategory.Chemical, 0, 0.25d, 32d, 32d, 0.1d),
+                        new Pr288MarkSource(2, 29, 1d, FireSettings.Automatic(7.7250000000000005d), GunShotPattern.Canonical(1, 1.9d), 7.508095877603602d, GunDamageCategory.Chemical, 0, 0.27d, 32.96d, 33.6d, 0.1d),
+                        new Pr288MarkSource(3, 52, 1d, FireSettings.Automatic(7.95d), GunShotPattern.Canonical(1, 1.8d), 20.177060785713255d, GunDamageCategory.Chemical, 1, 0.29d, 33.92d, 35.2d, 0.1d)
                     }),
                 BuildPr288Family(
                     "corrosive_scattergun",
@@ -345,33 +129,9 @@ namespace ShooterMover.Application.Guns.Catalog
                     "shotgun-chemical",
                     new[]
                     {
-                        new Pr288MarkSource(
-                            1, 22,
-                            506d,
-                            FireSettings.SemiAutomatic(1.45d),
-                            GunShotPattern.Canonical(7, 19d),
-                            4.323858131434096d,
-                            GunDamageCategory.Chemical,
-                            0, 0.48d,
-                            16d, 25d, 0.1d),
-                        new Pr288MarkSource(
-                            2, 45,
-                            202.4d,
-                            FireSettings.SemiAutomatic(1.4935d),
-                            GunShotPattern.Canonical(7, 18.05d),
-                            17.482276275381068d,
-                            GunDamageCategory.Chemical,
-                            0, 0.5184d,
-                            16.48d, 26.25d, 0.1d),
-                        new Pr288MarkSource(
-                            3, 68,
-                            920d,
-                            FireSettings.SemiAutomatic(1.537d),
-                            GunShotPattern.Canonical(7, 17.1d),
-                            37.924182962325816d,
-                            GunDamageCategory.Chemical,
-                            1, 0.5568d,
-                            16.96d, 27.500000000000004d, 0.1d)
+                        new Pr288MarkSource(1, 22, 1d, FireSettings.SemiAutomatic(1.45d), GunShotPattern.Canonical(7, 19d), 4.323858131434096d, GunDamageCategory.Chemical, 0, 0.48d, 16d, 25d, 0.1d),
+                        new Pr288MarkSource(2, 45, 1d, FireSettings.SemiAutomatic(1.4935d), GunShotPattern.Canonical(7, 18.05d), 17.482276275381068d, GunDamageCategory.Chemical, 0, 0.5184d, 16.48d, 26.25d, 0.1d),
+                        new Pr288MarkSource(3, 68, 1d, FireSettings.SemiAutomatic(1.537d), GunShotPattern.Canonical(7, 17.1d), 37.924182962325816d, GunDamageCategory.Chemical, 1, 0.5568d, 16.96d, 27.500000000000004d, 0.1d)
                     }),
                 BuildPr288Family(
                     "acid_rifle",
@@ -381,33 +141,9 @@ namespace ShooterMover.Application.Guns.Catalog
                     "normal-chemical",
                     new[]
                     {
-                        new Pr288MarkSource(
-                            1, 50,
-                            184.79999999999998d,
-                            FireSettings.Automatic(7.5d),
-                            GunShotPattern.Canonical(1, 2d),
-                            29.490254833536824d,
-                            GunDamageCategory.Chemical,
-                            0, 0.25d,
-                            32d, 32d, 0.1d),
-                        new Pr288MarkSource(
-                            2, 73,
-                            462d,
-                            FireSettings.Automatic(7.7250000000000005d),
-                            GunShotPattern.Canonical(1, 1.9d),
-                            81.8487164456979d,
-                            GunDamageCategory.Chemical,
-                            0, 0.27d,
-                            32.96d, 33.6d, 0.1d),
-                        new Pr288MarkSource(
-                            3, 96,
-                            840d,
-                            FireSettings.Automatic(7.95d),
-                            GunShotPattern.Canonical(1, 1.8d),
-                            240.6327158456136d,
-                            GunDamageCategory.Chemical,
-                            1, 0.29d,
-                            33.92d, 35.2d, 0.1d)
+                        new Pr288MarkSource(1, 50, 1d, FireSettings.Automatic(7.5d), GunShotPattern.Canonical(1, 2d), 29.490254833536824d, GunDamageCategory.Chemical, 0, 0.25d, 32d, 32d, 0.1d),
+                        new Pr288MarkSource(2, 73, 1d, FireSettings.Automatic(7.7250000000000005d), GunShotPattern.Canonical(1, 1.9d), 81.8487164456979d, GunDamageCategory.Chemical, 0, 0.27d, 32.96d, 33.6d, 0.1d),
+                        new Pr288MarkSource(3, 96, 1d, FireSettings.Automatic(7.95d), GunShotPattern.Canonical(1, 1.8d), 240.6327158456136d, GunDamageCategory.Chemical, 1, 0.29d, 33.92d, 35.2d, 0.1d)
                     }),
             };
         }
