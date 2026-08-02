@@ -1,0 +1,26 @@
+{
+  "peakLevel": 27,
+  "damage": 1,
+  "fire": {
+    "mode": "automatic",
+    "rate": 2
+  },
+  "shot": {
+    "projectiles": 3,
+    "spread": 24
+  },
+  "projectile": {
+    "speed": 28,
+    "radius": 0.12,
+    "range": 16
+  },
+  "impact": {
+    "pierce": 1,
+    "ricochet": 0,
+    "knockback": 6
+  },
+  "art": {
+    "side": "gun-art.teknova_pulse.mk1.side-v1",
+    "mounted": "gun-art.teknova_pulse.mk1.mounted-top-v1"
+  }
+}
