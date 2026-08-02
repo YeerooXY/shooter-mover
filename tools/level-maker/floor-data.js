@@ -24,18 +24,16 @@
   }
 
   function makeFloor(width, height, tile = null) {
+    const floorWidth = Math.max(1, Math.round(Number(width) || 1));
+    const floorHeight = Math.max(1, Math.round(Number(height) || 1));
     const floor = {
-      width: Math.max(1, Math.round(Number(width) || 1)),
-      height: Math.max(1, Math.round(Number(height) || 1)),
+      width: floorWidth,
+      height: floorHeight,
       tiles: [null],
-      cells: new Uint16Array(
-        Math.max(1, Math.round(Number(width) || 1)) *
-        Math.max(1, Math.round(Number(height) || 1))
-      ),
+      cells: new Uint16Array(floorWidth * floorHeight),
       count: 0,
       defaultTile: tile || DEFAULT_TILE,
     };
-
     if (tile) fillCells(floor, tile);
     return floor;
   }
@@ -52,11 +50,9 @@
 
   function tileNumber(floor, tile) {
     if (!tile) return 0;
-    let index = floor.tiles.indexOf(tile);
-    if (index >= 0) return index;
-    if (floor.tiles.length >= 65_535) {
-      throw new Error("This room uses too many floor types.");
-    }
+    const existing = floor.tiles.indexOf(tile);
+    if (existing >= 0) return existing;
+    if (floor.tiles.length >= 65_535) throw new Error("This room uses too many floor types.");
     floor.tiles.push(tile);
     return floor.tiles.length - 1;
   }
@@ -73,20 +69,22 @@
     return source?.[y * width + x] || null;
   }
 
-  function setFloorTile(room, x, y, tile) {
-    const floor = prepareRoom(room).floor;
-    if (x < 0 || y < 0 || x >= floor.width || y >= floor.height) return false;
-
+  function setFloorCell(floor, x, y, tile) {
     const index = y * floor.width + x;
     const before = floor.cells[index];
     const after = tileNumber(floor, tile);
     if (before === after) return false;
-
     if (before === 0 && after !== 0) floor.count += 1;
     if (before !== 0 && after === 0) floor.count -= 1;
     floor.cells[index] = after;
     if (tile) floor.defaultTile = tile;
     return true;
+  }
+
+  function setFloorTile(room, x, y, tile) {
+    const floor = prepareRoom(room).floor;
+    if (x < 0 || y < 0 || x >= floor.width || y >= floor.height) return false;
+    return setFloorCell(floor, x, y, tile);
   }
 
   function clearFloorTile(room, x, y) {
@@ -102,8 +100,7 @@
   }
 
   function fillFloor(room, tile) {
-    const floor = prepareRoom(room).floor;
-    fillCells(floor, tile);
+    fillCells(prepareRoom(room).floor, tile);
     return room;
   }
 
@@ -125,7 +122,7 @@
   }
 
   function resizeFloor(room, width, height) {
-    const current = prepareRoom(room).floor;
+    const current = isFloor(room?.floor) ? room.floor : prepareRoom(room).floor;
     const nextWidth = Math.max(1, Math.round(Number(width) || 1));
     const nextHeight = Math.max(1, Math.round(Number(height) || 1));
     if (current.width === nextWidth && current.height === nextHeight) return room;
@@ -155,7 +152,7 @@
   }
 
   function readSavedFloor(savedFloor, width, height) {
-    const floor = makeFloor(width, height);
+    const floor = makeFloor(width, height, null);
     const rows = Array.isArray(savedFloor?.rows) ? savedFloor.rows : [];
 
     if (savedFloor?.format === "grid") {
@@ -181,16 +178,7 @@
         }
       }
     }
-
     return floor;
-  }
-
-  function setFloorCell(floor, x, y, tile) {
-    const index = y * floor.width + x;
-    const value = tileNumber(floor, tile);
-    if (floor.cells[index] === 0 && value !== 0) floor.count += 1;
-    floor.cells[index] = value;
-    if (tile) floor.defaultTile = tile;
   }
 
   function floorFromOldRoom(room, width, height) {
@@ -212,18 +200,14 @@
     const { width, height } = roomSize(room);
 
     if (isFloor(room.floor)) {
-      if (room.floor.width !== width || room.floor.height !== height) {
-        resizeFloor(room, width, height);
-      }
+      if (room.floor.width !== width || room.floor.height !== height) resizeFloor(room, width, height);
       addOldFloorNames(room);
       return room;
     }
 
-    if (room.floor?.format) {
-      room.floor = readSavedFloor(room.floor, width, height);
-    } else {
-      room.floor = floorFromOldRoom(room, width, height);
-    }
+    room.floor = room.floor?.format
+      ? readSavedFloor(room.floor, width, height)
+      : floorFromOldRoom(room, width, height);
 
     delete room.floorObject;
     delete room.tileGridEnabled;
@@ -256,7 +240,6 @@
   function tileView(room) {
     let view = tileViews.get(room);
     if (view) return view;
-
     view = {
       get length() {
         return prepareRoom(room).floor.count;
@@ -292,55 +275,46 @@
   }
 
   function addOldFloorNames(room) {
-    const names = {
+    Object.defineProperties(room, {
       floorObject: {
+        configurable: true,
+        enumerable: false,
         get: () => defaultFloorTile(room),
         set: value => {
-          const floor = prepareRoom(room).floor;
           const wasFull = isFullFloor(room);
+          const floor = prepareRoom(room).floor;
           floor.defaultTile = value || DEFAULT_TILE;
           if (wasFull) fillCells(floor, floor.defaultTile);
         },
       },
       tileGridEnabled: {
+        configurable: true,
+        enumerable: false,
         get: () => !isFullFloor(room),
         set: value => {
           if (value === false) fillFloor(room, defaultFloorTile(room));
         },
       },
       tiles: {
+        configurable: true,
+        enumerable: false,
         get: () => tileView(room),
         set: value => useOldTiles(room, value),
       },
-    };
-
-    for (const [name, access] of Object.entries(names)) {
-      const current = Object.getOwnPropertyDescriptor(room, name);
-      if (current?.get === access.get) continue;
-      Object.defineProperty(room, name, {
-        configurable: true,
-        enumerable: false,
-        get: access.get,
-        set: access.set,
-      });
-    }
+    });
     return room;
   }
 
   function readFloor(room) {
     const floor = prepareRoom(room).floor;
-    const result = new Array(floor.cells.length);
-    for (let i = 0; i < floor.cells.length; i++) {
-      result[i] = floor.tiles[floor.cells[i]] || null;
-    }
-    return result;
+    return Array.from(floor.cells, value => floor.tiles[value] || null);
   }
 
   function writeFloor(room) {
     const floor = prepareRoom(room).floor;
-    const usedTileNumbers = new Set();
-    for (const value of floor.cells) if (value !== 0) usedTileNumbers.add(value);
-    const tileNames = [...usedTileNumbers]
+    const usedNumbers = new Set();
+    for (const value of floor.cells) if (value !== 0) usedNumbers.add(value);
+    const tileNames = [...usedNumbers]
       .map(value => floor.tiles[value])
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b));
@@ -353,7 +327,6 @@
         legend[symbol] = tile;
         symbolForTile.set(tile, symbol);
       });
-
       const rows = [];
       for (let y = 0; y < floor.height; y++) {
         let row = "";
@@ -390,8 +363,7 @@
   }
 
   function openRoom(savedRoom) {
-    const room = copy(savedRoom) || {};
-    return prepareRoom(room);
+    return prepareRoom(copy(savedRoom) || {});
   }
 
   function openUnityTiles(room, unityTiles) {
@@ -403,19 +375,14 @@
       const from = tile?.fill?.from;
       const to = tile?.fill?.to;
       if (!tile?.object || !Array.isArray(from) || !Array.isArray(to)) continue;
-
       const startX = Math.max(0, Math.min(width, Math.round(Number(from[0]) + width / 2)));
       const startY = Math.max(0, Math.min(height, Math.round(Number(from[1]) + height / 2)));
       const endX = Math.max(0, Math.min(width, Math.round(Number(to[0]) + width / 2)));
       const endY = Math.max(0, Math.min(height, Math.round(Number(to[1]) + height / 2)));
-
       for (let y = startY; y < endY; y++) {
-        for (let x = startX; x < endX; x++) {
-          setFloorCell(opened.floor, x, y, tile.object);
-        }
+        for (let x = startX; x < endX; x++) setFloorCell(opened.floor, x, y, tile.object);
       }
     }
-
     return prepareRoom(opened);
   }
 
@@ -433,13 +400,10 @@
       const rowAreas = [];
       let tile = null;
       let startX = 0;
-
       for (let x = 0; x <= areaWidth; x++) {
         const nextTile = x < areaWidth ? tileAt(x, y) : null;
         if (nextTile === tile) continue;
-        if (tile !== null) {
-          rowAreas.push({ tile, x: startX, y, width: x - startX, height: 1 });
-        }
+        if (tile !== null) rowAreas.push({ tile, x: startX, y, width: x - startX, height: 1 });
         tile = nextTile;
         startX = x;
       }
@@ -448,7 +412,6 @@
         rowAreas.map(area => [`${area.tile}\n${area.x}\n${area.width}`, area])
       );
       const nextActiveAreas = [];
-
       for (const area of activeAreas) {
         const key = `${area.tile}\n${area.x}\n${area.width}`;
         if (!rowByShape.has(key)) {
@@ -459,7 +422,6 @@
         nextActiveAreas.push(area);
         rowByShape.delete(key);
       }
-
       nextActiveAreas.push(...rowByShape.values());
       activeAreas = nextActiveAreas;
     }
@@ -476,8 +438,7 @@
   }
 
   function buildUnityTiles(room) {
-    const prepared = prepareRoom(room);
-    const floor = prepared.floor;
+    const floor = prepareRoom(room).floor;
     return buildFloorAreas(floor).map(area => ({
       object: area.tile,
       fill: {
