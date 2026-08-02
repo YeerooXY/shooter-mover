@@ -63,6 +63,20 @@
     requestAnimationFrame(cleanReport);
   }
 
+  presentation.addEventListener("click", event => {
+    const weapon = event.target instanceof Element
+      ? event.target.closest("[data-analysis-weapon]")
+      : null;
+    const activeTab = presentation.querySelector(".analysis-tab.active")?.dataset.analysisTab;
+    if (!weapon || activeTab !== "weapons") return;
+
+    // Let the existing handler retain the selected weapon, then open its only
+    // remaining detail view: the augment slot/level matrix.
+    queueMicrotask(() => {
+      presentation.querySelector('[data-analysis-tab="augments"]')?.click();
+    });
+  }, true);
+
   new MutationObserver(scheduleCleanup).observe(presentation, {
     childList: true,
     subtree: true,
