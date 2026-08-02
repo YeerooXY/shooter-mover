@@ -175,7 +175,7 @@ namespace ShooterMover.Domain.Guns.Execution
                     "Gun definition IDs must end with a mark such as .mk1.");
             }
 
-            string encoded = Value.Substring(0, markIndex)
+            string encoded = Value.Substring(0, markIndex).Replace('_', '-')
                 + RuntimeMarkSeparator
                 + Value.Substring(markIndex + MarkSeparator.Length);
             return StableId.Create(RuntimeReferenceNamespace, encoded);
@@ -207,6 +207,7 @@ namespace ShooterMover.Domain.Guns.Execution
             }
 
             string decoded = runtimeReference.Value.Substring(0, markIndex)
+                    .Replace('-', '_')
                 + MarkSeparator
                 + runtimeReference.Value.Substring(
                     markIndex + RuntimeMarkSeparator.Length);
