@@ -13,11 +13,12 @@ using ShooterMover.Domain.Guns.Execution;
 namespace ShooterMover.Application.Rewards.Strongboxes
 {
     /// <summary>
-    /// Production BOX payload resolver for the hybrid policy. It selects one live
-    /// gun definition around the tier-authored target level, rolls the concrete item
-    /// level and shared augment capacity/level, then creates an equipment instance with
-    /// an empty installed-augment collection. The generated augment metadata is staged
-    /// as immutable opening intent and is committed only by RAP after equipment applies.
+    /// Production BOX payload resolver for the hybrid policy. It selects one eligible
+    /// rarity first, then selects one live gun definition inside that rarity using
+    /// authored base weight and target-level affinity. It rolls the concrete item level
+    /// and shared augment capacity/level, then creates an equipment instance with an
+    /// empty installed-augment collection. Generated augment metadata is staged as
+    /// immutable opening intent and committed only by RAP after equipment applies.
     /// Live opening and simulation share this exact resolver.
     /// </summary>
     public sealed class StrongboxHybridEquipmentGenerationResolver :
@@ -43,6 +44,29 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             public double Weight { get; }
         }
 
+        private sealed class RarityPool
+        {
+            public RarityPool(StableId rarityId, int selectionWeight)
+            {
+                RarityId = rarityId
+                    ?? throw new ArgumentNullException(nameof(rarityId));
+                if (selectionWeight <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(selectionWeight));
+                }
+
+                SelectionWeight = selectionWeight;
+                Candidates = new List<Candidate>();
+            }
+
+            public StableId RarityId { get; }
+            public int SelectionWeight { get; }
+            public List<Candidate> Candidates { get; }
+            public double TotalDefinitionWeight { get; set; }
+        }
+
+        private static readonly StableId RaritySelectionPurposeId =
+            StableId.Parse("strongbox-rng.hybrid-rarity-selection-v1");
         private static readonly StableId DefinitionSelectionPurposeId =
             StableId.Parse("strongbox-rng.hybrid-definition-selection-v1");
         private static readonly StableId QualitySelectionPurposeId =
@@ -249,10 +273,8 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             out Candidate selected,
             out string rejectionCode)
         {
-            var candidates = new List<Candidate>();
-            double totalWeight = 0d;
-            bool topTier = tierNumber
-                == StrongboxCatalog.Tiers.Count;
+            var rarityPools = new List<RarityPool>();
+            bool topTier = tierNumber == StrongboxCatalog.Tiers.Count;
             for (int index = 0;
                  index < equipmentCatalog.EquipmentDefinitions.Count;
                  index++)
@@ -280,67 +302,141 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 {
                     continue;
                 }
-                double weight;
+
+                int raritySelectionWeight;
+                double definitionWeight;
                 try
                 {
-                    weight = policy.EvaluateDefinitionWeight(
+                    raritySelectionWeight =
+                        policy.GetRaritySelectionWeight(rarityId);
+                    definitionWeight = policy.EvaluateDefinitionAffinity(
                         target,
                         gun.PeakDropLevel,
-                        gun.FinalBaseWeight,
-                        rarityId);
+                        gun.FinalBaseWeight);
                 }
                 catch (ArgumentException)
                 {
                     continue;
                 }
-                if (double.IsNaN(weight)
-                    || double.IsInfinity(weight)
-                    || weight <= 0d)
+                if (raritySelectionWeight <= 0
+                    || double.IsNaN(definitionWeight)
+                    || double.IsInfinity(definitionWeight)
+                    || definitionWeight <= 0d)
                 {
                     continue;
                 }
-                candidates.Add(new Candidate(
+
+                RarityPool pool = FindPool(rarityPools, rarityId);
+                if (pool == null)
+                {
+                    pool = new RarityPool(
+                        rarityId,
+                        raritySelectionWeight);
+                    rarityPools.Add(pool);
+                }
+                pool.Candidates.Add(new Candidate(
                     equipment,
                     gun,
                     rarityId,
-                    weight));
-                totalWeight += weight;
+                    definitionWeight));
+                pool.TotalDefinitionWeight += definitionWeight;
             }
-            candidates.Sort(delegate(Candidate left, Candidate right)
-            {
-                return left.Equipment.DefinitionId.CompareTo(
-                    right.Equipment.DefinitionId);
-            });
-            if (candidates.Count == 0
-                || double.IsNaN(totalWeight)
-                || double.IsInfinity(totalWeight)
-                || totalWeight <= 0d)
+
+            if (rarityPools.Count == 0)
             {
                 selected = null;
                 rejectionCode = "strongbox-hybrid-no-eligible-definition";
                 return false;
             }
 
-            DeterministicRandom random = DeterministicRandom.CreateSubstream(
-                boxContext.RootSeed,
-                boxContext.AlgorithmVersion,
-                DefinitionSelectionPurposeId,
-                slotOrdinal);
-            random = random.NextUnitInterval(out double unit);
-            double threshold = unit * totalWeight;
-            double cursor = 0d;
-            selected = candidates[candidates.Count - 1];
-            for (int index = 0; index < candidates.Count; index++)
+            rarityPools.Sort(delegate(RarityPool left, RarityPool right)
             {
-                cursor += candidates[index].Weight;
-                if (threshold < cursor)
+                return left.RarityId.CompareTo(right.RarityId);
+            });
+            ulong totalRarityWeight = 0UL;
+            for (int index = 0; index < rarityPools.Count; index++)
+            {
+                RarityPool pool = rarityPools[index];
+                pool.Candidates.Sort(delegate(Candidate left, Candidate right)
                 {
-                    selected = candidates[index];
+                    return left.Equipment.DefinitionId.CompareTo(
+                        right.Equipment.DefinitionId);
+                });
+                totalRarityWeight = checked(
+                    totalRarityWeight + (ulong)pool.SelectionWeight);
+            }
+
+            DeterministicRandom rarityRandom =
+                DeterministicRandom.CreateSubstream(
+                    boxContext.RootSeed,
+                    boxContext.AlgorithmVersion,
+                    RaritySelectionPurposeId,
+                    slotOrdinal);
+            rarityRandom = rarityRandom.NextBoundedUInt64(
+                totalRarityWeight,
+                out ulong rarityThreshold);
+            ulong rarityCursor = 0UL;
+            RarityPool selectedPool = rarityPools[rarityPools.Count - 1];
+            for (int index = 0; index < rarityPools.Count; index++)
+            {
+                rarityCursor = checked(
+                    rarityCursor + (ulong)rarityPools[index].SelectionWeight);
+                if (rarityThreshold < rarityCursor)
+                {
+                    selectedPool = rarityPools[index];
                     break;
                 }
             }
+
+            if (double.IsNaN(selectedPool.TotalDefinitionWeight)
+                || double.IsInfinity(selectedPool.TotalDefinitionWeight)
+                || selectedPool.TotalDefinitionWeight <= 0d)
+            {
+                selected = null;
+                rejectionCode = "strongbox-hybrid-selected-rarity-empty";
+                return false;
+            }
+
+            DeterministicRandom definitionRandom =
+                DeterministicRandom.CreateSubstream(
+                    boxContext.RootSeed,
+                    boxContext.AlgorithmVersion,
+                    DefinitionSelectionPurposeId,
+                    slotOrdinal);
+            definitionRandom = definitionRandom.NextUnitInterval(out double unit);
+            double definitionThreshold =
+                unit * selectedPool.TotalDefinitionWeight;
+            double definitionCursor = 0d;
+            selected = selectedPool.Candidates[
+                selectedPool.Candidates.Count - 1];
+            for (int index = 0;
+                 index < selectedPool.Candidates.Count;
+                 index++)
+            {
+                definitionCursor += selectedPool.Candidates[index].Weight;
+                if (definitionThreshold < definitionCursor)
+                {
+                    selected = selectedPool.Candidates[index];
+                    break;
+                }
+            }
+
             rejectionCode = null;
             return true;
+        }
+
+        private static RarityPool FindPool(
+            IReadOnlyList<RarityPool> pools,
+            StableId rarityId)
+        {
+            for (int index = 0; index < pools.Count; index++)
+            {
+                if (pools[index].RarityId == rarityId)
+                {
+                    return pools[index];
+                }
+            }
+            return null;
         }
 
         private bool TryResolveGun(
