@@ -20,6 +20,7 @@ using ShooterMover.Domain.Rewards.Generation;
 using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.Domain.Rewards.Strongboxes;
 using ShooterMover.Domain.Guns.Catalog;
+using ShooterMover.Domain.Guns.Execution;
 
 namespace ShooterMover.Editor.BalanceSimulator
 {
@@ -773,9 +774,8 @@ namespace ShooterMover.Editor.BalanceSimulator
                         "gundefinition",
                         gun.DefinitionId);
                 StableId runtimeReferenceId =
-                    Strongbox.DeriveId(
-                        "gun",
-                        gun.DefinitionId);
+                    new GunDefinitionId(
+                        gun.DefinitionId).ToRuntimeReference();
                 int minimumLevel = Math.Max(
                     1,
                     gun.FirstAppearance);
