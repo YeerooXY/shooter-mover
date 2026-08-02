@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using ShooterMover.Application.Guns.Catalog;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Application.Rewards.Strongboxes.Simulation;
 using ShooterMover.Domain.Equipment;
@@ -12,24 +13,27 @@ using UnityEngine;
 namespace ShooterMover.Editor.BalanceSimulator
 {
     /// <summary>
-    /// Local Editor bridge for the Item Maker Strongbox page. Requests are exchanged
-    /// through the project's Temp folder so no second web listener, URL reservation, or
-    /// duplicated JavaScript loot formula is required. The winning item is opened through
-    /// AuthoritativeStrongboxSimulatorLive and the diagnostic table calls the same hybrid
-    /// policy used by StrongboxHybridEquipmentGenerationResolver.
+    /// Local Editor bridge for the Item Maker Strongbox page. The bridge exports the
+    /// already-composed live gun catalog and sends every opening through the production
+    /// Strongbox resolver. Requests use the project Temp folder so no second HTTP listener
+    /// or browser-side loot formula is required.
     /// </summary>
     [InitializeOnLoad]
     public static class StrongboxPreviewBridge
     {
+        private const string LiveCatalogAuthority =
+            "GunCatalogProvider.GunCatalog";
+        private const int MaximumAnalysisSamples = 10000;
+
         [Serializable]
         private sealed class Request
         {
             public string requestId;
+            public string mode;
             public int playerLevel;
             public int tierNumber;
             public string seed;
-            public string catalogSource;
-            public string gunCatalogJson;
+            public int sampleCount;
         }
 
         [Serializable]
@@ -53,12 +57,24 @@ namespace ShooterMover.Editor.BalanceSimulator
         }
 
         [Serializable]
+        private sealed class DistributionEntry
+        {
+            public string key;
+            public string label;
+            public int count;
+            public double percentage;
+        }
+
+        [Serializable]
         private sealed class Response
         {
             public bool ok;
             public string error;
             public string requestId;
-            public string catalogSource;
+            public string mode;
+            public string catalogAuthority;
+            public string catalogFingerprint;
+            public int catalogDefinitionCount;
             public int playerLevel;
             public int tierNumber;
             public string tierId;
@@ -66,6 +82,8 @@ namespace ShooterMover.Editor.BalanceSimulator
             public int minimumTargetDelta;
             public int mostLikelyTargetDelta;
             public int maximumTargetDelta;
+
+            // Single opening
             public int targetLevel;
             public string selectedDefinitionId;
             public string selectedName;
@@ -78,6 +96,82 @@ namespace ShooterMover.Editor.BalanceSimulator
             public string generationFingerprint;
             public double totalWeight;
             public List<Candidate> candidates = new List<Candidate>();
+
+            // Analysis
+            public int sampleCount;
+            public int successfulOpenings;
+            public int rejectedOpenings;
+            public double averageTargetLevel;
+            public int minimumTargetLevel;
+            public int maximumTargetLevel;
+            public double averageItemLevel;
+            public int minimumItemLevel;
+            public int maximumItemLevel;
+            public List<DistributionEntry> weaponDistribution =
+                new List<DistributionEntry>();
+            public List<DistributionEntry> rarityDistribution =
+                new List<DistributionEntry>();
+            public List<DistributionEntry> qualityDistribution =
+                new List<DistributionEntry>();
+            public List<DistributionEntry> targetLevelDistribution =
+                new List<DistributionEntry>();
+            public List<DistributionEntry> itemLevelDistribution =
+                new List<DistributionEntry>();
+            public List<DistributionEntry> augmentSlotDistribution =
+                new List<DistributionEntry>();
+            public List<DistributionEntry> augmentLevelDistribution =
+                new List<DistributionEntry>();
+            public List<DistributionEntry> augmentSignatureDistribution =
+                new List<DistributionEntry>();
+            public List<DistributionEntry> rejectionDistribution =
+                new List<DistributionEntry>();
+        }
+
+        private sealed class Counter
+        {
+            private readonly Dictionary<string, int> counts =
+                new Dictionary<string, int>(StringComparer.Ordinal);
+            private readonly Dictionary<string, string> labels =
+                new Dictionary<string, string>(StringComparer.Ordinal);
+
+            public void Add(string key, string label)
+            {
+                key = key ?? string.Empty;
+                int count;
+                counts.TryGetValue(key, out count);
+                counts[key] = count + 1;
+                if (!labels.ContainsKey(key))
+                {
+                    labels[key] = string.IsNullOrWhiteSpace(label) ? key : label;
+                }
+            }
+
+            public List<DistributionEntry> Build(int total)
+            {
+                var values = new List<DistributionEntry>();
+                foreach (KeyValuePair<string, int> pair in counts)
+                {
+                    values.Add(new DistributionEntry
+                    {
+                        key = pair.Key,
+                        label = labels[pair.Key],
+                        count = pair.Value,
+                        percentage = total <= 0
+                            ? 0d
+                            : 100d * pair.Value / total,
+                    });
+                }
+                values.Sort(delegate(
+                    DistributionEntry left,
+                    DistributionEntry right)
+                {
+                    int byCount = right.count.CompareTo(left.count);
+                    return byCount != 0
+                        ? byCount
+                        : string.CompareOrdinal(left.key, right.key);
+                });
+                return values;
+            }
         }
 
         private static double nextPoll;
@@ -182,20 +276,22 @@ namespace ShooterMover.Editor.BalanceSimulator
             }
             if (string.IsNullOrWhiteSpace(request.requestId))
             {
-                return Failure(string.Empty, "strongbox-preview-request-id-missing");
+                return Failure(
+                    string.Empty,
+                    "strongbox-preview-request-id-missing");
             }
             if (request.playerLevel < 0)
             {
-                return Failure(request.requestId, "strongbox-preview-player-level-invalid");
+                return Failure(
+                    request.requestId,
+                    "strongbox-preview-player-level-invalid");
             }
             if (request.tierNumber < 1
                 || request.tierNumber > StrongboxCatalog.Tiers.Count)
             {
-                return Failure(request.requestId, "strongbox-preview-tier-invalid");
-            }
-            if (string.IsNullOrWhiteSpace(request.gunCatalogJson))
-            {
-                return Failure(request.requestId, "strongbox-preview-catalog-missing");
+                return Failure(
+                    request.requestId,
+                    "strongbox-preview-tier-invalid");
             }
 
             ulong rootSeed;
@@ -205,13 +301,41 @@ namespace ShooterMover.Editor.BalanceSimulator
                     CultureInfo.InvariantCulture,
                     out rootSeed))
             {
-                return Failure(request.requestId, "strongbox-preview-seed-invalid");
+                return Failure(
+                    request.requestId,
+                    "strongbox-preview-seed-invalid");
+            }
+
+            string gunCatalogJson;
+            try
+            {
+                if (GunCatalogProvider.GunCatalog == null)
+                {
+                    return Failure(
+                        request.requestId,
+                        "strongbox-preview-live-catalog-unavailable");
+                }
+                gunCatalogJson = GunCatalogJson.Export(
+                    GunCatalogProvider.GunCatalog);
+            }
+            catch (Exception exception)
+            {
+                return Failure(
+                    request.requestId,
+                    "strongbox-preview-live-catalog-export-exception-"
+                        + exception.GetType().Name.ToLowerInvariant());
+            }
+            if (string.IsNullOrWhiteSpace(gunCatalogJson))
+            {
+                return Failure(
+                    request.requestId,
+                    "strongbox-preview-live-catalog-export-empty");
             }
 
             string diagnostic;
             AuthoritativeStrongboxSimulationGateway gateway;
             if (!AuthoritativeStrongboxSimulationGatewayFactory.TryCreate(
-                    request.gunCatalogJson,
+                    gunCatalogJson,
                     out gateway,
                     out diagnostic)
                 || gateway == null)
@@ -223,9 +347,85 @@ namespace ShooterMover.Editor.BalanceSimulator
                         : diagnostic);
             }
 
+            string mode = string.Equals(
+                request.mode,
+                "analysis",
+                StringComparison.OrdinalIgnoreCase)
+                    ? "analysis"
+                    : "single";
+            Response response = BaseResponse(
+                request,
+                rootSeed,
+                mode,
+                gateway);
+
+            if (mode == "analysis")
+            {
+                int sampleCount = request.sampleCount <= 0
+                    ? 1000
+                    : request.sampleCount;
+                if (sampleCount > MaximumAnalysisSamples)
+                {
+                    return Failure(
+                        request.requestId,
+                        "strongbox-preview-sample-count-too-large");
+                }
+                return ResolveAnalysis(
+                    request,
+                    rootSeed,
+                    sampleCount,
+                    gateway,
+                    response);
+            }
+
+            return ResolveSingle(
+                request,
+                rootSeed,
+                gunCatalogJson,
+                gateway,
+                response);
+        }
+
+        private static Response BaseResponse(
+            Request request,
+            ulong rootSeed,
+            string mode,
+            AuthoritativeStrongboxSimulationGateway gateway)
+        {
+            StrongboxTier tier = StrongboxCatalog.GetByNumber(
+                request.tierNumber);
+            StrongboxHybridLootPolicy policy =
+                StrongboxHybridLootCatalog.GetByTierNumber(
+                    request.tierNumber);
+            return new Response
+            {
+                ok = true,
+                requestId = request.requestId,
+                mode = mode,
+                catalogAuthority = LiveCatalogAuthority,
+                catalogFingerprint = gateway.Fingerprints.EquipmentCatalog,
+                catalogDefinitionCount = gateway.EquipmentDefinitions.Count,
+                playerLevel = request.playerLevel,
+                tierNumber = request.tierNumber,
+                tierId = tier.TierStableId.ToString(),
+                seed = rootSeed.ToString(CultureInfo.InvariantCulture),
+                minimumTargetDelta = policy.MinimumTargetDelta,
+                mostLikelyTargetDelta = policy.MostLikelyTargetDelta,
+                maximumTargetDelta = policy.MaximumTargetDelta,
+            };
+        }
+
+        private static Response ResolveSingle(
+            Request request,
+            ulong rootSeed,
+            string gunCatalogJson,
+            AuthoritativeStrongboxSimulationGateway gateway,
+            Response response)
+        {
+            string diagnostic;
             AuthoritativeStrongboxSimulatorLive runtime;
             if (!AuthoritativeStrongboxSimulatorLive.TryCreate(
-                    request.gunCatalogJson,
+                    gunCatalogJson,
                     out runtime,
                     out diagnostic)
                 || runtime == null)
@@ -237,13 +437,14 @@ namespace ShooterMover.Editor.BalanceSimulator
                         : diagnostic);
             }
 
-            StrongboxTier tier = StrongboxCatalog.GetByNumber(request.tierNumber);
             IReadOnlyList<AuthoritativeStrongboxPreparedOpen> prepared =
                 runtime.PrepareBatch(
                     new[] { request.tierNumber },
                     request.playerLevel,
                     rootSeed);
-            if (prepared == null || prepared.Count != 1 || prepared[0] == null)
+            if (prepared == null
+                || prepared.Count != 1
+                || prepared[0] == null)
             {
                 return Failure(
                     request.requestId,
@@ -252,27 +453,14 @@ namespace ShooterMover.Editor.BalanceSimulator
 
             AuthoritativeStrongboxPreparedOpen opening = prepared[0];
             StrongboxHybridLootPolicy policy =
-                StrongboxHybridLootCatalog.GetByTierNumber(request.tierNumber);
+                StrongboxHybridLootCatalog.GetByTierNumber(
+                    request.tierNumber);
             StrongboxTargetLevelRoll target = policy.RollTargetLevel(
                 request.playerLevel,
                 opening.Context.RootSeed,
                 opening.Context.AlgorithmVersion,
                 0UL);
-
-            var response = new Response
-            {
-                ok = true,
-                requestId = request.requestId,
-                catalogSource = request.catalogSource ?? string.Empty,
-                playerLevel = request.playerLevel,
-                tierNumber = request.tierNumber,
-                tierId = tier.TierStableId.ToString(),
-                seed = rootSeed.ToString(CultureInfo.InvariantCulture),
-                minimumTargetDelta = policy.MinimumTargetDelta,
-                mostLikelyTargetDelta = policy.MostLikelyTargetDelta,
-                maximumTargetDelta = policy.MaximumTargetDelta,
-                targetLevel = target.TargetLevel,
-            };
+            response.targetLevel = target.TargetLevel;
 
             BuildCandidates(
                 gateway.EquipmentDefinitions,
@@ -281,15 +469,19 @@ namespace ShooterMover.Editor.BalanceSimulator
                 request.tierNumber,
                 response);
 
-            StrongboxOpeningResultLive openingResult = runtime.OpenOrRetry(opening);
+            StrongboxOpeningResultLive openingResult =
+                runtime.OpenOrRetry(opening);
             IReadOnlyList<EquipmentInstance> generated =
                 runtime.EquipmentFrom(openingResult);
-            if (generated == null || generated.Count != 1 || generated[0] == null)
+            if (generated == null
+                || generated.Count != 1
+                || generated[0] == null)
             {
                 return Failure(
                     request.requestId,
                     openingResult == null
-                        || string.IsNullOrWhiteSpace(openingResult.RejectionCode)
+                        || string.IsNullOrWhiteSpace(
+                            openingResult.RejectionCode)
                             ? "strongbox-preview-equipment-count-invalid"
                             : openingResult.RejectionCode);
             }
@@ -316,7 +508,8 @@ namespace ShooterMover.Editor.BalanceSimulator
                     "strongbox-preview-augment-signature-missing");
             }
 
-            response.selectedDefinitionId = selected.DefinitionId.ToString();
+            response.selectedDefinitionId =
+                selected.DefinitionId.ToString();
             response.selectedName = selected.DisplayName;
             response.selectedRarityId = selected.RarityId == null
                 ? string.Empty
@@ -331,13 +524,168 @@ namespace ShooterMover.Editor.BalanceSimulator
             response.augmentLevel = signature.SharedLevel;
             response.generationFingerprint = equipment.Fingerprint;
 
-            for (int index = 0; index < response.candidates.Count; index++)
+            for (int index = 0;
+                 index < response.candidates.Count;
+                 index++)
             {
                 response.candidates[index].selected = string.Equals(
                     response.candidates[index].definitionId,
                     response.selectedDefinitionId,
                     StringComparison.Ordinal);
             }
+            return response;
+        }
+
+        private static Response ResolveAnalysis(
+            Request request,
+            ulong rootSeed,
+            int sampleCount,
+            AuthoritativeStrongboxSimulationGateway gateway,
+            Response response)
+        {
+            StrongboxTier tier = StrongboxCatalog.GetByNumber(
+                request.tierNumber);
+            var scenario = new StrongboxSimulationScenario(
+                request.playerLevel,
+                tier.TierStableId,
+                sampleCount,
+                rootSeed);
+
+            var weapons = new Counter();
+            var rarities = new Counter();
+            var qualities = new Counter();
+            var targetLevels = new Counter();
+            var itemLevels = new Counter();
+            var augmentSlots = new Counter();
+            var augmentLevels = new Counter();
+            var augmentSignatures = new Counter();
+            var rejections = new Counter();
+
+            long targetTotal = 0L;
+            long itemTotal = 0L;
+            int minimumTarget = int.MaxValue;
+            int maximumTarget = int.MinValue;
+            int minimumItem = int.MaxValue;
+            int maximumItem = int.MinValue;
+
+            for (int ordinal = 0; ordinal < sampleCount; ordinal++)
+            {
+                StrongboxGeneratedEquipmentObservation observation;
+                string diagnostic;
+                if (!gateway.TryGenerate(
+                        scenario,
+                        ordinal,
+                        out observation,
+                        out diagnostic)
+                    || observation == null)
+                {
+                    response.rejectedOpenings++;
+                    rejections.Add(
+                        string.IsNullOrWhiteSpace(diagnostic)
+                            ? "unknown"
+                            : diagnostic,
+                        string.IsNullOrWhiteSpace(diagnostic)
+                            ? "unknown"
+                            : diagnostic);
+                    continue;
+                }
+
+                response.successfulOpenings++;
+                StrongboxEquipmentMetadata equipment =
+                    observation.Equipment;
+                string definitionId = equipment.DefinitionId.ToString();
+                string rarityId = equipment.RarityId == null
+                    ? string.Empty
+                    : equipment.RarityId.ToString();
+                string qualityId = observation.QualityId == null
+                    ? string.Empty
+                    : observation.QualityId.ToString();
+
+                weapons.Add(definitionId, equipment.DisplayName);
+                rarities.Add(rarityId, rarityId);
+                qualities.Add(qualityId, qualityId);
+                targetLevels.Add(
+                    observation.TargetLevel.ToString(
+                        CultureInfo.InvariantCulture),
+                    observation.TargetLevel.ToString(
+                        CultureInfo.InvariantCulture));
+                itemLevels.Add(
+                    observation.ItemLevel.ToString(
+                        CultureInfo.InvariantCulture),
+                    observation.ItemLevel.ToString(
+                        CultureInfo.InvariantCulture));
+                augmentSlots.Add(
+                    observation.AugmentSlotCount.ToString(
+                        CultureInfo.InvariantCulture),
+                    observation.AugmentSlotCount.ToString(
+                        CultureInfo.InvariantCulture));
+                if (observation.AugmentSlotCount > 0)
+                {
+                    augmentLevels.Add(
+                        observation.SharedAugmentLevel.ToString(
+                            CultureInfo.InvariantCulture),
+                        observation.SharedAugmentLevel.ToString(
+                            CultureInfo.InvariantCulture));
+                    string signature =
+                        observation.SharedAugmentLevel.ToString(
+                            CultureInfo.InvariantCulture)
+                        + "/"
+                        + observation.AugmentSlotCount.ToString(
+                            CultureInfo.InvariantCulture);
+                    augmentSignatures.Add(signature, signature);
+                }
+                else
+                {
+                    augmentSignatures.Add("none", "none");
+                }
+
+                targetTotal += observation.TargetLevel;
+                itemTotal += observation.ItemLevel;
+                minimumTarget = Math.Min(
+                    minimumTarget,
+                    observation.TargetLevel);
+                maximumTarget = Math.Max(
+                    maximumTarget,
+                    observation.TargetLevel);
+                minimumItem = Math.Min(
+                    minimumItem,
+                    observation.ItemLevel);
+                maximumItem = Math.Max(
+                    maximumItem,
+                    observation.ItemLevel);
+            }
+
+            response.sampleCount = sampleCount;
+            int success = response.successfulOpenings;
+            response.averageTargetLevel = success == 0
+                ? 0d
+                : targetTotal / (double)success;
+            response.minimumTargetLevel = success == 0
+                ? 0
+                : minimumTarget;
+            response.maximumTargetLevel = success == 0
+                ? 0
+                : maximumTarget;
+            response.averageItemLevel = success == 0
+                ? 0d
+                : itemTotal / (double)success;
+            response.minimumItemLevel = success == 0
+                ? 0
+                : minimumItem;
+            response.maximumItemLevel = success == 0
+                ? 0
+                : maximumItem;
+            response.weaponDistribution = weapons.Build(success);
+            response.rarityDistribution = rarities.Build(success);
+            response.qualityDistribution = qualities.Build(success);
+            response.targetLevelDistribution = targetLevels.Build(success);
+            response.itemLevelDistribution = itemLevels.Build(success);
+            response.augmentSlotDistribution = augmentSlots.Build(success);
+            response.augmentLevelDistribution = augmentLevels.Build(success);
+            response.augmentSignatureDistribution =
+                augmentSignatures.Build(success);
+            response.rejectionDistribution =
+                rejections.Build(response.rejectedOpenings);
             return response;
         }
 
@@ -353,7 +701,8 @@ namespace ShooterMover.Editor.BalanceSimulator
             for (int index = 0; index < metadata.Count; index++)
             {
                 StrongboxEquipmentMetadata item = metadata[index];
-                int distance = Math.Abs(item.AnchorLevel - target.TargetLevel);
+                int distance = Math.Abs(
+                    item.AnchorLevel - target.TargetLevel);
                 StrongboxRarityProfile rarity = FindRarity(
                     policy,
                     item.RarityId);
@@ -363,11 +712,16 @@ namespace ShooterMover.Editor.BalanceSimulator
                 double rarityMultiplier = rarity == null
                     ? 0d
                     : rarity.SelectionMultiplierMilli
-                        / (double)StrongboxHybridLootPolicy.RarityMultiplierScale;
-                double levelAffinity = distance <= policy.DefinitionSelectionRadius
-                    ? policy.DefinitionBellWeights[distance].WeightMillionths
-                        / (double)StrongboxHybridLootPolicy.DefinitionWeightScale
-                    : 0d;
+                        / (double)
+                            StrongboxHybridLootPolicy.RarityMultiplierScale;
+                double levelAffinity =
+                    distance <= policy.DefinitionSelectionRadius
+                        ? policy.DefinitionBellWeights[distance]
+                            .WeightMillionths
+                            / (double)
+                                StrongboxHybridLootPolicy
+                                    .DefinitionWeightScale
+                        : 0d;
                 double weight = 0d;
                 string reason;
                 if (!item.Available)
@@ -433,10 +787,13 @@ namespace ShooterMover.Editor.BalanceSimulator
             {
                 return;
             }
-            for (int index = 0; index < response.candidates.Count; index++)
+            for (int index = 0;
+                 index < response.candidates.Count;
+                 index++)
             {
                 Candidate candidate = response.candidates[index];
-                candidate.chancePercent = 100d * candidate.finalWeight / total;
+                candidate.chancePercent =
+                    100d * candidate.finalWeight / total;
             }
         }
 
@@ -458,9 +815,12 @@ namespace ShooterMover.Editor.BalanceSimulator
             StrongboxHybridLootPolicy policy,
             ShooterMover.Domain.Common.StableId rarityId)
         {
-            for (int index = 0; index < policy.RarityProfiles.Count; index++)
+            for (int index = 0;
+                 index < policy.RarityProfiles.Count;
+                 index++)
             {
-                StrongboxRarityProfile value = policy.RarityProfiles[index];
+                StrongboxRarityProfile value =
+                    policy.RarityProfiles[index];
                 if (value.RarityId == rarityId)
                 {
                     return value;
@@ -478,7 +838,8 @@ namespace ShooterMover.Editor.BalanceSimulator
             }
             if (value.Contains("legendary")) return "legendary";
             if (value.Contains("epic")) return "epic";
-            if (value.Contains("rare") && !value.Contains("uncommon"))
+            if (value.Contains("rare")
+                && !value.Contains("uncommon"))
             {
                 return "rare";
             }
