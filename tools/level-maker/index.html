@@ -3,23 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Shooter Mover — Web Level Designer</title>
+<title>Shooter Mover — Level Maker</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div id="app">
 <header>
-  <div class="brand">Shooter Mover <small>Web Level Designer · compiler-ready schema v2</small></div>
-  <button id="newBtn">New</button>
-  <button id="openBtn">Open</button>
-  <button id="openRepoBtn">Open project level</button>
-  <button id="saveBtn">Save to project</button>
-  <button id="downloadBtn">Export project file</button>
-  <button id="undoBtn" title="Ctrl+Z">Undo</button>
-  <button id="redoBtn" title="Ctrl+Y">Redo</button>
+  <div class="brand">Level Maker</div>
+  <div class="header-group">
+    <button id="newBtn">New</button>
+    <button id="openRepoBtn">Open level</button>
+  </div>
+  <div class="header-group secondary">
+    <button id="undoBtn" title="Undo · Ctrl+Z">Undo</button>
+    <button id="redoBtn" title="Redo · Ctrl+Y">Redo</button>
+  </div>
   <div class="spacer"></div>
-  <button id="validateBtn">Validate</button>
-  <button class="good" id="exportBtn">Publish to Unity</button>
+  <button id="validateBtn">Check</button>
+  <details id="projectMenu" class="project-menu">
+    <summary>Project</summary>
+    <div class="project-menu-popover">
+      <button id="openBtn">Import project file</button>
+      <button id="downloadBtn">Export project file</button>
+    </div>
+  </details>
+  <button id="saveBtn" hidden>Save to project</button>
+  <button class="good" id="exportBtn" title="Write this level into the Unity project so it appears in Levels">▶ Playtest</button>
 </header>
 
 <div class="workspace">
@@ -33,7 +42,7 @@
   <div id="tab-assets" class="tab-page active">
     <div class="panel">
       <div class="search">
-        <input id="assetSearch" placeholder="Search catalogue…">
+        <input id="assetSearch" placeholder="Search assets…">
         <div class="row" style="margin-top:6px">
           <select id="assetFilter" class="grow">
             <option value="all">All types</option>
@@ -53,22 +62,19 @@
   <div id="tab-rooms" class="tab-page">
     <div class="panel">
       <div class="row"><button class="primary grow" id="addRoom">Add room</button><button id="duplicateRoom">Duplicate</button></div>
-      <div class="help" style="margin:7px 0">Each room exports to its own compiler-ready folder. The canvas edits the active room.</div>
-      <div id="roomList"></div>
+      <div id="roomList" style="margin-top:8px"></div>
     </div>
   </div>
 
   <div id="tab-logic" class="tab-page">
     <div class="panel">
-      <h2>Door connections</h2>
-      <div class="help">Connect doors between rooms. These become <code>map.json</code> connections.</div>
-      <button id="addConnection" style="margin:8px 0">Add connection</button>
+      <h2>Connections</h2>
+      <button id="addConnection" style="margin:0 0 8px">Connect doors</button>
       <div id="connectionList"></div>
     </div>
     <div class="panel">
-      <h2>Custom logic</h2>
-      <div class="help">Switches, triggers and future teleporters are preserved in the editor project. Door completion rules export to the current runtime schema.</div>
-      <button id="addLogic">Add logic rule</button>
+      <h2>Logic</h2>
+      <button id="addLogic">Add rule</button>
       <div id="logicList" style="margin-top:8px"></div>
     </div>
   </div>
@@ -89,19 +95,19 @@
     <button data-tool="teleporter" title="Teleporter placeholder (T)">◎</button>
   </div>
   <div id="mode-switch" class="floating">
-    <button data-view="room" class="active">Edit current room</button>
-    <button data-view="map">Level graph</button>
+    <button data-view="room" class="active">Room</button>
+    <button data-view="map">Level map</button>
   </div>
   <div id="map-tools" class="floating">
-    <button data-map-mode="open" class="active" title="Click a room to open its fullscreen editor">Open room</button>
-    <button data-map-mode="arrange" title="Drag rooms around the graph grid">Arrange</button>
-    <button data-map-mode="connect" title="Drag one door socket onto another">Connect doors</button>
-    <span id="map-mode-help" class="map-mode-help">Click a room to edit it</span>
+    <button data-map-mode="open" class="active" title="Open a room">Open</button>
+    <button data-map-mode="arrange" title="Move rooms on the graph">Arrange</button>
+    <button data-map-mode="connect" title="Connect two door sockets">Connect</button>
+    <span id="map-mode-help" class="map-mode-help" hidden></span>
   </div>
   <div id="room-focus-tools" class="floating">
-    <button id="backToGraph" class="primary">← Level graph</button>
+    <button id="backToGraph" class="primary">← Map</button>
     <button id="toggleAssetsDrawer">Assets</button>
-    <button id="toggleInspectorDrawer">Inspector</button>
+    <button id="toggleInspectorDrawer">Room</button>
     <span class="divider"></span>
     <button data-placement-mode="single" class="active" title="Place one item per click">Single</button>
     <button data-placement-mode="paint" title="Hold and drag to stamp on every grid cell">Paint</button>
@@ -113,11 +119,11 @@
       <option value="1" selected>1</option>
       <option value="2">2</option>
     </select>
-    <span id="selected-asset-chip">No asset selected</span>
+    <span id="selected-asset-chip" hidden></span>
   </div>
   <div id="view-hud" class="floating">100% · snap 1</div>
   <div id="room-hud" class="floating"></div>
-  <div id="selection-hud" class="floating">Nothing selected</div>
+  <div id="selection-hud" class="floating" hidden></div>
 </main>
 
 <aside id="right">
@@ -142,23 +148,22 @@
   <span id="status">Ready.</span>
   <span id="counts"></span>
   <span class="spacer"></span>
-  <span><kbd>1</kbd> single · <kbd>2</kbd> paint · <kbd>F</kbd> tile · <kbd>X</kbd> erase · <kbd>G</kbd> graph · <kbd>Del</kbd> delete · <kbd>Q/E</kbd> rotate</span>
 </footer>
 </div>
 
 <input id="openInput" type="file" accept=".json,.smlvl" hidden>
 <dialog id="validationDialog">
-  <h2>Validation</h2>
+  <h2>Check level</h2>
   <div id="validationSummary"></div>
   <div id="validationList" class="validation-list"></div>
   <form method="dialog" style="text-align:right;margin-top:10px"><button>Close</button></form>
 </dialog>
 
 <dialog id="customAssetDialog">
-  <h2>Add catalogue asset</h2>
+  <h2>Add asset</h2>
   <div class="grid2">
     <div><label>Type</label><select id="customAssetType"><option>enemy</option><option>prop</option><option>floor</option><option>door</option><option>decor</option></select></div>
-    <div><label>Stable object ID</label><input id="customAssetId" placeholder="prop.wall-standard"></div>
+    <div><label>Object ID</label><input id="customAssetId" placeholder="prop.wall-standard"></div>
   </div>
   <label>Label</label><input id="customAssetLabel" placeholder="Standard wall">
   <div class="row" style="justify-content:flex-end;margin-top:12px"><button id="cancelCustomAsset">Cancel</button><button class="primary" id="confirmCustomAsset">Add</button></div>
@@ -173,5 +178,6 @@
 <script src="app-7.js"></script>
 <script src="app-8.js"></script>
 <script src="app-9.js"></script>
+<script src="app-10.js"></script>
 </body>
 </html>
