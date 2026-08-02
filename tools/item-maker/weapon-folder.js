@@ -25,32 +25,29 @@ let files = makeDefaultFiles();
 function format(value) { return JSON.stringify(value, null, 2) + "\n"; }
 function escapeHtml(value) {
   return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    .replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#039;");
 }
 function folderSlug(value) {
   return String(value || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-}
-function categorySlug(value) {
-  return String(value || "").toLowerCase().trim().replace(/[^a-z0-9_-]+/g, "-").replace(/^[-_]+|[-_]+$/g, "");
 }
 function makeDefaultFiles() {
   return {
     "weapon.json": format({
       name: "New Weapon",
       description: "",
-      category: "orb",
+      category: "normal-firearm",
       rarity: "common",
-      projectileType: "orb",
+      projectileType: "bullet",
       damageType: "physical",
-      fire: { mode: "automatic", rate: 1 },
+      fire: { mode: "automatic", rate: 4 },
       shot: { projectiles: 1, spread: 0 },
-      projectile: { speed: 10, radius: 0.2, range: 25 },
+      projectile: { speed: 20, radius: 0.1, range: 25 },
       impact: { pierce: 1, ricochet: 0, knockback: 0 },
-      art: { mounted: "gun_new_weapon_mounted", delivery: "gun_new_weapon_projectile", trail: "gun_new_weapon_trail", impact: "gun_new_weapon_impact" }
+      art: { delivery: "", trail: "", impact: "" }
     }),
-    "mk1.json": format({ peakLevel: 1, damage: 1, art: { side: "gun_new_weapon_mk1_side" } }),
-    "mk2.json": format({ peakLevel: 25, damage: 2, art: { side: "gun_new_weapon_mk2_side" } }),
-    "mk3.json": format({ peakLevel: 50, damage: 3, art: { side: "gun_new_weapon_mk3_side" } })
+    "mk1.json": format({ peakLevel: 1, damage: 1, art: { side: "", mounted: "" } }),
+    "mk2.json": format({ peakLevel: 25, damage: 2, art: { side: "", mounted: "" } }),
+    "mk3.json": format({ peakLevel: 50, damage: 3, art: { side: "", mounted: "" } })
   };
 }
 
@@ -92,14 +89,14 @@ function localChecks() {
   const category = elements.categoryInput.value.trim();
   const folder = elements.folderInput.value.trim();
   const result = parseFiles();
-  if (!/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/.test(category)) result.errors.push("Category folder must be lowercase and filesystem-safe.");
-  if (!/^[a-z0-9]+(?:_[a-z0-9]+)*$/.test(folder)) result.errors.push("Weapon folder must use lowercase letters, digits, and underscores only.");
+  if (!/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/.test(category)) result.errors.push("The selected weapon type produced an invalid category folder.");
+  if (!/^[a-z0-9]+(?:_[a-z0-9]+)*$/.test(folder)) result.errors.push("Weapon key must use lowercase letters, digits, and underscores only.");
   if (loadedIdentity && (loadedIdentity.category !== category || loadedIdentity.folder !== folder)) {
-    result.errors.push("Changing a loaded folder identity would create a second folder. Use New Weapon for a new identity.");
+    result.errors.push("A saved weapon cannot silently change its folder identity. Use New Weapon for a new identity.");
   }
   elements.checks.innerHTML = result.errors.length
     ? result.errors.map(error => `<div class="issue error">⛔ ${escapeHtml(error)}</div>`).join("")
-    : `<div class="issue ok">✓ JSON parses locally. Repository save will run the full folder validator.</div>`;
+    : `<div class="issue ok">✓ Local data is ready. Saving runs the full weapon-folder checks.</div>`;
   return result;
 }
 
@@ -128,7 +125,7 @@ async function refreshList() {
   const list = await api("/api/weapon-folders");
   elements.weaponList.innerHTML = list.weapons.length
     ? list.weapons.map(item => `<button type="button" class="weapon-entry" data-category="${escapeHtml(item.category)}" data-folder="${escapeHtml(item.folder)}">${escapeHtml(item.name)}<small>${escapeHtml(item.category)}/${escapeHtml(item.folder)}</small></button>`).join("")
-    : `<div class="help">No split weapon folders yet.</div>`;
+    : `<div class="help">No weapon folders yet.</div>`;
   elements.weaponList.querySelectorAll(".weapon-entry").forEach(button => button.addEventListener("click", async () => {
     if (dirty && !confirm("Discard unsaved changes?")) return;
     try { await loadWeapon(button.dataset.category, button.dataset.folder); }
@@ -150,13 +147,13 @@ async function loadWeapon(category, folder) {
 function newWeapon() {
   if (dirty && !confirm("Discard unsaved changes?")) return;
   files = makeDefaultFiles();
-  elements.categoryInput.value = "orb";
+  elements.categoryInput.value = "normal-firearm";
   elements.folderInput.value = "new_weapon";
   loadedIdentity = null;
   activeFile = "weapon.json";
   setDirty();
   render();
-  elements.folderInput.focus();
+  queueMicrotask(() => document.querySelector('[data-g-key="shared.name"]')?.focus());
 }
 
 async function saveWeapon() {
@@ -183,14 +180,6 @@ async function saveWeapon() {
 elements.newWeaponButton.addEventListener("click", newWeapon);
 elements.saveButton.addEventListener("click", saveWeapon);
 elements.jsonEditor.addEventListener("input", () => { files[activeFile] = elements.jsonEditor.value; setDirty(); localChecks(); });
-elements.categoryInput.addEventListener("input", () => {
-  elements.categoryInput.value = categorySlug(elements.categoryInput.value);
-  setDirty(); renderIdentity(); localChecks();
-});
-elements.folderInput.addEventListener("input", () => {
-  elements.folderInput.value = folderSlug(elements.folderInput.value);
-  setDirty(); renderIdentity(); localChecks();
-});
 window.addEventListener("beforeunload", event => { if (!dirty) return; event.preventDefault(); event.returnValue = ""; });
 
 (async function start() {

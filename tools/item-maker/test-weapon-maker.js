@@ -10,8 +10,8 @@ const WeaponDps = require("./weapon-dps");
 const toolRoot = __dirname;
 const validator = path.join(toolRoot, "validate-weapon-folder.js");
 const gameplayScript = path.join(toolRoot, "weapon-gameplay-maker.js");
-const qolScript = path.join(toolRoot, "weapon-maker-qol.js");
 const balanceScript = path.join(toolRoot, "weapon-balance.js");
+const strongboxHtml = path.join(toolRoot, "strongbox-simulator.html");
 
 function baseWeapon(overrides = {}) {
   return {
@@ -68,9 +68,24 @@ function validateCase(name, weapon, marks, shouldPass = true) {
   else assert.ok(error, `${name} should fail`);
 }
 
-[gameplayScript, qolScript, balanceScript].forEach(script => {
+function checkInlineScript(htmlFile) {
+  const html = fs.readFileSync(htmlFile, "utf8");
+  const match = html.match(/<script>([\s\S]*?)<\/script>/);
+  assert.ok(match, `${path.basename(htmlFile)} must contain an inline script.`);
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "strongbox-inline-"));
+  const script = path.join(tempRoot, "strongbox-inline.js");
+  try {
+    fs.writeFileSync(script, match[1]);
+    execFileSync(process.execPath, ["--check", script], { stdio: "pipe" });
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+}
+
+[gameplayScript, balanceScript].forEach(script => {
   execFileSync(process.execPath, ["--check", script], { stdio: "pipe" });
 });
+checkInlineScript(strongboxHtml);
 
 validateCase("automatic weapon", baseWeapon(), baseMarks());
 
@@ -170,4 +185,4 @@ assert.strictEqual(WeaponDps.calculate({ fire: { mode: "burst", rate: 4 / 3, sho
 
 assert.deepStrictEqual(WeaponDps.validateSettings(WeaponDps.defaultSettings()), []);
 
-console.log("Weapon Maker checks passed: gameplay shapes, invalid burst rejection, DPS math, and browser-only curve calculations.");
+console.log("Weapon Maker checks passed: gameplay shapes, invalid burst rejection, DPS math, guided editor syntax, and cinematic Strongbox prototype syntax.");

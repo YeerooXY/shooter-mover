@@ -7,65 +7,44 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="weapon-gameplay-maker.css">
   <link rel="stylesheet" href="weapon-balance.css">
-  <style>
-    .weapon-workspace { display:grid; grid-template-columns:230px minmax(0,1fr) 270px; gap:10px; padding:10px; align-items:start; }
-    .weapon-workspace > aside { min-width:0; }
-    .weapon-editor { min-height:62vh; width:100%; resize:vertical; font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace; }
-    .file-tabs { display:flex; gap:5px; flex-wrap:wrap; padding:7px 9px; border-bottom:1px solid var(--line); }
-    .file-tabs button.active { background:var(--accent); color:white; }
-    .weapon-entry { width:100%; text-align:left; margin-bottom:4px; }
-    .weapon-entry small { display:block; opacity:.65; margin-top:1px; }
-    .generated-id { overflow-wrap:anywhere; }
-    @media (max-width:1100px) {
-      .weapon-workspace { grid-template-columns:210px minmax(0,1fr); }
-      .weapon-summary { grid-column:1 / -1; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
-      .weapon-summary .panel + .panel { margin-top:0; }
-    }
-    @media (max-width:720px) {
-      .weapon-workspace { grid-template-columns:1fr; padding:8px; }
-      .weapon-summary { display:block; }
-      .weapon-summary .panel + .panel { margin-top:8px; }
-    }
-  </style>
 </head>
-<body class="weapon-maker">
-  <header class="app-header">
+<body>
+  <header class="app-header weapon-header">
     <div class="brand">
       <strong>Weapon Maker</strong>
-      <span>Create a weapon family and its MK1–MK3 gameplay stats</span>
+      <span>Configure one weapon family without incompatible choices</span>
     </div>
-    <button type="button" onclick="location.href='index.html'">Legacy Item Maker</button>
     <button id="newWeaponButton" type="button">New Weapon</button>
+    <button type="button" onclick="location.href='strongbox-simulator.html'">Strongbox Simulator</button>
     <div class="spacer"></div>
     <button id="saveButton" type="button" class="primary">Save Weapon</button>
     <div id="saveStatus" class="status-pill">Not saved</div>
   </header>
 
   <main class="weapon-workspace">
-    <aside>
-      <section class="panel">
+    <aside class="weapon-left-rail">
+      <section class="panel compact-panel">
         <div class="panel-head">Weapons</div>
         <div class="panel-body">
           <div id="repoStatus" class="repo-state">Checking local helper…</div>
           <div class="divider"></div>
-          <div id="weaponList"></div>
+          <div id="weaponList" class="weapon-list"></div>
         </div>
       </section>
 
-      <section class="panel">
-        <div class="panel-head">Weapon save key</div>
+      <section class="panel compact-panel">
+        <div class="panel-head">Weapon setup</div>
         <div class="panel-body">
-          <div class="field">
-            <label for="categoryInput">Weapon category</label>
-            <input id="categoryInput" class="mono" value="orb">
+          <div id="weaponGlobalEditor" class="weapon-global-editor">
+            <div class="help">Loading weapon setup…</div>
           </div>
-          <div class="field" style="margin-top:7px">
+          <input id="categoryInput" type="hidden" value="orb">
+          <div class="field weapon-key-field">
             <label for="folderInput">Weapon key</label>
-            <input id="folderInput" class="mono" value="new_weapon">
-            <div class="hint">Created from the weapon name, then kept stable.</div>
+            <input id="folderInput" class="mono" value="new_weapon" readonly>
+            <div class="hint">Follows the name for a new weapon and stays fixed after saving.</div>
           </div>
-          <div class="divider"></div>
-          <div id="sourcePath" class="mono help"></div>
+          <div id="sourcePath" class="mono help source-path"></div>
         </div>
       </section>
     </aside>
@@ -87,19 +66,17 @@
     </section>
 
     <aside class="weapon-summary">
-      <section class="panel">
+      <section class="panel compact-panel">
+        <div class="panel-head">Visual check</div>
+        <div id="weaponVisualPreview" class="panel-body weapon-visual-preview"></div>
+      </section>
+      <section class="panel compact-panel">
         <div class="panel-head">Weapon IDs</div>
         <div id="generatedIds" class="panel-body stats"></div>
       </section>
-      <section class="panel">
+      <section class="panel compact-panel">
         <div class="panel-head">Weapon checks</div>
         <div id="checks" class="panel-body issues"></div>
-      </section>
-      <section class="panel">
-        <div class="panel-head">Shared and Mark stats</div>
-        <div class="panel-body help">
-          Put identical gameplay stats in the shared weapon controls. Choose “Different by Mark” only when MK1, MK2, and MK3 genuinely behave differently.
-        </div>
       </section>
     </aside>
   </main>
@@ -107,8 +84,6 @@
   <script src="weapon-folder.js"></script>
   <script src="weapon-dps.js"></script>
   <script src="weapon-gameplay-maker.js"></script>
-  <script src="weapon-maker-qol.js"></script>
-  <script src="weapon-folder-preview.js"></script>
   <script src="weapon-balance.js"></script>
 </body>
 </html>

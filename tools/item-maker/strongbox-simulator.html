@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shooter Mover — Strongbox Roll Prototype v6</title>
+<style>
+:root{--bg0:#03172e;--bg1:#062f5b;--bg2:#071d39;--text:#eef8ff;--muted:#91aec4;--card-h:164px;--card-gap:18px;--winner-color:#858b94;--winner-glow:#c5cbd3}
+*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden}body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:var(--text);background:radial-gradient(circle at 50% 45%,rgba(44,145,224,.32),transparent 30%),radial-gradient(circle at 50% 15%,rgba(27,91,160,.28),transparent 40%),linear-gradient(135deg,var(--bg0),var(--bg1) 48%,var(--bg2))}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent 0 28%,rgba(80,186,255,.06) 28.1% 28.2%,transparent 28.3% 71.7%,rgba(80,186,255,.06) 71.8% 71.9%,transparent 72%),repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 5px)}
+.app{height:100%;display:grid;grid-template-columns:minmax(250px,1fr) minmax(420px,640px) minmax(260px,1fr);align-items:center;gap:30px;padding:28px clamp(24px,4vw,64px)}
+.side{min-height:260px;display:flex;flex-direction:column;justify-content:center;text-transform:uppercase;letter-spacing:.08em}.left{align-items:flex-end;text-align:right}.right{align-items:flex-start}.eyebrow{font-size:clamp(18px,2.2vw,34px);font-weight:250;color:rgba(228,245,255,.65)}.crate,.winner{font-size:clamp(20px,2.1vw,31px);font-weight:800;text-shadow:0 0 22px rgba(151,225,255,.35)}.winner{color:var(--winner-glow)}.rarity{margin-top:4px;color:var(--winner-color);font-size:16px;font-weight:800}
+.stage{position:relative;width:min(100%,620px);height:min(78vh,820px);min-height:560px;display:flex;align-items:center;justify-content:center}.reel-shell{position:relative;width:min(88vw,510px);height:calc(var(--card-h)*3 + var(--card-gap)*2);min-height:528px;overflow:hidden;border-left:1px solid rgba(112,207,255,.26);border-right:1px solid rgba(112,207,255,.26);background:linear-gradient(90deg,rgba(2,12,25,.55),rgba(22,80,128,.16) 48%,rgba(2,12,25,.55)),linear-gradient(180deg,rgba(0,0,0,.72),transparent 20% 80%,rgba(0,0,0,.72));box-shadow:inset 0 0 60px rgba(0,0,0,.75),0 0 80px rgba(41,153,225,.12)}
+.reel-shell:before,.reel-shell:after{content:"";position:absolute;left:0;right:0;height:31%;z-index:12;pointer-events:none}.reel-shell:before{top:0;background:linear-gradient(#03172e 0%,rgba(3,23,46,.72) 45%,transparent 100%)}.reel-shell:after{bottom:0;background:linear-gradient(transparent 0%,rgba(3,23,46,.72) 55%,#03172e 100%)}
+.reel{position:absolute;left:50%;top:50%;width:390px;transform:translate(-50%,0);will-change:transform}.card{height:var(--card-h);margin-bottom:var(--card-gap);border-radius:15px;position:relative;overflow:hidden;display:grid;place-items:center;border:1px solid rgba(255,255,255,.16);background:radial-gradient(circle at 50% 48%,var(--soft),transparent 58%),linear-gradient(145deg,rgba(15,23,34,.92),rgba(5,11,20,.96));box-shadow:inset 0 0 48px var(--faint),0 9px 24px rgba(0,0,0,.35);transition:opacity .2s linear}.swatch{width:82%;height:64%;border-radius:12px;background:linear-gradient(90deg,var(--light),var(--rarity));border:1px solid var(--glow);box-shadow:0 0 26px var(--soft),inset 0 0 30px rgba(255,255,255,.13)}.label{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-weight:850;letter-spacing:.15em;font-size:14px;text-shadow:0 2px 12px rgba(0,0,0,.8)}
+.center{position:absolute;z-index:20;left:20px;right:20px;top:50%;height:var(--card-h);transform:translateY(-50%);border:2px solid rgba(169,228,255,.8);border-radius:18px;pointer-events:none;box-shadow:0 0 20px rgba(110,207,255,.5),inset 0 0 35px rgba(121,211,255,.1)}.center:before,.center:after{content:"";position:absolute;top:50%;width:34px;height:4px;transform:translateY(-50%);background:#bdefff;box-shadow:0 0 18px #7ee0ff}.center:before{left:-34px}.center:after{right:-34px}
+.status{position:absolute;z-index:30;top:18px;left:50%;transform:translateX(-50%);color:#bcecff;letter-spacing:.18em;font-size:12px;font-weight:800}.calm{position:absolute;inset:0;z-index:25;pointer-events:none;display:grid;place-items:center;opacity:0;background:radial-gradient(circle,rgba(115,212,255,.12),transparent 45%)}.calm strong{letter-spacing:.25em;font-size:14px;color:#dcf6ff;text-shadow:0 0 18px rgba(143,225,255,.9)}.flash{position:fixed;inset:0;z-index:100;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.9),var(--winner-color) 24%,transparent 58%)}.halo{position:absolute;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle,var(--winner-color),transparent 66%);filter:blur(34px);opacity:0;pointer-events:none}
+.controls{position:fixed;z-index:200;left:50%;bottom:18px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;width:min(96vw,1100px);padding:10px 12px;border:1px solid rgba(144,218,255,.19);border-radius:14px;background:rgba(1,13,27,.82);backdrop-filter:blur(14px);box-shadow:0 12px 40px rgba(0,0,0,.35)}button,select{appearance:none;border:1px solid rgba(145,220,255,.32);background:rgba(12,45,73,.82);color:#eaf8ff;border-radius:9px;min-height:38px;padding:0 14px;font:700 12px/1 inherit;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}button:hover{background:rgba(19,73,114,.95)}button.primary{background:linear-gradient(180deg,#1685ca,#075482);border-color:#5bc9ff;box-shadow:0 0 16px rgba(62,189,255,.25)}button.active{background:#daf5ff;color:#04233d;border-color:white}button:disabled{opacity:.42;cursor:not-allowed}.divider{width:1px;height:26px;background:rgba(154,224,255,.22)}
+.tuning{position:fixed;z-index:190;right:18px;top:18px;width:min(390px,calc(100vw - 36px));max-height:calc(100vh - 105px);overflow:auto;padding:16px;border:1px solid rgba(135,211,255,.2);border-radius:15px;background:rgba(1,13,27,.9);backdrop-filter:blur(15px);transform:translateX(calc(100% + 30px));transition:transform .25s ease}.tuning.open{transform:translateX(0)}.tuning h2{margin:0 0 12px;font-size:15px;letter-spacing:.14em}.tuning h3{margin:18px 0 8px;font-size:12px;color:#a8d7ee;letter-spacing:.12em;text-transform:uppercase}.grid{display:grid;grid-template-columns:1fr 90px;gap:7px 10px;align-items:center}.grid label{color:#a9c4d5;font-size:12px}.grid input{width:100%;min-height:32px;border-radius:8px;border:1px solid rgba(150,220,255,.22);background:rgba(7,34,55,.9);color:white;padding:5px 7px}.color-row{display:grid;grid-template-columns:1fr 68px 62px;gap:8px;align-items:center;margin-bottom:7px}.color-row span{font-size:12px;font-weight:700}.color-row input[type=number]{width:68px}.color-row input[type=color]{width:62px;height:31px;padding:2px;border-radius:8px;border:1px solid rgba(150,220,255,.22);background:#061a2c}.actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}.meter{position:absolute;left:50%;bottom:-27px;width:min(460px,84vw);height:4px;transform:translateX(-50%);border-radius:999px;overflow:hidden;background:rgba(255,255,255,.1)}.meter div{width:0;height:100%;background:linear-gradient(90deg,#55caff,#d9f6ff);box-shadow:0 0 12px #57cfff}
+@media(max-width:980px){.app{grid-template-columns:1fr;gap:0;padding:18px}.side{position:fixed;z-index:40;min-height:0}.left{left:18px;top:24px;align-items:flex-start;text-align:left}.right{right:18px;top:24px;align-items:flex-end;text-align:right}.stage{margin:auto}.reel-shell{width:min(92vw,510px)}}
+
+/* v2: Rocket League-style continuous reel and one horizontal selector line */
+.reel-shell:before,.reel-shell:after{height:18%}
+.center{
+  left:-28px;right:-28px;top:50%;height:2px;
+  transform:translateY(-1px);border:0;border-radius:0;
+  background:linear-gradient(90deg,transparent 0,#bcecff 10%,#effcff 50%,#bcecff 90%,transparent 100%);
+  box-shadow:0 0 8px #8ddfff,0 0 18px rgba(80,195,255,.75),0 0 0 transparent;
+}
+.center:before,.center:after{
+  top:50%;width:0;height:0;transform:translateY(-50%);
+  background:transparent;box-shadow:none;
+  border-top:10px solid transparent;border-bottom:10px solid transparent;
+  filter:drop-shadow(0 0 7px #79dcff);
+}
+.center:before{left:18px;border-left:0;border-right:18px solid #d7f7ff}
+.center:after{right:18px;border-right:0;border-left:18px solid #d7f7ff}
+.card{transition:opacity .22s linear,filter .10s linear,box-shadow .10s linear;transform-origin:center}
+.card.active{filter:brightness(1.20);box-shadow:0 0 30px var(--soft),inset 0 0 52px var(--faint),0 9px 28px rgba(0,0,0,.42)}
+.card.winner-card{z-index:45!important;box-shadow:0 0 74px var(--glow),inset 0 0 52px var(--faint),0 16px 46px rgba(0,0,0,.5)}
+
+</style></head>
+<body>
+<div class="app"><section class="side left"><div class="eyebrow">Opening</div><div class="crate">Steel Strongbox</div></section><main class="stage"><div class="halo" id="halo"></div><div class="reel-shell"><div class="status" id="status">READY</div><div class="calm" id="calm"><strong>HOLD ON TO SOMETHING</strong></div><div class="reel" id="reel"></div><div class="center"></div></div><div class="meter"><div id="meter"></div></div></main><section class="side right"><div class="eyebrow">Weapon Drop</div><div class="winner" id="winner">Weighted rarity roll</div><div class="rarity" id="rarity">Grey · Blue · Green · Yellow · Red</div></section></div>
+<div class="flash" id="flash"></div>
+<div class="controls"><button class="mode active" data-mode="cinematic">Cinematic 20s</button><button class="mode" data-mode="fast">Fast 10s</button><button class="mode" data-mode="revealOnly">Reveal only</button><span class="divider"></span><select id="force"><option value="">Random weighted</option></select><button class="primary" id="open">Open</button><button id="replay" disabled>Replay same result</button><button id="tune">Tune</button></div>
+<aside class="tuning" id="panel"><h2>Strongbox Roll Config</h2><div id="rarityEditor"></div>
+  <h3>Prepared stop</h3>
+  <div class="grid">
+    <label>random 0..1</label><input id="debugRandom" readonly>
+    <label>offset pixels</label><input id="debugOffset" readonly>
+  </div>
+
+  <h3>Cinematic phase durations</h3><div class="grid" id="timelineEditor"></div><div class="actions"><button id="apply">Apply</button><button id="download">Download JSON</button><button id="reset">Reset</button></div></aside>
+<script>
+const DEFAULT_CONFIG = {"version":6,"rarities":[{"id":"common","label":"COMMON","weight":55,"color":"#858b94","glow":"#c5cbd3"},{"id":"rare","label":"RARE","weight":25,"color":"#2f7df6","glow":"#72b2ff"},{"id":"epic","label":"EPIC","weight":12,"color":"#24b85a","glow":"#70f09a"},{"id":"legendary","label":"LEGENDARY","weight":6,"color":"#f0c419","glow":"#ffe67a"},{"id":"mythic","label":"MYTHIC","weight":2,"color":"#e53d43","glow":"#ff7a7f"}],"timelineSeconds":{"calm":0.8,"acceleration":1.5,"fullRoll":2.05,"slowdown":6.0,"lock":0.5,"winnerScale":1.0,"rarityHold":0.1,"reveal":0.85,"finish":0.75},"modes":{"cinematic":{"durationScale":1.0,"startPhase":"calm"},"fast":{"durationScale":0.5,"startPhase":"calm"},"revealOnly":{"durationScale":1.0,"startPhase":"winnerScale"}},"layout":{"cardHeight":154,"cardGap":14,"winnerScale":1.26,"winnerOvershoot":1.32},"roll":{"fillerCount":96,"startIndex":2.0,"accelerationEndIndex":22.0,"fullRollEndIndex":61.0,"winnerIndex":88,"tensionOffset":{"edgePaddingPixels":6}}};
+let config = structuredClone(DEFAULT_CONFIG);
+let selectedMode = "cinematic";
+let running = false;
+let pendingRun = null;
+let preparedRun = null;
+let lastRun = null;
+let screenState = "ready";
+let raf = 0;
+let activeCard = -1;
+
+const reel = document.getElementById("reel");
+const statusEl = document.getElementById("status");
+const calm = document.getElementById("calm");
+const flash = document.getElementById("flash");
+const halo = document.getElementById("halo");
+const winnerEl = document.getElementById("winner");
+const rarityEl = document.getElementById("rarity");
+const openBtn = document.getElementById("open");
+const replayBtn = document.getElementById("replay");
+const force = document.getElementById("force");
+const panel = document.getElementById("panel");
+const meter = document.getElementById("meter");
+
+const clamp = value => Math.max(0, Math.min(1, value));
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeInCubic = t => t * t * t;
+const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+const easeInOutSine = t => -(Math.cos(Math.PI * t) - 1) / 2;
+
+function easeOutBack(t) {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+
+function easeLock(t) {
+  if (t < 0.70) {
+    return easeOutCubic(t / 0.70) * 1.025;
+  }
+  return lerp(1.025, 1, easeInOutSine((t - 0.70) / 0.30));
+}
+
+function hexAlpha(hex, alpha) {
+  const value = parseInt(hex.replace("#", ""), 16);
+  return `rgba(${(value >> 16) & 255},${(value >> 8) & 255},${value & 255},${alpha})`;
+}
+
+function randomRange(minimum, maximum) {
+  return minimum + Math.random() * (maximum - minimum);
+}
+
+function rarityById(id) {
+  return config.rarities.find(rarity => rarity.id === id) || config.rarities[0];
+}
+
+function pickRarityId(forcedId = "") {
+  if (forcedId) {
+    return forcedId;
+  }
+
+  const total = config.rarities.reduce((sum, rarity) => sum + Number(rarity.weight), 0);
+  let cursor = Math.random() * total;
+
+  for (const rarity of config.rarities) {
+    cursor -= Number(rarity.weight);
+    if (cursor <= 0) {
+      return rarity.id;
+    }
+  }
+
+  return config.rarities[0].id;
+}
+
+const step = () => Number(config.layout.cardHeight) + Number(config.layout.cardGap);
+const yAtIndex = index =>
+  -(Number(index) * step() + Number(config.layout.cardHeight) / 2);
+
+function createRun(forcedWinnerId = "") {
+  const items = [];
+  for (let index = 0; index < config.roll.fillerCount; index++) {
+    items.push(pickRarityId());
+  }
+
+  const winnerIndex = Number(config.roll.winnerIndex);
+  items[winnerIndex] = pickRarityId(forcedWinnerId);
+
+  const halfCard = Number(config.layout.cardHeight) / 2;
+  const edgePadding = Math.max(
+    0,
+    Number(config.roll.tensionOffset.edgePaddingPixels)
+  );
+  const maximumOffsetPixels = Math.max(0, halfCard - edgePadding);
+
+  // Store the actual random sample as 0..1. This is convenient for the web and
+  // maps directly to Unity's deterministic NextFloat01 equivalent.
+  const tensionRandom01 = Math.random();
+
+  // Convert 0..1 to a signed range:
+  //   0.0  -> near the leading edge
+  //   0.5  -> exact center
+  //   1.0  -> near the trailing edge
+  const tensionOffsetNormalized = tensionRandom01 * 2 - 1;
+  const tensionOffsetPixels =
+    tensionOffsetNormalized * maximumOffsetPixels;
+
+  // Slowdown ends at this uncertain-looking point inside the already-resolved
+  // winning card. The following lock phase then moves it to the exact center.
+  const tensionStopIndex =
+    winnerIndex + tensionOffsetPixels / step();
+
+  return {
+    items,
+    winnerIndex,
+    tensionRandom01,
+    tensionOffsetNormalized,
+    tensionOffsetPixels,
+    tensionStopIndex,
+  };
+}
+
+function winnerRarity(run) {
+  return rarityById(run.items[run.winnerIndex]);
+}
+
+function render(items) {
+  reel.innerHTML = "";
+
+  items.forEach((rarityId, index) => {
+    const rarity = rarityById(rarityId);
+    const card = document.createElement("div");
+    card.className = "card";
+    card.dataset.index = String(index);
+    card.dataset.rarity = rarityId;
+    card.style.setProperty("--rarity", rarity.color);
+    card.style.setProperty("--glow", rarity.glow);
+    card.style.setProperty("--soft", hexAlpha(rarity.glow, 0.45));
+    card.style.setProperty("--faint", hexAlpha(rarity.color, 0.18));
+    card.style.setProperty("--light", rarity.glow);
+    card.innerHTML = `<div class="swatch"></div><div class="label">${rarity.label}</div>`;
+    reel.appendChild(card);
+  });
+}
+
+function setY(y) {
+  reel.style.transform = `translate(-50%,${y}px)`;
+}
+
+function setActive(index, run) {
+  const selectedIndex = Math.max(
+    0,
+    Math.min(run.items.length - 1, Math.round(index))
+  );
+
+  if (selectedIndex === activeCard) {
+    return;
+  }
+
+  if (activeCard >= 0 && reel.children[activeCard]) {
+    reel.children[activeCard].classList.remove("active");
+  }
+
+  activeCard = selectedIndex;
+  const card = reel.children[activeCard];
+  if (card) {
+    card.classList.add("active");
+  }
+
+  const rarity = rarityById(run.items[activeCard]);
+  winnerEl.textContent = "Weapon";
+  rarityEl.textContent = rarity.label;
+  winnerEl.style.color = rarity.glow;
+  rarityEl.style.color = rarity.color;
+}
+
+function resetVisualState(run, rerender) {
+  if (rerender) {
+    render(run.items);
+  }
+
+  activeCard = -1;
+  const winner = winnerRarity(run);
+
+  document.documentElement.style.setProperty("--card-h", config.layout.cardHeight + "px");
+  document.documentElement.style.setProperty("--card-gap", config.layout.cardGap + "px");
+  document.documentElement.style.setProperty("--winner-color", winner.color);
+  document.documentElement.style.setProperty("--winner-glow", winner.glow);
+
+  setY(yAtIndex(config.roll.startIndex));
+
+  [...reel.children].forEach(card => {
+    card.style.opacity = "1";
+    card.style.zIndex = "1";
+    card.style.boxShadow = "";
+    card.style.transform = "";
+    card.classList.remove("active", "winner-card");
+  });
+
+  winnerEl.textContent = "Weighted rarity roll";
+  rarityEl.textContent = "Grey · Blue · Green · Yellow · Red";
+  winnerEl.style.color = "";
+  rarityEl.style.color = "";
+  halo.style.opacity = "0";
+  flash.style.opacity = "0";
+  calm.style.opacity = "0";
+  meter.style.width = "0";
+  statusEl.textContent = "READY";
+
+  setActive(config.roll.startIndex, run);
+}
+
+function prepare(run) {
+  preparedRun = run;
+  resetVisualState(run, true);
+
+  const randomField = document.getElementById("debugRandom");
+  const offsetField = document.getElementById("debugOffset");
+  if (randomField) {
+    randomField.value = run.tensionRandom01.toFixed(4);
+  }
+  if (offsetField) {
+    offsetField.value = run.tensionOffsetPixels.toFixed(2);
+  }
+}
+
+function phasePlan(mode) {
+  const timing = config.timelineSeconds;
+  const phases = [
+    ["calm", timing.calm],
+    ["acceleration", timing.acceleration],
+    ["fullRoll", timing.fullRoll],
+    ["slowdown", timing.slowdown],
+    ["lock", timing.lock],
+    ["winnerScale", timing.winnerScale],
+    ["rarityHold", timing.rarityHold],
+    ["reveal", timing.reveal],
+    ["finish", timing.finish],
+  ];
+
+  const modeConfig = config.modes[mode];
+  const startIndex = phases.findIndex(([name]) => name === modeConfig.startPhase);
+
+  return phases.slice(Math.max(0, startIndex)).map(([name, duration]) => ({
+    name,
+    duration: Number(duration) * Number(modeConfig.durationScale),
+  }));
+}
+
+function indexForPhase(name, t, run) {
+  const roll = config.roll;
+
+  if (name === "calm") {
+    return roll.startIndex;
+  }
+
+  if (name === "acceleration") {
+    return lerp(
+      roll.startIndex,
+      roll.accelerationEndIndex,
+      easeInCubic(t)
+    );
+  }
+
+  if (name === "fullRoll") {
+    return lerp(
+      roll.accelerationEndIndex,
+      roll.fullRollEndIndex,
+      t
+    );
+  }
+
+  if (name === "slowdown") {
+    // The suspenseful roll ends at a random continuous position inside the
+    // winning card. The player cannot tell whether it will quite cross the line.
+    return lerp(
+      roll.fullRollEndIndex,
+      run.tensionStopIndex,
+      easeOutCubic(t)
+    );
+  }
+
+  if (name === "lock") {
+    // Selection is now explicit: bring the already-selected winner fully and
+    // cleanly into the exact center of the selector line.
+    return lerp(
+      run.tensionStopIndex,
+      run.winnerIndex,
+      easeLock(t)
+    );
+  }
+
+  return run.winnerIndex;
+}
+
+function play(run, mode) {
+  if (running) {
+    return;
+  }
+
+  running = true;
+  cancelAnimationFrame(raf);
+
+  // Open never regenerates the sequence or the final stop point.
+  if (preparedRun !== run || reel.children.length !== run.items.length) {
+    prepare(run);
+  } else {
+    resetVisualState(run, false);
+  }
+
+  openBtn.disabled = true;
+  replayBtn.disabled = true;
+  document.querySelectorAll(".mode").forEach(button => button.disabled = true);
+  force.disabled = true;
+
+  const phases = phasePlan(mode);
+  const total = phases.reduce((sum, phase) => sum + phase.duration, 0);
+  const start = performance.now();
+  const winnerIndex = run.winnerIndex;
+  const lockedWinner = winnerRarity(run);
+
+  if (mode === "revealOnly") {
+    setY(yAtIndex(run.winnerIndex));
+    setActive(winnerIndex, run);
+  }
+
+  function phaseAt(seconds) {
+    let cursor = 0;
+    for (const phase of phases) {
+      if (seconds <= cursor + phase.duration) {
+        return {
+          phase,
+          local: (seconds - cursor) / Math.max(0.0001, phase.duration),
+        };
+      }
+      cursor += phase.duration;
+    }
+
+    return { phase: phases.at(-1), local: 1 };
+  }
+
+  const labels = {
+    calm: "HOLD",
+    acceleration: "ACCELERATING",
+    fullRoll: "ROLLING",
+    slowdown: "SLOWING",
+    lock: "LOCKING",
+    winnerScale: "RARITY LOCKED",
+    rarityHold: "REVEAL",
+    reveal: "WEAPON ACQUIRED",
+    finish: "COMPLETE",
+  };
+
+  function frame(now) {
+    const seconds = (now - start) / 1000;
+    const { phase, local } = phaseAt(seconds);
+    const t = clamp(local);
+    const name = phase.name;
+    const index = indexForPhase(name, t, run);
+
+    statusEl.textContent = labels[name];
+    meter.style.width = clamp(seconds / total) * 100 + "%";
+
+    setY(yAtIndex(index));
+    setActive(index, run);
+
+    calm.style.opacity =
+      name === "calm" ? String(Math.sin(t * Math.PI) * 0.9) : "0";
+
+    flash.style.opacity =
+      name === "lock" ? String(Math.sin(t * Math.PI) * 0.80) : "0";
+
+    if (["winnerScale", "rarityHold", "reveal", "finish"].includes(name)) {
+      // The tension offset belongs only to the end of the roll. Once the lock
+      // begins, the winning card is fully centered for selection and reveal.
+      setY(yAtIndex(run.winnerIndex));
+      setActive(winnerIndex, run);
+      halo.style.opacity = name === "winnerScale" ? String(t * 0.55) : "0.55";
+
+      const winningCard = reel.children[winnerIndex];
+      let scale = Number(config.layout.winnerScale);
+
+      if (name === "winnerScale") {
+        const overshoot = Number(config.layout.winnerOvershoot);
+        const finalScale = Number(config.layout.winnerScale);
+        const eased = easeOutBack(t);
+        scale = lerp(1, overshoot, eased);
+
+        if (t > 0.78) {
+          scale = lerp(overshoot, finalScale, (t - 0.78) / 0.22);
+        }
+      }
+
+      if (winningCard) {
+        winningCard.classList.add("winner-card");
+        winningCard.style.transform = `scale(${scale})`;
+        winningCard.style.boxShadow =
+          `0 0 74px ${lockedWinner.glow},` +
+          `inset 0 0 52px ${hexAlpha(lockedWinner.color, 0.35)},` +
+          "0 16px 46px rgba(0,0,0,.5)";
+      }
+
+      [...reel.children].forEach((card, cardIndex) => {
+        if (cardIndex !== winnerIndex) {
+          card.style.opacity = String(Math.max(0, 1 - t * 1.35));
+        }
+      });
+    }
+
+    if (["rarityHold", "reveal", "finish"].includes(name)) {
+      winnerEl.textContent = "Weapon acquired";
+      rarityEl.textContent = lockedWinner.label;
+      winnerEl.style.color = lockedWinner.glow;
+      rarityEl.style.color = lockedWinner.color;
+    }
+
+    if (seconds < total) {
+      raf = requestAnimationFrame(frame);
+    } else {
+      finishRun(run);
+    }
+  }
+
+  raf = requestAnimationFrame(frame);
+}
+
+function finishRun(run) {
+  running = false;
+  screenState = "complete";
+  const winner = winnerRarity(run);
+
+  // Keep the selected winner exactly centered after the lock completes.
+  setY(yAtIndex(run.winnerIndex));
+  setActive(run.winnerIndex, run);
+
+  statusEl.textContent = "COMPLETE";
+  meter.style.width = "100%";
+  winnerEl.textContent = "Weapon acquired";
+  rarityEl.textContent = winner.label;
+  winnerEl.style.color = winner.glow;
+  rarityEl.style.color = winner.color;
+
+  openBtn.disabled = false;
+  openBtn.textContent = "Prepare next";
+  replayBtn.disabled = false;
+  document.querySelectorAll(".mode").forEach(button => button.disabled = false);
+  force.disabled = false;
+}
+
+function prepareNextRun() {
+  pendingRun = createRun(force.value);
+  prepare(pendingRun);
+  screenState = "ready";
+  openBtn.textContent = "Open";
+}
+
+function openOrPrepare() {
+  if (running) {
+    return;
+  }
+
+  if (screenState === "complete") {
+    prepareNextRun();
+    return;
+  }
+
+  lastRun = pendingRun;
+  play(lastRun, selectedMode);
+}
+
+document.querySelectorAll(".mode").forEach(button => {
+  button.onclick = () => {
+    if (running) {
+      return;
+    }
+
+    selectedMode = button.dataset.mode;
+    document.querySelectorAll(".mode").forEach(candidate =>
+      candidate.classList.toggle("active", candidate === button)
+    );
+  };
+});
+
+openBtn.onclick = openOrPrepare;
+replayBtn.onclick = () => {
+  if (lastRun) {
+    play(lastRun, selectedMode);
+  }
+};
+
+force.onchange = () => {
+  if (!running && screenState === "ready") {
+    prepareNextRun();
+  }
+};
+
+document.getElementById("tune").onclick = () =>
+  panel.classList.toggle("open");
+
+function buildEditors() {
+  force.innerHTML = '<option value="">Random weighted</option>';
+  config.rarities.forEach(rarity => {
+    force.insertAdjacentHTML(
+      "beforeend",
+      `<option value="${rarity.id}">Force ${rarity.label}</option>`
+    );
+  });
+
+  const rarityEditor = document.getElementById("rarityEditor");
+  rarityEditor.innerHTML = "<h3>Rarity weights and colors</h3>";
+
+  config.rarities.forEach((rarity, index) => {
+    rarityEditor.insertAdjacentHTML(
+      "beforeend",
+      `<div class="color-row">
+        <span>${rarity.label}</span>
+        <input type="number" min="0" step="1"
+          data-rarity="${index}" data-field="weight" value="${rarity.weight}">
+        <input type="color"
+          data-rarity="${index}" data-field="color" value="${rarity.color}">
+      </div>`
+    );
+  });
+
+  const timelineEditor = document.getElementById("timelineEditor");
+  timelineEditor.innerHTML = "";
+
+  Object.entries(config.timelineSeconds).forEach(([key, value]) => {
+    timelineEditor.insertAdjacentHTML(
+      "beforeend",
+      `<label>${key}</label>
+       <input type="number" step=".05" min="0"
+         data-phase="${key}" value="${value}">`
+    );
+  });
+}
+
+function applyEditors() {
+  document.querySelectorAll("[data-rarity]").forEach(input => {
+    const rarity = config.rarities[Number(input.dataset.rarity)];
+    rarity[input.dataset.field] =
+      input.dataset.field === "weight"
+        ? Number(input.value)
+        : input.value;
+  });
+
+  document.querySelectorAll("[data-phase]").forEach(input => {
+    config.timelineSeconds[input.dataset.phase] = Number(input.value);
+  });
+
+  // Keep both the rarity sequence and the sampled stop point unchanged.
+  const displayedRun =
+    screenState === "complete" && lastRun ? lastRun : pendingRun;
+
+  if (displayedRun) {
+    prepare(displayedRun);
+    if (screenState === "complete") {
+      setY(yAtIndex(displayedRun.winnerIndex));
+      setActive(displayedRun.winnerIndex, displayedRun);
+    }
+  }
+}
+
+document.getElementById("apply").onclick = applyEditors;
+
+document.getElementById("reset").onclick = () => {
+  config = structuredClone(DEFAULT_CONFIG);
+  buildEditors();
+
+  const displayedRun =
+    screenState === "complete" && lastRun ? lastRun : pendingRun;
+
+  if (displayedRun) {
+    prepare(displayedRun);
+  }
+};
+
+document.getElementById("download").onclick = () => {
+  applyEditors();
+  const blob = new Blob(
+    [JSON.stringify(config, null, 2)],
+    { type: "application/json" }
+  );
+  const anchor = document.createElement("a");
+  anchor.href = URL.createObjectURL(blob);
+  anchor.download = "strongbox-roll-config.json";
+  anchor.click();
+  URL.revokeObjectURL(anchor.href);
+};
+
+buildEditors();
+
+const query = new URLSearchParams(location.search);
+if (query.get("force")) {
+  force.value = query.get("force");
+}
+
+prepareNextRun();
+
+if (query.get("autoplay")) {
+  const button = document.querySelector(
+    `.mode[data-mode="${query.get("autoplay")}"]`
+  );
+  if (button) {
+    button.click();
+  }
+  setTimeout(openOrPrepare, 250);
+}
+</script></body></html>
