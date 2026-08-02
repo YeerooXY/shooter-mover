@@ -238,7 +238,7 @@ http.createServer(async (req, res) => {
     if (!file.startsWith(__dirname + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) return send(res, 404, { error: "Not found." });
     let body = fs.readFileSync(file);
     if (requested === "strongbox-simulator.html") {
-      body = Buffer.from(body.toString("utf8").replace("</body>", '<script src="strongbox-production.js"></script></body>'));
+      body = Buffer.from(body.toString("utf8").replace("</body>", '<script src="strongbox-production.js"></script><script src="strongbox-analysis-ui.js"></script></body>'));
     }
     res.writeHead(200, { "Content-Type": mime[path.extname(file)] || "application/octet-stream", "Content-Length": body.length });
     res.end(body);
