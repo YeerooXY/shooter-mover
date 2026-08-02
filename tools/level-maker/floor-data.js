@@ -9,6 +9,7 @@
   const GRID_SYMBOLS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
   const DEFAULT_TILE = "tile.floor-industrial";
   const tileViews = new WeakMap();
+  const aliasedRooms = new WeakSet();
 
   function copy(value) {
     if (value == null) return value;
@@ -48,6 +49,10 @@
     );
   }
 
+  function roomFloor(room) {
+    return isFloor(room?.floor) ? room.floor : prepareRoom(room).floor;
+  }
+
   function tileNumber(floor, tile) {
     if (!tile) return 0;
     const existing = floor.tiles.indexOf(tile);
@@ -82,7 +87,7 @@
   }
 
   function setFloorTile(room, x, y, tile) {
-    const floor = prepareRoom(room).floor;
+    const floor = roomFloor(room);
     if (x < 0 || y < 0 || x >= floor.width || y >= floor.height) return false;
     return setFloorCell(floor, x, y, tile);
   }
@@ -100,7 +105,7 @@
   }
 
   function fillFloor(room, tile) {
-    fillCells(prepareRoom(room).floor, tile);
+    fillCells(roomFloor(room), tile);
     return room;
   }
 
@@ -122,7 +127,7 @@
   }
 
   function resizeFloor(room, width, height) {
-    const current = isFloor(room?.floor) ? room.floor : prepareRoom(room).floor;
+    const current = roomFloor(room);
     const nextWidth = Math.max(1, Math.round(Number(width) || 1));
     const nextHeight = Math.max(1, Math.round(Number(height) || 1));
     if (current.width === nextWidth && current.height === nextHeight) return room;
@@ -222,7 +227,7 @@
   }
 
   function isFullFloor(room) {
-    const floor = prepareRoom(room).floor;
+    const floor = roomFloor(room);
     if (floor.count !== floor.cells.length || floor.cells.length === 0) return false;
     const first = floor.cells[0];
     if (first === 0) return false;
@@ -233,7 +238,7 @@
   }
 
   function defaultFloorTile(room) {
-    const floor = prepareRoom(room).floor;
+    const floor = roomFloor(room);
     return floor.defaultTile || floor.tiles.find(Boolean) || DEFAULT_TILE;
   }
 
@@ -242,13 +247,13 @@
     if (view) return view;
     view = {
       get length() {
-        return prepareRoom(room).floor.count;
+        return roomFloor(room).count;
       },
       filter() {
         return view;
       },
       *[Symbol.iterator]() {
-        const floor = prepareRoom(room).floor;
+        const floor = roomFloor(room);
         for (let y = 0; y < floor.height; y++) {
           for (let x = 0; x < floor.width; x++) {
             const object = floorTile(floor, x, y);
@@ -275,6 +280,7 @@
   }
 
   function addOldFloorNames(room) {
+    if (aliasedRooms.has(room)) return room;
     Object.defineProperties(room, {
       floorObject: {
         configurable: true,
@@ -282,7 +288,7 @@
         get: () => defaultFloorTile(room),
         set: value => {
           const wasFull = isFullFloor(room);
-          const floor = prepareRoom(room).floor;
+          const floor = roomFloor(room);
           floor.defaultTile = value || DEFAULT_TILE;
           if (wasFull) fillCells(floor, floor.defaultTile);
         },
@@ -302,16 +308,17 @@
         set: value => useOldTiles(room, value),
       },
     });
+    aliasedRooms.add(room);
     return room;
   }
 
   function readFloor(room) {
-    const floor = prepareRoom(room).floor;
+    const floor = roomFloor(room);
     return Array.from(floor.cells, value => floor.tiles[value] || null);
   }
 
   function writeFloor(room) {
-    const floor = prepareRoom(room).floor;
+    const floor = roomFloor(room);
     const usedNumbers = new Set();
     for (const value of floor.cells) if (value !== 0) usedNumbers.add(value);
     const tileNames = [...usedNumbers]
@@ -438,7 +445,7 @@
   }
 
   function buildUnityTiles(room) {
-    const floor = prepareRoom(room).floor;
+    const floor = roomFloor(room);
     return buildFloorAreas(floor).map(area => ({
       object: area.tile,
       fill: {
