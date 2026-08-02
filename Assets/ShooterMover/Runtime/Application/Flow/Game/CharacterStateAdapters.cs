@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Economy.Scrap;
 using ShooterMover.Application.Holdings;
-using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.SaveParts;
 using ShooterMover.Application.Progression.Experience;
 using ShooterMover.Application.Progression.Skills;
@@ -52,7 +51,7 @@ namespace ShooterMover.Application.Flow.Game
                 Money(money),
                 Scrap(scrap, scrapAuthorityId, scrapCurrencyId),
                 Skills(skills, skillProfileId),
-                Loadout(loadout),
+                RetiredArmorLoadout(),
                 GunAugmentSavePart.CreateAdapter(
                     strongboxes.AugmentSignatures),
                 ShopPurchaseSavePart.CreateAdapter(
@@ -245,28 +244,21 @@ namespace ShooterMover.Application.Flow.Game
                 });
         }
 
-        private static ISavePart Loadout(
-            PlayerLoadoutLive runtime)
+        private static ISavePart RetiredArmorLoadout()
         {
             return KnownSavePartAdapters.ExactInstanceLoadout(
-                () => LoadoutView.ArmorOnly(
-                    runtime.LoadoutAuthority.ExportSnapshot()),
+                RetiredArmorLoadoutCompatibility.Empty,
                 snapshot => GameSaveFormats.ExactInstanceLoadout
                     .Validate(snapshot),
                 snapshot =>
                 {
-                    InventoryLoadoutStateSnapshot compatibility =
-                        LoadoutView
-                            .ToLegacyProjection(
-                                runtime.MountLayout,
-                                runtime.MountLoadoutAuthority.ExportSnapshot(),
-                                snapshot);
-                    InventoryLoadoutImportResult result =
-                        runtime.LoadoutAuthority.ImportSnapshot(compatibility);
-                    return result.Succeeded
+                    SavePartValidationResult validation =
+                        GameSaveFormats.ExactInstanceLoadout
+                            .Validate(snapshot);
+                    return validation.Succeeded
                         ? SavePartApplyResult.Applied()
                         : SavePartApplyResult.Rejected(
-                            result.RejectionCode);
+                            validation.RejectionCode);
                 });
         }
 
