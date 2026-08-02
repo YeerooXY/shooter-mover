@@ -1,0 +1,13 @@
+{
+  "name": "Blaster",
+  "description": "Reliable energized bolts. Early baseline energized family.",
+  "category": "normal-firearm",
+  "rarity": "common",
+  "projectileType": "bullet",
+  "damageType": "energy",
+  "art": {
+    "delivery": "gun-delivery-art.normal-energy.v1",
+    "trail": "gun-trail-art.normal-energy.v1",
+    "impact": "gun-impact-art.normal-energy.v1"
+  }
+}

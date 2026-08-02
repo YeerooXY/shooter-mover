@@ -1,0 +1,13 @@
+{
+  "name": "HV Vanguard",
+  "description": "Strongbox distribution test pool. Creator: Helix Vanguard. Reuses the shared Rattler automatic-rifle profile; balance and final art are provisional.",
+  "category": "normal-firearm",
+  "rarity": "legendary",
+  "projectileType": "bullet",
+  "damageType": "physical",
+  "art": {
+    "delivery": "gun-delivery-art.normal-physical.v1",
+    "trail": "gun-trail-art.normal-physical.v1",
+    "impact": "gun-impact-art.normal-physical.v1"
+  }
+}

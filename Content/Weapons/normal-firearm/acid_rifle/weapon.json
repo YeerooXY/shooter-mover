@@ -1,0 +1,13 @@
+{
+  "name": "Acid Rifle",
+  "description": "Accurate chemical projectiles. Straightforward late chemical option.",
+  "category": "normal-firearm",
+  "rarity": "rare",
+  "projectileType": "bullet",
+  "damageType": "chemical",
+  "art": {
+    "delivery": "gun-delivery-art.normal-chemical.v1",
+    "trail": "gun-trail-art.normal-chemical.v1",
+    "impact": "gun-impact-art.normal-chemical.v1"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "peakLevel": 73,
+  "damage": 81.8487164456979,
+  "fire": {
+    "mode": "automatic",
+    "rate": 7.7250000000000005
+  },
+  "shot": {
+    "projectiles": 1,
+    "spread": 1.9
+  },
+  "projectile": {
+    "speed": 33.6,
+    "radius": 0.1,
+    "range": 32.96
+  },
+  "impact": {
+    "pierce": 0,
+    "ricochet": 0,
+    "knockback": 0.27
+  },
+  "art": {
+    "side": "gun-art.acid_rifle.mk2.side-v1",
+    "mounted": "gun-art.acid_rifle.mk2.mounted-top-v1"
+  }
+}

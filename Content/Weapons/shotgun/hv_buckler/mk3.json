@@ -1,0 +1,26 @@
+{
+  "peakLevel": 10,
+  "damage": 1,
+  "fire": {
+    "mode": "automatic",
+    "rate": 2
+  },
+  "shot": {
+    "projectiles": 3,
+    "spread": 24
+  },
+  "projectile": {
+    "speed": 28,
+    "radius": 0.12,
+    "range": 16
+  },
+  "impact": {
+    "pierce": 1,
+    "ricochet": 0,
+    "knockback": 6
+  },
+  "art": {
+    "side": "gun-art.hv_buckler.mk3.side-v1",
+    "mounted": "gun-art.hv_buckler.mk3.mounted-top-v1"
+  }
+}

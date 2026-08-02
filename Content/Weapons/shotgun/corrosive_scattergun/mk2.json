@@ -1,0 +1,26 @@
+{
+  "peakLevel": 45,
+  "damage": 17.482276275381068,
+  "fire": {
+    "mode": "semi-automatic",
+    "rate": 1.4935
+  },
+  "shot": {
+    "projectiles": 7,
+    "spread": 18.05
+  },
+  "projectile": {
+    "speed": 26.25,
+    "radius": 0.1,
+    "range": 16.48
+  },
+  "impact": {
+    "pierce": 0,
+    "ricochet": 0,
+    "knockback": 0.5184
+  },
+  "art": {
+    "side": "gun-art.corrosive_scattergun.mk2.side-v1",
+    "mounted": "gun-art.corrosive_scattergun.mk2.mounted-top-v1"
+  }
+}

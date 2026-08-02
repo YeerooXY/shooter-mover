@@ -1,0 +1,26 @@
+{
+  "peakLevel": 94,
+  "damage": 1,
+  "fire": {
+    "mode": "automatic",
+    "rate": 4
+  },
+  "shot": {
+    "projectiles": 1,
+    "spread": 0
+  },
+  "projectile": {
+    "speed": 20,
+    "radius": 0.1,
+    "range": 25
+  },
+  "impact": {
+    "pierce": 1,
+    "ricochet": 0,
+    "knockback": 0
+  },
+  "art": {
+    "side": "gun-art.virex_apex.mk2.side-v1",
+    "mounted": "gun-art.virex_apex.mk2.mounted-top-v1"
+  }
+}

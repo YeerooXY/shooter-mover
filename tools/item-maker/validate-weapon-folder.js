@@ -9,7 +9,7 @@ const sharedFields = new Set([
   "homing", "dot", "art"
 ]);
 const markFields = new Set([
-  "peakLevel", "damage", "fire", "homing", "dot", "explosion", "art"
+  "peakLevel", "damage", "fire", "shot", "projectile", "impact", "homing", "dot", "explosion", "art"
 ]);
 const fireFields = new Set(["mode", "rate", "shotsPerBurst", "secondsBetweenShots"]);
 const homingFields = new Set(["acquisitionRange", "turnRate", "activationDelay", "targetPolicy", "reacquire"]);
@@ -103,6 +103,27 @@ function validateExplosion(explosion, label) {
   }
 }
 
+function validateShot(shot, label) {
+  rejectUnknown(shot, new Set(["projectiles", "spread"]), label);
+  if (!Number.isInteger(shot.projectiles) || shot.projectiles < 1) fail(`${label}.projectiles: at least one projectile is required`);
+  if (!nonNegative(shot.spread)) fail(`${label}.spread: non-negative spread is required`);
+}
+
+function validateImpact(impact, label) {
+  rejectUnknown(impact, new Set(["pierce", "ricochet", "knockback"]), label);
+  if (!has(impact, "ricochet")) fail(`${label}.ricochet: explicit value is required`);
+  if (!Number.isInteger(impact.pierce) || impact.pierce < 0) fail(`${label}.pierce: non-negative whole number is required`);
+  if (!nonNegative(impact.ricochet)) fail(`${label}.ricochet: non-negative value is required`);
+  if (!nonNegative(impact.knockback)) fail(`${label}.knockback: non-negative value is required`);
+}
+
+function validateProjectile(projectile, label) {
+  rejectUnknown(projectile, new Set(["speed", "radius", "range"]), label);
+  if (!positive(projectile.speed) || !positive(projectile.radius) || !positive(projectile.range)) {
+    fail(`${label}: positive speed, radius, and range are required`);
+  }
+}
+
 function validateShared(weapon) {
   rejectUnknown(weapon, sharedFields, "weapon.json");
   ["name", "category", "rarity", "projectileType", "damageType"].forEach(key => requireText(weapon, key, "weapon.json"));
@@ -111,17 +132,8 @@ function validateShared(weapon) {
   if (!["physical", "energy", "thermal", "chemical"].includes(weapon.damageType)) fail("weapon.json.damageType: unsupported damage type");
   if (!["bullet", "orb", "rocket", "beam"].includes(weapon.projectileType)) fail("weapon.json.projectileType: unsupported projectile type");
 
-  const shot = requireObject(weapon, "shot", "weapon.json");
-  rejectUnknown(shot, new Set(["projectiles", "spread"]), "weapon.json.shot");
-  if (!Number.isInteger(shot.projectiles) || shot.projectiles < 1) fail("weapon.json.shot.projectiles: at least one projectile is required");
-  if (!nonNegative(shot.spread)) fail("weapon.json.shot.spread: non-negative spread is required");
-
-  const impact = requireObject(weapon, "impact", "weapon.json");
-  rejectUnknown(impact, new Set(["pierce", "ricochet", "knockback"]), "weapon.json.impact");
-  if (!has(impact, "ricochet")) fail("weapon.json.impact.ricochet: explicit value is required");
-  if (!Number.isInteger(impact.pierce) || impact.pierce < 0) fail("weapon.json.impact.pierce: non-negative whole number is required");
-  if (!nonNegative(impact.ricochet)) fail("weapon.json.impact.ricochet: non-negative value is required");
-  if (!nonNegative(impact.knockback)) fail("weapon.json.impact.knockback: non-negative value is required");
+  if (has(weapon, "shot")) validateShot(requireObject(weapon, "shot", "weapon.json"), "weapon.json.shot");
+  if (has(weapon, "impact")) validateImpact(requireObject(weapon, "impact", "weapon.json"), "weapon.json.impact");
 
   if (weapon.projectileType === "beam") {
     if (has(weapon, "projectile")) fail("weapon.json: beam cannot contain projectile speed or radius");
@@ -130,11 +142,7 @@ function validateShared(weapon) {
     if (!positive(beam.range) || !positive(beam.width)) fail("weapon.json.beam: positive range and width are required");
   } else {
     if (has(weapon, "beam")) fail("weapon.json: non-beam weapon cannot contain beam data");
-    const projectile = requireObject(weapon, "projectile", "weapon.json");
-    rejectUnknown(projectile, new Set(["speed", "radius", "range"]), "weapon.json.projectile");
-    if (!positive(projectile.speed) || !positive(projectile.radius) || !positive(projectile.range)) {
-      fail("weapon.json.projectile: positive speed, radius, and range are required");
-    }
+    if (has(weapon, "projectile")) validateProjectile(requireObject(weapon, "projectile", "weapon.json"), "weapon.json.projectile");
   }
 
   const art = requireObject(weapon, "art", "weapon.json");
@@ -156,11 +164,17 @@ function validateMarks(weapon, marks) {
     requireText(art, "side", `${label}.art`);
     if (has(art, "mounted")) requireText(art, "mounted", `${label}.art`);
     if (has(mark, "fire")) validateFire(requireObject(mark, "fire", label), `${label}.fire`);
+    if (has(mark, "shot")) validateShot(requireObject(mark, "shot", label), `${label}.shot`);
+    if (has(mark, "projectile")) validateProjectile(requireObject(mark, "projectile", label), `${label}.projectile`);
+    if (has(mark, "impact")) validateImpact(requireObject(mark, "impact", label), `${label}.impact`);
     if (has(mark, "homing")) validateHoming(requireObject(mark, "homing", label), `${label}.homing`);
     if (has(mark, "explosion")) validateExplosion(requireObject(mark, "explosion", label), `${label}.explosion`);
   });
 
   validateBlockOwnership(weapon, marks, "fire", true);
+  validateBlockOwnership(weapon, marks, "shot", true);
+  validateBlockOwnership(weapon, marks, "impact", true);
+  validateBlockOwnership(weapon, marks, "projectile", weapon.projectileType !== "beam");
   validateBlockOwnership(weapon, marks, "homing", false);
 
   const explosions = marks.filter(mark => has(mark, "explosion")).length;

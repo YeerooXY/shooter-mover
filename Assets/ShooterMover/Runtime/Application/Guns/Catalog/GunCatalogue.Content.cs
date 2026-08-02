@@ -75,7 +75,7 @@ namespace ShooterMover.Application.Guns.Catalog
 
         private static GunCatalogueView Build()
         {
-            var families = new[]
+            var families = new List<GunFamily>
             {
                 BuildFamily(
                     "rattler",
@@ -127,6 +127,9 @@ namespace ShooterMover.Application.Guns.Catalog
                     ProvisionalGunTestProfile.Nullstar,
                     true),
             };
+            families.AddRange(BuildPr288Families());
+            families.AddRange(BuildStrongboxTestFamilies());
+            families.AddRange(BuildLowLevelStrongboxTestFamilies());
 
             return new GunCatalogueView(
                 families,
