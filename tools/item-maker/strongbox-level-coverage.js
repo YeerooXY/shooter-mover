@@ -20,6 +20,7 @@
   const order = ["common", "uncommon", "rare", "epic", "legendary", "mythic", "artifact"];
   let definitions = [];
   let loading = null;
+  let injecting = false;
   let lastSignature = "";
   let lastReport = null;
 
@@ -138,7 +139,7 @@
         grouped.set(value.peakLevel, bucket);
       });
       const markers = [...grouped.entries()].sort((a, b) => a[0] - b[0]).map(([level, entries]) => {
-        const title = entries.map(value => `${value.displayName} — ${value.definitionId}`).join("\n");
+        const title = entries.map(value => `${value.displayName} — ${value.definitionId} · first ${value.firstLevel}`).join("\n");
         return `<button type="button" class="coverage-marker ${entries.length > 1 ? "multi" : ""}" data-count="${entries.length}" data-coverage-definition="${escapeText(entries[0].definitionId)}" title="${escapeText(`${view.label} · peak level ${level}\n${title}`)}" style="left:${percent(level, maximum)}%;--marker-color:${view.color};--marker-glow:${view.glow}" aria-label="${escapeText(`${view.label} peak level ${level}: ${entries.map(value => value.displayName).join(", ")}`)}"></button>`;
       }).join("");
       return `<div class="coverage-row"><div class="coverage-rarity" style="color:${view.glow}">${view.label} <small>(${values.length})</small></div><div class="coverage-track"><span class="coverage-window" style="left:${percent(targetMinimum, maximum)}%;width:${Math.max(.4, percent(targetMaximum, maximum) - percent(targetMinimum, maximum))}%" title="Box target range ${targetMinimum}–${targetMaximum}"></span><span class="coverage-player" style="left:${percent(player, maximum)}%" title="Player level ${player}"></span><span class="coverage-likely" style="left:${percent(targetLikely, maximum)}%" title="Most likely target ${targetLikely}"></span>${markers}</div></div>`;
@@ -156,16 +157,21 @@
   }
 
   function injectCoverage() {
-    if (!analysisButton.classList.contains("active")) return;
+    if (!analysisButton.classList.contains("active") || injecting) return;
     const content = presentation.querySelector("#analysisTabContent");
     const active = presentation.querySelector('.analysis-tab.active[data-analysis-tab="levels"]');
     if (!content || !active || content.querySelector(".coverage-panel") || !lastReport) return;
+    injecting = true;
     ensureDefinitions().then(() => {
-      if (!presentation.querySelector('.analysis-tab.active[data-analysis-tab="levels"]')) return;
-      content.insertAdjacentHTML("afterbegin", coverageHtml(lastReport));
+      const currentContent = presentation.querySelector("#analysisTabContent");
+      if (!currentContent || !presentation.querySelector('.analysis-tab.active[data-analysis-tab="levels"]')) return;
+      if (!currentContent.querySelector(".coverage-panel")) currentContent.insertAdjacentHTML("afterbegin", coverageHtml(lastReport));
     }).catch(error => {
-      content.insertAdjacentHTML("afterbegin", `<section class="coverage-panel"><h3>Catalogue level coverage</h3><p>${escapeText(error.message || error)}</p></section>`);
-    });
+      const currentContent = presentation.querySelector("#analysisTabContent");
+      if (currentContent && presentation.querySelector('.analysis-tab.active[data-analysis-tab="levels"]') && !currentContent.querySelector(".coverage-panel")) {
+        currentContent.insertAdjacentHTML("afterbegin", `<section class="coverage-panel"><h3>Catalogue level coverage</h3><p>${escapeText(error.message || error)}</p></section>`);
+      }
+    }).finally(() => { injecting = false; });
   }
 
   presentation.addEventListener("click", event => {
