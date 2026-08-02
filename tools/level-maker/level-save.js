@@ -30,9 +30,61 @@
     }
 
     const rooms = levelFile.rooms || levelFile.level?.rooms;
-    if (!levelFile.level || !Array.isArray(rooms)) {
+    if (!levelFile.level || !Array.isArray(rooms) || rooms.length === 0) {
       throw new Error("The level project is missing its level or rooms.");
     }
+
+    if (Number(levelFile.schemaVersion || 0) >= LEVEL_VERSION) {
+      rooms.forEach(checkRoomFloor);
+    }
+  }
+
+  function checkRoomFloor(room, roomIndex) {
+    const width = Math.max(1, Math.round(Number(room?.bounds?.width) || 0));
+    const height = Math.max(1, Math.round(Number(room?.bounds?.height) || 0));
+    const floor = room?.floor;
+    const label = room?.id || `room ${roomIndex + 1}`;
+
+    if (!floor || !Array.isArray(floor.rows) || floor.rows.length !== height) {
+      throw new Error(`${label} floor must contain exactly ${height} rows.`);
+    }
+
+    if (floor.format === "grid") {
+      const legend = floor.legend;
+      if (!legend || typeof legend !== "object" || Array.isArray(legend)) {
+        throw new Error(`${label} floor legend is invalid.`);
+      }
+      floor.rows.forEach((row, y) => {
+        if (typeof row !== "string" || row.length !== width) {
+          throw new Error(`${label} floor row ${y + 1} must contain exactly ${width} cells.`);
+        }
+        for (const symbol of row) {
+          if (symbol !== FloorData.EMPTY && typeof legend[symbol] !== "string") {
+            throw new Error(`${label} floor row ${y + 1} uses an unknown symbol.`);
+          }
+        }
+      });
+      return;
+    }
+
+    if (floor.format === "number-grid") {
+      if (!Array.isArray(floor.legend) || floor.legend.length === 0) {
+        throw new Error(`${label} floor legend is invalid.`);
+      }
+      floor.rows.forEach((row, y) => {
+        if (!Array.isArray(row) || row.length !== width) {
+          throw new Error(`${label} floor row ${y + 1} must contain exactly ${width} cells.`);
+        }
+        for (const value of row) {
+          if (!Number.isInteger(value) || value < 0 || value >= floor.legend.length) {
+            throw new Error(`${label} floor row ${y + 1} uses an invalid floor number.`);
+          }
+        }
+      });
+      return;
+    }
+
+    throw new Error(`${label} floor format is invalid.`);
   }
 
   function makeLevelFile(state) {
@@ -42,6 +94,7 @@
     levelFile.format = LEVEL_FORMAT;
     levelFile.schemaVersion = LEVEL_VERSION;
     levelFile.rooms = levelFile.rooms.map(FloorData.saveRoom);
+    checkLevelFile(levelFile);
     return levelFile;
   }
 
