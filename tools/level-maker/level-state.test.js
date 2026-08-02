@@ -43,10 +43,11 @@ assert.deepStrictEqual(Object.keys(state), [
   "assets",
 ]);
 
-state.rooms = [{ id: "room.changed", entities: [], doors: [] }];
-assert.strictEqual(state.level.rooms[0].id, "room.changed");
-state.activeRoomId = "room.changed";
-assert.strictEqual(state.editor.activeRoomId, "room.changed");
+const replacementRooms = state.rooms.map(room => ({ ...room }));
+state.rooms = replacementRooms;
+assert.strictEqual(state.level.rooms, replacementRooms);
+state.activeRoomId = "room.one";
+assert.strictEqual(state.editor.activeRoomId, "room.one");
 
 const editorBeforeUndo = JSON.parse(JSON.stringify(state.editor));
 const snapshot = LevelState.levelSnapshot(state);
@@ -62,6 +63,11 @@ state.editor.selectedId = "enemy.missing";
 LevelState.fixEditor(state);
 assert.strictEqual(state.editor.activeRoomId, "room.one");
 assert.strictEqual(state.editor.selectedId, null);
+
+state.level.startRoomId = "room.deleted";
+state.editor.activeRoomId = "room.missing";
+LevelState.fixEditor(state);
+assert.strictEqual(state.editor.activeRoomId, "room.one");
 
 const cleanLevel = LevelState.levelFile(state);
 assert.ok(!("rooms" in cleanLevel.level));
