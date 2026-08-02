@@ -73,10 +73,22 @@ Most rooms use string rows with a short legend:
 `.` means no floor. When a room uses more than 64 floor types, the Level Maker
 uses `number-grid` rows containing numeric legend indexes instead.
 
-The live editor expands either format into normal floor cells. During Unity
-export, `buildFloorAreas()` reads horizontal sections and extends matching
-sections downward to create deterministic, non-overlapping rectangular areas.
-Unity therefore continues receiving the existing `floor.json` structure:
+While editing, each room uses a compact floor buffer:
+
+```text
+room.floor.tiles = [null, "tile.floor-industrial", "tile.floor-metal"]
+room.floor.cells = Uint16Array(...)
+```
+
+Each cell stores a small number that points into `room.floor.tiles`. A filled
+200 × 200 room therefore uses one 40,000-cell typed array (80 KB) instead of
+40,000 `{ x, y, object }` JavaScript objects. Painting and erasing update the
+cell directly with `y * width + x` indexing.
+
+During Unity export, `buildFloorAreas()` reads horizontal sections from this
+buffer and extends matching sections downward to create deterministic,
+non-overlapping rectangular areas. Unity continues receiving the existing
+`floor.json` structure:
 
 ```json
 {
@@ -101,9 +113,14 @@ state.editor
 state.assets
 ```
 
-Undo and redo store only `state.level`. Changing zoom, pan, the active room, the
-selected asset, or brush settings does not add gameplay undo entries and does
-not alter the committed level file.
+Undo and redo store the same compact level representation used by project saves.
+Typed floor buffers are rebuilt when an undo point is restored, while zoom, pan,
+the active room, the selected asset, and brush settings remain untouched.
+
+Temporary non-enumerable room properties keep older Level Maker code working
+with names such as `floorObject`, `tileGridEnabled`, and `tiles`. They are not
+written to project files and can be removed after the remaining UI code uses the
+new floor helpers directly.
 
 ## Level graph
 
@@ -178,5 +195,5 @@ node app-19-save.test.js
 node editor-file.test.js
 ```
 
-The GitHub Actions workflow runs the same tests and syntax-checks the new browser
-and server modules.
+The GitHub Actions workflow runs the same tests and syntax-checks the browser and
+server modules.
