@@ -10,8 +10,8 @@ const WeaponDps = require("./weapon-dps");
 const toolRoot = __dirname;
 const validator = path.join(toolRoot, "validate-weapon-folder.js");
 const gameplayScript = path.join(toolRoot, "weapon-gameplay-maker.js");
-const qolScript = path.join(toolRoot, "weapon-maker-qol.js");
 const balanceScript = path.join(toolRoot, "weapon-balance.js");
+const strongboxScript = path.join(toolRoot, "strongbox-simulator.js");
 
 function baseWeapon(overrides = {}) {
   return {
@@ -68,7 +68,7 @@ function validateCase(name, weapon, marks, shouldPass = true) {
   else assert.ok(error, `${name} should fail`);
 }
 
-[gameplayScript, qolScript, balanceScript].forEach(script => {
+[gameplayScript, balanceScript, strongboxScript].forEach(script => {
   execFileSync(process.execPath, ["--check", script], { stdio: "pipe" });
 });
 
@@ -170,4 +170,4 @@ assert.strictEqual(WeaponDps.calculate({ fire: { mode: "burst", rate: 4 / 3, sho
 
 assert.deepStrictEqual(WeaponDps.validateSettings(WeaponDps.defaultSettings()), []);
 
-console.log("Weapon Maker checks passed: gameplay shapes, invalid burst rejection, DPS math, and browser-only curve calculations.");
+console.log("Weapon Maker checks passed: gameplay shapes, invalid burst rejection, DPS math, guided editor syntax, and Strongbox preview syntax.");
