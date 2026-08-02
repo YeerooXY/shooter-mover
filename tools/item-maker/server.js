@@ -12,8 +12,17 @@ const port = Number(process.argv.includes("--port") ? process.argv[process.argv.
 const locations = { "gun-family": ["Content/Items/Guns", ".gun.json"], "gear-set": ["Content/Items/Gear", ".gear.json"] };
 const weaponFiles = ["weapon.json", "mk1.json", "mk2.json", "mk3.json"];
 const mutationToken = crypto.randomBytes(24).toString("hex");
+
 function git(args) { return execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim(); }
-function send(res, status, value) { const body = JSON.stringify(value); res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Content-Length": Buffer.byteLength(body), "Cache-Control": "no-store" }); res.end(body); }
+function send(res, status, value) {
+  const body = JSON.stringify(value);
+  res.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Content-Length": Buffer.byteLength(body),
+    "Cache-Control": "no-store"
+  });
+  res.end(body);
+}
 function safePackage(kind, id) {
   const location = locations[kind];
   if (!location || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)) throw new Error("Invalid package identity.");
@@ -29,10 +38,24 @@ function safeWeaponFolder(category, folder) {
   if (!target.startsWith(base + path.sep)) throw new Error("Weapon path escaped the content folder.");
   return target;
 }
-function readBody(req) { return new Promise((resolve, reject) => { let data = ""; req.on("data", chunk => { data += chunk; if (data.length > 2_000_000) reject(new Error("Request too large.")); }); req.on("end", () => { try { resolve(JSON.parse(data || "{}")); } catch (e) { reject(e); } }); req.on("error", reject); }); }
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = "";
+    req.on("data", chunk => {
+      data += chunk;
+      if (data.length > 2_000_000) reject(new Error("Request too large."));
+    });
+    req.on("end", () => {
+      try { resolve(JSON.parse(data || "{}")); }
+      catch (error) { reject(error); }
+    });
+    req.on("error", reject);
+  });
+}
 function status() {
   const changes = git(["status", "--porcelain"]).split(/\r?\n/).filter(Boolean);
-  let behind = 0; try { behind = Number(git(["rev-list", "--count", "HEAD..@{upstream}"])) || 0; } catch (_) {}
+  let behind = 0;
+  try { behind = Number(git(["rev-list", "--count", "HEAD..@{upstream}"])) || 0; } catch (_) {}
   return { branch: git(["branch", "--show-current"]), clean: changes.length === 0, changed: changes.length, behind };
 }
 function readWeaponFolder(category, folder) {
@@ -85,7 +108,9 @@ function saveWeaponFolder(category, folder, files) {
     weaponFiles.forEach(name => fs.writeFileSync(path.join(stagingFolder, name), JSON.stringify(files[name], null, 2) + "\n"));
     let validation;
     try {
-      validation = execFileSync(process.execPath, [path.join(__dirname, "validate-weapon-folder.js"), stagingFolder], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+      validation = execFileSync(process.execPath, [path.join(__dirname, "validate-weapon-folder.js"), stagingFolder], {
+        cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"]
+      }).trim();
     } catch (error) {
       throw new Error(String(error.stderr || error.stdout || error.message).trim());
     }
@@ -106,56 +131,19 @@ function saveWeaponFolder(category, folder, files) {
     throw error;
   }
 }
-function catalogScore(file) {
-  let score = 0;
-  const normalized = file.replace(/\\/g, "/").toLowerCase();
-  if (normalized.includes("assets/shootermover/resources/")) score += 100;
-  if (normalized.includes("weapon_baseline") || normalized.includes("gun_baseline")) score += 60;
-  if (normalized.includes("catalog")) score += 30;
-  if (normalized.includes("generated")) score += 10;
-  return score;
-}
-function looksLikeGunCatalog(raw) {
-  const lower = raw.toLowerCase();
-  if (!lower.includes("rarity") || !lower.includes("peak") || !lower.includes("weight")) return false;
-  try {
-    const value = JSON.parse(raw);
-    if (Array.isArray(value)) return value.length > 0;
-    if (!value || typeof value !== "object") return false;
-    return [value.definitions, value.weapons, value.guns, value.families].some(Array.isArray);
-  } catch (_) {
-    return false;
-  }
-}
-function findProductionGunCatalog() {
-  const preferred = [
-    "Assets/ShooterMover/Resources/WeaponCatalog/weapon_baseline_v01.json",
-    "Assets/ShooterMover/Resources/GunCatalog/gun_baseline_v01.json",
-    "Assets/ShooterMover/Resources/GunCatalog/weapon_baseline_v01.json",
-    "Assets/ShooterMover/Resources/WeaponCatalog/gun_baseline_v01.json"
-  ];
-  const tracked = git(["ls-files", "*.json"]).split(/\r?\n/).filter(Boolean);
-  const candidates = [...new Set([...preferred, ...tracked])]
-    .filter(file => /(?:weapon|gun)/i.test(file) && /(?:catalog|baseline)/i.test(file))
-    .sort((left, right) => catalogScore(right) - catalogScore(left) || left.localeCompare(right));
-  for (const relative of candidates) {
-    const file = path.resolve(root, relative);
-    if (!file.startsWith(root + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) continue;
-    const raw = fs.readFileSync(file, "utf8");
-    if (looksLikeGunCatalog(raw)) return { source: relative.replace(/\\/g, "/"), json: raw };
-  }
-  throw new Error("Production gun catalog JSON was not found. The Strongbox preview refuses to use Content/Weapons as a fake replacement for the production catalog.");
-}
+
 function wait(milliseconds) { return new Promise(resolve => setTimeout(resolve, milliseconds)); }
 async function requestStrongboxPreview(body) {
   const playerLevel = Number(body.playerLevel);
   const tierNumber = Number(body.tierNumber);
+  const mode = body.mode === "analysis" ? "analysis" : "single";
+  const sampleCount = mode === "analysis" ? Number(body.sampleCount || 1000) : 1;
   if (!Number.isInteger(playerLevel) || playerLevel < 0) throw new Error("Player level must be a non-negative integer.");
   if (!Number.isInteger(tierNumber) || tierNumber < 1 || tierNumber > 11) throw new Error("Strongbox tier must be between 1 and 11.");
+  if (!Number.isInteger(sampleCount) || sampleCount < 1 || sampleCount > 10000) throw new Error("Analysis samples must be between 1 and 10,000.");
   const seed = String(body.seed ?? "").trim();
   if (!/^\d+$/.test(seed)) throw new Error("Seed must be an unsigned integer.");
 
-  const catalog = findProductionGunCatalog();
   const requestId = crypto.randomUUID();
   const folder = path.join(root, "Temp", "ShooterMoverStrongboxPreview");
   const requestFile = path.join(folder, `${requestId}.request.json`);
@@ -164,15 +152,16 @@ async function requestStrongboxPreview(body) {
   const temporary = requestFile + ".tmp";
   fs.writeFileSync(temporary, JSON.stringify({
     requestId,
+    mode,
     playerLevel,
     tierNumber,
     seed,
-    catalogSource: catalog.source,
-    gunCatalogJson: catalog.json
+    sampleCount
   }));
   fs.renameSync(temporary, requestFile);
 
-  const deadline = Date.now() + 15000;
+  const timeout = mode === "analysis" ? Math.min(120000, 15000 + sampleCount * 20) : 15000;
+  const deadline = Date.now() + timeout;
   while (Date.now() < deadline && !fs.existsSync(responseFile)) await wait(50);
   if (!fs.existsSync(responseFile)) {
     fs.rmSync(requestFile, { force: true });
@@ -182,6 +171,7 @@ async function requestStrongboxPreview(body) {
   fs.rmSync(responseFile, { force: true });
   return response;
 }
+
 async function api(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/status") return send(res, 200, { ...status(), mutationToken });
   if (req.method === "GET" && url.pathname === "/api/packages") {
@@ -211,10 +201,14 @@ async function api(req, res, url) {
     return send(res, result.ok ? 200 : 400, result);
   }
   if (req.method !== "GET" && req.headers["x-item-maker-token"] !== mutationToken) throw new Error("Mutation token is missing or invalid.");
-  if (req.method === "POST" && url.pathname === "/api/fetch") { git(["fetch", "--prune", "origin"]); return send(res, 200, status()); }
+  if (req.method === "POST" && url.pathname === "/api/fetch") {
+    git(["fetch", "--prune", "origin"]);
+    return send(res, 200, status());
+  }
   if (req.method === "POST" && url.pathname === "/api/pull") {
     if (!status().clean) throw new Error("Pull refused: the worktree is not clean.");
-    git(["pull", "--ff-only"]); return send(res, 200, status());
+    git(["pull", "--ff-only"]);
+    return send(res, 200, status());
   }
   if (req.method === "PUT" && url.pathname === "/api/package") {
     const body = await readBody(req), value = body.package;
@@ -222,7 +216,8 @@ async function api(req, res, url) {
     const file = safePackage(value.kind, value.id);
     fs.mkdirSync(path.dirname(file), { recursive: true });
     const temp = file + ".tmp";
-    fs.writeFileSync(temp, JSON.stringify(value, null, 2) + "\n"); fs.renameSync(temp, file);
+    fs.writeFileSync(temp, JSON.stringify(value, null, 2) + "\n");
+    fs.renameSync(temp, file);
     execFileSync(process.execPath, [path.join(__dirname, "compile-packages.js"), root], { cwd: root, stdio: "pipe" });
     return send(res, 200, { saved: path.relative(root, file).replace(/\\/g, "/") });
   }
@@ -232,6 +227,7 @@ async function api(req, res, url) {
   }
   send(res, 404, { error: "Not found." });
 }
+
 const mime = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8" };
 http.createServer(async (req, res) => {
   try {
@@ -244,6 +240,12 @@ http.createServer(async (req, res) => {
     if (requested === "strongbox-simulator.html") {
       body = Buffer.from(body.toString("utf8").replace("</body>", '<script src="strongbox-production.js"></script></body>'));
     }
-    res.writeHead(200, { "Content-Type": mime[path.extname(file)] || "application/octet-stream", "Content-Length": body.length }); res.end(body);
-  } catch (error) { send(res, 400, { error: error.message }); }
-}).listen(port, "127.0.0.1", () => console.log(`Item Maker: http://127.0.0.1:${port}\nRepository: ${root}`));
+    res.writeHead(200, { "Content-Type": mime[path.extname(file)] || "application/octet-stream", "Content-Length": body.length });
+    res.end(body);
+  } catch (error) {
+    send(res, 400, { error: error.message });
+  }
+}).listen(port, "127.0.0.1", () => {
+  console.log(`Item Maker: http://127.0.0.1:${port}`);
+  console.log(`Repository: ${root}`);
+});
