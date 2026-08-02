@@ -1,0 +1,13 @@
+/* Door navigation, connection direction, and authoring warnings. */
+.door-navigation-panel{display:grid;gap:7px;margin:9px 0;padding:10px;border:1px solid #4d5d73;border-radius:8px;background:#121923}
+.door-nav-heading{color:#cbd7e7;font-size:9px;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
+.door-nav-row{display:grid;grid-template-columns:25px minmax(0,1fr) auto auto;gap:7px;align-items:center;padding:7px;border:1px solid #33445a;border-radius:7px;background:#182230}
+.door-nav-number{width:24px;height:24px;display:grid;place-items:center;border:1px solid #9edcff;border-radius:50%;background:#79c9ff;color:#10202e;font-size:10px;font-weight:900}
+.door-nav-target{min-width:0;display:grid;gap:2px}
+.door-nav-target b,.door-nav-target span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.door-nav-target b{font-size:10px;color:#edf6ff}.door-nav-target span{font-size:9px;color:var(--muted)}
+.door-nav-exit{display:grid;gap:3px;padding:8px;border:1px solid #3d9d68;border-radius:7px;background:rgba(38,126,78,.16)}
+.door-nav-exit b{color:#8ff5b7;font-size:11px}.door-nav-exit span{color:#b9ddc7;font-size:9px}
+.door-nav-warning{display:grid;gap:3px;padding:8px;border:1px solid #9f4855;border-radius:7px;background:rgba(119,35,48,.18)}
+.door-nav-warning b{color:#ff9eaa;font-size:11px}.door-nav-warning span{color:#d4aab0;font-size:9px}
+@media(max-width:680px){.door-nav-row{grid-template-columns:25px 1fr}.door-nav-row button{grid-column:auto}}
