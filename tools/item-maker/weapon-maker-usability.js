@@ -11,6 +11,7 @@
     elements.jsonEditor.value = files[activeFile];
   }
 
+  const has = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
   const objectValue = value => value && typeof value === "object" && !Array.isArray(value);
   const positiveValue = value => typeof value === "number" && Number.isFinite(value) && value > 0;
   const nonNegativeValue = value => typeof value === "number" && Number.isFinite(value) && value >= 0;
@@ -21,6 +22,20 @@
 
   function requireTextValue(result, value, label) {
     if (typeof value !== "string" || !value.trim()) addError(result, `${label} is required.`);
+  }
+
+  function validateOwnership(result, shared, marks, block, required) {
+    const sharedHasBlock = has(shared, block);
+    const markCount = marks.filter(mark => has(mark, block)).length;
+    if (sharedHasBlock && markCount) {
+      addError(result, `${block}: choose shared values or Mark-specific values, not both.`);
+    }
+    if (!sharedHasBlock && markCount !== 0 && markCount !== 3) {
+      addError(result, `${block}: all three Marks must provide the complete values.`);
+    }
+    if (required && !sharedHasBlock && markCount !== 3) {
+      addError(result, `${block}: gameplay values are required.`);
+    }
   }
 
   function validateEffectiveFire(result, value, label) {
@@ -46,7 +61,7 @@
     }
   }
 
-  function validateEffectiveDot(result, value, label) {
+  function validateDotNumbers(result, value, label) {
     if (!objectValue(value)
       || !positiveValue(value.damagePerSecond)
       || !positiveValue(value.duration)
@@ -55,6 +70,52 @@
       || value.maxStacks < 1) {
       addError(result, `${label} damage-over-time values must be positive, with whole-number stacks.`);
     }
+  }
+
+  function validateDotOwnership(result, shared, marks) {
+    const sharedDot = has(shared, "dot") ? shared.dot : null;
+    const markCount = marks.filter(mark => has(mark, "dot")).length;
+    const sharedHasNumbers = objectValue(sharedDot)
+      && ["damagePerSecond", "duration", "ticksPerSecond", "maxStacks"].some(key => has(sharedDot, key));
+
+    if (!sharedDot && markCount !== 0 && markCount !== 3) {
+      addError(result, "dot: all three Marks must provide damage-over-time values.");
+      return { sharedHasNumbers: false, sharedDot: null };
+    }
+    if (sharedHasNumbers && markCount) {
+      addError(result, "dot: shared numerical values cannot also be defined by Marks.");
+    }
+    if (sharedDot && !sharedHasNumbers && markCount !== 3) {
+      addError(result, "dot: shared refresh behaviour requires damage-over-time values in all three Marks.");
+    }
+
+    if (sharedHasNumbers) {
+      validateDotNumbers(result, sharedDot, "Shared");
+      if (typeof sharedDot.refreshDuration !== "boolean") {
+        addError(result, "Shared damage-over-time refresh behaviour must be true or false.");
+      }
+    } else if (sharedDot) {
+      if (typeof sharedDot.refreshDuration !== "boolean") {
+        addError(result, "Shared damage-over-time refresh behaviour must be true or false.");
+      }
+      marks.forEach((mark, index) => {
+        if (!has(mark, "dot")) return;
+        validateDotNumbers(result, mark.dot, `MK${index + 1}`);
+        if (has(mark.dot, "refreshDuration")) {
+          addError(result, `MK${index + 1} refresh behaviour must be defined once in shared weapon data.`);
+        }
+      });
+    } else {
+      marks.forEach((mark, index) => {
+        if (!has(mark, "dot")) return;
+        validateDotNumbers(result, mark.dot, `MK${index + 1}`);
+        if (typeof mark.dot.refreshDuration !== "boolean") {
+          addError(result, `MK${index + 1} damage-over-time refresh behaviour must be true or false.`);
+        }
+      });
+    }
+
+    return { sharedHasNumbers, sharedDot };
   }
 
   // Replace the lightweight first-pass checks with checks based on each Mark's
@@ -77,16 +138,31 @@
       addError(result, "Special weapons are not implemented yet. Choose a supported weapon type.");
     }
 
+    validateOwnership(result, shared, marks, "fire", true);
+    validateOwnership(result, shared, marks, "shot", true);
+    validateOwnership(result, shared, marks, "impact", true);
+    validateOwnership(result, shared, marks, "homing", false);
+    if (shared.projectileType !== "beam") validateOwnership(result, shared, marks, "projectile", true);
+    validateDotOwnership(result, shared, marks);
+
     if (!objectValue(shared.art)) {
       addError(result, "Shared projectile art settings are required.");
     } else {
       requireTextValue(result, shared.art.delivery, "Projectile / beam art");
       requireTextValue(result, shared.art.trail, "Trail art");
       requireTextValue(result, shared.art.impact, "Impact art");
+      if (has(shared.art, "mounted")) requireTextValue(result, shared.art.mounted, "Shared mounted art");
     }
     const sharedMounted = objectValue(shared.art)
       && typeof shared.art.mounted === "string"
       && !!shared.art.mounted.trim();
+    const markMountedCount = marks.filter(mark => objectValue(mark.art) && has(mark.art, "mounted")).length;
+    if (sharedMounted && markMountedCount) {
+      addError(result, "Mounted art must be shared or Mark-specific, not both.");
+    }
+    if (!sharedMounted && markMountedCount !== 3) {
+      addError(result, "All three Marks must provide mounted art when it is not shared.");
+    }
 
     const anyExplosion = marks.some(mark => objectValue(mark.explosion));
     if (anyExplosion && shared.projectileType !== "rocket") {
@@ -95,10 +171,6 @@
     if (anyExplosion && !marks.every(mark => objectValue(mark.explosion))) {
       addError(result, "Explosion values must be defined for all three Marks.");
     }
-
-    const sharedDotHasNumbers = objectValue(shared.dot)
-      && ["damagePerSecond", "duration", "ticksPerSecond", "maxStacks"]
-        .some(key => Object.prototype.hasOwnProperty.call(shared.dot, key));
 
     marks.forEach((mark, index) => {
       const label = `MK${index + 1}`;
@@ -113,8 +185,7 @@
         if (!sharedMounted) requireTextValue(result, mark.art.mounted, `${label} mounted art`);
       }
 
-      const fire = shared.fire || mark.fire;
-      validateEffectiveFire(result, fire, label);
+      validateEffectiveFire(result, shared.fire || mark.fire, label);
 
       const shot = shared.shot || mark.shot;
       if (!objectValue(shot)
@@ -125,7 +196,7 @@
       }
 
       if (shared.projectileType === "beam") {
-        const beam = shared.beam || mark.beam;
+        const beam = shared.beam;
         if (!objectValue(beam) || !positiveValue(beam.range) || !positiveValue(beam.width)) {
           addError(result, `${label} beam range and width must be positive.`);
         }
@@ -155,9 +226,6 @@
         || !nonNegativeValue(homing.activationDelay))) {
         addError(result, `${label} homing range and turn speed must be positive, and activation delay cannot be negative.`);
       }
-
-      const dot = sharedDotHasNumbers ? shared.dot : mark.dot;
-      if (dot) validateEffectiveDot(result, dot, label);
 
       if (objectValue(mark.explosion)
         && (!positiveValue(mark.explosion.radius)
