@@ -298,7 +298,7 @@ function generateCSharp(root, generatedFamilies) {
   lines.push("            {");
   lines.push("                Pr288MarkSource source = sources[index];");
   lines.push("                string definitionId = familyId + \".mk\" + source.Mark;");
-  lines.push("                string equipmentValue = \"gun-\" + familyId + \"-mk\" + source.Mark;");
+  lines.push("                string equipmentValue = \"gun-\" + StableFamilyToken(familyId) + \"-mk\" + source.Mark;");
   lines.push("                ProvisionalCombatProfile combat = new ProvisionalCombatProfile(");
   lines.push("                    source.Fire,");
   lines.push("                    source.Shot,");
