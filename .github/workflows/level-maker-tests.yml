@@ -35,6 +35,7 @@ jobs:
           node --check app-20-plan.js
           node --check app-21-editor.js
           node --check app-22-recovery.js
+          node --check app-23-floor-cells.js
 
       - name: Run tests
         working-directory: tools/level-maker
