@@ -127,20 +127,8 @@
     return saved;
   }
 
-  function openRoom(savedRoom) {
-    const room = copy(savedRoom) || {};
+  function useFloor(room, floor) {
     const { width, height } = roomSize(room);
-
-    if (!room.floor) {
-      room.floorObject ||= "tile.floor-industrial";
-      room.tileGridEnabled = typeof room.tileGridEnabled === "boolean"
-        ? room.tileGridEnabled
-        : Array.isArray(room.tiles) && room.tiles.length > 0;
-      room.tiles ||= [];
-      return room;
-    }
-
-    const floor = readSavedFloor(room.floor, width, height);
     const usedTiles = [...new Set(floor.filter(Boolean))];
     const completelyFilled = floor.length > 0 && floor.every(tile => tile && tile === floor[0]);
 
@@ -159,6 +147,47 @@
 
     delete room.floor;
     return room;
+  }
+
+  function openRoom(savedRoom) {
+    const room = copy(savedRoom) || {};
+    const { width, height } = roomSize(room);
+
+    if (!room.floor) {
+      room.floorObject ||= "tile.floor-industrial";
+      room.tileGridEnabled = typeof room.tileGridEnabled === "boolean"
+        ? room.tileGridEnabled
+        : Array.isArray(room.tiles) && room.tiles.length > 0;
+      room.tiles ||= [];
+      return room;
+    }
+
+    return useFloor(room, readSavedFloor(room.floor, width, height));
+  }
+
+  function openUnityTiles(room, unityTiles) {
+    const opened = copy(room) || {};
+    const { width, height } = roomSize(opened);
+    const floor = new Array(width * height).fill(null);
+
+    for (const tile of unityTiles || []) {
+      const from = tile?.fill?.from;
+      const to = tile?.fill?.to;
+      if (!tile?.object || !Array.isArray(from) || !Array.isArray(to)) continue;
+
+      const startX = Math.max(0, Math.min(width, Math.round(Number(from[0]) + width / 2)));
+      const startY = Math.max(0, Math.min(height, Math.round(Number(from[1]) + height / 2)));
+      const endX = Math.max(0, Math.min(width, Math.round(Number(to[0]) + width / 2)));
+      const endY = Math.max(0, Math.min(height, Math.round(Number(to[1]) + height / 2)));
+
+      for (let y = startY; y < endY; y++) {
+        for (let x = startX; x < endX; x++) {
+          floor[y * width + x] = tile.object;
+        }
+      }
+    }
+
+    return useFloor(opened, floor);
   }
 
   function buildFloorAreas(floor, width, height) {
@@ -189,8 +218,7 @@
 
       for (const area of activeAreas) {
         const key = `${area.tile}\n${area.x}\n${area.width}`;
-        const match = rowByShape.get(key);
-        if (!match) {
+        if (!rowByShape.has(key)) {
           finishedAreas.push(area);
           continue;
         }
@@ -205,8 +233,6 @@
     }
 
     finishedAreas.push(...activeAreas);
-    joinFloorAreas(finishedAreas);
-
     finishedAreas.sort((a, b) =>
       a.tile.localeCompare(b.tile) ||
       a.y - b.y ||
@@ -216,40 +242,6 @@
     );
 
     return finishedAreas;
-  }
-
-  function joinFloorAreas(areas) {
-    let joined = true;
-    while (joined) {
-      joined = false;
-      for (let i = 0; i < areas.length && !joined; i++) {
-        for (let j = i + 1; j < areas.length; j++) {
-          const first = areas[i];
-          const second = areas[j];
-          if (first.tile !== second.tile) continue;
-
-          if (first.x === second.x && first.width === second.width) {
-            if (first.y + first.height === second.y || second.y + second.height === first.y) {
-              first.y = Math.min(first.y, second.y);
-              first.height += second.height;
-              areas.splice(j, 1);
-              joined = true;
-              break;
-            }
-          }
-
-          if (first.y === second.y && first.height === second.height) {
-            if (first.x + first.width === second.x || second.x + second.width === first.x) {
-              first.x = Math.min(first.x, second.x);
-              first.width += second.width;
-              areas.splice(j, 1);
-              joined = true;
-              break;
-            }
-          }
-        }
-      }
-    }
   }
 
   function buildUnityTiles(room) {
@@ -275,6 +267,7 @@
     writeFloor,
     saveRoom,
     openRoom,
+    openUnityTiles,
     buildFloorAreas,
     buildUnityTiles,
   };
