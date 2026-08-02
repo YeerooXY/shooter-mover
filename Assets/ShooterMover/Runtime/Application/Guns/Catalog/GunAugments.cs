@@ -9,7 +9,7 @@ namespace ShooterMover.Application.Guns.Catalog
 {
     public static class GunAugments
     {
-        public const int MaximumLevel = 11;
+        public const int MaximumLevel = 12;
 
         public static readonly StableId DamageId =
             StableId.Parse("augment.gun-damage");

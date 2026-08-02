@@ -19,6 +19,7 @@ namespace ShooterMover.UI.Common
         [SerializeField] private Text levelText;
         [SerializeField] private GameObject detailsRoot;
         [SerializeField] private AugmentList augments;
+        [SerializeField] private AugmentSlotGrid augmentSlots;
 
         private WeaponCardView current;
 
@@ -91,6 +92,17 @@ namespace ShooterMover.UI.Common
                     augments.Clear();
                 }
             }
+            if (augmentSlots != null)
+            {
+                if (reveal)
+                {
+                    augmentSlots.Show(view);
+                }
+                else
+                {
+                    augmentSlots.Clear();
+                }
+            }
 
             gameObject.SetActive(true);
         }
@@ -123,6 +135,11 @@ namespace ShooterMover.UI.Common
             levelText = level;
             detailsRoot = details;
             augments = augmentList;
+        }
+
+        public void ConfigureAugmentSlots(AugmentSlotGrid grid)
+        {
+            augmentSlots = grid;
         }
 
         private static void SetText(Text target, string value)
