@@ -174,7 +174,10 @@
   }
 
   function applyAnalysisEpicPalette() {
-    presentation.querySelectorAll("[data-analysis-weapon]").forEach(button => {
+    const weaponButtons = [...presentation.querySelectorAll("[data-analysis-weapon]")];
+    if (weaponButtons.length) epicAnalysisDefinitions.clear();
+
+    weaponButtons.forEach(button => {
       const chip = button.querySelector(".analysis-rarity-chip");
       if (chip?.textContent?.trim().toLowerCase() !== "epic") return;
       const definitionId = button.dataset.analysisWeapon || "";
