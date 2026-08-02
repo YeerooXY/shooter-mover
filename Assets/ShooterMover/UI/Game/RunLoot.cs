@@ -13,6 +13,7 @@ using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Progression.Context;
+using ShooterMover.Domain.Progression.Skills;
 using ShooterMover.Domain.Props;
 using ShooterMover.Domain.Rewards.Drops;
 using ShooterMover.EnemyRuntimeComposition;
@@ -25,6 +26,7 @@ namespace ShooterMover.UI.Game
     internal sealed class RunLoot
     {
         public const int GenerationAlgorithmVersion = 1;
+        private const string CashDropSkillId = "generic.cash_drop_size";
 
         private readonly LevelPorts livePorts;
         private readonly LevelRooms rooms;
@@ -173,10 +175,21 @@ namespace ShooterMover.UI.Game
                     "The accepted Run Session did not preserve its frozen progression context.");
             }
 
+            RankedSkillAllocationSnapshot allocation;
+            if (!graph.SkillAuthority.TryGet(
+                    graph.SkillProfileId,
+                    out allocation)
+                || allocation == null)
+            {
+                throw new InvalidOperationException(
+                    "The selected character skill allocation is unavailable at run start.");
+            }
+            int cashMultiplier = checked(
+                1000 + allocation.RankOf(CashDropSkillId) * 10);
             run.ConfigureRewardEnvironment(new RunRewardEnvironmentSnapshot(
                 gameModeId,
                 Array.Empty<StableId>(),
-                1000,
+                cashMultiplier,
                 1000,
                 RunDropPacingCatalog.Default));
 

@@ -11,6 +11,7 @@ using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Guns;
 using ShooterMover.Domain.Guns.Catalog;
 using ShooterMover.Domain.Guns.Execution;
+using ShooterMover.Domain.Progression.Skills;
 using ShooterMover.UnityAdapters.Guns.Live;
 using ShooterMover.UnityAdapters.Players;
 using UnityEngine;
@@ -208,6 +209,7 @@ namespace ShooterMover.UI.Game
     [DisallowMultipleComponent]
     public sealed class PlayerFire : MonoBehaviour
     {
+        private const string DamageSkillId = "striker.damage_bonus";
         private sealed class GunPlay
         {
             internal GunPlay(
@@ -295,10 +297,22 @@ namespace ShooterMover.UI.Game
                 return false;
             }
 
+            RankedSkillAllocationSnapshot allocation;
+            if (!currentGraph.SkillAuthority.TryGet(
+                    currentGraph.SkillProfileId,
+                    out allocation)
+                || allocation == null)
+            {
+                return false;
+            }
+            double damageMultiplier = 1d
+                + allocation.RankOf(DamageSkillId) * 0.01d;
+
             List<GunPlay> resolved;
             string error;
             if (!TryBuildGuns(
                     currentGraph.LoadoutRuntime,
+                    damageMultiplier,
                     Time.fixedTimeAsDouble,
                     out resolved,
                     out error))
@@ -473,6 +487,7 @@ namespace ShooterMover.UI.Game
 
         private bool TryBuildGuns(
             PlayerLoadoutLive loadout,
+            double damageMultiplier,
             double now,
             out List<GunPlay> result,
             out string error)
@@ -540,7 +555,8 @@ namespace ShooterMover.UI.Game
                 ProjectileExecutionProfile bullet;
                 try
                 {
-                    bullet = ProjectileExecutionProfile.From(gun);
+                    bullet = ProjectileExecutionProfile.From(gun)
+                        .WithDamageMultiplier(damageMultiplier);
                 }
                 catch (Exception exception)
                 {
