@@ -136,4 +136,18 @@ assert.deepStrictEqual(upgraded.catalog, [
   { id: "door.custom", type: "door", source: "manual" },
 ]);
 
+const damaged = JSON.parse(JSON.stringify(levelFile));
+damaged.rooms[0].floor.rows[0] = "bad";
+assert.throws(
+  () => LevelSave.checkLevelFile(damaged),
+  /must contain exactly 5 cells/
+);
+
+const unknownSymbol = JSON.parse(JSON.stringify(levelFile));
+unknownSymbol.rooms[0].floor.rows[0] = "....?";
+assert.throws(
+  () => LevelSave.checkLevelFile(unknownSymbol),
+  /uses an unknown symbol/
+);
+
 console.log("Level Maker clean-save tests passed.");
