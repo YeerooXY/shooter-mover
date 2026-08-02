@@ -35,6 +35,36 @@ function assertInside(file, root, message) {
   if (relative.startsWith("..") || path.isAbsolute(relative)) throw new Error(message);
 }
 
+function assetType(id) {
+  if (typeof id !== "string") return null;
+  if (id.startsWith("enemy.")) return "enemy";
+  if (id.startsWith("prop.")) return "prop";
+  if (id.startsWith("tile.")) return "floor";
+  if (id.startsWith("door.")) return "door";
+  if (id.startsWith("decor.") || id.startsWith("presentation.")) return "decor";
+  return null;
+}
+
+function collectAssets(value, source, found) {
+  if (Array.isArray(value)) {
+    value.forEach(item => collectAssets(item, source, found));
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  const label = value.display_name || value.name || value.label;
+  for (const id of [value.id, value.object, value.definition_id, value.runtime_object]) {
+    const type = assetType(id);
+    if (!type || found.has(id)) continue;
+    found.set(id, {
+      id,
+      label: label || id.split(".").pop().replace(/-/g, " "),
+      type,
+      source,
+    });
+  }
+  Object.values(value).forEach(item => collectAssets(item, source, found));
+}
+
 function assetIds(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return [];
   return [value.id, value.object, value.definition_id, value.runtime_object]
@@ -92,7 +122,33 @@ function collectHints(value, hints) {
 function createAssetPreviewService(repo) {
   const assetsRoot = path.join(repo, "Assets");
   let cache = null;
+  let scannedAssets = null;
   const parsedSources = new Map();
+
+  function scanAssets() {
+    if (scannedAssets) return scannedAssets;
+    const found = new Map();
+    const roots = [
+      "Assets/ShooterMover/Content/Definitions/Enemies",
+      "Assets/ShooterMover/Content/Definitions/Missions/Rooms",
+      "Assets/ShooterMover/ContentPackages",
+    ];
+    for (const relativeRoot of roots) {
+      walk(path.join(repo, relativeRoot), file => {
+        if (path.extname(file).toLowerCase() !== ".json" || fs.statSync(file).size > 4_000_000) return;
+        try {
+          const source = slash(path.relative(repo, file));
+          collectAssets(JSON.parse(fs.readFileSync(file, "utf8")), source, found);
+        } catch {
+          // Malformed or unrelated JSON is not part of the preview catalogue.
+        }
+      });
+    }
+    scannedAssets = [...found.values()].sort(
+      (left, right) => left.type.localeCompare(right.type) || left.id.localeCompare(right.id)
+    );
+    return scannedAssets;
+  }
 
   function imageIndex() {
     const images = [];
@@ -233,7 +289,7 @@ function createAssetPreviewService(repo) {
     return { previews, imageCount: images.length };
   }
 
-  function previews(assets) {
+  function previews(assets = scanAssets()) {
     cache ||= build(assets);
     return cache;
   }
