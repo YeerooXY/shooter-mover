@@ -129,6 +129,7 @@ namespace ShooterMover.Application.Guns.Catalog
             };
             families.AddRange(BuildPr288Families());
             families.AddRange(BuildStrongboxTestFamilies());
+            families.AddRange(BuildLowLevelStrongboxTestFamilies());
 
             return new GunCatalogueView(
                 families,
