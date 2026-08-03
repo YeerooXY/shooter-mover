@@ -66,32 +66,13 @@
     };
   }
 
-  function regionKeys(placement) {
-    const keys = new Set();
-    for (let y = placement.startY; y < placement.startY + placement.height; y += 1) {
-      for (let x = placement.startX; x < placement.startX + placement.width; x += 1) {
-        keys.add(`${x},${y}`);
-      }
-    }
-    return keys;
-  }
-
   function stamp(room, placement, erase) {
-    room.tileGridEnabled = true;
-    const keys = regionKeys(placement);
-    if (erase) {
-      room.tiles = room.tiles.filter(tile => !keys.has(`${tile.x},${tile.y}`));
-      return;
-    }
-
-    const object = selectedFloorObject();
-    const tiles = new Map(room.tiles.map(tile => [`${tile.x},${tile.y}`, tile]));
+    const object = erase ? null : selectedFloorObject();
     for (let y = placement.startY; y < placement.startY + placement.height; y += 1) {
       for (let x = placement.startX; x < placement.startX + placement.width; x += 1) {
-        tiles.set(`${x},${y}`, { x, y, object });
+        FloorData.setFloorTile(room, x, y, object);
       }
     }
-    room.tiles = [...tiles.values()].sort((left, right) => left.y - right.y || left.x - right.x);
   }
 
   function drawBrushPreview() {

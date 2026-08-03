@@ -63,6 +63,7 @@ assert.ok(!("editor" in levelFile));
 assert.ok(!("activeRoomId" in levelFile));
 assert.ok(!("catalog" in levelFile));
 assert.ok(!JSON.stringify(levelFile).includes("selectedAssetId"));
+assert.ok(!JSON.stringify(levelFile).includes('"cells"'));
 assert.strictEqual(levelFile.rooms[0].floor.format, "grid");
 assert.ok(!("tiles" in levelFile.rooms[0]));
 assert.ok(!("tileGridEnabled" in levelFile.rooms[0]));
@@ -85,7 +86,11 @@ assert.strictEqual(opened.rooms, opened.level.rooms);
 assert.strictEqual(opened.activeRoomId, "room.test-start");
 assert.strictEqual(opened.editor.tool, "tile");
 assert.strictEqual(opened.editor.zoom, 48);
+assert.ok(opened.level.rooms[0].floor.cells instanceof Uint16Array);
+assert.strictEqual(opened.level.rooms[0].floor.cells.length, 25);
+assert.strictEqual(opened.level.rooms[0].floor.count, 9);
 assert.strictEqual(opened.level.rooms[0].tiles.length, 9);
+assert.ok(!Object.keys(opened.level.rooms[0]).includes("tiles"));
 assert.deepStrictEqual(opened.catalog, editorFile.customAssets);
 assert.deepStrictEqual(Object.keys(opened), [
   "format",
@@ -94,6 +99,10 @@ assert.deepStrictEqual(Object.keys(opened), [
   "editor",
   "assets",
 ]);
+
+const compactAgain = LevelSave.makeLevelFile(opened);
+assert.deepStrictEqual(compactAgain.rooms[0].floor, levelFile.rooms[0].floor);
+assert.ok(!JSON.stringify(compactAgain).includes('"cells"'));
 
 const oldCombinedFile = {
   format: "shooter-mover-web-level-project",
@@ -131,6 +140,7 @@ const upgraded = LevelSave.openLevelFile(
   { tool: "select", zoom: 32 }
 );
 assert.strictEqual(upgraded.editor.tool, "door");
+assert.ok(upgraded.level.rooms[0].floor.cells instanceof Uint16Array);
 assert.strictEqual(upgraded.level.rooms[0].tileGridEnabled, false);
 assert.deepStrictEqual(upgraded.catalog, [
   { id: "door.custom", type: "door", source: "manual" },

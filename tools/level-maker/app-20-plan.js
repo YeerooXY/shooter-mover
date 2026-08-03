@@ -17,13 +17,26 @@
   ];
 
   snapshot = function saveLevelUndoPoint() {
-    return LevelState.levelSnapshot(state);
+    return JSON.stringify(LevelSave.makeLevelFile(state));
   };
+
+  function restoreLevelUndoPoint(text) {
+    const savedLevel = JSON.parse(text);
+    const opened = LevelSave.openLevelFile(
+      savedLevel,
+      LevelSave.makeEditorFile(state),
+      state.editor
+    );
+    state.level = opened.level;
+    LevelState.addOldNames(state);
+    LevelState.fixEditor(state);
+    FloorData.prepareRooms(state.level.rooms);
+  }
 
   undo = function undoLevelChange() {
     if (!history.length) return;
     future.push(snapshot());
-    LevelState.restoreLevel(state, history.pop());
+    restoreLevelUndoPoint(history.pop());
     normalize();
     renderAll();
   };
@@ -31,7 +44,7 @@
   redo = function redoLevelChange() {
     if (!future.length) return;
     history.push(snapshot());
-    LevelState.restoreLevel(state, future.pop());
+    restoreLevelUndoPoint(future.pop());
     normalize();
     renderAll();
   };

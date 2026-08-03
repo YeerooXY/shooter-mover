@@ -34,9 +34,7 @@
       throw new Error("The level project is missing its level or rooms.");
     }
 
-    if (Number(levelFile.schemaVersion || 0) >= LEVEL_VERSION) {
-      rooms.forEach(checkRoomFloor);
-    }
+    if (Number(levelFile.schemaVersion || 0) >= LEVEL_VERSION) rooms.forEach(checkRoomFloor);
   }
 
   function checkRoomFloor(room, roomIndex) {
@@ -145,6 +143,7 @@
     const state = LevelState.makeState(openFile, chosenEditor, customAssets, defaultEditor);
     state.editor.customAssets = copy(customAssets);
     LevelState.addOldNames(state);
+    FloorData.prepareRooms(state.level.rooms);
     return state;
   }
 
