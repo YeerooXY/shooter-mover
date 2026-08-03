@@ -1,0 +1,36 @@
+name: Temporary run compact enemy loot patch
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/compact-enemy-loot
+          fetch-depth: 0
+
+      - name: Extract and apply patch
+        shell: bash
+        run: |
+          sed -n '/^          --- a\/Assets\/ShooterMover\/UI\/Game\/Enemies\/CompactEnemy.cs$/,/^          PATCH$/p' \
+            .github/workflows/temporary-apply-compact-enemy-loot.yml \
+            | sed '$d; s/^          //' > /tmp/compact-enemy-loot.patch
+          git apply --check /tmp/compact-enemy-loot.patch
+          git apply /tmp/compact-enemy-loot.patch
+
+      - name: Commit live integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Assets/ShooterMover/UI/Game/Enemies/CompactEnemy.cs Assets/ShooterMover/UI/Game/LevelGame.cs
+          git commit -m "Connect compact enemy death to run rewards"
+          git push origin HEAD:fix/compact-enemy-loot
