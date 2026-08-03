@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Contracts.Missions.Rooms;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Enemies;
 using ShooterMover.GameplayEntities;
 using ShooterMover.UnityAdapters.Combat;
 using ShooterMover.UnityAdapters.Enemies;
@@ -28,6 +29,7 @@ namespace ShooterMover.UI.Game.Enemies
         private LevelRooms roomOwner;
         private StableId roomStableId;
         private StableId placementStableId;
+        private StableId definitionStableId;
         private StableId participantStableId;
         private CompactEnemyDefinition definition;
         private CompactEnemyResolvedStats stats;
@@ -67,6 +69,9 @@ namespace ShooterMover.UI.Game.Enemies
         public double MaximumHealth { get { return stats.MaximumHealth; } }
         public int EnemyLevel { get { return stats.Level; } }
         public CompactEnemyDefinition Definition { get { return definition; } }
+        public StableId RoomStableId { get { return roomStableId; } }
+        public StableId PlacementStableId { get { return placementStableId; } }
+        public StableId DefinitionStableId { get { return definitionStableId; } }
 
         public void Configure(
             LevelRooms configuredRoomOwner,
@@ -98,6 +103,7 @@ namespace ShooterMover.UI.Game.Enemies
             }
 
             placementStableId = placement.InstanceStableId;
+            definitionStableId = placement.DefinitionStableId;
             definition = resolved;
             stats = CompactEnemyCatalog.ResolveStats(definition, enemyLevel);
             currentHealth = stats.MaximumHealth;
@@ -123,7 +129,14 @@ namespace ShooterMover.UI.Game.Enemies
 
             currentHealth = Math.Max(0d, currentHealth - hit.Amount);
             FlashHit();
-            if (currentHealth <= 0d) Defeat();
+            if (currentHealth <= 0d)
+            {
+                Defeat(
+                    EnemyActorDeathCause.IncomingDamage,
+                    hit.EventStableId,
+                    hit.SourceEntityStableId,
+                    hit.SourceRunParticipantStableId);
+            }
         }
 
         private void Update()
@@ -185,7 +198,11 @@ namespace ShooterMover.UI.Game.Enemies
                     : attack.damage[0].type);
             if (string.Equals(attack.kind, "suicide", StringComparison.Ordinal))
             {
-                Defeat();
+                Defeat(
+                    EnemyActorDeathCause.DisposableImpact,
+                    NextEventStableId("disposable-impact"),
+                    null,
+                    null);
             }
         }
 
@@ -533,11 +550,16 @@ namespace ShooterMover.UI.Game.Enemies
             receiver.ApplyDamage(command);
         }
 
-        private void Defeat()
+        private void Defeat(
+            EnemyActorDeathCause cause,
+            StableId triggeringEventStableId,
+            StableId killerEntityStableId,
+            StableId killerParticipantStableId)
         {
             if (defeated) return;
             defeated = true;
             currentHealth = 0d;
+            Vector2 terminalPosition = transform.position;
             if (attackRoutine != null)
             {
                 StopCoroutine(attackRoutine);
@@ -556,6 +578,28 @@ namespace ShooterMover.UI.Game.Enemies
                     bodyRenderer.color.g * 0.35f,
                     bodyRenderer.color.b * 0.35f,
                     0.7f);
+            }
+
+            if (killerParticipantStableId != null)
+            {
+                try
+                {
+                    RunRewards.ReportCompactEnemyDefeat(
+                        this,
+                        triggeringEventStableId,
+                        killerEntityStableId,
+                        killerParticipantStableId,
+                        cause,
+                        terminalPosition);
+                }
+                catch (Exception exception)
+                {
+                    if (IsFatal(exception)) throw;
+                    Debug.LogError(
+                        "compact-enemy-reward-report-failed:"
+                        + exception.Message,
+                        this);
+                }
             }
 
             try
