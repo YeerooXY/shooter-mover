@@ -80,7 +80,10 @@
 
         <article class="panel mounts-panel wide-panel">
           <div class="panel-heading">
-            <div><h2>Mounts</h2><p class="help">Drag mount handles in the preview or edit their relative coordinates.</p></div>
+            <div>
+              <h2>Mounts</h2>
+              <p class="help">Drag mount handles in the preview or edit their relative coordinates. Each completed drag creates one undo step.</p>
+            </div>
             <button id="addMount" class="ghost small" type="button">Add mount</button>
           </div>
           <div id="mounts" class="card-list"></div>
@@ -126,10 +129,19 @@
     <aside class="preview-column">
       <article class="preview-card">
         <div class="panel-heading">
-          <div><h2>Preview</h2><p class="help">Drag orange mount handles.</p></div>
+          <div><h2>Preview</h2><p class="help">Drag orange mount handles. Mouse-wheel zoom also works over the canvas.</p></div>
           <span id="shapeBadge" class="badge">circle</span>
         </div>
-        <canvas id="preview" width="560" height="460"></canvas>
+        <div class="preview-tools" aria-label="Mount preview controls">
+          <button id="undoMountDrag" class="ghost small" type="button" disabled>↶ Undo drag</button>
+          <button id="zoomOut" class="ghost zoom-button" type="button" aria-label="Zoom out">−</button>
+          <label class="zoom-slider">Mount zoom <input id="mountZoom" type="range" min="0.5" max="5" step="0.1" value="1"></label>
+          <strong id="zoomValue" class="zoom-value">100%</strong>
+          <button id="zoomIn" class="ghost zoom-button" type="button" aria-label="Zoom in">+</button>
+          <button id="resetZoom" class="ghost small" type="button">Reset</button>
+        </div>
+        <canvas id="preview" width="560" height="460" tabindex="0"></canvas>
+        <p class="preview-note">Zoom enlarges the body and local mount geometry while combat-range rings remain at their overview scale.</p>
         <label class="level-slider">Enemy level <strong id="levelValue">1</strong><input id="level" type="range" min="1" max="100" value="1"></label>
         <div class="stats">
           <div><span>Health</span><strong id="previewHp">—</strong></div>
