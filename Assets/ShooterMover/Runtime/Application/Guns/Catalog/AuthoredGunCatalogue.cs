@@ -4,9 +4,9 @@ using System.Collections.Generic;
 namespace ShooterMover.Application.Guns.Catalog
 {
     /// <summary>
-    /// Production catalogue selected by GunCatalogProvider. A generated Weapon Maker projection
-    /// is authoritative whenever it contains validated families. The legacy hand-built catalogue
-    /// remains only as an explicit empty-generation migration fallback.
+    /// Production catalogue selected by GunCatalogProvider. The generated Weapon Maker projection
+    /// is the sole production content authority; the retired hand-built catalogue is not used as a
+    /// runtime fallback when publication is missing or invalid.
     /// </summary>
     public static class AuthoredGunCatalogue
     {
@@ -19,7 +19,7 @@ namespace ShooterMover.Application.Guns.Catalog
 
         public static bool UsesGeneratedSource
         {
-            get { return AuthoredGunCatalogueGenerated.FamilyCount > 0; }
+            get { return true; }
         }
 
         public static string SourceFingerprint
@@ -34,9 +34,11 @@ namespace ShooterMover.Application.Guns.Catalog
                 throw new InvalidOperationException(
                     "authored-gun-catalog-generated-schema-unsupported");
             }
-            if (AuthoredGunCatalogueGenerated.FamilyCount == 0)
+            if (AuthoredGunCatalogueGenerated.FamilyCount == 0
+                || AuthoredGunCatalogueGenerated.DefinitionCount == 0)
             {
-                return GunCatalogue.Current;
+                throw new InvalidOperationException(
+                    "authored-gun-catalog-not-generated");
             }
 
             List<GunFamily> families = AuthoredGunCatalogJsonImporter.Import(
