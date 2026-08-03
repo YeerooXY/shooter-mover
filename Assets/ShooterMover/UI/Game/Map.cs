@@ -18,15 +18,19 @@ namespace ShooterMover.UI.Game
     {
         private readonly Dictionary<StableId, int> boxes =
             new Dictionary<StableId, int>();
+        private readonly List<GameObject> teleporterObjects =
+            new List<GameObject>();
 
         private LevelGame game;
         private LevelRooms rooms;
         private RoomFile roomContent;
+        private MapLayout layout;
         private MapView view;
         private bool isBound;
         private bool bindingFailed;
         private bool paused;
         private float previousTimeScale;
+        private long teleportSequence;
         private int screenWidth;
         private int screenHeight;
 
@@ -132,6 +136,8 @@ namespace ShooterMover.UI.Game
                 Rebuild();
             }
 
+            RefreshTeleporters();
+
             Keyboard keyboard = Keyboard.current;
             if (keyboard != null && keyboard.mKey.wasPressedThisFrame)
             {
@@ -180,6 +186,7 @@ namespace ShooterMover.UI.Game
                 view = gameObject.AddComponent<MapView>();
 
             Rebuild();
+            view.TeleporterClicked += HandleTeleporterClicked;
             rooms.CurrentRoomPresentationRebuilt += HandleRoomChanged;
             isBound = true;
         }
@@ -196,7 +203,7 @@ namespace ShooterMover.UI.Game
             }
 
             bool reopen = view.IsVisible;
-            MapLayout layout = MapLayout.Build(
+            layout = MapLayout.Build(
                 roomContent,
                 new Vector2(
                     Mathf.Max(1, Screen.width),
@@ -204,6 +211,8 @@ namespace ShooterMover.UI.Game
             view.Build(layout);
             AddConnections(rooms.Definition);
             ApplyBoxes();
+            RefreshTeleporters();
+            BuildRoomTeleporters();
             if (reopen)
                 view.Show(rooms.CurrentRoomStableId);
             else
@@ -242,6 +251,113 @@ namespace ShooterMover.UI.Game
             }
         }
 
+        private void RefreshTeleporters()
+        {
+            if (layout == null || view == null || rooms == null)
+                return;
+
+            bool sourceReady = HasOpenTeleporter(
+                rooms.CurrentRoomStableId);
+            for (int roomIndex = 0;
+                roomIndex < layout.Rooms.Count;
+                roomIndex++)
+            {
+                MapLayout.Room room = layout.Rooms[roomIndex];
+                bool roomOpen = sourceReady && IsRoomComplete(room.RoomStableId);
+                for (int teleporterIndex = 0;
+                    teleporterIndex < room.Teleporters.Count;
+                    teleporterIndex++)
+                {
+                    MapLayout.Teleporter teleporter =
+                        room.Teleporters[teleporterIndex];
+                    view.SetTeleporterOpen(
+                        teleporter.TeleporterStableId,
+                        teleporter.Enabled && roomOpen);
+                }
+            }
+
+            bool currentOpen = IsRoomComplete(rooms.CurrentRoomStableId);
+            for (int index = 0; index < teleporterObjects.Count; index++)
+            {
+                if (teleporterObjects[index] == null) continue;
+                Teleporter teleporter =
+                    teleporterObjects[index].GetComponent<Teleporter>();
+                if (teleporter != null) teleporter.SetOpen(currentOpen);
+            }
+        }
+
+        private bool HasOpenTeleporter(StableId roomStableId)
+        {
+            if (!IsRoomComplete(roomStableId)) return false;
+            MapLayout.Room room;
+            if (layout == null
+                || !layout.TryGetRoom(roomStableId, out room))
+            {
+                return false;
+            }
+            for (int index = 0; index < room.Teleporters.Count; index++)
+            {
+                if (room.Teleporters[index].Enabled) return true;
+            }
+            return false;
+        }
+
+        private bool IsRoomComplete(StableId roomStableId)
+        {
+            if (roomStableId == null
+                || rooms == null
+                || rooms.Query == null)
+            {
+                return false;
+            }
+            try
+            {
+                return rooms.Query
+                    .GetRoomProjection(roomStableId)
+                    .IsCompleted;
+            }
+            catch (KeyNotFoundException)
+            {
+                return false;
+            }
+        }
+
+        private void BuildRoomTeleporters()
+        {
+            ClearRoomTeleporters();
+            if (layout == null || rooms == null)
+                return;
+
+            MapLayout.Room room;
+            if (!layout.TryGetRoom(rooms.CurrentRoomStableId, out room))
+                return;
+            bool open = IsRoomComplete(room.RoomStableId);
+            for (int index = 0; index < room.Teleporters.Count; index++)
+            {
+                MapLayout.Teleporter source = room.Teleporters[index];
+                if (!source.Enabled) continue;
+                var objectInstance = new GameObject(
+                    "Teleporter " + source.TeleporterStableId);
+                objectInstance.transform.SetParent(transform, false);
+                Teleporter teleporter = objectInstance.AddComponent<Teleporter>();
+                teleporter.Bind(
+                    source.LocalPosition,
+                    source.LocalRotationDegrees,
+                    open);
+                teleporterObjects.Add(objectInstance);
+            }
+        }
+
+        private void ClearRoomTeleporters()
+        {
+            for (int index = teleporterObjects.Count - 1; index >= 0; index--)
+            {
+                if (teleporterObjects[index] != null)
+                    Destroy(teleporterObjects[index]);
+            }
+            teleporterObjects.Clear();
+        }
+
         private void Toggle()
         {
             if (view.IsVisible)
@@ -252,6 +368,7 @@ namespace ShooterMover.UI.Game
 
         private void Open()
         {
+            RefreshTeleporters();
             view.Show(rooms.CurrentRoomStableId);
             if (paused) return;
             previousTimeScale = Time.timeScale;
@@ -268,6 +385,139 @@ namespace ShooterMover.UI.Game
             paused = false;
         }
 
+        private void HandleTeleporterClicked(MapLayout.Teleporter target)
+        {
+            if (target == null
+                || !target.Enabled
+                || !HasOpenTeleporter(rooms.CurrentRoomStableId)
+                || !IsRoomComplete(target.RoomStableId))
+            {
+                return;
+            }
+
+            List<StableId> route;
+            if (!TryBuildRoute(
+                rooms.CurrentRoomStableId,
+                target.RoomStableId,
+                out route))
+            {
+                Debug.LogError("map-teleporter-route-missing", this);
+                return;
+            }
+
+            for (int index = 0; index < route.Count; index++)
+            {
+                RoomLiveOperationResult result = rooms.Traverse(
+                    NextTeleportOperation(),
+                    route[index]);
+                if (result == null
+                    || result.Status == RoomLiveOperationStatus.Rejected)
+                {
+                    Debug.LogError(
+                        "map-teleporter-travel-rejected:"
+                        + (result == null
+                            ? "result-missing"
+                            : result.RejectionCode),
+                        this);
+                    return;
+                }
+            }
+
+            if (rooms.CurrentRoomStableId != target.RoomStableId)
+            {
+                Debug.LogError("map-teleporter-room-mismatch", this);
+                return;
+            }
+
+            PlayerMarker player = GetComponentInChildren<PlayerMarker>(true);
+            Rigidbody2D body = player == null
+                ? null
+                : player.GetComponent<Rigidbody2D>();
+            if (body == null)
+            {
+                Debug.LogError("map-teleporter-player-missing", this);
+                return;
+            }
+            body.position = target.LocalPosition;
+            body.rotation = target.LocalRotationDegrees;
+            body.linearVelocity = Vector2.zero;
+            Close();
+        }
+
+        private bool TryBuildRoute(
+            StableId startRoomStableId,
+            StableId targetRoomStableId,
+            out List<StableId> route)
+        {
+            route = new List<StableId>();
+            if (startRoomStableId == targetRoomStableId)
+                return true;
+
+            var pending = new Queue<StableId>();
+            var visited = new HashSet<StableId>();
+            var previous = new Dictionary<StableId, TravelStep>();
+            pending.Enqueue(startRoomStableId);
+            visited.Add(startRoomStableId);
+
+            while (pending.Count > 0)
+            {
+                StableId current = pending.Dequeue();
+                AuthorableRoomDefinition room =
+                    rooms.Definition.GetRoom(current);
+                for (int index = 0; index < room.Exits.Count; index++)
+                {
+                    RoomExitLinkDefinition exit = room.Exits[index];
+                    if (exit.LinkKind != RoomLiveLinkKind.Room
+                        || exit.TargetRoomStableId == null
+                        || visited.Contains(exit.TargetRoomStableId)
+                        || !IsRoomComplete(exit.TargetRoomStableId))
+                    {
+                        continue;
+                    }
+
+                    visited.Add(exit.TargetRoomStableId);
+                    previous.Add(
+                        exit.TargetRoomStableId,
+                        new TravelStep(current, exit.ExitStableId));
+                    if (exit.TargetRoomStableId == targetRoomStableId)
+                    {
+                        BuildRoute(
+                            startRoomStableId,
+                            targetRoomStableId,
+                            previous,
+                            route);
+                        return true;
+                    }
+                    pending.Enqueue(exit.TargetRoomStableId);
+                }
+            }
+            return false;
+        }
+
+        private static void BuildRoute(
+            StableId startRoomStableId,
+            StableId targetRoomStableId,
+            IReadOnlyDictionary<StableId, TravelStep> previous,
+            List<StableId> route)
+        {
+            StableId current = targetRoomStableId;
+            while (current != startRoomStableId)
+            {
+                TravelStep step = previous[current];
+                route.Add(step.ExitStableId);
+                current = step.FromRoomStableId;
+            }
+            route.Reverse();
+        }
+
+        private StableId NextTeleportOperation()
+        {
+            teleportSequence = checked(teleportSequence + 1L);
+            return StableId.Create(
+                "operation",
+                "map-teleport-" + teleportSequence);
+        }
+
         private void HandleRoomChanged()
         {
             if (!isBound
@@ -278,6 +528,8 @@ namespace ShooterMover.UI.Game
                 return;
             }
             view.SetCurrentRoom(rooms.CurrentRoomStableId);
+            BuildRoomTeleporters();
+            RefreshTeleporters();
         }
 
         private void RejectBinding(string code)
@@ -289,10 +541,27 @@ namespace ShooterMover.UI.Game
         private void OnDestroy()
         {
             Close();
+            ClearRoomTeleporters();
+            if (view != null)
+                view.TeleporterClicked -= HandleTeleporterClicked;
             if (rooms != null)
             {
                 rooms.CurrentRoomPresentationRebuilt -= HandleRoomChanged;
             }
+        }
+
+        private sealed class TravelStep
+        {
+            public TravelStep(
+                StableId fromRoomStableId,
+                StableId exitStableId)
+            {
+                FromRoomStableId = fromRoomStableId;
+                ExitStableId = exitStableId;
+            }
+
+            public StableId FromRoomStableId { get; }
+            public StableId ExitStableId { get; }
         }
     }
 }
