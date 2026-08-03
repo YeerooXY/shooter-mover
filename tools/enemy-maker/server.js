@@ -9,7 +9,7 @@ const { validateEnemy, validateLeveling } = require("./enemy-schema.js");
 
 const root = path.resolve(process.argv.includes("--repo") ? process.argv[process.argv.indexOf("--repo") + 1] : path.join(__dirname, "..", ".."));
 const port = Number(process.argv.includes("--port") ? process.argv[process.argv.indexOf("--port") + 1] : 4174);
-const content = path.resolve(root, "Assets/ShooterMover/Content/Definitions/Enemies");
+const content = path.resolve(root, "Content/Enemies");
 const token = crypto.randomBytes(24).toString("hex");
 const staticTypes = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml" };
 
@@ -87,7 +87,9 @@ async function api(req, res, url) {
   if (req.method === "PUT" && url.pathname === "/api/enemy") {
     const body = await readBody(req);
     const enemy = body.enemy;
-    const errors = validateEnemy(enemy, enemy?.id);
+    const originalId = body.originalId === null || body.originalId === undefined ? null : String(body.originalId);
+    const errors = validateEnemy(enemy, originalId || enemy?.id);
+    if (originalId && enemy?.id !== originalId) errors.push("Loaded enemy IDs cannot be renamed in place. Create a new enemy instead.");
     if (errors.length) return sendJson(res, 400, { errors });
     atomicWrite(safeEnemyFile(enemy.id), enemy);
     return sendJson(res, 200, { saved: path.relative(root, safeEnemyFile(enemy.id)).replace(/\\/g, "/") });
