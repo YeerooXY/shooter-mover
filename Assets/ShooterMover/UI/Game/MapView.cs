@@ -29,6 +29,11 @@ namespace ShooterMover.UI.Game
                 ?? throw new ArgumentNullException(nameof(configuredLayout));
             links.Clear();
             linkKeys.Clear();
+            roomNameStyle = null;
+            roomNoteStyle = null;
+            playerStyle = null;
+            titleStyle = null;
+            hintStyle = null;
         }
 
         public void AddConnection(
@@ -156,9 +161,8 @@ namespace ShooterMover.UI.Game
                     continue;
                 }
 
-                Vector2 direction = to.Rect.center - from.Rect.center;
-                Vector2 start = RoomEdge(from.Rect, direction);
-                Vector2 end = RoomEdge(to.Rect, -direction);
+                Vector2 start = RoomEdge(from, to);
+                Vector2 end = RoomEdge(to, from);
                 DrawLine(ToScreen(start), ToScreen(end), width);
             }
         }
@@ -258,18 +262,38 @@ namespace ShooterMover.UI.Game
             GUI.matrix = previous;
         }
 
-        private static Vector2 RoomEdge(Rect room, Vector2 direction)
+        private static Vector2 RoomEdge(
+            MapLayout.Room room,
+            MapLayout.Room target)
         {
-            if (direction.sqrMagnitude <= 0.0001f)
-                return room.center;
-            Vector2 unit = direction.normalized;
-            float x = Mathf.Abs(unit.x) <= 0.0001f
-                ? float.PositiveInfinity
-                : room.width * 0.5f / Mathf.Abs(unit.x);
-            float y = Mathf.Abs(unit.y) <= 0.0001f
-                ? float.PositiveInfinity
-                : room.height * 0.5f / Mathf.Abs(unit.y);
-            return room.center + unit * Mathf.Min(x, y);
+            Vector2Int gridDifference = target.Grid - room.Grid;
+            Vector2 centreDifference = target.Rect.center - room.Rect.center;
+            if (gridDifference == Vector2Int.zero
+                || centreDifference.sqrMagnitude <= 0.0001f)
+            {
+                return room.Rect.center;
+            }
+
+            if (Mathf.Abs(gridDifference.x) >= Mathf.Abs(gridDifference.y))
+            {
+                float x = gridDifference.x < 0
+                    ? room.Rect.xMin
+                    : room.Rect.xMax;
+                float yOffset = Mathf.Clamp(
+                    gridDifference.y,
+                    -1,
+                    1) * room.Rect.height * 0.24f;
+                return new Vector2(x, room.Rect.center.y + yOffset);
+            }
+
+            float y = gridDifference.y < 0
+                ? room.Rect.yMin
+                : room.Rect.yMax;
+            float xOffset = Mathf.Clamp(
+                gridDifference.x,
+                -1,
+                1) * room.Rect.width * 0.24f;
+            return new Vector2(room.Rect.center.x + xOffset, y);
         }
 
         private static Vector2 ToScreen(Vector2 point)
