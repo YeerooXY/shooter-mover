@@ -41,17 +41,15 @@
 
   function isPlaceableAsset(asset, placedInstanceIds) {
     const id = String(asset?.id || "").trim();
-    if (!id) return false;
-    if (containsId(placedInstanceIds, id)) return false;
-    if (isOpaqueInstanceId(id)) return false;
+    if (!id || isOpaqueInstanceId(id)) return false;
 
-    // Generated level documents contain both placement IDs and the reusable runtime
-    // object IDs referenced by those placements. Keep canonical runtime IDs such as
-    // tile.floor-industrial and prop.wall-1x1, while continuing to reject hash IDs.
-    if (isGeneratedPlacementSource(asset?.source)) {
-      return isReusableRuntimeAssetId(id);
-    }
-    return true;
+    // Runtime object IDs describe reusable catalogue entries, not individual room
+    // placements. Some imported rooms unfortunately reuse an object ID as the
+    // placement ID, so these must be accepted before checking placedInstanceIds.
+    if (isReusableRuntimeAssetId(id)) return true;
+
+    if (containsId(placedInstanceIds, id)) return false;
+    return !isGeneratedPlacementSource(asset?.source);
   }
 
   return Object.freeze({
