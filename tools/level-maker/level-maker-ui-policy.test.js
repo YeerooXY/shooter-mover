@@ -32,6 +32,16 @@ assert.equal(policy.isPlaceableAsset({
 }), true);
 
 assert.equal(policy.isPlaceableAsset({
+  id: "prop.wall-1x1",
+  source: "BuiltInRoomContentObjectCatalog",
+}, new Set(["prop.wall-1x1"])), true);
+
+assert.equal(policy.isPlaceableAsset({
+  id: "tile.floor-industrial",
+  source: generatedRoomSource,
+}, new Set(["tile.floor-industrial"])), true);
+
+assert.equal(policy.isPlaceableAsset({
   id: "prop.003c93c3",
   source: generatedRoomSource,
 }), false);
