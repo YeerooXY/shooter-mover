@@ -43,13 +43,21 @@
     const id = String(asset?.id || "").trim();
     if (!id || isOpaqueInstanceId(id)) return false;
 
+    const placed = containsId(placedInstanceIds, id);
+    const source = normalizeSource(asset?.source);
+
+    // A manually entered ID that is already used as a placement is an instance,
+    // not another catalogue card. Keep filtering it even if its spelling resembles
+    // a runtime ID.
+    if (placed && source === "manual") return false;
+
     // Runtime object IDs describe reusable catalogue entries, not individual room
-    // placements. Some imported rooms unfortunately reuse an object ID as the
-    // placement ID, so these must be accepted before checking placedInstanceIds.
+    // placements. Imported rooms sometimes reuse an object ID as the placement ID,
+    // so canonical runtime objects must survive that collision.
     if (isReusableRuntimeAssetId(id)) return true;
 
-    if (containsId(placedInstanceIds, id)) return false;
-    return !isGeneratedPlacementSource(asset?.source);
+    if (placed) return false;
+    return !isGeneratedPlacementSource(source);
   }
 
   return Object.freeze({
