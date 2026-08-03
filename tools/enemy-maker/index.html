@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Enemy Maker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Shooter Mover</p>
+      <h1>Enemy Maker</h1>
+    </div>
+    <nav class="tabs" aria-label="Workspace">
+      <button class="tab active" data-workspace="enemy">Enemy</button>
+      <button class="tab" data-workspace="leveling">Leveling</button>
+      <button class="tab" data-workspace="json">Advanced JSON</button>
+    </nav>
+    <div class="actions">
+      <button id="newEnemy" class="ghost">New enemy</button>
+      <button id="save" class="primary">Save</button>
+    </div>
+  </header>
+
+  <main class="shell">
+    <aside class="sidebar">
+      <label class="search"><span>Enemies</span><input id="search" type="search" placeholder="Search enemies"></label>
+      <div id="enemyList" class="enemy-list"></div>
+      <p id="contentPath" class="path"></p>
+    </aside>
+
+    <section id="enemyWorkspace" class="workspace">
+      <div class="form-grid">
+        <article class="panel">
+          <h2>Identity</h2>
+          <label>ID <input id="id" autocomplete="off" placeholder="rattler-droid"></label>
+          <label>Name <input id="name" autocomplete="off" placeholder="Rattler Droid"></label>
+          <label>Type
+            <select id="type">
+              <option value="shooter">Shooter</option>
+              <option value="contact">Contact</option>
+              <option value="pouncer">Pouncer</option>
+              <option value="popcorn">Popcorn</option>
+            </select>
+          </label>
+          <label>Art ID <input id="art" autocomplete="off" placeholder="rattler-droid"></label>
+          <label>Drop profile <input id="drops" autocomplete="off" placeholder="normal"></label>
+        </article>
+
+        <article class="panel">
+          <h2>Combat</h2>
+          <label>Base health <input id="hp" type="number" min="0.01" step="0.1"></label>
+          <label id="gunRow">Canonical gun
+            <input id="gun" list="gunOptions" autocomplete="off" placeholder="rattler.mk1">
+            <datalist id="gunOptions"></datalist>
+            <span id="gunCount" class="field-note"></span>
+          </label>
+          <label id="damageRow" hidden>Contact damage <input id="damage" type="number" min="0.01" step="0.1"></label>
+          <label>Preferred range <input id="range" type="number" min="0" step="0.1"></label>
+          <label>Detection range <input id="detect" type="number" min="0" step="0.1"></label>
+        </article>
+
+        <article class="panel">
+          <h2>Movement & scaling</h2>
+          <label>Movement
+            <select id="move">
+              <option value="direct">Direct</option>
+              <option value="wander">Wander</option>
+              <option value="strafe">Strafe</option>
+              <option value="fly">Fly</option>
+              <option value="stationary">Stationary</option>
+            </select>
+          </label>
+          <label>Speed <input id="speed" type="number" min="0" step="0.1"></label>
+          <label>Health scale <input id="scale" type="number" min="0.01" step="0.01"></label>
+          <p class="help">Health uses <code>strength ^ scale</code>. Damage uses the global power in Leveling.</p>
+        </article>
+
+        <article class="panel">
+          <h2>Body</h2>
+          <label>Shape
+            <select id="shape">
+              <option value="circle">Circle</option>
+              <option disabled>Box — planned</option>
+              <option disabled>Ellipse — planned</option>
+              <option disabled>Polygon / triangle — planned</option>
+            </select>
+          </label>
+          <label>Radius <input id="radius" type="number" min="0.01" step="0.01"></label>
+          <div class="pair">
+            <label>Offset X <input id="offsetX" type="number" step="0.01"></label>
+            <label>Offset Y <input id="offsetY" type="number" step="0.01"></label>
+          </div>
+          <p class="help">The saved <code>body.shape</code> is permanent. Circle is only the first supported adapter.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="levelingWorkspace" class="workspace" hidden>
+      <div class="form-grid leveling-grid">
+        <article class="panel">
+          <h2>Progression</h2>
+          <label>Maximum level <input id="maxLevel" type="number" min="2" step="1"></label>
+          <label>Strength at maximum <input id="strengthAtMax" type="number" min="1" step="0.1"></label>
+          <label>Enemy damage power <input id="damagePower" type="number" min="0.01" step="0.01"></label>
+          <p class="help">Strength grows exponentially from ×1 at level 1 to this maximum. Each enemy chooses how much of that curve its health follows.</p>
+        </article>
+        <article class="panel color-panel">
+          <div class="panel-heading"><h2>Level colors</h2><button id="addColor" class="ghost small">Add stop</button></div>
+          <div id="colorStops" class="color-stops"></div>
+          <div id="gradient" class="gradient"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="jsonWorkspace" class="workspace" hidden>
+      <article class="panel json-panel">
+        <h2>Canonical enemy JSON</h2>
+        <textarea id="json" spellcheck="false"></textarea>
+        <p class="help">This is the exact file saved to the repository. Valid JSON updates the guided form without rewriting the text or moving the cursor.</p>
+      </article>
+    </section>
+
+    <aside class="preview-column">
+      <article class="preview-card">
+        <div class="panel-heading"><h2>Preview</h2><span id="shapeBadge" class="badge">circle</span></div>
+        <canvas id="preview" width="520" height="420"></canvas>
+        <label class="level-slider">Enemy level <strong id="levelValue">1</strong><input id="level" type="range" min="1" max="100" value="1"></label>
+        <div class="stats">
+          <div><span>Health</span><strong id="previewHp">—</strong></div>
+          <div><span>Damage</span><strong id="previewDamage">—</strong></div>
+          <div><span>Strength</span><strong id="previewStrength">—</strong></div>
+          <div><span>Color</span><strong id="previewColor">—</strong></div>
+        </div>
+      </article>
+      <article class="panel checks">
+        <h2>Checks</h2>
+        <div id="checks" class="check-list">Loading…</div>
+      </article>
+    </aside>
+  </main>
+
+  <script src="enemy-schema.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
