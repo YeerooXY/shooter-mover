@@ -1,19 +1,19 @@
-# Item Maker
+# Weapon Maker
 
-Run `Start-ItemMaker.ps1` from this folder. It opens a local-only web app at
-`http://127.0.0.1:4173`. Node.js is required; no npm install is needed.
+Run `Start-ItemMaker.ps1` from this folder. It starts the local-only helper at
+`http://127.0.0.1:4173` and opens the guided Weapon Maker. Node.js is required;
+no npm install is needed.
 
-The editor owns two source formats:
+The canonical weapon source format is one split folder per family:
 
-- `Content/Items/Guns/<family-id>.gun.json`: one gun family with shared firing,
-  shot, delivery, guidance, impact, and effect behavior plus MK1–MK3 progression,
-  damage, and art.
-- `Content/Items/Gear/<set-id>.gear.json`: one four-piece set (headpiece,
-  body armor, legs, boots) with MK1–MK3 progression and typed stat modifiers.
+- `Content/Weapons/<category>/<weapon>/weapon.json`
+- `Content/Weapons/<category>/<weapon>/mk1.json`
+- `Content/Weapons/<category>/<weapon>/mk2.json`
+- `Content/Weapons/<category>/<weapon>/mk3.json`
 
-Saving through the helper writes atomically and regenerates
-`ItemPackageSources.g.cs`. Unity reads those generated sources through
-`ItemPackageCatalog`; raw JSON never needs to live under `Assets`.
+The helper validates the complete four-file folder in a staging directory before
+atomically replacing repository content. The Strongbox Simulator uses the same
+local helper and asks the open Unity project for authoritative production rolls.
 
 Repository controls are intentionally narrow:
 
@@ -22,12 +22,6 @@ Repository controls are intentionally narrow:
 - The helper never resets, commits, pushes, switches branches, merges, or deletes
   user work.
 
-Opening `index.html` directly remains supported as offline import/export mode.
-Gear stats labelled “pending” are retained as explicit metadata and do not
-silently affect gameplay. A gun with `runtimeStatus: runtime-pending` may appear
-in authoring/loot data, but firing must fail explicitly until its reusable
-runtime behavior is implemented.
-
-`node compile-packages.js <repository-path>` can be used by CI or pre-commit
-automation to validate package identities and regenerate the deterministic
-Unity source registry.
+The retired all-in-one `Item Package` gun/gear schema and its generated Unity
+registry have been removed. Gear authoring will use a dedicated canonical format
+when that system is implemented rather than reviving the old mixed package model.
