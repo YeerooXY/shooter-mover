@@ -1,6 +1,15 @@
 {
   "peakLevel": 50,
   "damage": 1,
+  "fire": {
+    "mode": "automatic",
+    "rate": 4
+  },
+  "impact": {
+    "pierce": 1,
+    "ricochet": 0,
+    "knockback": 0
+  },
   "art": {
     "side": "gun-art.rattler.mk3.side-v1",
     "mounted": "gun-art.rattler.mk3.mounted-top-v1"
