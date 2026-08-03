@@ -13,6 +13,8 @@ namespace ShooterMover.UI.Game
             new HashSet<string>(StringComparer.Ordinal);
         private readonly Dictionary<StableId, int> boxes =
             new Dictionary<StableId, int>();
+        private readonly HashSet<StableId> openTeleporters =
+            new HashSet<StableId>();
 
         private MapLayout layout;
         private StableId currentRoomStableId;
@@ -21,8 +23,11 @@ namespace ShooterMover.UI.Game
         private GUIStyle playerStyle;
         private GUIStyle pointStyle;
         private GUIStyle boxStyle;
+        private GUIStyle teleporterStyle;
         private GUIStyle titleStyle;
         private GUIStyle hintStyle;
+
+        public event Action<MapLayout.Teleporter> TeleporterClicked;
 
         public bool IsVisible { get { return isVisible; } }
 
@@ -32,10 +37,12 @@ namespace ShooterMover.UI.Game
                 ?? throw new ArgumentNullException(nameof(configuredLayout));
             links.Clear();
             linkKeys.Clear();
+            openTeleporters.Clear();
             roomNameStyle = null;
             playerStyle = null;
             pointStyle = null;
             boxStyle = null;
+            teleporterStyle = null;
             titleStyle = null;
             hintStyle = null;
         }
@@ -89,6 +96,26 @@ namespace ShooterMover.UI.Game
             boxes.Clear();
         }
 
+        public void SetTeleporterOpen(
+            StableId teleporterStableId,
+            bool isOpen)
+        {
+            EnsureBuilt();
+            MapLayout.Teleporter teleporter;
+            if (!layout.TryGetTeleporter(
+                teleporterStableId,
+                out teleporter))
+            {
+                throw new InvalidOperationException(
+                    "map-view-teleporter-missing:"
+                    + teleporterStableId);
+            }
+            if (isOpen)
+                openTeleporters.Add(teleporterStableId);
+            else
+                openTeleporters.Remove(teleporterStableId);
+        }
+
         public void Show(StableId roomStableId)
         {
             EnsureBuilt();
@@ -116,12 +143,26 @@ namespace ShooterMover.UI.Game
 
         private void OnGUI()
         {
-            if (!isVisible
-                || layout == null
-                || Event.current.type != EventType.Repaint)
+            if (!isVisible || layout == null)
+                return;
+
+            Event current = Event.current;
+            if (current.type == EventType.MouseDown && current.button == 0)
             {
+                MapLayout.Teleporter teleporter = FindTeleporter(
+                    current.mousePosition);
+                if (teleporter != null
+                    && openTeleporters.Contains(
+                        teleporter.TeleporterStableId))
+                {
+                    current.Use();
+                    Action<MapLayout.Teleporter> handler = TeleporterClicked;
+                    if (handler != null) handler(teleporter);
+                }
                 return;
             }
+            if (current.type != EventType.Repaint)
+                return;
 
             EnsureStyles();
             int previousDepth = GUI.depth;
@@ -242,6 +283,20 @@ namespace ShooterMover.UI.Game
                         "!");
                 }
 
+                for (int teleporterIndex = 0;
+                    teleporterIndex < room.Teleporters.Count;
+                    teleporterIndex++)
+                {
+                    MapLayout.Teleporter teleporter =
+                        room.Teleporters[teleporterIndex];
+                    if (!teleporter.Enabled) continue;
+                    DrawTeleporter(
+                        teleporter,
+                        openTeleporters.Contains(
+                            teleporter.TeleporterStableId),
+                        current);
+                }
+
                 int boxCount;
                 if (boxes.TryGetValue(room.RoomStableId, out boxCount)
                     && boxCount > 0)
@@ -285,6 +340,54 @@ namespace ShooterMover.UI.Game
             GUI.Label(border, label, pointStyle);
         }
 
+        private void DrawTeleporter(
+            MapLayout.Teleporter teleporter,
+            bool isOpen,
+            bool isCurrentRoom)
+        {
+            Rect icon = TeleporterRect(teleporter);
+            GUI.color = isOpen
+                ? isCurrentRoom
+                    ? new Color(0.28f, 0.92f, 1f, 1f)
+                    : new Color(0.72f, 0.42f, 1f, 1f)
+                : new Color(0.34f, 0.38f, 0.45f, 1f);
+            GUI.Label(icon, "◎", teleporterStyle);
+        }
+
+        private MapLayout.Teleporter FindTeleporter(Vector2 screenPoint)
+        {
+            for (int roomIndex = layout.Rooms.Count - 1;
+                roomIndex >= 0;
+                roomIndex--)
+            {
+                MapLayout.Room room = layout.Rooms[roomIndex];
+                for (int teleporterIndex = room.Teleporters.Count - 1;
+                    teleporterIndex >= 0;
+                    teleporterIndex--)
+                {
+                    MapLayout.Teleporter teleporter =
+                        room.Teleporters[teleporterIndex];
+                    if (teleporter.Enabled
+                        && TeleporterRect(teleporter).Contains(screenPoint))
+                    {
+                        return teleporter;
+                    }
+                }
+            }
+            return null;
+        }
+
+        private Rect TeleporterRect(MapLayout.Teleporter teleporter)
+        {
+            Vector2 point = ToScreen(teleporter.MapPosition);
+            float size = Mathf.Max(18f, 22f * layout.Scale);
+            return new Rect(
+                point.x - size * 0.5f,
+                point.y - size * 0.5f,
+                size,
+                size);
+        }
+
         private void DrawBox(Rect room, int count)
         {
             float size = Mathf.Max(10f, 13f * layout.Scale);
@@ -322,7 +425,7 @@ namespace ShooterMover.UI.Game
                 titleStyle);
             GUI.Label(
                 new Rect(0f, Screen.height - 42f, Screen.width, 24f),
-                "M  CLOSE",
+                "M  CLOSE · CLICK ◎ TO TRAVEL",
                 hintStyle);
         }
 
@@ -429,6 +532,13 @@ namespace ShooterMover.UI.Game
                 fontSize = Mathf.Max(8, Mathf.RoundToInt(11f * layout.Scale)),
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = new Color(1f, 0.82f, 0.38f, 1f) },
+            };
+            teleporterStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = Mathf.Max(18, Mathf.RoundToInt(24f * layout.Scale)),
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = Color.white },
             };
             titleStyle = new GUIStyle(GUI.skin.label)
             {
