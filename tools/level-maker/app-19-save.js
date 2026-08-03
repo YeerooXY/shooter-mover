@@ -35,6 +35,21 @@
     }
   }
 
+  function legacyEditorFile(project) {
+    if (!project?.editor && !project?.activeRoomId && !project?.catalog) return null;
+    const customAssets = Array.isArray(project.catalog)
+      ? project.catalog.filter(asset => asset?.source === "manual").map(clone)
+      : [];
+    return {
+      version: LevelSave.EDITOR_VERSION,
+      levelId: project.level.id,
+      activeRoomId:
+        project.activeRoomId || project.level.startRoomId || project.rooms?.[0]?.id || null,
+      editor: clone(project.editor || {}),
+      customAssets,
+    };
+  }
+
   function saveEditorNow() {
     if (editorSaveTimer) {
       clearTimeout(editorSaveTimer);
@@ -97,10 +112,7 @@
   function openSavedLevel(project) {
     LevelSave.checkLevelFile(project);
     const previousAssets = clone(state.assets || []);
-    const oldEditor = project.editor || project.activeRoomId || project.catalog
-      ? LevelSave.makeEditorFile(project)
-      : null;
-    const editor = oldEditor || readEditorFile(project.level.id);
+    const editor = legacyEditorFile(project) || readEditorFile(project.level.id);
 
     state = LevelSave.openLevelFile(project, editor, initialState().editor);
     mergeKnownAssets(previousAssets);
@@ -119,11 +131,11 @@
     recoveryRestoredAt = String(cleanRecovery.savedAt || "");
   } else {
     const currentLevel = LevelSave.makeLevelFile(state);
-    const oldEditor = LevelSave.makeEditorFile(state);
+    const currentEditor = LevelSave.makeEditorFile(state);
     const savedEditor = readEditorFile(currentLevel.level.id);
     state = LevelSave.openLevelFile(
       currentLevel,
-      savedEditor || oldEditor,
+      savedEditor || currentEditor,
       initialState().editor
     );
   }
