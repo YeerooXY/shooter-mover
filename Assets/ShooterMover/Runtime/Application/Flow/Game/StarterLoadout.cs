@@ -7,6 +7,7 @@ using ShooterMover.Contracts.Holdings;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Guns;
+using ShooterMover.Domain.Holdings;
 
 namespace ShooterMover.Application.Flow.Game
 {
