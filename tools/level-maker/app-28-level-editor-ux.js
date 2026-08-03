@@ -5,6 +5,7 @@
   const previousRenderHeaderFields = renderHeaderFields;
   const previousRenderAssets = renderAssets;
   const previousSetViewMode = setViewMode;
+  const previousSetTool = setTool;
 
   const ASSET_TYPES = [
     ["all", "All"],
@@ -17,7 +18,8 @@
 
   const stylesheet = document.createElement("style");
   stylesheet.textContent = `
-    #map-tools {
+    #map-tools,
+    #asset-group-switch {
       display: none !important;
     }
 
@@ -81,25 +83,46 @@
       display: none !important;
     }
 
-    body.room-focus #asset-group-switch {
+    #asset-palette.unified-asset-palette {
+      display: none;
       top: 58px !important;
       left: 14px !important;
+      right: auto !important;
+      bottom: auto !important;
+      width: min(320px, calc(100% - 28px)) !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      padding: 10px !important;
+      overflow: hidden !important;
+      z-index: 37;
     }
-    body.room-focus #asset-palette.authoring-group-palette {
-      top: 102px !important;
-      left: 14px !important;
-      max-height: min(520px, calc(100% - 132px));
+    body.room-focus #asset-palette.unified-asset-palette {
+      display: block;
     }
-
+    #asset-palette.unified-asset-palette .palette-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    #asset-palette.unified-asset-palette .palette-title {
+      color: #dbe7f6;
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    #asset-palette.unified-asset-palette .palette-count {
+      color: var(--muted);
+      font-size: 9px;
+    }
     .room-asset-type-switch {
       display: flex;
       flex-wrap: wrap;
       gap: 5px;
-      margin: 8px 0;
-      padding: 7px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(12, 17, 24, .48);
+      margin-bottom: 9px;
     }
     .room-asset-type-switch button {
       padding: 5px 8px;
@@ -109,8 +132,66 @@
       outline: 2px solid var(--accent);
       border-color: transparent;
     }
-    .room-asset-empty {
-      margin: 8px 0 0;
+    #asset-palette.unified-asset-palette .palette-grid {
+      display: grid;
+      gap: 7px;
+      max-height: min(460px, calc(100vh - 205px));
+      padding-right: 5px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      scrollbar-gutter: stable;
+      scrollbar-width: thin;
+      scrollbar-color: #607089 #151b24;
+    }
+    #asset-palette.unified-asset-palette .palette-grid::-webkit-scrollbar {
+      width: 10px;
+    }
+    #asset-palette.unified-asset-palette .palette-grid::-webkit-scrollbar-track {
+      background: #151b24;
+      border-radius: 8px;
+    }
+    #asset-palette.unified-asset-palette .palette-grid::-webkit-scrollbar-thumb {
+      background: #607089;
+      border: 2px solid #151b24;
+      border-radius: 8px;
+    }
+    #asset-palette.unified-asset-palette .palette-asset {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      min-height: 48px;
+      padding: 7px 9px;
+      text-align: left;
+    }
+    #asset-palette.unified-asset-palette .palette-asset > span {
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      background: #293342;
+      font-size: 16px;
+    }
+    #asset-palette.unified-asset-palette .palette-asset > b {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 11px;
+    }
+    #asset-palette.unified-asset-palette .palette-asset.selected {
+      border-color: var(--accent);
+      background: #263d52;
+      box-shadow: 0 0 0 1px var(--accent) inset;
+    }
+    #asset-palette.unified-asset-palette .palette-asset[disabled] {
+      opacity: .42;
+      cursor: not-allowed;
+    }
+    #asset-palette.unified-asset-palette .palette-empty {
+      margin: 0;
     }
 
     @media (max-width: 1050px) {
@@ -135,6 +216,10 @@
         right: 8px;
         max-width: calc(100% - 16px);
         overflow-x: auto;
+      }
+      #asset-palette.unified-asset-palette {
+        left: 8px !important;
+        width: min(310px, calc(100% - 16px)) !important;
       }
     }
   `;
@@ -180,81 +265,107 @@
     state.editor.selectedAssetId = replacement?.id || "";
   }
 
-  function preferredGroupForType(type) {
-    if (type === "all") return state.editor.assetGroup;
-    const matching = placeableAssets().filter(asset => asset.type === type);
-    if (!matching.length) return state.editor.assetGroup;
-    const counts = matching.reduce((result, asset) => {
-      const group = AuthoringUx.assetGroup(asset);
-      result[group] = (result[group] || 0) + 1;
-      return result;
-    }, {});
-    return (counts.interactive || 0) > (counts.static || 0)
-      ? "interactive"
-      : "static";
+  function assetTool(asset) {
+    if (asset.type === "enemy") return "enemy";
+    if (asset.type === "floor") return "tile";
+    if (asset.type === "door") return "door";
+    if (asset.type === "prop" && String(asset.id).startsWith("prop.wall-")) return "wall";
+    return "prop";
   }
 
-  function renderAssetTypeSwitch() {
-    const palette = document.querySelector("#asset-palette.authoring-group-palette");
-    if (!palette || state.editor.viewMode !== "room") return;
+  function activeAssetFilter() {
+    const filter = String(state.editor.assetTypeFilter || "all");
+    return ASSET_TYPES.some(([value]) => value === filter) ? filter : "all";
+  }
 
-    let filter = String(state.editor.assetTypeFilter || "all");
-    if (!ASSET_TYPES.some(([value]) => value === filter)) filter = "all";
+  function filteredAssets() {
+    const filter = activeAssetFilter();
+    return placeableAssets().filter(asset => filter === "all" || asset.type === filter);
+  }
+
+  function specialTools(filter) {
+    const entries = [
+      { tool: "player", type: "all", label: "Player spawn", icon: "●", disabled: currentRoom()?.id !== state.level.startRoomId },
+      { tool: "tile-erase", type: "floor", label: "Erase floor", icon: "⌫", disabled: false },
+      { tool: "teleporter", type: "decor", label: "Teleporter", icon: "◎", disabled: false },
+    ];
+    return entries.filter(entry => filter === "all" || entry.type === filter);
+  }
+
+  function removeLegacyAssetUi() {
+    document.querySelector("#asset-group-switch")?.remove();
+  }
+
+  function renderUnifiedPalette() {
+    removeLegacyAssetUi();
+    const palette = document.querySelector("#asset-palette");
+    if (!palette) return;
+
+    palette.classList.remove("authoring-group-palette");
+    palette.classList.add("unified-asset-palette");
+    const visible = state.editor.viewMode === "room" && state.editor.focusRoom !== false;
+    palette.style.display = visible ? "block" : "none";
+    if (!visible) return;
+
+    const filter = activeAssetFilter();
     state.editor.assetTypeFilter = filter;
+    const assets = filteredAssets();
+    const specials = specialTools(filter);
+    const lockedEnemyRoom = currentRoom()?.id === state.level.startRoomId;
 
-    palette.querySelector(".room-asset-type-switch")?.remove();
-    const title = palette.querySelector(".palette-title");
-    const switcher = document.createElement("div");
-    switcher.className = "room-asset-type-switch";
-    switcher.setAttribute("aria-label", "Asset type");
-    switcher.innerHTML = ASSET_TYPES.map(([value, label]) => `
-      <button type="button" data-room-asset-type="${value}" class="${filter === value ? "active" : ""}">${label}</button>`
-    ).join("");
-    (title || palette.firstElementChild)?.after(switcher);
+    palette.innerHTML = `
+      <div class="palette-title-row">
+        <div class="palette-title">Assets</div>
+        <span class="palette-count">${assets.length} available</span>
+      </div>
+      <div class="room-asset-type-switch" aria-label="Asset type">
+        ${ASSET_TYPES.map(([value, label]) => `
+          <button type="button" data-room-asset-type="${value}" class="${filter === value ? "active" : ""}">${label}</button>
+        `).join("")}
+      </div>
+      <div class="palette-grid">
+        ${specials.map(entry => `
+          <button class="palette-asset" type="button" data-special-tool="${entry.tool}" ${entry.disabled ? "disabled" : ""}>
+            <span>${entry.icon}</span><b>${entry.label}</b>
+          </button>
+        `).join("")}
+        ${assets.map(asset => {
+          const disabled = asset.type === "enemy" && lockedEnemyRoom;
+          return `<button class="palette-asset ${asset.id === state.editor.selectedAssetId ? "selected" : ""}"
+            type="button" data-palette-asset="${esc(asset.id)}" ${disabled ? "disabled" : ""} title="${esc(asset.id)}">
+            <span>${iconFor(asset.type)}</span><b>${esc(asset.label || asset.id)}</b>
+          </button>`;
+        }).join("")}
+        ${!assets.length && !specials.length
+          ? `<div class="notice palette-empty">No ${ASSET_TYPES.find(([value]) => value === filter)?.[1].toLowerCase() || "assets"} are available.</div>`
+          : ""}
+      </div>`;
 
-    switcher.querySelectorAll("[data-room-asset-type]").forEach(button => {
+    palette.querySelectorAll("[data-room-asset-type]").forEach(button => {
       button.addEventListener("click", () => {
-        const type = button.dataset.roomAssetType;
-        state.editor.assetTypeFilter = type;
-        state.editor.assetGroup = preferredGroupForType(type);
-        renderHeaderFields();
-        renderAssets();
-        renderCanvas();
-        renderFooter();
+        state.editor.assetTypeFilter = button.dataset.roomAssetType;
+        renderUnifiedPalette();
         scheduleRecoverySave();
       });
     });
 
-    let visibleCount = 0;
-    palette.querySelectorAll("[data-group-asset]").forEach(button => {
-      button.dataset.paletteAsset = button.dataset.groupAsset;
-      const asset = state.assets.find(value => value.id === button.dataset.groupAsset);
-      const visible = filter === "all" || asset?.type === filter;
-      button.hidden = !visible;
-      if (visible) visibleCount += 1;
-    });
     palette.querySelectorAll("[data-special-tool]").forEach(button => {
-      button.hidden = filter !== "all";
+      button.addEventListener("click", () => {
+        setTool(button.dataset.specialTool);
+        renderAll();
+      });
     });
 
-    palette.querySelector(".room-asset-empty")?.remove();
-    if (filter !== "all" && visibleCount === 0) {
-      const empty = document.createElement("div");
-      empty.className = "notice room-asset-empty";
-      empty.textContent = `No ${ASSET_TYPES.find(([value]) => value === filter)?.[1].toLowerCase() || "assets"} are available in this group.`;
-      palette.querySelector(".palette-grid")?.after(empty);
-    }
-  }
-
-  function installGroupReset() {
-    const switcher = document.querySelector("#asset-group-switch");
-    if (!switcher || switcher.dataset.typeResetInstalled) return;
-    switcher.dataset.typeResetInstalled = "true";
-    switcher.addEventListener("click", event => {
-      if (!event.target.closest("[data-asset-group]")) return;
-      state.editor.assetTypeFilter = "all";
-      queueMicrotask(renderAssetTypeSwitch);
-    }, true);
+    palette.querySelectorAll("[data-palette-asset]").forEach(button => {
+      button.addEventListener("click", () => {
+        const asset = state.assets.find(value => value.id === button.dataset.paletteAsset);
+        if (!asset) return;
+        state.editor.selectedAssetId = asset.id;
+        setTool(assetTool(asset));
+        renderAll();
+        scheduleRecoverySave();
+      });
+    });
   }
 
   function installPersistentControls() {
@@ -282,9 +393,7 @@
       controls.appendChild(divider);
     }
 
-    if (viewButton && viewButton.parentElement !== controls) {
-      controls.appendChild(viewButton);
-    }
+    if (viewButton && viewButton.parentElement !== controls) controls.appendChild(viewButton);
 
     let gridLabel = controls.querySelector('[data-persistent-label="grid"]');
     if (!gridLabel) {
@@ -324,10 +433,10 @@
   }
 
   function syncUxChrome() {
+    removeLegacyAssetUi();
     installPersistentControls();
     tidyRoomToolbar();
-    installGroupReset();
-    renderAssetTypeSwitch();
+    renderUnifiedPalette();
     useModelessMap();
   }
 
@@ -353,6 +462,11 @@
   setViewMode = function setModelessLevelView(mode, options) {
     previousSetViewMode(mode, options);
     if (mode === "map" && state.editor.mapMode === "open") setMapMode("arrange");
+    syncUxChrome();
+  };
+
+  setTool = function setToolWithoutLegacyPalette(tool) {
+    previousSetTool(tool);
     syncUxChrome();
   };
 
