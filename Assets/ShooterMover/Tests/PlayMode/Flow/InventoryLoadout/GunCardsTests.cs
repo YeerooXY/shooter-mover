@@ -14,7 +14,7 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
     public sealed class GunCardsTests
     {
         [Test]
-        public void RattlerCardProjectsConfirmedCanonicalStatsAndTemporaryArt()
+        public void RattlerCardProjectsConfirmedCanonicalStatsAndSideProfileArt()
         {
             GunInventoryCardPresentation presentation;
             string rejectionCode;
@@ -32,7 +32,6 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
             Assert.That(presentation.DamagePerShot, Is.EqualTo(1d));
             Assert.That(presentation.ProjectilesPerShot, Is.EqualTo(1));
             Assert.That(presentation.RateOfFire, Is.EqualTo(4d));
-            Assert.That(presentation.ImageResourceKey, Is.EqualTo("blaster_sp"));
             Assert.That(
                 presentation.SideProfileArtReference,
                 Is.EqualTo("gun-art.rattler.mk1.side-v1"));
