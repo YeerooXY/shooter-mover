@@ -1,18 +1,22 @@
 "use strict";
 
 const assert = require("assert");
+const FloorData = require("./floor-data");
 const LevelSave = require("./level-save");
 
-const crossTiles = [];
-for (let y = 0; y < 5; y++) crossTiles.push({ x: 2, y, object: "tile.floor-industrial" });
-for (let x = 0; x < 5; x++) {
-  if (x !== 2) crossTiles.push({ x, y: 2, object: "tile.floor-industrial" });
-}
+const room = {
+  id: "room.test-start",
+  bounds: { width: 5, height: 5 },
+  floor: FloorData.makeFloor(5, 5, null),
+  entities: [],
+  doors: [],
+};
+for (let y = 0; y < 5; y++) FloorData.setFloorTile(room, 2, y, "tile.floor-industrial");
+for (let x = 0; x < 5; x++) FloorData.setFloorTile(room, x, 2, "tile.floor-industrial");
 
 const state = {
   format: "shooter-mover-web-level-project",
-  editorVersion: 1,
-  schemaVersion: 2,
+  schemaVersion: 4,
   level: {
     id: "level.test",
     name: "Test Level",
@@ -20,26 +24,17 @@ const state = {
     startRoomId: "room.test-start",
     finalRoomId: "room.test-start",
     finalExitDoorId: "door.test-exit",
+    rooms: [room],
+    connections: [],
+    logic: [],
   },
-  rooms: [
-    {
-      id: "room.test-start",
-      bounds: { width: 5, height: 5 },
-      floorObject: "tile.floor-industrial",
-      tileGridEnabled: true,
-      tiles: crossTiles,
-      entities: [],
-      doors: [],
-    },
-  ],
-  connections: [],
-  logic: [],
-  catalog: [
+  assets: [
     { id: "enemy.test", type: "enemy", source: "EnemyCatalog" },
     { id: "tile.custom", type: "floor", source: "manual" },
   ],
-  activeRoomId: "room.test-start",
   editor: {
+    activeRoomId: "room.test-start",
+    customAssets: [],
     tool: "tile",
     selectedAssetId: "tile.custom",
     zoom: 48,
@@ -65,8 +60,9 @@ assert.ok(!("catalog" in levelFile));
 assert.ok(!JSON.stringify(levelFile).includes("selectedAssetId"));
 assert.ok(!JSON.stringify(levelFile).includes('"cells"'));
 assert.strictEqual(levelFile.rooms[0].floor.format, "grid");
-assert.ok(!("tiles" in levelFile.rooms[0]));
-assert.ok(!("tileGridEnabled" in levelFile.rooms[0]));
+for (const oldName of ["tiles", "tileGridEnabled", "floorObject"]) {
+  assert.strictEqual(oldName in levelFile.rooms[0], false);
+}
 
 const editorFile = LevelSave.makeEditorFile(state);
 assert.strictEqual(editorFile.activeRoomId, "room.test-start");
@@ -82,16 +78,13 @@ const opened = LevelSave.openLevelFile(levelFile, editorFile, {
 });
 assert.strictEqual(opened.level.id, "level.test");
 assert.strictEqual(opened.level.rooms.length, 1);
-assert.strictEqual(opened.rooms, opened.level.rooms);
-assert.strictEqual(opened.activeRoomId, "room.test-start");
+assert.strictEqual(opened.editor.activeRoomId, "room.test-start");
 assert.strictEqual(opened.editor.tool, "tile");
 assert.strictEqual(opened.editor.zoom, 48);
 assert.ok(opened.level.rooms[0].floor.cells instanceof Uint16Array);
 assert.strictEqual(opened.level.rooms[0].floor.cells.length, 25);
 assert.strictEqual(opened.level.rooms[0].floor.count, 9);
-assert.strictEqual(opened.level.rooms[0].tiles.length, 9);
-assert.ok(!Object.keys(opened.level.rooms[0]).includes("tiles"));
-assert.deepStrictEqual(opened.catalog, editorFile.customAssets);
+assert.deepStrictEqual(opened.assets, editorFile.customAssets);
 assert.deepStrictEqual(Object.keys(opened), [
   "format",
   "schemaVersion",
@@ -99,6 +92,12 @@ assert.deepStrictEqual(Object.keys(opened), [
   "editor",
   "assets",
 ]);
+for (const oldName of ["rooms", "connections", "logic", "catalog", "activeRoomId"]) {
+  assert.strictEqual(oldName in opened, false, `${oldName} must not exist on live state`);
+}
+for (const oldName of ["tiles", "tileGridEnabled", "floorObject"]) {
+  assert.strictEqual(oldName in opened.level.rooms[0], false, `${oldName} must not exist on live rooms`);
+}
 
 const compactAgain = LevelSave.makeLevelFile(opened);
 assert.deepStrictEqual(compactAgain.rooms[0].floor, levelFile.rooms[0].floor);
@@ -133,18 +132,24 @@ const oldCombinedFile = {
     { id: "door.custom", type: "door", source: "manual" },
   ],
 };
-const oldEditorFile = LevelSave.makeEditorFile(oldCombinedFile);
 const upgraded = LevelSave.openLevelFile(
   oldCombinedFile,
-  oldEditorFile,
+  null,
   { tool: "select", zoom: 32 }
 );
 assert.strictEqual(upgraded.editor.tool, "door");
+assert.strictEqual(upgraded.editor.activeRoomId, "room.old-start");
 assert.ok(upgraded.level.rooms[0].floor.cells instanceof Uint16Array);
-assert.strictEqual(upgraded.level.rooms[0].tileGridEnabled, false);
-assert.deepStrictEqual(upgraded.catalog, [
+assert.strictEqual(FloorData.isFullFloor(upgraded.level.rooms[0]), true);
+assert.deepStrictEqual(upgraded.assets, [
   { id: "door.custom", type: "door", source: "manual" },
 ]);
+for (const oldName of ["rooms", "connections", "logic", "catalog", "activeRoomId"]) {
+  assert.strictEqual(oldName in upgraded, false);
+}
+for (const oldName of ["tiles", "tileGridEnabled", "floorObject"]) {
+  assert.strictEqual(oldName in upgraded.level.rooms[0], false);
+}
 
 const damaged = JSON.parse(JSON.stringify(levelFile));
 damaged.rooms[0].floor.rows[0] = "bad";
