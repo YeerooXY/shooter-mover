@@ -7,9 +7,8 @@ using UnityEngine.SceneManagement;
 namespace ShooterMover.UI.Game
 {
     /// <summary>
-    /// Moves the player a short distance into a newly entered room after the normal room
-    /// synchronization has placed them at the authored door spawn. The initial level spawn
-    /// is intentionally left unchanged.
+    /// Moves the player clear of the destination-door trigger after a room transition.
+    /// The authored initial player spawn remains unchanged.
     /// </summary>
     [DisallowMultipleComponent]
     internal sealed class DoorSpawnClearance : MonoBehaviour
@@ -52,30 +51,20 @@ namespace ShooterMover.UI.Game
                 return;
             }
 
-            GameObject[] roots = scene.GetRootGameObjects();
-            for (int index = 0; index < roots.Length; index++)
-            {
-                LevelRooms candidate = roots[index]
-                    .GetComponentInChildren<LevelRooms>(true);
-                if (candidate == null) continue;
+            LevelRooms candidate = FindFirstObjectByType<LevelRooms>(
+                FindObjectsInactive.Include);
+            if (candidate == null || candidate.gameObject.scene != scene) return;
 
-                DoorSpawnClearance clearance = candidate
-                    .GetComponent<DoorSpawnClearance>();
-                if (clearance == null)
-                {
-                    clearance = candidate.gameObject
-                        .AddComponent<DoorSpawnClearance>();
-                }
-                clearance.Bind(candidate);
-                return;
-            }
+            DoorSpawnClearance clearance = candidate
+                .GetComponent<DoorSpawnClearance>()
+                ?? candidate.gameObject.AddComponent<DoorSpawnClearance>();
+            clearance.Bind(candidate);
         }
 
         private void Bind(LevelRooms configuredRooms)
         {
             if (rooms != null) return;
-            rooms = configuredRooms
-                ?? throw new ArgumentNullException(nameof(configuredRooms));
+            rooms = configuredRooms;
             handledRevision = rooms.PresentationRevision;
             pendingRevision = handledRevision;
             rooms.CurrentRoomPresentationRebuilt += HandleRoomRebuilt;
@@ -83,11 +72,10 @@ namespace ShooterMover.UI.Game
 
         private void HandleRoomRebuilt()
         {
-            if (rooms == null) return;
             long revision = rooms.PresentationRevision;
             if (FindPlayer() == null)
             {
-                // The first room is built before LevelGame creates the player.
+                // The initial room is built before LevelGame creates the player.
                 handledRevision = revision;
                 pendingRevision = revision;
                 return;
@@ -100,8 +88,9 @@ namespace ShooterMover.UI.Game
             if (rooms == null || pendingRevision <= handledRevision) return;
 
             PlayerMarker player = FindPlayer();
-            if (player == null) return;
-            Rigidbody2D body = player.GetComponent<Rigidbody2D>();
+            Rigidbody2D body = player == null
+                ? null
+                : player.GetComponent<Rigidbody2D>();
             if (body == null) return;
 
             AuthorableRoomDefinition room = rooms.Definition.GetRoom(
@@ -115,42 +104,28 @@ namespace ShooterMover.UI.Game
                 return;
             }
 
-            Vector2 spawnPosition = new Vector2(
+            Vector2 position = new Vector2(
                 (float)spawn.LocalPosition.X,
                 (float)spawn.LocalPosition.Y);
-            Vector2 roomCenter = new Vector2(
-                (float)room.Bounds.Center.X,
-                (float)room.Bounds.Center.Y);
-            Vector2 inward = roomCenter - spawnPosition;
-            if (inward.sqrMagnitude <= Mathf.Epsilon)
-            {
-                float radians = (float)spawn.LocalRotationDegrees
-                    * Mathf.Deg2Rad;
-                inward = new Vector2(
-                    Mathf.Cos(radians),
-                    Mathf.Sin(radians));
-            }
+            Vector2 delta = new Vector2(
+                (float)room.Bounds.Center.X - position.x,
+                (float)room.Bounds.Center.Y - position.y);
+            Vector2 inward = Mathf.Abs(delta.x) >= Mathf.Abs(delta.y)
+                ? new Vector2(Mathf.Sign(delta.x), 0f)
+                : new Vector2(0f, Mathf.Sign(delta.y));
 
-            body.position = spawnPosition + inward.normalized * EntryClearance;
+            body.position = position + inward * EntryClearance;
             body.linearVelocity = Vector2.zero;
             handledRevision = pendingRevision;
         }
 
         private PlayerMarker FindPlayer()
         {
-            PlayerMarker[] players = FindObjectsByType<PlayerMarker>(
-                FindObjectsInactive.Include,
-                FindObjectsSortMode.None);
-            for (int index = 0; index < players.Length; index++)
-            {
-                PlayerMarker candidate = players[index];
-                if (candidate != null
-                    && candidate.gameObject.scene == gameObject.scene)
-                {
-                    return candidate;
-                }
-            }
-            return null;
+            PlayerMarker player = FindFirstObjectByType<PlayerMarker>(
+                FindObjectsInactive.Include);
+            return player != null && player.gameObject.scene == gameObject.scene
+                ? player
+                : null;
         }
 
         private void OnDestroy()
