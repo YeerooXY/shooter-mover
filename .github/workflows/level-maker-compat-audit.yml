@@ -1,6 +1,10 @@
 name: Level Maker compatibility audit
 
 on:
+  pull_request:
+    paths:
+      - "tools/level-maker/**"
+      - ".github/workflows/level-maker-compat-audit.yml"
   push:
     branches:
       - agent/remove-level-maker-compat-names
