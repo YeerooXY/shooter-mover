@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ShooterMover.Application.Missions.Rooms;
 using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Contracts.Missions.Rooms;
@@ -15,18 +16,46 @@ namespace ShooterMover.UI.Game
     [DisallowMultipleComponent]
     public sealed class Map : MonoBehaviour
     {
+        private readonly Dictionary<StableId, int> boxes =
+            new Dictionary<StableId, int>();
+
         private LevelGame game;
         private LevelRooms rooms;
         private RoomFile roomContent;
         private MapView view;
         private bool isBound;
         private bool bindingFailed;
+        private bool paused;
+        private float previousTimeScale;
         private int screenWidth;
         private int screenHeight;
 
         public bool IsOpen
         {
             get { return isBound && view != null && view.IsVisible; }
+        }
+
+        public void SetBoxes(StableId roomStableId, int count)
+        {
+            if (roomStableId == null)
+                throw new ArgumentNullException(nameof(roomStableId));
+            if (count < 0)
+                throw new ArgumentOutOfRangeException(nameof(count));
+
+            if (count == 0)
+                boxes.Remove(roomStableId);
+            else
+                boxes[roomStableId] = count;
+
+            if (isBound && view != null)
+                view.SetBoxes(roomStableId, count);
+        }
+
+        public void ClearBoxes()
+        {
+            boxes.Clear();
+            if (isBound && view != null)
+                view.ClearBoxes();
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -174,6 +203,7 @@ namespace ShooterMover.UI.Game
                     Mathf.Max(1, Screen.height)));
             view.Build(layout);
             AddConnections(rooms.Definition);
+            ApplyBoxes();
             if (reopen)
                 view.Show(rooms.CurrentRoomStableId);
             else
@@ -204,14 +234,38 @@ namespace ShooterMover.UI.Game
             }
         }
 
+        private void ApplyBoxes()
+        {
+            foreach (KeyValuePair<StableId, int> box in boxes)
+            {
+                view.SetBoxes(box.Key, box.Value);
+            }
+        }
+
         private void Toggle()
         {
             if (view.IsVisible)
-            {
-                view.Hide();
-                return;
-            }
+                Close();
+            else
+                Open();
+        }
+
+        private void Open()
+        {
             view.Show(rooms.CurrentRoomStableId);
+            if (paused) return;
+            previousTimeScale = Time.timeScale;
+            Time.timeScale = 0f;
+            paused = true;
+        }
+
+        private void Close()
+        {
+            if (view != null)
+                view.Hide();
+            if (!paused) return;
+            Time.timeScale = previousTimeScale;
+            paused = false;
         }
 
         private void HandleRoomChanged()
@@ -234,6 +288,7 @@ namespace ShooterMover.UI.Game
 
         private void OnDestroy()
         {
+            Close();
             if (rooms != null)
             {
                 rooms.CurrentRoomPresentationRebuilt -= HandleRoomChanged;

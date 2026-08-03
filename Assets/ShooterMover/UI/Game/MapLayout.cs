@@ -95,6 +95,26 @@ namespace ShooterMover.UI.Game
                     throw new InvalidOperationException(
                         "map-layout-grid-position-missing:" + roomStableId);
                 }
+                if (!ValidBounds(data.bounds))
+                {
+                    throw new InvalidOperationException(
+                        "map-layout-room-bounds-invalid:" + roomStableId);
+                }
+
+                bool isStart = roomStableId == startRoom;
+                bool isExit = roomStableId == exitRoom;
+                Vector2? start = isStart ? FindStart(data.spawns) : null;
+                Vector2? target = isExit ? FindTarget(data.doors) : null;
+                if (isStart && !start.HasValue)
+                {
+                    throw new InvalidOperationException(
+                        "map-layout-start-point-missing:" + roomStableId);
+                }
+                if (isExit && !target.HasValue)
+                {
+                    throw new InvalidOperationException(
+                        "map-layout-target-point-missing:" + roomStableId);
+                }
 
                 sourceRooms.Add(new RoomSource(
                     roomStableId,
@@ -104,8 +124,10 @@ namespace ShooterMover.UI.Game
                     new Vector2Int(
                         data.grid_position[0],
                         data.grid_position[1]),
-                    roomStableId == startRoom,
-                    roomStableId == exitRoom));
+                    new Vector2(data.bounds.center[0], data.bounds.center[1]),
+                    new Vector2(data.bounds.size[0], data.bounds.size[1]),
+                    start,
+                    target));
             }
 
             return Fit(sourceRooms, viewportSize);
@@ -150,16 +172,94 @@ namespace ShooterMover.UI.Game
                 Vector2 centre = new Vector2(
                     (source.Grid.x - gridCentre.x) * RoomStep.x * scale,
                     (source.Grid.y - gridCentre.y) * RoomStep.y * scale);
+                Rect rect = new Rect(
+                    centre - fittedRoomSize * 0.5f,
+                    fittedRoomSize);
                 rooms.Add(new Room(
                     source.RoomStableId,
                     source.DisplayName,
                     source.Grid,
-                    new Rect(centre - fittedRoomSize * 0.5f, fittedRoomSize),
-                    source.IsStart,
-                    source.IsExit));
+                    rect,
+                    Place(rect, source, source.Start),
+                    Place(rect, source, source.Target)));
             }
 
             return new MapLayout(rooms, naturalSize * scale, scale);
+        }
+
+        private static Vector2? Place(
+            Rect room,
+            RoomSource source,
+            Vector2? local)
+        {
+            if (!local.HasValue) return null;
+            Vector2 half = source.BoundsSize * 0.5f;
+            Vector2 normalized = new Vector2(
+                (local.Value.x - source.BoundsCenter.x) / half.x,
+                (local.Value.y - source.BoundsCenter.y) / half.y);
+            normalized.x = Mathf.Clamp(normalized.x, -0.78f, 0.78f);
+            normalized.y = Mathf.Clamp(normalized.y, -0.68f, 0.68f);
+            return room.center + new Vector2(
+                normalized.x * room.width * 0.5f,
+                normalized.y * room.height * 0.5f);
+        }
+
+        private static Vector2? FindStart(SpawnData[] spawns)
+        {
+            SpawnData[] values = spawns ?? Array.Empty<SpawnData>();
+            for (int index = 0; index < values.Length; index++)
+            {
+                SpawnData value = values[index];
+                if (value != null
+                    && string.Equals(
+                        value.kind,
+                        "player",
+                        StringComparison.OrdinalIgnoreCase)
+                    && ValidPoint(value.position))
+                {
+                    return new Vector2(value.position[0], value.position[1]);
+                }
+            }
+            return null;
+        }
+
+        private static Vector2? FindTarget(DoorData[] doors)
+        {
+            DoorData[] values = doors ?? Array.Empty<DoorData>();
+            for (int index = 0; index < values.Length; index++)
+            {
+                DoorData value = values[index];
+                if (value != null
+                    && value.link != null
+                    && string.Equals(
+                        value.link.kind,
+                        "final-exit",
+                        StringComparison.OrdinalIgnoreCase)
+                    && ValidPoint(value.position))
+                {
+                    return new Vector2(value.position[0], value.position[1]);
+                }
+            }
+            return null;
+        }
+
+        private static bool ValidBounds(BoundsData value)
+        {
+            return value != null
+                && ValidPoint(value.center)
+                && ValidPoint(value.size)
+                && value.size[0] > 0f
+                && value.size[1] > 0f;
+        }
+
+        private static bool ValidPoint(float[] value)
+        {
+            return value != null
+                && value.Length == 2
+                && !float.IsNaN(value[0])
+                && !float.IsInfinity(value[0])
+                && !float.IsNaN(value[1])
+                && !float.IsInfinity(value[1]);
         }
 
         private static Dictionary<string, string> IndexDocuments(
@@ -220,23 +320,23 @@ namespace ShooterMover.UI.Game
                 string displayName,
                 Vector2Int grid,
                 Rect rect,
-                bool isStart,
-                bool isExit)
+                Vector2? start,
+                Vector2? target)
             {
                 RoomStableId = roomStableId;
                 DisplayName = displayName;
                 Grid = grid;
                 Rect = rect;
-                IsStart = isStart;
-                IsExit = isExit;
+                Start = start;
+                Target = target;
             }
 
             public StableId RoomStableId { get; }
             public string DisplayName { get; }
             public Vector2Int Grid { get; }
             public Rect Rect { get; }
-            public bool IsStart { get; }
-            public bool IsExit { get; }
+            public Vector2? Start { get; }
+            public Vector2? Target { get; }
         }
 
         private sealed class RoomSource
@@ -245,21 +345,27 @@ namespace ShooterMover.UI.Game
                 StableId roomStableId,
                 string displayName,
                 Vector2Int grid,
-                bool isStart,
-                bool isExit)
+                Vector2 boundsCenter,
+                Vector2 boundsSize,
+                Vector2? start,
+                Vector2? target)
             {
                 RoomStableId = roomStableId;
                 DisplayName = displayName;
                 Grid = grid;
-                IsStart = isStart;
-                IsExit = isExit;
+                BoundsCenter = boundsCenter;
+                BoundsSize = boundsSize;
+                Start = start;
+                Target = target;
             }
 
             public StableId RoomStableId { get; }
             public string DisplayName { get; }
             public Vector2Int Grid { get; }
-            public bool IsStart { get; }
-            public bool IsExit { get; }
+            public Vector2 BoundsCenter { get; }
+            public Vector2 BoundsSize { get; }
+            public Vector2? Start { get; }
+            public Vector2? Target { get; }
         }
 
         [Serializable]
@@ -282,6 +388,36 @@ namespace ShooterMover.UI.Game
             public string room;
             public string display_name;
             public int[] grid_position;
+            public BoundsData bounds;
+            public SpawnData[] spawns;
+            public DoorData[] doors;
+        }
+
+        [Serializable]
+        private sealed class BoundsData
+        {
+            public float[] center;
+            public float[] size;
+        }
+
+        [Serializable]
+        private sealed class SpawnData
+        {
+            public string kind;
+            public float[] position;
+        }
+
+        [Serializable]
+        private sealed class DoorData
+        {
+            public float[] position;
+            public DoorLinkData link;
+        }
+
+        [Serializable]
+        private sealed class DoorLinkData
+        {
+            public string kind;
         }
     }
 }

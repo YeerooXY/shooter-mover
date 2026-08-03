@@ -11,13 +11,16 @@ namespace ShooterMover.UI.Game
         private readonly List<RoomLink> links = new List<RoomLink>();
         private readonly HashSet<string> linkKeys =
             new HashSet<string>(StringComparer.Ordinal);
+        private readonly Dictionary<StableId, int> boxes =
+            new Dictionary<StableId, int>();
 
         private MapLayout layout;
         private StableId currentRoomStableId;
         private bool isVisible;
         private GUIStyle roomNameStyle;
-        private GUIStyle roomNoteStyle;
         private GUIStyle playerStyle;
+        private GUIStyle pointStyle;
+        private GUIStyle boxStyle;
         private GUIStyle titleStyle;
         private GUIStyle hintStyle;
 
@@ -30,8 +33,9 @@ namespace ShooterMover.UI.Game
             links.Clear();
             linkKeys.Clear();
             roomNameStyle = null;
-            roomNoteStyle = null;
             playerStyle = null;
+            pointStyle = null;
+            boxStyle = null;
             titleStyle = null;
             hintStyle = null;
         }
@@ -61,6 +65,28 @@ namespace ShooterMover.UI.Game
             if (!linkKeys.Add(key))
                 return;
             links.Add(new RoomLink(fromRoomStableId, toRoomStableId));
+        }
+
+        public void SetBoxes(StableId roomStableId, int count)
+        {
+            EnsureBuilt();
+            if (count < 0)
+                throw new ArgumentOutOfRangeException(nameof(count));
+            MapLayout.Room room;
+            if (roomStableId == null
+                || !layout.TryGetRoom(roomStableId, out room))
+            {
+                throw new InvalidOperationException("map-view-box-room-missing");
+            }
+            if (count == 0)
+                boxes.Remove(roomStableId);
+            else
+                boxes[roomStableId] = count;
+        }
+
+        public void ClearBoxes()
+        {
+            boxes.Clear();
         }
 
         public void Show(StableId roomStableId)
@@ -201,34 +227,89 @@ namespace ShooterMover.UI.Game
                     room.DisplayName,
                     roomNameStyle);
 
-                string note = room.IsStart
-                    ? "START"
-                    : room.IsExit
-                        ? "TARGET"
-                        : string.Empty;
-                if (!string.IsNullOrEmpty(note))
+                if (room.Start.HasValue)
                 {
-                    GUI.Label(
-                        new Rect(
-                            body.x + 5f,
-                            body.yMax - Mathf.Max(15f, 17f * layout.Scale),
-                            body.width - 10f,
-                            Mathf.Max(13f, 16f * layout.Scale)),
-                        note,
-                        roomNoteStyle);
+                    DrawPoint(
+                        room.Start.Value,
+                        new Color(0.2f, 0.9f, 0.48f, 1f),
+                        "S");
+                }
+                if (room.Target.HasValue)
+                {
+                    DrawPoint(
+                        room.Target.Value,
+                        new Color(1f, 0.45f, 0.22f, 1f),
+                        "!");
+                }
+
+                int boxCount;
+                if (boxes.TryGetValue(room.RoomStableId, out boxCount)
+                    && boxCount > 0)
+                {
+                    DrawBox(rect, boxCount);
                 }
 
                 if (current)
                 {
                     GUI.Label(
                         new Rect(
-                            body.x + 4f,
+                            body.center.x - 15f,
                             body.center.y - 9f,
-                            28f,
+                            30f,
                             24f),
                         "☺",
                         playerStyle);
                 }
+            }
+        }
+
+        private void DrawPoint(Vector2 mapPoint, Color color, string label)
+        {
+            Vector2 point = ToScreen(mapPoint);
+            float size = Mathf.Max(11f, 14f * layout.Scale);
+            Rect border = new Rect(
+                point.x - size * 0.5f,
+                point.y - size * 0.5f,
+                size,
+                size);
+            GUI.color = Color.white;
+            GUI.DrawTexture(border, Texture2D.whiteTexture);
+            Rect body = new Rect(
+                border.x + 2f,
+                border.y + 2f,
+                Mathf.Max(1f, border.width - 4f),
+                Mathf.Max(1f, border.height - 4f));
+            GUI.color = color;
+            GUI.DrawTexture(body, Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(border, label, pointStyle);
+        }
+
+        private void DrawBox(Rect room, int count)
+        {
+            float size = Mathf.Max(10f, 13f * layout.Scale);
+            Rect icon = new Rect(
+                room.xMax + Screen.width * 0.5f + 4f,
+                Screen.height * 0.5f - room.yMax + 2f,
+                size,
+                size);
+            GUI.color = new Color(1f, 0.73f, 0.16f, 1f);
+            GUI.DrawTexture(icon, Texture2D.whiteTexture);
+            GUI.color = new Color(0.16f, 0.1f, 0.02f, 1f);
+            GUI.DrawTexture(
+                new Rect(
+                    icon.x + 2f,
+                    icon.y + 2f,
+                    Mathf.Max(1f, icon.width - 4f),
+                    Mathf.Max(1f, icon.height - 4f)),
+                Texture2D.whiteTexture);
+            if (count > 1)
+            {
+                GUI.color = Color.white;
+                GUI.Label(
+                    new Rect(icon.xMax + 3f, icon.y - 2f, 34f, icon.height + 4f),
+                    "×" + count,
+                    boxStyle);
             }
         }
 
@@ -328,19 +409,26 @@ namespace ShooterMover.UI.Game
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = new Color(0.91f, 0.95f, 1f, 1f) },
             };
-            roomNoteStyle = new GUIStyle(GUI.skin.label)
-            {
-                alignment = TextAnchor.LowerCenter,
-                fontSize = Mathf.Max(7, roomFontSize - 2),
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = new Color(0.45f, 0.8f, 1f, 1f) },
-            };
             playerStyle = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.MiddleCenter,
                 fontSize = Mathf.Max(15, Mathf.RoundToInt(21f * layout.Scale)),
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = new Color(0.35f, 1f, 0.62f, 1f) },
+            };
+            pointStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = Mathf.Max(8, Mathf.RoundToInt(10f * layout.Scale)),
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = Color.white },
+            };
+            boxStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                fontSize = Mathf.Max(8, Mathf.RoundToInt(11f * layout.Scale)),
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = new Color(1f, 0.82f, 0.38f, 1f) },
             };
             titleStyle = new GUIStyle(GUI.skin.label)
             {
