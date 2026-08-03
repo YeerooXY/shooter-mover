@@ -48,7 +48,6 @@
     state.assets = [...assets.values()].sort(
       (left, right) => left.type.localeCompare(right.type) || left.id.localeCompare(right.id)
     );
-    LevelState.addOldNames(state);
     LevelState.fixEditor(state);
     normalize();
   }
@@ -107,7 +106,7 @@
       `/api/level-floors?target=${encodeURIComponent(target)}`
     );
     const floors = new Map(
-      (result.rooms || []).map(room => [room.roomId, room.tiles || []])
+      (result.rooms || []).map(entry => [entry.roomId, entry.tiles || []])
     );
 
     state.level.rooms = state.level.rooms.map(room => {
@@ -115,7 +114,6 @@
       return FloorData.openUnityTiles(room, floors.get(room.id));
     });
     state.schemaVersion = LevelSave.LEVEL_VERSION;
-    LevelState.addOldNames(state);
     normalize();
   }
 
