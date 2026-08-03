@@ -1,9 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Json;
-using System.Text;
 using ShooterMover.Domain.Common;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
 using UnityEngine;
@@ -11,8 +7,7 @@ using UnityEngine;
 namespace ShooterMover.UI.Game
 {
     /// <summary>
-    /// Reads authored room grid positions and fits the complete level map around the
-    /// centre of a UI viewport. The returned room rectangles use centred UI coordinates.
+    /// Fits the authored room grid into centred UI coordinates.
     /// </summary>
     public sealed class MapLayout
     {
@@ -32,102 +27,92 @@ namespace ShooterMover.UI.Game
                 Room room = configuredRooms[index];
                 roomsById.Add(room.RoomStableId, room);
             }
-
             Size = size;
             Scale = scale;
         }
 
         public IReadOnlyList<Room> Rooms { get { return rooms; } }
-
         public Vector2 Size { get; }
-
         public float Scale { get; }
 
         public bool TryGetRoom(StableId roomStableId, out Room room)
         {
             room = null;
             return roomStableId != null
-                && roomsById.TryGetValue(roomStableId, out room)
-                && room != null;
+                && roomsById.TryGetValue(roomStableId, out room);
         }
 
         public static MapLayout Build(RoomFile source, Vector2 viewportSize)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
-            if (!IsFinitePositive(viewportSize.x)
-                || !IsFinitePositive(viewportSize.y))
-            {
+            if (viewportSize.x <= 0f || viewportSize.y <= 0f)
                 throw new ArgumentOutOfRangeException(nameof(viewportSize));
-            }
             if (source.Manifest == null)
-            {
                 throw new InvalidOperationException("map-layout-manifest-missing");
-            }
 
-            ManifestDto manifest = ReadJson<ManifestDto>(
+            ManifestData manifest = Read<ManifestData>(
                 source.Manifest.text,
                 "manifest");
-            if (manifest.Rooms == null || manifest.Rooms.Count == 0)
-            {
+            if (manifest.rooms == null || manifest.rooms.Length == 0)
                 throw new InvalidOperationException("map-layout-room-list-empty");
-            }
 
-            Dictionary<string, string> documents = ReadDocuments(source.Documents);
-            var sourceRooms = new List<SourceRoom>();
+            StableId startRoom = StableId.Parse(Require(
+                manifest.start_room,
+                "map-layout-start-room-missing"));
+            StableId exitRoom = StableId.Parse(Require(
+                manifest.terminal_room,
+                "map-layout-exit-room-missing"));
+            Dictionary<string, string> documents = IndexDocuments(source.Documents);
+            var sourceRooms = new List<RoomSource>(manifest.rooms.Length);
             var roomIds = new HashSet<StableId>();
-            for (int index = 0; index < manifest.Rooms.Count; index++)
-            {
-                RoomReferenceDto reference = manifest.Rooms[index];
-                if (reference == null || string.IsNullOrWhiteSpace(reference.Layout))
-                {
-                    throw new InvalidOperationException(
-                        "map-layout-room-reference-invalid:" + index);
-                }
 
-                string key = reference.Layout.Trim();
+            for (int index = 0; index < manifest.rooms.Length; index++)
+            {
+                RoomReference reference = manifest.rooms[index];
+                string key = reference == null
+                    ? null
+                    : Require(
+                        reference.layout,
+                        "map-layout-room-reference-invalid:" + index);
                 string json;
-                if (!documents.TryGetValue(key, out json))
+                if (key == null || !documents.TryGetValue(key, out json))
                 {
                     throw new InvalidOperationException(
                         "map-layout-room-document-missing:" + key);
                 }
 
-                RoomDto value = ReadJson<RoomDto>(json, key);
-                StableId roomStableId = StableId.Parse(RequireText(
-                    value.Room,
+                RoomData data = Read<RoomData>(json, key);
+                StableId roomStableId = StableId.Parse(Require(
+                    data.room,
                     "map-layout-room-id-missing:" + key));
                 if (!roomIds.Add(roomStableId))
                 {
                     throw new InvalidOperationException(
                         "map-layout-room-duplicate:" + roomStableId);
                 }
-                if (value.GridPosition == null || value.GridPosition.Length != 2)
+                if (data.grid_position == null || data.grid_position.Length != 2)
                 {
                     throw new InvalidOperationException(
                         "map-layout-grid-position-missing:" + roomStableId);
                 }
 
-                sourceRooms.Add(new SourceRoom(
+                sourceRooms.Add(new RoomSource(
                     roomStableId,
-                    string.IsNullOrWhiteSpace(value.DisplayName)
+                    string.IsNullOrWhiteSpace(data.display_name)
                         ? roomStableId.ToString()
-                        : value.DisplayName.Trim(),
-                    new Vector2Int(value.GridPosition[0], value.GridPosition[1]),
-                    string.Equals(
-                        value.Room,
-                        manifest.StartRoom,
-                        StringComparison.Ordinal),
-                    string.Equals(
-                        value.Room,
-                        manifest.TerminalRoom,
-                        StringComparison.Ordinal)));
+                        : data.display_name.Trim(),
+                    new Vector2Int(
+                        data.grid_position[0],
+                        data.grid_position[1]),
+                    roomStableId == startRoom,
+                    roomStableId == exitRoom));
             }
 
             return Fit(sourceRooms, viewportSize);
         }
 
         private static MapLayout Fit(
-            IReadOnlyList<SourceRoom> sourceRooms,
+            IReadOnlyList<RoomSource> sourceRooms,
             Vector2 viewportSize)
         {
             int minX = sourceRooms[0].Grid.x;
@@ -137,34 +122,34 @@ namespace ShooterMover.UI.Game
             for (int index = 1; index < sourceRooms.Count; index++)
             {
                 Vector2Int grid = sourceRooms[index].Grid;
-                minX = Math.Min(minX, grid.x);
-                maxX = Math.Max(maxX, grid.x);
-                minY = Math.Min(minY, grid.y);
-                maxY = Math.Max(maxY, grid.y);
+                minX = Mathf.Min(minX, grid.x);
+                maxX = Mathf.Max(maxX, grid.x);
+                minY = Mathf.Min(minY, grid.y);
+                maxY = Mathf.Max(maxY, grid.y);
             }
 
             Vector2 naturalSize = new Vector2(
                 (maxX - minX) * RoomStep.x + RoomSize.x,
                 (maxY - minY) * RoomStep.y + RoomSize.y);
             Vector2 available = new Vector2(
-                Math.Max(1f, viewportSize.x - Padding * 2f),
-                Math.Max(1f, viewportSize.y - Padding * 2f));
-            float scale = Math.Min(
+                Mathf.Max(1f, viewportSize.x - Padding * 2f),
+                Mathf.Max(1f, viewportSize.y - Padding * 2f));
+            float scale = Mathf.Min(
                 1f,
-                Math.Min(
-                    available.x / naturalSize.x,
-                    available.y / naturalSize.y));
-
-            float centreX = (minX + maxX) * 0.5f;
-            float centreY = (minY + maxY) * 0.5f;
+                available.x / naturalSize.x,
+                available.y / naturalSize.y);
             Vector2 fittedRoomSize = RoomSize * scale;
+            Vector2 gridCentre = new Vector2(
+                (minX + maxX) * 0.5f,
+                (minY + maxY) * 0.5f);
+
             var rooms = new List<Room>(sourceRooms.Count);
             for (int index = 0; index < sourceRooms.Count; index++)
             {
-                SourceRoom source = sourceRooms[index];
+                RoomSource source = sourceRooms[index];
                 Vector2 centre = new Vector2(
-                    (source.Grid.x - centreX) * RoomStep.x * scale,
-                    (source.Grid.y - centreY) * RoomStep.y * scale);
+                    (source.Grid.x - gridCentre.x) * RoomStep.x * scale,
+                    (source.Grid.y - gridCentre.y) * RoomStep.y * scale);
                 rooms.Add(new Room(
                     source.RoomStableId,
                     source.DisplayName,
@@ -177,11 +162,10 @@ namespace ShooterMover.UI.Game
             return new MapLayout(rooms, naturalSize * scale, scale);
         }
 
-        private static Dictionary<string, string> ReadDocuments(
+        private static Dictionary<string, string> IndexDocuments(
             IReadOnlyList<RoomDocument> source)
         {
             var result = new Dictionary<string, string>(StringComparer.Ordinal);
-            if (source == null) return result;
             for (int index = 0; index < source.Count; index++)
             {
                 RoomDocument document = source[index];
@@ -192,39 +176,23 @@ namespace ShooterMover.UI.Game
                     throw new InvalidOperationException(
                         "map-layout-document-invalid:" + index);
                 }
-                string key = document.Key.Trim();
-                if (result.ContainsKey(key))
-                {
-                    throw new InvalidOperationException(
-                        "map-layout-document-duplicate:" + key);
-                }
-                result.Add(key, document.Document.text);
+                result.Add(document.Key.Trim(), document.Document.text);
             }
             return result;
         }
 
-        private static T ReadJson<T>(string json, string source)
+        private static T Read<T>(string json, string name)
             where T : class
         {
             if (string.IsNullOrWhiteSpace(json))
-            {
-                throw new InvalidOperationException(
-                    "map-layout-json-empty:" + source);
-            }
-
+                throw new InvalidOperationException("map-layout-json-empty:" + name);
             try
             {
-                var serializer = new DataContractJsonSerializer(typeof(T));
-                using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(json)))
-                {
-                    T value = serializer.ReadObject(stream) as T;
-                    if (value == null)
-                    {
-                        throw new InvalidOperationException(
-                            "map-layout-json-root-invalid:" + source);
-                    }
-                    return value;
-                }
+                T value = JsonUtility.FromJson<T>(json);
+                if (value == null)
+                    throw new InvalidOperationException(
+                        "map-layout-json-root-invalid:" + name);
+                return value;
             }
             catch (InvalidOperationException)
             {
@@ -233,25 +201,16 @@ namespace ShooterMover.UI.Game
             catch (Exception exception)
             {
                 throw new InvalidOperationException(
-                    "map-layout-json-invalid:" + source,
+                    "map-layout-json-invalid:" + name,
                     exception);
             }
         }
 
-        private static string RequireText(string value, string error)
+        private static string Require(string value, string error)
         {
             if (string.IsNullOrWhiteSpace(value))
-            {
                 throw new InvalidOperationException(error);
-            }
             return value.Trim();
-        }
-
-        private static bool IsFinitePositive(float value)
-        {
-            return !float.IsNaN(value)
-                && !float.IsInfinity(value)
-                && value > 0f;
         }
 
         public sealed class Room
@@ -273,21 +232,16 @@ namespace ShooterMover.UI.Game
             }
 
             public StableId RoomStableId { get; }
-
             public string DisplayName { get; }
-
             public Vector2Int Grid { get; }
-
             public Rect Rect { get; }
-
             public bool IsStart { get; }
-
             public bool IsExit { get; }
         }
 
-        private sealed class SourceRoom
+        private sealed class RoomSource
         {
-            public SourceRoom(
+            public RoomSource(
                 StableId roomStableId,
                 string displayName,
                 Vector2Int grid,
@@ -308,37 +262,26 @@ namespace ShooterMover.UI.Game
             public bool IsExit { get; }
         }
 
-        [DataContract]
-        private sealed class ManifestDto
+        [Serializable]
+        private sealed class ManifestData
         {
-            [DataMember(Name = "start_room", IsRequired = true)]
-            public string StartRoom { get; set; }
-
-            [DataMember(Name = "terminal_room", IsRequired = true)]
-            public string TerminalRoom { get; set; }
-
-            [DataMember(Name = "rooms", IsRequired = true)]
-            public List<RoomReferenceDto> Rooms { get; set; }
+            public string start_room;
+            public string terminal_room;
+            public RoomReference[] rooms;
         }
 
-        [DataContract]
-        private sealed class RoomReferenceDto
+        [Serializable]
+        private sealed class RoomReference
         {
-            [DataMember(Name = "layout", IsRequired = true)]
-            public string Layout { get; set; }
+            public string layout;
         }
 
-        [DataContract]
-        private sealed class RoomDto
+        [Serializable]
+        private sealed class RoomData
         {
-            [DataMember(Name = "room", IsRequired = true)]
-            public string Room { get; set; }
-
-            [DataMember(Name = "display_name", IsRequired = true)]
-            public string DisplayName { get; set; }
-
-            [DataMember(Name = "grid_position", IsRequired = true)]
-            public int[] GridPosition { get; set; }
+            public string room;
+            public string display_name;
+            public int[] grid_position;
         }
     }
 }
