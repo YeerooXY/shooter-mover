@@ -1,6 +1,7 @@
 using System;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Domain.Common;
+using ShooterMover.GameplayEntities;
 using ShooterMover.UnityAdapters.Enemies;
 using UnityEngine;
 using UnityEngine.SceneManagement;

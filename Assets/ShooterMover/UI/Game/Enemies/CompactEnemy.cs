@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using ShooterMover.Contracts.Combat;
 using ShooterMover.Contracts.Missions.Rooms;
 using ShooterMover.Domain.Common;
+using ShooterMover.GameplayEntities;
 using ShooterMover.UnityAdapters.Combat;
 using ShooterMover.UnityAdapters.Enemies;
 using ShooterMover.UnityAdapters.Missions.Rooms;
