@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "leveling": {
+    "minLevel": 1,
+    "maxLevel": 100,
+    "strengthAtMax": 50,
+    "damagePower": 0.35,
+    "colors": [
+      { "level": 1, "color": "#55D66B" },
+      { "level": 20, "color": "#9EDB43" },
+      { "level": 40, "color": "#E4D542" },
+      { "level": 60, "color": "#F29A3D" },
+      { "level": 80, "color": "#E84F58" },
+      { "level": 100, "color": "#A653DF" }
+    ]
+  },
+  "shots": [
+    {
+      "schema": 1,
+      "id": "shotgun-pellet",
+      "delivery": {
+        "kind": "projectile",
+        "speed": 28,
+        "radius": 0.05,
+        "range": 12
+      },
+      "impact": {
+        "pierce": 1,
+        "ricochet": 0,
+        "knockback": 0.15
+      },
+      "art": {
+        "delivery": "enemy-shot.shotgun-pellet",
+        "trail": "enemy-trail.shotgun-pellet",
+        "impact": "enemy-impact.shotgun-pellet"
+      }
+    },
+    {
+      "schema": 1,
+      "id": "small-bullet",
+      "delivery": {
+        "kind": "projectile",
+        "speed": 32,
+        "radius": 0.06,
+        "range": 18
+      },
+      "impact": {
+        "pierce": 1,
+        "ricochet": 0,
+        "knockback": 0
+      },
+      "art": {
+        "delivery": "enemy-shot.small-bullet",
+        "trail": "enemy-trail.small-bullet",
+        "impact": "enemy-impact.small-bullet"
+      }
+    }
+  ],
+  "enemies": [
+    {
+      "schema": 1,
+      "id": "gunner-droid",
+      "name": "Gunner Droid",
+      "tags": ["droid", "ground", "mobile", "ranged"],
+      "hp": 16,
+      "healthPower": 0.7,
+      "movement": {
+        "kind": "strafe",
+        "speed": 3.5
+      },
+      "detectionRange": 16,
+      "mounts": [
+        {
+          "id": "center-gun",
+          "position": { "x": 0, "y": 0.24 },
+          "rotation": 0,
+          "art": "gun.small-cannon"
+        }
+      ],
+      "attacks": [
+        {
+          "id": "rifle-burst",
+          "kind": "shot",
+          "shot": "small-bullet",
+          "emitters": ["center-gun"],
+          "firePattern": "single",
+          "cooldown": 1.5,
+          "sequence": { "triggers": 4, "interval": 0.2 },
+          "volley": {
+            "shotsPerTrigger": 1,
+            "spread": 0,
+            "distribution": "even"
+          },
+          "range": { "min": 2, "max": 12 },
+          "damage": [
+            { "type": "kinetic", "amount": 3 }
+          ]
+        }
+      ],
+      "drops": "normal",
+      "art": "gunner-droid",
+      "body": {
+        "shape": "circle",
+        "radius": 0.45,
+        "offset": { "x": 0, "y": 0 }
+      }
+    }
+  ]
+}
