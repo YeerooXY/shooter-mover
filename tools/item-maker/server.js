@@ -9,7 +9,6 @@ const { URL } = require("url");
 
 const root = path.resolve(process.argv.includes("--repo") ? process.argv[process.argv.indexOf("--repo") + 1] : path.join(__dirname, "..", ".."));
 const port = Number(process.argv.includes("--port") ? process.argv[process.argv.indexOf("--port") + 1] : 4173);
-const locations = { "gun-family": ["Content/Items/Guns", ".gun.json"], "gear-set": ["Content/Items/Gear", ".gear.json"] };
 const weaponFiles = ["weapon.json", "mk1.json", "mk2.json", "mk3.json"];
 const mutationToken = crypto.randomBytes(24).toString("hex");
 
@@ -22,13 +21,6 @@ function send(res, status, value) {
     "Cache-Control": "no-store"
   });
   res.end(body);
-}
-function safePackage(kind, id) {
-  const location = locations[kind];
-  if (!location || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)) throw new Error("Invalid package identity.");
-  const file = path.resolve(root, location[0], id + location[1]), base = path.resolve(root, location[0]) + path.sep;
-  if (!file.startsWith(base)) throw new Error("Package path escaped the content folder.");
-  return file;
 }
 function safeWeaponFolder(category, folder) {
   if (!/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/.test(category || "")) throw new Error("Invalid weapon category folder.");
@@ -174,22 +166,6 @@ async function requestStrongboxPreview(body) {
 
 async function api(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/status") return send(res, 200, { ...status(), mutationToken });
-  if (req.method === "GET" && url.pathname === "/api/packages") {
-    const packages = [];
-    for (const [kind, [folder, suffix]] of Object.entries(locations)) {
-      const dir = path.join(root, folder);
-      if (!fs.existsSync(dir)) continue;
-      for (const name of fs.readdirSync(dir).filter(x => x.endsWith(suffix)).sort()) {
-        const value = JSON.parse(fs.readFileSync(path.join(dir, name), "utf8"));
-        packages.push({ kind, id: value.id, name: value.name });
-      }
-    }
-    return send(res, 200, { packages });
-  }
-  if (req.method === "GET" && url.pathname === "/api/package") {
-    const file = safePackage(url.searchParams.get("kind"), url.searchParams.get("id"));
-    return send(res, 200, { package: JSON.parse(fs.readFileSync(file, "utf8")) });
-  }
   if (req.method === "GET" && url.pathname === "/api/weapon-folders") return send(res, 200, { weapons: listWeaponFolders() });
   if (req.method === "GET" && url.pathname === "/api/weapon-folder") {
     const category = url.searchParams.get("category"), folder = url.searchParams.get("folder");
@@ -209,17 +185,6 @@ async function api(req, res, url) {
     if (!status().clean) throw new Error("Pull refused: the worktree is not clean.");
     git(["pull", "--ff-only"]);
     return send(res, 200, status());
-  }
-  if (req.method === "PUT" && url.pathname === "/api/package") {
-    const body = await readBody(req), value = body.package;
-    if (!value || !locations[value.kind] || value.$schema !== (value.kind === "gun-family" ? "shooter-mover.gun-family/1" : "shooter-mover.gear-set/1")) throw new Error("Package schema is invalid.");
-    const file = safePackage(value.kind, value.id);
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    const temp = file + ".tmp";
-    fs.writeFileSync(temp, JSON.stringify(value, null, 2) + "\n");
-    fs.renameSync(temp, file);
-    execFileSync(process.execPath, [path.join(__dirname, "compile-packages.js"), root], { cwd: root, stdio: "pipe" });
-    return send(res, 200, { saved: path.relative(root, file).replace(/\\/g, "/") });
   }
   if (req.method === "PUT" && url.pathname === "/api/weapon-folder") {
     const body = await readBody(req);
