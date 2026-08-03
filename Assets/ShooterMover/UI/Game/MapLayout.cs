@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using ShooterMover.Domain.Common;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
 using UnityEngine;
@@ -17,15 +18,32 @@ namespace ShooterMover.UI.Game
 
         private readonly IReadOnlyList<Room> rooms;
         private readonly Dictionary<StableId, Room> roomsById;
+        private readonly Dictionary<StableId, Teleporter> teleportersById;
 
         private MapLayout(List<Room> configuredRooms, Vector2 size, float scale)
         {
             rooms = configuredRooms.AsReadOnly();
             roomsById = new Dictionary<StableId, Room>();
+            teleportersById = new Dictionary<StableId, Teleporter>();
             for (int index = 0; index < configuredRooms.Count; index++)
             {
                 Room room = configuredRooms[index];
                 roomsById.Add(room.RoomStableId, room);
+                for (int teleporterIndex = 0;
+                    teleporterIndex < room.Teleporters.Count;
+                    teleporterIndex++)
+                {
+                    Teleporter teleporter = room.Teleporters[teleporterIndex];
+                    if (teleportersById.ContainsKey(teleporter.TeleporterStableId))
+                    {
+                        throw new InvalidOperationException(
+                            "map-layout-teleporter-duplicate:"
+                            + teleporter.TeleporterStableId);
+                    }
+                    teleportersById.Add(
+                        teleporter.TeleporterStableId,
+                        teleporter);
+                }
             }
             Size = size;
             Scale = scale;
@@ -40,6 +58,17 @@ namespace ShooterMover.UI.Game
             room = null;
             return roomStableId != null
                 && roomsById.TryGetValue(roomStableId, out room);
+        }
+
+        public bool TryGetTeleporter(
+            StableId teleporterStableId,
+            out Teleporter teleporter)
+        {
+            teleporter = null;
+            return teleporterStableId != null
+                && teleportersById.TryGetValue(
+                    teleporterStableId,
+                    out teleporter);
         }
 
         public static MapLayout Build(RoomFile source, Vector2 viewportSize)
@@ -116,6 +145,12 @@ namespace ShooterMover.UI.Game
                         "map-layout-target-point-missing:" + roomStableId);
                 }
 
+                Vector2 boundsCenter = new Vector2(
+                    data.bounds.center[0],
+                    data.bounds.center[1]);
+                Vector2 boundsSize = new Vector2(
+                    data.bounds.size[0],
+                    data.bounds.size[1]);
                 sourceRooms.Add(new RoomSource(
                     roomStableId,
                     string.IsNullOrWhiteSpace(data.display_name)
@@ -124,13 +159,89 @@ namespace ShooterMover.UI.Game
                     new Vector2Int(
                         data.grid_position[0],
                         data.grid_position[1]),
-                    new Vector2(data.bounds.center[0], data.bounds.center[1]),
-                    new Vector2(data.bounds.size[0], data.bounds.size[1]),
+                    boundsCenter,
+                    boundsSize,
                     start,
-                    target));
+                    target,
+                    ReadTeleporters(
+                        roomStableId,
+                        boundsCenter,
+                        boundsSize,
+                        data.teleporters)));
             }
 
             return Fit(sourceRooms, viewportSize);
+        }
+
+        private static List<TeleporterSource> ReadTeleporters(
+            StableId roomStableId,
+            Vector2 boundsCenter,
+            Vector2 boundsSize,
+            TeleporterData[] source)
+        {
+            TeleporterData[] values = source ?? Array.Empty<TeleporterData>();
+            var result = new List<TeleporterSource>(values.Length);
+            var ids = new HashSet<StableId>();
+            Vector2 half = boundsSize * 0.5f;
+            for (int index = 0; index < values.Length; index++)
+            {
+                TeleporterData value = values[index];
+                if (value == null)
+                {
+                    throw new InvalidOperationException(
+                        "map-layout-teleporter-invalid:"
+                        + roomStableId
+                        + ":"
+                        + index);
+                }
+                StableId teleporterStableId = StableId.Parse(Require(
+                    value.id,
+                    "map-layout-teleporter-id-missing:"
+                        + roomStableId
+                        + ":"
+                        + index));
+                if (!ids.Add(teleporterStableId))
+                {
+                    throw new InvalidOperationException(
+                        "map-layout-teleporter-duplicate:"
+                        + teleporterStableId);
+                }
+                if (!ValidPoint(value.position)
+                    || float.IsNaN(value.rotation)
+                    || float.IsInfinity(value.rotation))
+                {
+                    throw new InvalidOperationException(
+                        "map-layout-teleporter-position-invalid:"
+                        + teleporterStableId);
+                }
+                if (!string.Equals(
+                    value.unlock_when,
+                    "room-complete",
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        "map-layout-teleporter-unlock-unsupported:"
+                        + teleporterStableId);
+                }
+
+                Vector2 position = new Vector2(
+                    value.position[0],
+                    value.position[1]);
+                Vector2 fromCentre = position - boundsCenter;
+                if (Mathf.Abs(fromCentre.x) > half.x
+                    || Mathf.Abs(fromCentre.y) > half.y)
+                {
+                    throw new InvalidOperationException(
+                        "map-layout-teleporter-outside-room:"
+                        + teleporterStableId);
+                }
+                result.Add(new TeleporterSource(
+                    teleporterStableId,
+                    position,
+                    value.rotation,
+                    value.enabled));
+            }
+            return result;
         }
 
         private static MapLayout Fit(
@@ -175,13 +286,37 @@ namespace ShooterMover.UI.Game
                 Rect rect = new Rect(
                     centre - fittedRoomSize * 0.5f,
                     fittedRoomSize);
+                var teleporters = new List<Teleporter>(
+                    source.Teleporters.Count);
+                for (int teleporterIndex = 0;
+                    teleporterIndex < source.Teleporters.Count;
+                    teleporterIndex++)
+                {
+                    TeleporterSource teleporter =
+                        source.Teleporters[teleporterIndex];
+                    Vector2? mapPosition = Place(
+                        rect,
+                        source,
+                        teleporter.LocalPosition);
+                    if (!mapPosition.HasValue)
+                        continue;
+                    teleporters.Add(new Teleporter(
+                        teleporter.TeleporterStableId,
+                        source.RoomStableId,
+                        mapPosition.Value,
+                        teleporter.LocalPosition,
+                        teleporter.LocalRotationDegrees,
+                        teleporter.Enabled));
+                }
+
                 rooms.Add(new Room(
                     source.RoomStableId,
                     source.DisplayName,
                     source.Grid,
                     rect,
                     Place(rect, source, source.Start),
-                    Place(rect, source, source.Target)));
+                    Place(rect, source, source.Target),
+                    teleporters));
             }
 
             return new MapLayout(rooms, naturalSize * scale, scale);
@@ -315,13 +450,16 @@ namespace ShooterMover.UI.Game
 
         public sealed class Room
         {
+            private readonly IReadOnlyList<Teleporter> teleporters;
+
             internal Room(
                 StableId roomStableId,
                 string displayName,
                 Vector2Int grid,
                 Rect rect,
                 Vector2? start,
-                Vector2? target)
+                Vector2? target,
+                List<Teleporter> configuredTeleporters)
             {
                 RoomStableId = roomStableId;
                 DisplayName = displayName;
@@ -329,6 +467,10 @@ namespace ShooterMover.UI.Game
                 Rect = rect;
                 Start = start;
                 Target = target;
+                teleporters = new ReadOnlyCollection<Teleporter>(
+                    configuredTeleporters
+                    ?? throw new ArgumentNullException(
+                        nameof(configuredTeleporters)));
             }
 
             public StableId RoomStableId { get; }
@@ -337,6 +479,36 @@ namespace ShooterMover.UI.Game
             public Rect Rect { get; }
             public Vector2? Start { get; }
             public Vector2? Target { get; }
+            public IReadOnlyList<Teleporter> Teleporters
+            {
+                get { return teleporters; }
+            }
+        }
+
+        public sealed class Teleporter
+        {
+            internal Teleporter(
+                StableId teleporterStableId,
+                StableId roomStableId,
+                Vector2 mapPosition,
+                Vector2 localPosition,
+                float localRotationDegrees,
+                bool enabled)
+            {
+                TeleporterStableId = teleporterStableId;
+                RoomStableId = roomStableId;
+                MapPosition = mapPosition;
+                LocalPosition = localPosition;
+                LocalRotationDegrees = localRotationDegrees;
+                Enabled = enabled;
+            }
+
+            public StableId TeleporterStableId { get; }
+            public StableId RoomStableId { get; }
+            public Vector2 MapPosition { get; }
+            public Vector2 LocalPosition { get; }
+            public float LocalRotationDegrees { get; }
+            public bool Enabled { get; }
         }
 
         private sealed class RoomSource
@@ -348,7 +520,8 @@ namespace ShooterMover.UI.Game
                 Vector2 boundsCenter,
                 Vector2 boundsSize,
                 Vector2? start,
-                Vector2? target)
+                Vector2? target,
+                List<TeleporterSource> teleporters)
             {
                 RoomStableId = roomStableId;
                 DisplayName = displayName;
@@ -357,6 +530,8 @@ namespace ShooterMover.UI.Game
                 BoundsSize = boundsSize;
                 Start = start;
                 Target = target;
+                Teleporters = teleporters
+                    ?? throw new ArgumentNullException(nameof(teleporters));
             }
 
             public StableId RoomStableId { get; }
@@ -366,6 +541,27 @@ namespace ShooterMover.UI.Game
             public Vector2 BoundsSize { get; }
             public Vector2? Start { get; }
             public Vector2? Target { get; }
+            public List<TeleporterSource> Teleporters { get; }
+        }
+
+        private sealed class TeleporterSource
+        {
+            public TeleporterSource(
+                StableId teleporterStableId,
+                Vector2 localPosition,
+                float localRotationDegrees,
+                bool enabled)
+            {
+                TeleporterStableId = teleporterStableId;
+                LocalPosition = localPosition;
+                LocalRotationDegrees = localRotationDegrees;
+                Enabled = enabled;
+            }
+
+            public StableId TeleporterStableId { get; }
+            public Vector2 LocalPosition { get; }
+            public float LocalRotationDegrees { get; }
+            public bool Enabled { get; }
         }
 
         [Serializable]
@@ -391,6 +587,7 @@ namespace ShooterMover.UI.Game
             public BoundsData bounds;
             public SpawnData[] spawns;
             public DoorData[] doors;
+            public TeleporterData[] teleporters;
         }
 
         [Serializable]
@@ -418,6 +615,16 @@ namespace ShooterMover.UI.Game
         private sealed class DoorLinkData
         {
             public string kind;
+        }
+
+        [Serializable]
+        private sealed class TeleporterData
+        {
+            public string id;
+            public float[] position;
+            public float rotation;
+            public bool enabled;
+            public string unlock_when;
         }
     }
 }
