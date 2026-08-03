@@ -133,21 +133,6 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
         public static readonly StableId FirstLevelStableId =
             StableId.Parse("level.level-1");
 
-        private static readonly PlayableLevelDefinition[] FallbackEntries =
-        {
-            new PlayableLevelDefinition(
-                FirstLevelStableId,
-                "LEVEL 1",
-                "Clear three connected rooms and reach the final exit.",
-                PlayableLevelScenePath,
-                "Levels/Level1RoomContent",
-                "Levels/Level1EnemyCatalog",
-                StableId.Parse("presentation.player-default"),
-                new LevelRecommendation(1, 1, 1, "STANDARD"),
-                10,
-                true),
-        };
-
         private static PlayableLevelDefinition[] entries;
 
         private static PlayableLevelDefinition[] Entries
@@ -198,11 +183,14 @@ namespace ShooterMover.Content.Definitions.Levels.Selection
         private static PlayableLevelDefinition[] LoadEntries()
         {
             TextAsset asset = Resources.Load<TextAsset>("Levels/PlayableLevelCatalog");
-            if (asset == null) return (PlayableLevelDefinition[])FallbackEntries.Clone();
+            if (asset == null) return Array.Empty<PlayableLevelDefinition>();
+
             PlayableLevelCatalogJson payload =
                 JsonUtility.FromJson<PlayableLevelCatalogJson>(asset.text);
             if (payload == null || payload.levels == null || payload.levels.Length == 0)
-                return (PlayableLevelDefinition[])FallbackEntries.Clone();
+            {
+                return Array.Empty<PlayableLevelDefinition>();
+            }
 
             var values = new List<PlayableLevelDefinition>(payload.levels.Length);
             for (int index = 0; index < payload.levels.Length; index++)

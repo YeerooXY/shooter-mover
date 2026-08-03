@@ -15,31 +15,23 @@ namespace ShooterMover.Tests.EditMode.Flow
             "Assets/ShooterMover/Scenes/Flow/LevelSelection/LevelSelection.unity";
 
         [Test]
-        public void DefaultCatalog_AdvertisesOnlyResolvableProductionContent()
+        public void DefaultCatalog_IsEmptyAfterEnemyCatalogueReset()
         {
-            Assert.That(
-                PlayableLevelCatalog.All.Select(
-                    value => value.LevelStableId),
-                Is.EquivalentTo(new[]
-                {
-                    PlayableLevelCatalog.FirstLevelStableId,
-                }));
+            Assert.That(PlayableLevelCatalog.All, Is.Empty);
 
             PlayableLevelDefinition definition;
             Assert.That(
                 PlayableLevelCatalog.TryResolve(
                     PlayableLevelCatalog.FirstLevelStableId,
                     out definition),
-                Is.True);
-            Assert.That(definition, Is.Not.Null);
-
-            Assert.That(
-                PlayableLevelCatalog.TryResolve(
-                    PlayableLevelCatalog
-                        .FirstLevelStableId,
-                    out definition),
                 Is.False);
             Assert.That(definition, Is.Null);
+
+            Assert.That(
+                LevelSelectionCatalogDefinition
+                    .CreateDefaultCatalog()
+                    .Levels,
+                Is.Empty);
         }
 
         [Test]

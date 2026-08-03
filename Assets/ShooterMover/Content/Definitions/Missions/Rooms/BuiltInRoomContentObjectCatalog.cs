@@ -5,8 +5,8 @@ namespace ShooterMover.Content.Definitions.Missions.Rooms
 {
     /// <summary>
     /// Maps concise room-authoring object IDs to existing runtime and presentation IDs.
-    /// Combat, XP, drops, kill statistics, and scaling remain owned by their respective
-    /// enemy/content authorities rather than by room placement JSON.
+    /// Enemy definitions are intentionally absent until one authoritative enemy-content
+    /// workflow replaces the deleted duplicate catalogues.
     /// </summary>
     public static class BuiltInRoomContentObjectCatalog
     {
@@ -15,16 +15,6 @@ namespace ShooterMover.Content.Definitions.Missions.Rooms
             return new RoomContentObjectCatalog(
                 new[]
                 {
-                    Definition(
-                        "enemy.moving-droid",
-                        RoomContentObjectKind.Enemy,
-                        "enemy.mobile-blaster-droid",
-                        "presentation.enemy-mobile-blaster-droid"),
-                    Definition(
-                        "enemy.blaster-turret",
-                        RoomContentObjectKind.Enemy,
-                        "enemy.blaster-turret",
-                        "presentation.enemy-blaster-turret"),
                     Definition(
                         "prop.level1-cover",
                         RoomContentObjectKind.Prop,
