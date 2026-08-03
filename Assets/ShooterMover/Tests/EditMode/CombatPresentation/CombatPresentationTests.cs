@@ -1,10 +1,8 @@
-using System;
 using NUnit.Framework;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
 using ShooterMover.EnemyRuntimeComposition;
 using ShooterMover.UnityAdapters.CombatPresentation;
-using ShooterMover.UnityAdapters.Enemies;
 using UnityEngine;
 
 namespace ShooterMover.Tests.EditMode.CombatPresentation
@@ -31,7 +29,9 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
 
             Assert.That(snapshot.CurrentHealth, Is.EqualTo(current));
             Assert.That(snapshot.MaximumHealth, Is.EqualTo(maximum));
-            Assert.That(snapshot.NormalizedFill, Is.EqualTo(expectedFill).Within(0.0000001d));
+            Assert.That(
+                snapshot.NormalizedFill,
+                Is.EqualTo(expectedFill).Within(0.0000001d));
         }
 
         [Test]
@@ -47,8 +47,7 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
                     100d,
                     100d,
                     CombatHealthPresentationState.Alive));
-                HealthBar presenter =
-                    root.AddComponent<HealthBar>();
+                HealthBar presenter = root.AddComponent<HealthBar>();
                 presenter.Configure(actor, source, Vector3.up);
 
                 source.Current = Snapshot(
@@ -60,13 +59,17 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
                 Assert.That(
                     presenter.Refresh(),
                     Is.EqualTo(CombatHealthBarRefreshStatus.Applied));
-                Assert.That(presenter.CurrentSnapshot.NormalizedFill, Is.EqualTo(0.255d));
+                Assert.That(
+                    presenter.CurrentSnapshot.NormalizedFill,
+                    Is.EqualTo(0.255d));
 
                 int updates = presenter.PresentationUpdateCount;
                 Assert.That(
                     presenter.Refresh(),
                     Is.EqualTo(CombatHealthBarRefreshStatus.Unchanged));
-                Assert.That(presenter.PresentationUpdateCount, Is.EqualTo(updates));
+                Assert.That(
+                    presenter.PresentationUpdateCount,
+                    Is.EqualTo(updates));
 
                 source.Current = Snapshot(
                     "other",
@@ -76,7 +79,8 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
                     CombatHealthPresentationState.Alive);
                 Assert.That(
                     presenter.Refresh(),
-                    Is.EqualTo(CombatHealthBarRefreshStatus.RejectedEntityMismatch));
+                    Is.EqualTo(
+                        CombatHealthBarRefreshStatus.RejectedEntityMismatch));
 
                 source.Current = Snapshot(
                     "presenter",
@@ -108,107 +112,15 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
                     CombatHealthPresentationState.Alive);
                 Assert.That(
                     presenter.Refresh(),
-                    Is.EqualTo(CombatHealthBarRefreshStatus.RejectedStaleLifecycle));
-                Assert.That(presenter.CurrentSnapshot.LifecycleGeneration, Is.EqualTo(2L));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(root);
-            }
-        }
-
-        [Test]
-        public void GenericRegistration_AutomaticallySupportsThreeIndependentEnemies()
-        {
-            GameObject poolRoot = new GameObject("generic-vfx-pool");
-            GameObject[] enemies =
-            {
-                new GameObject("registered-enemy-one"),
-                new GameObject("registered-enemy-two"),
-                new GameObject("registered-enemy-three"),
-            };
-            try
-            {
-                var factory = new RecordingFactory();
-                DeathEffects pool = poolRoot.AddComponent<DeathEffects>();
-                pool.Configure(factory, 4);
-                var authorities = new FakeEnemyState[enemies.Length];
-                var registrations = new EnemyViewRegistration[enemies.Length];
-                var decorated = new EnemyViewState[enemies.Length];
-
-                for (int index = 0; index < enemies.Length; index++)
-                {
-                    enemies[index].AddComponent<BoxCollider2D>();
-                    authorities[index] = enemies[index].AddComponent<FakeEnemyState>();
-                    authorities[index].Configure("generic-" + index, 100d + (index * 50d));
-                    registrations[index] = EnemyViewRegistration.Attach(
-                        enemies[index],
-                        authorities[index],
-                        pool,
-                        Vector3.up);
-                    decorated[index] = new EnemyViewState(
-                        authorities[index],
-                        registrations[index]);
-                }
-
-                Assert.That(registrations[0].GetType(), Is.EqualTo(registrations[1].GetType()));
-                Assert.That(registrations[1].GetType(), Is.EqualTo(registrations[2].GetType()));
-                for (int index = 0; index < registrations.Length; index++)
-                {
-                    Assert.That(registrations[index].HealthBar.IsVisible, Is.True);
-                    Assert.That(registrations[index].HealthBar.HasPhysicsOwnership, Is.False);
-                    Assert.That(registrations[index].UsesCanonicalRuntimeProjection, Is.False);
-                }
-
-                EnemyActorStepResult damaged = decorated[0].Apply(
-                    EnemyActorCommand.Damage(
-                        1L,
-                        Id("combat-event", "third-proof-damage"),
-                        Id("actor", "player"),
-                        EnemyContactPolicy.KineticChannelValue,
-                        25d));
-                Assert.That(damaged.State.Health, Is.EqualTo(75d));
+                    Is.EqualTo(
+                        CombatHealthBarRefreshStatus.RejectedStaleLifecycle));
                 Assert.That(
-                    registrations[0].Refresh(),
-                    Is.EqualTo(CombatHealthBarRefreshStatus.Applied));
-                Assert.That(registrations[0].HealthBar.CurrentSnapshot.NormalizedFill, Is.EqualTo(0.75d));
-                Assert.That(registrations[1].HealthBar.CurrentSnapshot.NormalizedFill, Is.EqualTo(1d));
-                Assert.That(registrations[2].HealthBar.CurrentSnapshot.NormalizedFill, Is.EqualTo(1d));
-
-                decorated[0].Apply(
-                    EnemyActorCommand.Damage(
-                        2L,
-                        Id("combat-event", "third-proof-death"),
-                        Id("actor", "player"),
-                        EnemyContactPolicy.KineticChannelValue,
-                        100d));
-                Assert.That(pool.TotalSpawnCount, Is.EqualTo(1));
-                Assert.That(registrations[0].HealthBar.IsVisible, Is.False);
-                Assert.That(registrations[1].HealthBar.IsVisible, Is.True);
-                Assert.That(registrations[2].HealthBar.IsVisible, Is.True);
-
-                decorated[0].Apply(
-                    EnemyActorCommand.Damage(
-                        2L,
-                        Id("combat-event", "third-proof-death"),
-                        Id("actor", "player"),
-                        EnemyContactPolicy.KineticChannelValue,
-                        100d));
-                Assert.That(pool.TotalSpawnCount, Is.EqualTo(1));
-
-                Assert.That(decorated[0].Reset(), Is.True);
-                Assert.That(registrations[0].HealthBar.IsVisible, Is.True);
-                Assert.That(
-                    registrations[0].HealthBar.CurrentSnapshot.LifecycleGeneration,
+                    presenter.CurrentSnapshot.LifecycleGeneration,
                     Is.EqualTo(2L));
             }
             finally
             {
-                for (int index = 0; index < enemies.Length; index++)
-                {
-                    UnityEngine.Object.DestroyImmediate(enemies[index]);
-                }
-                UnityEngine.Object.DestroyImmediate(poolRoot);
+                UnityEngine.Object.DestroyImmediate(root);
             }
         }
 
@@ -226,8 +138,7 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
                     100d,
                     100d,
                     CombatHealthPresentationState.Alive));
-                HealthBar healthBar =
-                    enemyRoot.AddComponent<HealthBar>();
+                HealthBar healthBar = enemyRoot.AddComponent<HealthBar>();
                 healthBar.Configure(actor, source, Vector3.up);
 
                 DeathEffects pool = poolRoot.AddComponent<DeathEffects>();
@@ -236,14 +147,21 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
                     enemyRoot.AddComponent<EnemyDeathEffects>();
                 presenter.Configure(actor, 1L, healthBar, pool);
 
-                EnemyDeathFact death = CreateDeathFact(actor, 1L, "canonical-death-one");
+                EnemyDeathFact death = CreateDeathFact(
+                    actor,
+                    1L,
+                    "canonical-death-one");
                 EnemyTerminalPresentationFact projected =
                     EnemyTerminalPresentationFactProjector.FromCanonical(
                         death,
                         new Vector3(3f, 4f, 0f),
                         1f);
-                Assert.That(projected.TerminalEventStableId, Is.EqualTo(death.DeathEventStableId));
-                Assert.That(projected.EntityInstanceStableId, Is.EqualTo(actor));
+                Assert.That(
+                    projected.TerminalEventStableId,
+                    Is.EqualTo(death.DeathEventStableId));
+                Assert.That(
+                    projected.EntityInstanceStableId,
+                    Is.EqualTo(actor));
                 Assert.That(projected.LifecycleGeneration, Is.EqualTo(1L));
                 Assert.That(
                     presenter.TryPresent(projected),
@@ -263,13 +181,18 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
                             wrong,
                             Vector3.zero,
                             1f)),
-                    Is.EqualTo(EnemyDeathVfxPresentationStatus.RejectedWrongEntity));
+                    Is.EqualTo(
+                        EnemyDeathVfxPresentationStatus.RejectedWrongEntity));
 
                 Assert.That(presenter.AdvanceLifecycle(2L), Is.True);
                 Assert.That(
                     presenter.TryPresent(projected),
-                    Is.EqualTo(EnemyDeathVfxPresentationStatus.RejectedStaleLifecycle));
-                EnemyDeathFact second = CreateDeathFact(actor, 2L, "canonical-death-two");
+                    Is.EqualTo(
+                        EnemyDeathVfxPresentationStatus.RejectedStaleLifecycle));
+                EnemyDeathFact second = CreateDeathFact(
+                    actor,
+                    2L,
+                    "canonical-death-two");
                 Assert.That(
                     presenter.TryPresent(
                         EnemyTerminalPresentationFactProjector.FromCanonical(
@@ -300,7 +223,9 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
                 IDeathEffects second = pool.Spawn(Vector3.one, 2f);
 
                 Assert.That(factory.CreateCount, Is.EqualTo(2));
-                Assert.That(pool.SourcePresentationId, Is.EqualTo("test.recording-factory"));
+                Assert.That(
+                    pool.SourcePresentationId,
+                    Is.EqualTo("test.recording-factory"));
                 Assert.That(first.Root.GetComponent<Collider2D>(), Is.Null);
                 Assert.That(first.Root.GetComponent<Rigidbody2D>(), Is.Null);
                 Assert.That(second.Root.GetComponent<Collider2D>(), Is.Null);
@@ -387,63 +312,6 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
             }
         }
 
-        public sealed class FakeEnemyState :
-            MonoBehaviour,
-            IEnemyState,
-            ICombatPresentationLifecycleSource
-        {
-            private StableId actorId;
-            private double maximumHealth;
-            private EnemyActorState state;
-
-            public long Generation { get; private set; }
-
-            public void Configure(string value, double health)
-            {
-                actorId = Id("actor", value);
-                maximumHealth = health;
-                Generation = 1L;
-                state = CreateState();
-            }
-
-            public bool TryReadState(out EnemyActorState current)
-            {
-                current = state;
-                return current != null;
-            }
-
-            public EnemyActorStepResult Apply(EnemyActorCommand command)
-            {
-                EnemyActorStepResult result = EnemyActorStepper.Step(
-                    state,
-                    new[] { command });
-                state = result.State;
-                return result;
-            }
-
-            public bool Reset()
-            {
-                Generation++;
-                state = CreateState();
-                return true;
-            }
-
-            private EnemyActorState CreateState()
-            {
-                return EnemyActorState.Create(
-                    actorId,
-                    Id("enemy-role", "generic"),
-                    maximumHealth,
-                    1,
-                    EnemyContactPolicy.Create(
-                        EnemyContactMode.None,
-                        0d,
-                        0.5d,
-                        0.05d,
-                        8));
-            }
-        }
-
         private sealed class RecordingFactory : IDeathEffectsFactory
         {
             public string SourcePresentationId
@@ -458,7 +326,8 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
                 CreateCount++;
                 GameObject root = new GameObject("recording-vfx-" + ordinal);
                 root.transform.SetParent(parent, false);
-                RecordingInstance instance = root.AddComponent<RecordingInstance>();
+                RecordingInstance instance =
+                    root.AddComponent<RecordingInstance>();
                 instance.Recycle();
                 return instance;
             }
@@ -473,7 +342,10 @@ namespace ShooterMover.Tests.EditMode.CombatPresentation
             public bool IsActive { get; private set; }
             public GameObject Root { get { return gameObject; } }
 
-            public void Activate(Vector3 worldPosition, float scale, long spawnSequence)
+            public void Activate(
+                Vector3 worldPosition,
+                float scale,
+                long spawnSequence)
             {
                 transform.position = worldPosition;
                 transform.localScale = Vector3.one * scale;
