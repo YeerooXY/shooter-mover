@@ -1,0 +1,51 @@
+name: Weapon Maker tests
+
+on:
+  pull_request:
+    paths:
+      - "Content/Weapons/**"
+      - "tools/item-maker/**"
+      - "Assets/ShooterMover/Runtime/Application/Guns/Catalog/**"
+      - "Assets/ShooterMover/Runtime/Application/Flow/Game/GunCatalogProvider.cs"
+      - ".github/workflows/weapon-maker-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "Content/Weapons/**"
+      - "tools/item-maker/**"
+      - "Assets/ShooterMover/Runtime/Application/Guns/Catalog/**"
+      - "Assets/ShooterMover/Runtime/Application/Flow/Game/GunCatalogProvider.cs"
+      - ".github/workflows/weapon-maker-tests.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check scripts
+        run: |
+          node --check tools/item-maker/validate-weapon-folder.js
+          node --check tools/item-maker/compile-weapon-folder.js
+          node --check tools/item-maker/runtime-export.js
+          node --check tools/item-maker/server.js
+
+      - name: Validate every Weapon Maker folder
+        shell: bash
+        run: |
+          while IFS= read -r weapon; do
+            node tools/item-maker/validate-weapon-folder.js "$(dirname "$weapon")"
+          done < <(find Content/Weapons -name weapon.json -type f | sort)
+
+      - name: Run exporter test
+        run: node tools/item-maker/runtime-export.test.js
+
+      - name: Verify generated production catalogue
+        run: |
+          node tools/item-maker/runtime-export.js .
+          git diff --exit-code -- Assets/ShooterMover/Runtime/Application/Guns/Catalog/AuthoredGunCatalogue.Generated.cs
