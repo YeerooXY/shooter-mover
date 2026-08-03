@@ -111,7 +111,7 @@ function validate(){
   if(ids.has(r.id))err(`Duplicate room ID ${r.id}.`,`rooms[${ri}]`);ids.add(r.id);
   if(r.bounds.width<=0||r.bounds.height<=0)err(`Room ${r.id} has invalid size.`);
   if(!r.playerStart&&r.id===state.level.startRoomId)err(`Start room ${r.id} needs a player start.`);
-  if(r.tileGridEnabled&&r.tiles.length===0)warn(`Room ${r.id} has an enabled tile grid but no painted floor cells.`);
+  if(!FloorData.isFullFloor(r)&&r.floor.count===0)warn(`Room ${r.id} has no painted floor cells.`);
   const instanceIds=new Set();
   [...r.entities,...r.doors].forEach(o=>{if(instanceIds.has(o.id))err(`Duplicate instance ID ${o.id} in ${r.id}.`);instanceIds.add(o.id)});
   r.entities.forEach(e=>{

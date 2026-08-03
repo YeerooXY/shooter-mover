@@ -49,8 +49,8 @@
  function usedAssetIds(project){
   const ids=new Set();
   for(const room of project?.level?.rooms||[]){
-   if(room.floorObject)ids.add(room.floorObject);
-   for(const tile of room.tiles||[])if(tile.object)ids.add(tile.object);
+   FloorData.prepareRoom(room);
+   for(const tile of room.floor.tiles)if(tile)ids.add(tile);
    for(const entity of room.entities||[])if(entity.object)ids.add(entity.object);
    for(const door of room.doors||[])if(door.runtimeObject)ids.add(door.runtimeObject);
   }

@@ -73,7 +73,7 @@ function drawGrid(rect){
  }
 }
 function selectedFloorObject(){
- const a=state.assets.find(x=>x.id===state.editor.selectedAssetId&&x.type==="floor");return a?.id||currentRoom()?.floorObject||"tile.floor-industrial"
+ const a=state.assets.find(x=>x.id===state.editor.selectedAssetId&&x.type==="floor");return a?.id||FloorData.defaultFloorTile(currentRoom())
 }
 function tileColor(id){
  let h=0;for(const c of String(id||"tile"))h=(h*31+c.charCodeAt(0))>>>0;
@@ -85,51 +85,34 @@ function tileCellFromWorld(r,p){
  return x>=0&&y>=0&&x<cols&&y<rows?{x,y,key:`${x},${y}`}:null
 }
 function tileCellWorldRect(r,x,y){return {x:-r.bounds.width/2+x,y:-r.bounds.height/2+y,w:1,h:1}}
-function setRoomTile(r,cell,object){
- if(!cell)return;r.tileGridEnabled=true;const i=r.tiles.findIndex(t=>t.x===cell.x&&t.y===cell.y);
- if(object){const value={x:cell.x,y:cell.y,object};if(i>=0)r.tiles[i]=value;else r.tiles.push(value)}else if(i>=0)r.tiles.splice(i,1)
+function setRoomTile(room,cell,object){
+ if(!cell)return false;
+ return FloorData.setFloorTile(room,cell.x,cell.y,object);
 }
-function fillRoomTiles(r,object){
- r.tileGridEnabled=true;r.tiles=[];const {cols,rows}=tileDimensions(r);for(let y=0;y<rows;y++)for(let x=0;x<cols;x++)r.tiles.push({x,y,object})
+function fillRoomTiles(room,object){
+ FloorData.fillFloor(room,object);
 }
-function drawRoomTiles(r){
- const tl=worldToScreen([-r.bounds.width/2,r.bounds.height/2]),br=worldToScreen([r.bounds.width/2,-r.bounds.height/2]);
- const left=devicePixel(Math.min(tl[0],br[0])),top=devicePixel(Math.min(tl[1],br[1]));
- const right=devicePixel(Math.max(tl[0],br[0])),bottom=devicePixel(Math.max(tl[1],br[1]));
- ctx.fillStyle=tileColor(r.floorObject);ctx.globalAlpha=r.tileGridEnabled?.14:.34;ctx.fillRect(left,top,right-left,bottom-top);ctx.globalAlpha=1;
- if(r.tileGridEnabled){
-  for(const t of r.tiles){
-   const rect=tileCellWorldRect(r,t.x,t.y),a=worldToScreen([rect.x,rect.y+1]),b=worldToScreen([rect.x+1,rect.y]);
-   const x=devicePixel(Math.min(a[0],b[0])),y=devicePixel(Math.min(a[1],b[1]));
-   const w=devicePixel(Math.abs(b[0]-a[0])),h=devicePixel(Math.abs(b[1]-a[1]));
-   ctx.fillStyle=tileColor(t.object);ctx.fillRect(x+2,y+2,Math.max(0,w-4),Math.max(0,h-4));
-   ctx.strokeStyle="rgba(239,247,255,.48)";ctx.lineWidth=Math.max(1,1/dpr);
-   ctx.strokeRect(x+1.5,y+1.5,Math.max(0,w-3),Math.max(0,h-3));
-   if(viewScale()>=34){ctx.fillStyle="rgba(255,255,255,.86)";ctx.font="8px system-ui";ctx.textAlign="center";ctx.fillText(String(t.object).split(".").pop().slice(0,8),x+w/2,y+h/2+3)}
-  }
+function drawRoomTiles(room){
+ FloorData.prepareRoom(room);
+ const floor=room.floor,tl=worldToScreen([-room.bounds.width/2,room.bounds.height/2]),br=worldToScreen([room.bounds.width/2,-room.bounds.height/2]);
+ const left=devicePixel(Math.min(tl[0],br[0])),top=devicePixel(Math.min(tl[1],br[1])),right=devicePixel(Math.max(tl[0],br[0])),bottom=devicePixel(Math.max(tl[1],br[1]));
+ const full=FloorData.isFullFloor(room);
+ ctx.fillStyle=tileColor(FloorData.defaultFloorTile(room));ctx.globalAlpha=full?.34:.14;ctx.fillRect(left,top,right-left,bottom-top);ctx.globalAlpha=1;
+ if(!full)for(let y=0;y<floor.height;y++)for(let x=0;x<floor.width;x++){
+  const object=FloorData.getFloorTile(room,x,y);if(!object)continue;
+  const rect=tileCellWorldRect(room,x,y),a=worldToScreen([rect.x,rect.y+1]),b=worldToScreen([rect.x+1,rect.y]);
+  const sx=devicePixel(Math.min(a[0],b[0])),sy=devicePixel(Math.min(a[1],b[1])),w=devicePixel(Math.abs(b[0]-a[0])),h=devicePixel(Math.abs(b[1]-a[1]));
+  ctx.fillStyle=tileColor(object);ctx.fillRect(sx+2,sy+2,Math.max(0,w-4),Math.max(0,h-4));
+  ctx.strokeStyle="rgba(239,247,255,.48)";ctx.lineWidth=Math.max(1,1/dpr);ctx.strokeRect(sx+1.5,sy+1.5,Math.max(0,w-3),Math.max(0,h-3));
  }
- const {cols,rows}=tileDimensions(r),minor=Math.max(1,1/dpr),major=Math.max(2,2/dpr);
- for(let x=0;x<=cols;x++){
-  const isMajor=x%4===0||x===cols,a=worldToScreen([-r.bounds.width/2+x,-r.bounds.height/2]),b=worldToScreen([-r.bounds.width/2+x,r.bounds.height/2]);
-  const sx=devicePixel(a[0]),w=isMajor?major:minor;
-  ctx.fillStyle=isMajor?"rgba(213,233,251,.96)":"rgba(157,192,224,.76)";
-  ctx.fillRect(devicePixel(sx-w/2),devicePixel(Math.min(a[1],b[1])),w,devicePixel(Math.abs(b[1]-a[1])));
-  if(isMajor&&viewScale()>=20&&x<cols){ctx.fillStyle="rgba(231,243,253,.94)";ctx.font="9px system-ui";ctx.textAlign="left";ctx.fillText(String(x),sx+4,top+12)}
+ const minor=Math.max(1,1/dpr),major=Math.max(2,2/dpr);
+ for(let x=0;x<=floor.width;x++){
+  const isMajor=x%4===0||x===floor.width,a=worldToScreen([-room.bounds.width/2+x,-room.bounds.height/2]),b=worldToScreen([-room.bounds.width/2+x,room.bounds.height/2]),sx=devicePixel(a[0]),w=isMajor?major:minor;
+  ctx.fillStyle=isMajor?"rgba(213,233,251,.96)":"rgba(157,192,224,.76)";ctx.fillRect(devicePixel(sx-w/2),devicePixel(Math.min(a[1],b[1])),w,devicePixel(Math.abs(b[1]-a[1])));
  }
- for(let y=0;y<=rows;y++){
-  const isMajor=y%4===0||y===rows,a=worldToScreen([-r.bounds.width/2,-r.bounds.height/2+y]),b=worldToScreen([r.bounds.width/2,-r.bounds.height/2+y]);
-  const sy=devicePixel(a[1]),w=isMajor?major:minor;
-  ctx.fillStyle=isMajor?"rgba(213,233,251,.96)":"rgba(157,192,224,.76)";
-  ctx.fillRect(devicePixel(Math.min(a[0],b[0])),devicePixel(sy-w/2),devicePixel(Math.abs(b[0]-a[0])),w);
-  if(isMajor&&viewScale()>=20&&y<rows){ctx.fillStyle="rgba(231,243,253,.94)";ctx.font="9px system-ui";ctx.textAlign="left";ctx.fillText(String(y),left+4,sy-4)}
- }
- if(viewScale()>=14){
-  ctx.fillStyle="rgba(226,240,252,.5)";
-  const radius=viewScale()>=28?1.5:1;
-  for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
-   const c=worldToScreen([-r.bounds.width/2+x+.5,-r.bounds.height/2+y+.5]);
-   ctx.beginPath();ctx.arc(devicePixel(c[0]),devicePixel(c[1]),radius,0,Math.PI*2);ctx.fill()
-  }
+ for(let y=0;y<=floor.height;y++){
+  const isMajor=y%4===0||y===floor.height,a=worldToScreen([-room.bounds.width/2,-room.bounds.height/2+y]),b=worldToScreen([room.bounds.width/2,-room.bounds.height/2+y]),sy=devicePixel(a[1]),w=isMajor?major:minor;
+  ctx.fillStyle=isMajor?"rgba(213,233,251,.96)":"rgba(157,192,224,.76)";ctx.fillRect(devicePixel(Math.min(a[0],b[0])),devicePixel(sy-w/2),devicePixel(Math.abs(b[0]-a[0])),w);
  }
 }
 function drawRoom(r){

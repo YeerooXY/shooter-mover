@@ -26,7 +26,7 @@ function readRecoveryDraft(){
  try{
   const raw=localStorage.getItem(RECOVERY_STORAGE_KEY);if(!raw)return null;
   const value=JSON.parse(raw),project=value?.project;
-  if(!project||project.format!=="shooter-mover-web-level-project"||!Array.isArray(project.rooms)||!project.rooms.length)throw new Error("Recovery draft is not a valid Level Maker project.");
+  if(!project||project.format!=="shooter-mover-web-level-project"||!Array.isArray(project.level?.rooms)||!project.level.rooms.length)throw new Error("Recovery draft is not a valid Level Maker project.");
   recoveryRestoredAt=String(value.savedAt||"");return project;
  }catch(error){
   console.warn("Level Maker recovery draft could not be restored.",error);
@@ -57,22 +57,22 @@ function recoveryNotice(){
 
 function newRoom(index=0){
  const rid=`room.level-1-${index===0?"start":"room-"+(index+1)}`;
- return {
+ return FloorData.prepareRoom({
    id:rid, displayName:index===0?"START ROOM":`ROOM ${index+1}`, grid:[index,0], slot:1,
    bounds:{width:24,height:14}, playerStart:index===0?{position:[-9,0],rotation:0}:null,
-   floorObject:"tile.floor-industrial", tileGridEnabled:false, tiles:[], entities:[], doors:[],
+   floor:FloorData.makeFloor(24,14,"tile.floor-industrial"), entities:[], doors:[],
    encounter:{completion:"all-enemies"}, visibleOnMap:true
- };
+ });
 }
 function initialState(){
  const r=newRoom(0);
  const exit={id:"door.level-1-final-exit",kind:"door",position:[12,0],rotation:90,side:"East",placementMode:"Fixed",traversable:true,visibleOnMap:true,runtimeObject:"door.room-standard",openWhen:"room-complete"};
  r.doors.push(exit);
  return {
-  format:"shooter-mover-web-level-project",editorVersion:1,schemaVersion:2,
-  level:{id:"level.level-1",name:"Level 1",targetFolder:"level-1",startRoomId:r.id,finalRoomId:r.id,finalExitDoorId:exit.id},
-  rooms:[r],connections:[],logic:[],catalog:clone(defaultCatalog),activeRoomId:r.id,
-  editor:{tool:"select",viewMode:"room",mapMode:"open",placementMode:"single",focusRoom:true,selectedId:null,selectedAssetId:"prop.wall-1x1",zoom:32,pan:[0,0],snap:true,snapSize:1,roomView:{zoom:32,pan:[0,0]},mapView:{zoom:22,pan:[0,0]}}
+  format:"shooter-mover-web-level-project",editorVersion:1,schemaVersion:LevelSave?.LEVEL_VERSION||4,
+  level:{id:"level.level-1",name:"Level 1",targetFolder:"level-1",startRoomId:r.id,finalRoomId:r.id,finalExitDoorId:exit.id,rooms:[r],connections:[],logic:[]},
+  editor:{activeRoomId:r.id,tool:"select",viewMode:"room",mapMode:"open",placementMode:"single",focusRoom:true,selectedId:null,selectedAssetId:"prop.wall-1x1",zoom:32,pan:[0,0],snap:true,snapSize:1,roomView:{zoom:32,pan:[0,0]},mapView:{zoom:22,pan:[0,0]},customAssets:[]},
+  assets:clone(defaultCatalog)
  };
 }
 let state=readRecoveryDraft()||initialState(), history=[], future=[], gestureSnapshot=null;
@@ -96,31 +96,37 @@ function undo(){if(!history.length)return;future.push(snapshot());state=JSON.par
 function redo(){if(!future.length)return;history.push(snapshot());state=JSON.parse(future.pop());normalize();renderAll()}
 function updateUndo(){$("#undoBtn").disabled=!history.length;$("#redoBtn").disabled=!future.length}
 function normalize(){
- const knownAssets=new Map(defaultCatalog.map(asset=>[asset.id,clone(asset)]));
- (state.assets||[]).forEach(asset=>knownAssets.set(asset.id,{...knownAssets.get(asset.id),...asset}));
- state.assets=[...knownAssets.values()].sort((left,right)=>left.type.localeCompare(right.type)||left.id.localeCompare(right.id));
- if(!state.level.rooms?.length){state.level.rooms=[newRoom(0)]}
- if(!state.level.rooms.some(r=>r.id===state.editor.activeRoomId))state.editor.activeRoomId=state.level.rooms[0].id;
- state.level.rooms.forEach((r,i)=>{
-   r.bounds ||= {width:24,height:14};
-   r.bounds.width=Math.max(2,Math.round(Number(r.bounds.width)||24));
-   r.bounds.height=Math.max(2,Math.round(Number(r.bounds.height)||14));
-   r.entities ||= []; r.doors ||= []; r.encounter ||= {completion:"all-enemies"};
-   r.doors.forEach(d=>{const placement=doorEdgePlacement(r,d.position||[0,0]);d.position=placement.position;d.side=placement.side;d.rotation=placement.rotation});
-   r.grid ||= [i,0]; r.slot ||= 1; r.floorObject ||= "tile.floor-industrial"; r.tiles ||= [];
-   if(typeof r.tileGridEnabled!=="boolean")r.tileGridEnabled=r.tiles.length>0;
-   const cols=Math.max(1,Math.round(r.bounds.width)),rows=Math.max(1,Math.round(r.bounds.height));
-   r.tiles=r.tiles.filter(t=>Number.isInteger(t.x)&&Number.isInteger(t.y)&&t.x>=0&&t.y>=0&&t.x<cols&&t.y<rows&&t.object);
- });
- state.level.connections ||= [];state.level.logic ||= [];
+ state.level ||= initialState().level;
+ state.level.rooms ||= [];
+ state.level.connections ||= [];
+ state.level.logic ||= [];
  state.editor ||= initialState().editor;
+ state.assets ||= [];
+
+ const knownAssets=new Map(defaultCatalog.map(asset=>[asset.id,clone(asset)]));
+ state.assets.forEach(asset=>knownAssets.set(asset.id,{...knownAssets.get(asset.id),...asset}));
+ state.assets=[...knownAssets.values()].sort((left,right)=>left.type.localeCompare(right.type)||left.id.localeCompare(right.id));
+ if(!state.level.rooms.length)state.level.rooms=[newRoom(0)];
+ if(!state.level.rooms.some(room=>room.id===state.editor.activeRoomId))state.editor.activeRoomId=state.level.rooms[0].id;
+ state.level.rooms.forEach((room,index)=>{
+   room.bounds ||= {width:24,height:14};
+   room.bounds.width=Math.max(2,Math.round(Number(room.bounds.width)||24));
+   room.bounds.height=Math.max(2,Math.round(Number(room.bounds.height)||14));
+   room.entities ||= [];
+   room.doors ||= [];
+   room.encounter ||= {completion:"all-enemies"};
+   room.doors.forEach(door=>{const placement=doorEdgePlacement(room,door.position||[0,0]);door.position=placement.position;door.side=placement.side;door.rotation=placement.rotation});
+   room.grid ||= [index,0];
+   room.slot ||= 1;
+   FloorData.prepareRoom(room);
+ });
  state.editor.viewMode ||= "room";
  state.editor.mapMode ||= "open";
  state.editor.placementMode ||= "single";
  if(typeof state.editor.focusRoom!=="boolean")state.editor.focusRoom=true;
  state.editor.roomView ||= {zoom:state.editor.zoom||32,pan:state.editor.pan||[0,0]};
  state.editor.mapView ||= {zoom:22,pan:[0,0]};
- state.level ||= initialState().level;
+ state.editor.customAssets ||= [];
 }
 
 function setStatus(text,kind=""){
@@ -169,7 +175,7 @@ function renderHeaderFields(){
  const r=currentRoom();
  $("#room-hud").innerHTML=state.editor.viewMode==="map"
   ? `<b>LEVEL GRAPH</b> · ${esc(({open:"open room",arrange:"arrange rooms",connect:"connect doors"})[state.editor.mapMode])}`
-  : `<b>${esc(r.displayName)}</b> · ${r.bounds.width} × ${r.bounds.height} · ${r.tileGridEnabled?r.tiles.length+" painted cells":"full-room floor fill"}`;
+  : `<b>${esc(r.displayName)}</b> · ${r.bounds.width} × ${r.bounds.height} · ${FloorData.isFullFloor(r)?"full-room floor fill":r.floor.count+" painted cells"}`;
  $$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===state.editor.viewMode));
  $$('[data-map-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mapMode===state.editor.mapMode));
  $$('[data-placement-mode]').forEach(b=>b.classList.toggle('active',b.dataset.placementMode===state.editor.placementMode));

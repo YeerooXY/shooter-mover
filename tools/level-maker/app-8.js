@@ -139,7 +139,7 @@
   const room=currentRoom();
   $("#room-hud").innerHTML=state.editor.viewMode==="map"
    ? `<b>LEVEL GRAPH</b> · ${state.editor.mapMode==="connect"?(state.editor.connectSourceDoorId?"choose destination door":"choose first door"):esc(({open:"open room",arrange:"arrange rooms"})[state.editor.mapMode]||state.editor.mapMode)}`
-   : `<b>${esc(room.displayName)}</b> · ${room.bounds.width} × ${room.bounds.height} · ${room.tileGridEnabled?room.tiles.length+" painted cells":"full-room floor fill"}`;
+   : `<b>${esc(room.displayName)}</b> · ${room.bounds.width} × ${room.bounds.height} · ${FloorData.isFullFloor(room)?"full-room floor fill":room.floor.count+" painted cells"}`;
   $$('[data-view]').forEach(button=>button.classList.toggle('active',button.dataset.view===state.editor.viewMode));
   $$('[data-map-mode]').forEach(button=>button.classList.toggle('active',button.dataset.mapMode===state.editor.mapMode));
   $$('[data-placement-mode]').forEach(button=>button.classList.toggle('active',button.dataset.placementMode===state.editor.placementMode));

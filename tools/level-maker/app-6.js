@@ -1,15 +1,4 @@
-function compressedFloorTiles(r){
- if(!r.tileGridEnabled)return [{object:r.floorObject,fill:{from:[-r.bounds.width/2,-r.bounds.height/2],to:[r.bounds.width/2,r.bounds.height/2]}}];
- const {cols,rows}=tileDimensions(r),byKey=new Map(r.tiles.map(t=>[`${t.x},${t.y}`,t.object])),used=new Set(),out=[];
- for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
-  const key=`${x},${y}`,object=byKey.get(key);if(!object||used.has(key))continue;
-  let w=1;while(x+w<cols&&byKey.get(`${x+w},${y}`)===object&&!used.has(`${x+w},${y}`))w++;
-  let h=1,ok=true;while(y+h<rows&&ok){for(let xx=x;xx<x+w;xx++)if(byKey.get(`${xx},${y+h}`)!==object||used.has(`${xx},${y+h}`)){ok=false;break}if(ok)h++}
-  for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)used.add(`${xx},${yy}`);
-  out.push({object,fill:{from:[-r.bounds.width/2+x,-r.bounds.height/2+y],to:[-r.bounds.width/2+x+w,-r.bounds.height/2+y+h]}})
- }
- return out
-}
+function compressedFloorTiles(room){return FloorData.buildUnityTiles(room)}
 function runtimeRoomFiles(r){
  const folder=`Room_${r.grid[0]}_${r.grid[1]}_${String(r.slot||1).padStart(2,"0")}`;
  const enemies=r.entities.filter(e=>e.kind==="enemy").map(e=>({id:e.id,object:e.object,tier:Number(e.tier||1),position:e.position.map(round),rotation:round(e.rotation||0)}));

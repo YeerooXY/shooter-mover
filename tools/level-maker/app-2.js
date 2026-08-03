@@ -45,7 +45,7 @@ function renderInspector(){
    <label>Display name</label><input data-r="displayName" value="${esc(r.displayName)}">
    <div class="grid2"><div><label>Map grid X</label><input data-r="gridX" type="number" value="${r.grid[0]}"></div><div><label>Map grid Y</label><input data-r="gridY" type="number" value="${r.grid[1]}"></div></div>
    <div class="grid2"><div><label>Width</label><input data-r="width" type="number" min="2" step="1" value="${r.bounds.width}"></div><div><label>Height</label><input data-r="height" type="number" min="2" step="1" value="${r.bounds.height}"></div></div>
-   <label>Default floor object</label><input data-r="floorObject" value="${esc(r.floorObject)}">
+   <label>Default floor object</label><input data-r="floorObject" value="${esc(FloorData.defaultFloorTile(r))}">
    <div class="section"><div class="section-title">Tile grid · 1 × 1 world units</div>
     <div class="tile-chip"><span class="tile-swatch" style="background:${tileColor(selectedFloorObject())}"></span>${esc(selectedFloorObject()||"Select a floor asset")}</div>
     <div class="row" style="margin-top:8px"><button data-action="fill-tiles">Fill all cells</button><button data-action="clear-tiles">Clear all cells</button></div>
@@ -60,12 +60,12 @@ function renderInspector(){
    if(k==="id"){const old=r.id;r.id=el.value;state.editor.activeRoomId=r.id;if(state.level.startRoomId===old)state.level.startRoomId=r.id;if(state.level.finalRoomId===old)state.level.finalRoomId=r.id}
    else if(k==="gridX")r.grid[0]=+el.value;else if(k==="gridY")r.grid[1]=+el.value;
    else if(k==="width")r.bounds.width=Math.max(2,Math.round(+el.value));else if(k==="height")r.bounds.height=Math.max(2,Math.round(+el.value));
-   else if(k==="visible")r.visibleOnMap=el.checked;else r[k]=el.value;
+   else if(k==="visible")r.visibleOnMap=el.checked;else if(k==="floorObject")FloorData.setDefaultFloorTile(r,el.value);else r[k]=el.value;
   }));
   wrap.querySelector("[data-action=center]").onclick=()=>{state.editor.pan=[0,0];fitRoom();renderCanvas()};
   wrap.querySelector("[data-action=map]").onclick=()=>{setViewMode("map",{focus:false});fitMap();renderAll()};
-  wrap.querySelector("[data-action=fill-tiles]").onclick=()=>mutate(()=>fillRoomTiles(r,selectedFloorObject()||r.floorObject));
-  wrap.querySelector("[data-action=clear-tiles]").onclick=()=>mutate(()=>{r.tileGridEnabled=true;r.tiles=[]});
+  wrap.querySelector("[data-action=fill-tiles]").onclick=()=>mutate(()=>FloorData.fillFloor(r,selectedFloorObject()||FloorData.defaultFloorTile(r)));
+  wrap.querySelector("[data-action=clear-tiles]").onclick=()=>mutate(()=>FloorData.clearFloor(r));
   const del=wrap.querySelector("[data-action=delete-room]");if(del)del.onclick=()=>mutate(()=>deleteActiveRoom());
   return;
  }
