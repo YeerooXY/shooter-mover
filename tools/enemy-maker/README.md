@@ -9,7 +9,7 @@ Launch from the repository root:
 The browser editor writes canonical enemy definitions directly to:
 
 ```text
-Assets/ShooterMover/Content/Definitions/Enemies/
+Content/Enemies/
 ```
 
 There is no editor-only enemy format and no enemy catalogue.
