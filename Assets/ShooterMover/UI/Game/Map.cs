@@ -1,4 +1,5 @@
 using System;
+using ShooterMover.Application.Missions.Rooms;
 using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Contracts.Missions.Rooms;
 using ShooterMover.Domain.Common;
