@@ -11,7 +11,9 @@
     "ShooterMover.EnemyRuntimeComposition",
     "ShooterMover.Content.Definitions",
     "ShooterMover.Bootstrap",
-    "ShooterMover.Editor.LevelDesign.Foundation"
+    "ShooterMover.Editor.LevelDesign.Foundation",
+    "ShooterMover.TerminalDropBinding",
+    "ShooterMover.UI.Game"
   ],
   "includePlatforms": [
     "Editor"
