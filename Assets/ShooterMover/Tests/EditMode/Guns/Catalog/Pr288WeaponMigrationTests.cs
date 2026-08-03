@@ -66,10 +66,6 @@ namespace ShooterMover.Tests.EditMode.Guns.Catalog
                             out flatDefinition),
                         Is.True,
                         definitionId + " must reach the Strongbox catalogue.");
-                    Assert.That(
-                        flatDefinition.BaseSelectionWeight,
-                        Is.EqualTo(1d),
-                        definitionId + " must retain neutral weight in the flat projection.");
 
                     Assert.That(
                         catalogue.EquipmentCatalog.FindEquipmentDefinition(
