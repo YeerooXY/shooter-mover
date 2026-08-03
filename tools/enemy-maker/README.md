@@ -78,6 +78,12 @@ The collider's `body.offset` is independent. Moving the collider does not move t
 
 The preview renders mounts as orange handles. Dragging a handle updates its relative X/Y values.
 
+### Mount editing controls
+
+Every completed mount drag creates one undo step. Use **Undo drag** or press **Ctrl/Cmd+Z** while the preview is focused and a text field is not being edited. Manual X/Y edits clear the drag history so an old drag cannot unexpectedly overwrite a newer typed coordinate.
+
+The **Mount zoom** control enlarges the enemy body and local mount geometry from 50% to 500%. The mouse wheel also zooms while the pointer is over the preview. Detection and attack-range rings remain at their overview scale so mount detail can be inspected without losing the combat-range reference.
+
 ## Enemy Shots
 
 Enemy Shot definitions contain reusable projectile delivery, impact, and art only. They do not contain enemy damage, cooldown, trigger count, spread, or mount placement.
@@ -131,6 +137,21 @@ suicide
 ```
 
 It deliberately does not add combat states, traits, bosses, arbitrary condition trees, a runtime spawner, or an encounter generator yet.
+
+## What Save does today
+
+Saving writes or replaces one validated canonical file under `Content/Enemies/`. The file can immediately be reopened in Enemy Maker, reviewed in Git, copied between branches, and consumed by tests or future importers.
+
+Saving does **not** currently create a Unity prefab, register a playable enemy, place it in a level, or execute its attacks. Runtime integration is the next boundary. A playable vertical slice needs:
+
+1. a schema-1 Unity/engine importer;
+2. an enemy visual and collider realization;
+3. mount transforms created from the saved relative coordinates;
+4. an attack scheduler that selects emitters and trigger patterns;
+5. Enemy Shot projectile execution;
+6. a test-spawn route, followed by Level Maker discovery and placement.
+
+Until that importer exists, the saved JSON is authoritative authored content rather than a live gameplay object.
 
 ## Leveling
 
