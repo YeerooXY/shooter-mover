@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ShooterMover.Contracts.Missions.Rooms;
 using ShooterMover.Domain.Common;
+using ShooterMover.UnityAdapters.Enemies;
 using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
@@ -133,6 +134,11 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
 
         private void Require(StableId presentationStableId)
         {
+            if (CompactEnemyCatalog.IsCompactPresentation(presentationStableId))
+            {
+                return;
+            }
+
             GameObject prefab;
             if (resolved.TryGetValue(presentationStableId, out prefab)
                 && prefab != null)

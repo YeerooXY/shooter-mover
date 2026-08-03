@@ -6,6 +6,7 @@ const path = require("path");
 const crypto = require("crypto");
 const { URL } = require("url");
 const { validateEnemy, validateShot, validateLeveling } = require("./enemy-schema.js");
+const { exportRuntimeCatalog } = require("./runtime-export.js");
 
 function parseArgument(name, fallback) {
   const index = process.argv.indexOf(name);
@@ -18,6 +19,7 @@ function createEnemyMaker(options = {}) {
   const content = path.resolve(root, "Content/Enemies");
   const shots = path.resolve(root, "Content/EnemyShots");
   const token = crypto.randomBytes(24).toString("hex");
+  let runtimeExport = null;
   const staticTypes = {
     ".html": "text/html",
     ".js": "text/javascript",
@@ -25,6 +27,11 @@ function createEnemyMaker(options = {}) {
     ".json": "application/json",
     ".svg": "image/svg+xml"
   };
+
+  function refreshRuntimeCatalog() {
+    runtimeExport = exportRuntimeCatalog(root);
+    return runtimeExport;
+  }
 
   function sendJson(res, status, value) {
     const body = JSON.stringify(value);
@@ -140,7 +147,15 @@ function createEnemyMaker(options = {}) {
       return sendJson(res, 200, {
         token,
         content: path.relative(root, content).replace(/\\/g, "/"),
-        shots: path.relative(root, shots).replace(/\\/g, "/")
+        shots: path.relative(root, shots).replace(/\\/g, "/"),
+        runtime: runtimeExport
+          ? {
+              enemyCount: runtimeExport.enemyCount,
+              shotCount: runtimeExport.shotCount,
+              resource: path.relative(root, runtimeExport.resourceFile).replace(/\\/g, "/"),
+              registry: path.relative(root, runtimeExport.registryFile).replace(/\\/g, "/")
+            }
+          : null
       });
     }
     if (req.method === "GET" && url.pathname === "/api/enemies") return sendJson(res, 200, { enemies: listEnemies() });
@@ -177,7 +192,12 @@ function createEnemyMaker(options = {}) {
         return sendJson(res, 409, { errors: [`Enemy '${previousId}' no longer exists on disk.`] });
       }
       atomicWrite(target, enemy);
-      return sendJson(res, 200, { saved: path.relative(root, target).replace(/\\/g, "/") });
+      const exported = refreshRuntimeCatalog();
+      return sendJson(res, 200, {
+        saved: path.relative(root, target).replace(/\\/g, "/"),
+        runtimeEnemyCount: exported.enemyCount,
+        runtimeShotCount: exported.shotCount
+      });
     }
     if (req.method === "PUT" && url.pathname === "/api/leveling") {
       const body = await readBody(req);
@@ -185,7 +205,12 @@ function createEnemyMaker(options = {}) {
       if (errors.length) return sendJson(res, 400, { errors });
       const file = path.join(content, "leveling.json");
       atomicWrite(file, body.leveling);
-      return sendJson(res, 200, { saved: path.relative(root, file).replace(/\\/g, "/") });
+      const exported = refreshRuntimeCatalog();
+      return sendJson(res, 200, {
+        saved: path.relative(root, file).replace(/\\/g, "/"),
+        runtimeEnemyCount: exported.enemyCount,
+        runtimeShotCount: exported.shotCount
+      });
     }
     return sendJson(res, 404, { error: "Not found." });
   }
@@ -210,6 +235,12 @@ function createEnemyMaker(options = {}) {
 
   function start() {
     return new Promise((resolve, reject) => {
+      try {
+        refreshRuntimeCatalog();
+      } catch (error) {
+        reject(error);
+        return;
+      }
       server.once("error", reject);
       server.listen(requestedPort, "127.0.0.1", () => {
         server.removeListener("error", reject);
@@ -218,7 +249,16 @@ function createEnemyMaker(options = {}) {
     });
   }
 
-  return { root, content, shots, server, start, listEnemies, listShots };
+  return {
+    root,
+    content,
+    shots,
+    server,
+    start,
+    listEnemies,
+    listShots,
+    refreshRuntimeCatalog
+  };
 }
 
 if (require.main === module) {
@@ -227,6 +267,7 @@ if (require.main === module) {
     console.log(`Enemy Maker: http://127.0.0.1:${port}/`);
     console.log(`Enemy definitions: ${maker.content}`);
     console.log(`Enemy shots: ${maker.shots}`);
+    console.log("Runtime projection refreshed.");
   }).catch(error => {
     console.error(error.stack || error.message || String(error));
     process.exitCode = 1;
