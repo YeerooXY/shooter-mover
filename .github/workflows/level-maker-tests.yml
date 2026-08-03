@@ -52,6 +52,7 @@ jobs:
           node map-door-shortcut.test.js
           node authoring-ux.test.js
           node level-maker-ui-policy.test.js
+          node app-28-level-editor-ux.test.js
           node app-19-save.test.js
           node editor-file.test.js
           node enemy-definition-assets.test.js
