@@ -4,10 +4,6 @@
   "rarity": "common",
   "projectileType": "bullet",
   "damageType": "physical",
-  "fire": {
-    "mode": "automatic",
-    "rate": 4
-  },
   "shot": {
     "projectiles": 1,
     "spread": 0
@@ -16,11 +12,6 @@
     "speed": 20,
     "radius": 0.1,
     "range": 25
-  },
-  "impact": {
-    "pierce": 1,
-    "ricochet": 0,
-    "knockback": 0
   },
   "art": {
     "delivery": "gun-delivery-art.normal-physical.v1",
