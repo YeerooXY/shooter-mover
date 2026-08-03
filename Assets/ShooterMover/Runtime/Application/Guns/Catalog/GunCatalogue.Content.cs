@@ -279,7 +279,20 @@ namespace ShooterMover.Application.Guns.Catalog
 
             double fireRate = mark == 1 ? 12d : 4d;
             double damage = mark == 1 ? 2d : 1d;
-            int ricochet = mark == 1 ? 1 : 0;
+            int ricochetTenths = mark == 1 ? 10 : 0;
+            GunImpactSpec impact = ricochetTenths > 0
+                ? GunImpactSpec.Create(
+                    true,
+                    true,
+                    true,
+                    true,
+                    new GunRicochetSpec(
+                        new RicochetValue(ricochetTenths),
+                        1d,
+                        0d,
+                        0d),
+                    null)
+                : StandardTravellingImpact();
             return TravellingProfile(
                 FireSettings.Automatic(fireRate),
                 GunShotPattern.Canonical(1, 0d),
@@ -293,10 +306,10 @@ namespace ShooterMover.Application.Guns.Catalog
                 20d,
                 0.1d,
                 GunGuidanceSpec.Unguided(),
-                StandardTravellingImpact(),
+                impact,
                 GunEffects.None(),
                 "normal-physical",
-                ricochet);
+                ricochetTenths);
         }
 
         private static ProvisionalCombatProfile SweeperProfile(int mark)
