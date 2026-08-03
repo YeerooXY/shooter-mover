@@ -25,6 +25,19 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
     /// </summary>
     internal sealed class RoomObjects
     {
+        private const string DebugCoverPresentation =
+            "presentation.prop-level1-cover";
+        private const string DebugWallOnePresentation =
+            "presentation.prop-wall-1x1";
+        private const string DebugWallTwoPresentation =
+            "presentation.prop-wall-2x2";
+        private const string DebugDoorPresentation =
+            "presentation.environment-room-door";
+        private const string DebugFloorPresentation =
+            "presentation.environment-floor-industrial";
+
+        private static Sprite debugPixelSprite;
+
         private readonly Dictionary<StableId, RoomObjectInstance> spawnedPlacements =
             new Dictionary<StableId, RoomObjectInstance>();
         private readonly Dictionary<StableId, RoomDoor> spawnedDoors =
@@ -236,6 +249,18 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             double localRotationDegrees,
             string instanceName)
         {
+            GameObject debugInstance;
+            if (TryInstantiateDebugPresentation(
+                root,
+                presentationStableId,
+                localPosition,
+                localRotationDegrees,
+                instanceName,
+                out debugInstance))
+            {
+                return debugInstance;
+            }
+
             GameObject prefab;
             if (!catalog.TryResolve(presentationStableId, out prefab))
             {
@@ -256,6 +281,103 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             instance.SetActive(true);
             spawnedObjects.Add(instance);
             return instance;
+        }
+
+        private bool TryInstantiateDebugPresentation(
+            Transform root,
+            StableId presentationStableId,
+            RoomVector2 localPosition,
+            double localRotationDegrees,
+            string instanceName,
+            out GameObject instance)
+        {
+            Vector2 size;
+            Color color;
+            bool blocksMovement;
+            int sortingOrder;
+            switch (presentationStableId.ToString())
+            {
+                case DebugFloorPresentation:
+                    size = Vector2.one;
+                    color = new Color(0.18f, 0.2f, 0.24f, 1f);
+                    blocksMovement = false;
+                    sortingOrder = -20;
+                    break;
+                case DebugWallOnePresentation:
+                    size = Vector2.one;
+                    color = new Color(0.2f, 0.55f, 0.85f, 1f);
+                    blocksMovement = true;
+                    sortingOrder = 2;
+                    break;
+                case DebugWallTwoPresentation:
+                    size = new Vector2(2f, 2f);
+                    color = new Color(0.16f, 0.44f, 0.72f, 1f);
+                    blocksMovement = true;
+                    sortingOrder = 2;
+                    break;
+                case DebugCoverPresentation:
+                    size = Vector2.one;
+                    color = new Color(0.95f, 0.6f, 0.15f, 1f);
+                    blocksMovement = true;
+                    sortingOrder = 3;
+                    break;
+                case DebugDoorPresentation:
+                    size = new Vector2(0.5f, 2f);
+                    color = new Color(0.85f, 0.22f, 0.22f, 1f);
+                    blocksMovement = true;
+                    sortingOrder = 4;
+                    break;
+                default:
+                    instance = null;
+                    return false;
+            }
+
+            instance = new GameObject(instanceName);
+            instance.SetActive(false);
+            instance.transform.SetParent(root, false);
+            instance.transform.localPosition = new Vector3(
+                (float)localPosition.X,
+                (float)localPosition.Y,
+                0f);
+            instance.transform.localRotation = Quaternion.Euler(
+                0f,
+                0f,
+                (float)localRotationDegrees);
+
+            GameObject visual = new GameObject("Debug Visual");
+            visual.transform.SetParent(instance.transform, false);
+            visual.transform.localScale = new Vector3(size.x, size.y, 1f);
+            SpriteRenderer renderer = visual.AddComponent<SpriteRenderer>();
+            renderer.sprite = GetDebugPixelSprite();
+            renderer.color = color;
+            renderer.sortingOrder = sortingOrder;
+
+            if (blocksMovement)
+            {
+                BoxCollider2D collider = instance.AddComponent<BoxCollider2D>();
+                collider.size = size;
+            }
+
+            instance.SetActive(true);
+            spawnedObjects.Add(instance);
+            return true;
+        }
+
+        private static Sprite GetDebugPixelSprite()
+        {
+            if (debugPixelSprite != null)
+            {
+                return debugPixelSprite;
+            }
+
+            Texture2D texture = Texture2D.whiteTexture;
+            debugPixelSprite = Sprite.Create(
+                texture,
+                new Rect(0f, 0f, texture.width, texture.height),
+                new Vector2(0.5f, 0.5f),
+                texture.width);
+            debugPixelSprite.name = "Room Debug Pixel";
+            return debugPixelSprite;
         }
 
         private void RetireSpawnedObject(GameObject instance)
