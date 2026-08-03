@@ -12,7 +12,7 @@ namespace ShooterMover.Application.Flow.Game
     {
         public static GunCatalogueView Current
         {
-            get { return GunCatalogue.Current; }
+            get { return AuthoredGunCatalogue.Current; }
         }
 
         public static GunCatalog GunCatalog

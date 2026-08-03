@@ -6,6 +6,7 @@ const path = require("path");
 const { execFileSync } = require("child_process");
 const crypto = require("crypto");
 const { URL } = require("url");
+const { exportRuntimeCatalog } = require("./runtime-export.js");
 
 const root = path.resolve(process.argv.includes("--repo") ? process.argv[process.argv.indexOf("--repo") + 1] : path.join(__dirname, "..", ".."));
 const port = Number(process.argv.includes("--port") ? process.argv[process.argv.indexOf("--port") + 1] : 4173);
@@ -111,13 +112,20 @@ function saveWeaponFolder(category, folder, files) {
     if (hadTarget) fs.renameSync(target, backup);
     try {
       fs.renameSync(stagingFolder, target);
+      const runtimeCatalog = exportRuntimeCatalog(root);
+      fs.rmSync(stagingRoot, { recursive: true, force: true });
+      if (hadTarget) fs.rmSync(backup, { recursive: true, force: true });
+      return {
+        validation,
+        saved: path.relative(root, target).replace(/\\/g, "/"),
+        runtimeCatalog
+      };
     } catch (error) {
-      if (hadTarget && fs.existsSync(backup) && !fs.existsSync(target)) fs.renameSync(backup, target);
+      if (fs.existsSync(target)) fs.rmSync(target, { recursive: true, force: true });
+      if (hadTarget && fs.existsSync(backup)) fs.renameSync(backup, target);
+      try { exportRuntimeCatalog(root); } catch (_) {}
       throw error;
     }
-    fs.rmSync(stagingRoot, { recursive: true, force: true });
-    if (hadTarget) fs.rmSync(backup, { recursive: true, force: true });
-    return { validation, saved: path.relative(root, target).replace(/\\/g, "/") };
   } catch (error) {
     fs.rmSync(stagingRoot, { recursive: true, force: true });
     throw error;
@@ -193,6 +201,7 @@ async function api(req, res, url) {
   send(res, 404, { error: "Not found." });
 }
 
+const initialRuntimeCatalog = exportRuntimeCatalog(root);
 const mime = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8" };
 http.createServer(async (req, res) => {
   try {
@@ -213,4 +222,5 @@ http.createServer(async (req, res) => {
 }).listen(port, "127.0.0.1", () => {
   console.log(`Item Maker: http://127.0.0.1:${port}`);
   console.log(`Repository: ${root}`);
+  console.log(`Runtime catalogue: ${initialRuntimeCatalog.familyCount} families / ${initialRuntimeCatalog.definitionCount} definitions`);
 });
