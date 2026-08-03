@@ -4,6 +4,7 @@ using ShooterMover.Application.Missions.Rooms;
 using ShooterMover.Contracts.Missions.Rooms;
 using ShooterMover.Domain.Common;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
+using ShooterMover.UnityAdapters.Enemies;
 using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Missions.Rooms
@@ -95,20 +96,40 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                     continue;
                 }
 
-                GameObject instance = InstantiatePresentation(
-                    catalog,
-                    root,
-                    placement.PresentationStableId,
-                    placement.LocalPosition,
-                    placement.LocalRotationDegrees,
-                    placement.InstanceStableId.ToString());
+                bool compactEnemy =
+                    placement.PlacementKind == RoomLivePlacementKind.Enemy
+                    && CompactEnemyCatalog.IsCompactPresentation(
+                        placement.PresentationStableId);
+                GameObject instance = compactEnemy
+                    ? InstantiateCompactPresentation(
+                        root,
+                        placement.LocalPosition,
+                        placement.LocalRotationDegrees,
+                        placement.InstanceStableId.ToString())
+                    : InstantiatePresentation(
+                        catalog,
+                        root,
+                        placement.PresentationStableId,
+                        placement.LocalPosition,
+                        placement.LocalRotationDegrees,
+                        placement.InstanceStableId.ToString());
                 RoomObjectInstance marker =
                     instance.GetComponent<RoomObjectInstance>()
                     ?? instance.AddComponent<RoomObjectInstance>();
                 marker.Configure(owner, room.RoomStableId, placement);
                 spawnedPlacements.Add(placement.InstanceStableId, marker);
 
-                if (placement.PlacementKind == RoomLivePlacementKind.Enemy)
+                if (compactEnemy)
+                {
+                    CompactEnemySceneFactory.Configure(
+                        instance,
+                        owner,
+                        room.RoomStableId,
+                        placement,
+                        1);
+                    instance.SetActive(true);
+                }
+                else if (placement.PlacementKind == RoomLivePlacementKind.Enemy)
                 {
                     EnemyDeathSource terminalSource =
                         instance.GetComponent<EnemyDeathSource>()
@@ -184,6 +205,27 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             spawnedObjects.Clear();
             spawnedPlacements.Clear();
             spawnedDoors.Clear();
+        }
+
+        private GameObject InstantiateCompactPresentation(
+            Transform root,
+            RoomVector2 localPosition,
+            double localRotationDegrees,
+            string instanceName)
+        {
+            GameObject instance = new GameObject(instanceName);
+            instance.SetActive(false);
+            instance.transform.SetParent(root, false);
+            instance.transform.localPosition = new Vector3(
+                (float)localPosition.X,
+                (float)localPosition.Y,
+                0f);
+            instance.transform.localRotation = Quaternion.Euler(
+                0f,
+                0f,
+                (float)localRotationDegrees);
+            spawnedObjects.Add(instance);
+            return instance;
         }
 
         private GameObject InstantiatePresentation(
