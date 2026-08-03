@@ -71,9 +71,14 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
     [DisallowMultipleComponent]
     public sealed class RoomDoor : MonoBehaviour
     {
+        private static readonly Color DebugOpenColor =
+            new Color(0.18f, 0.9f, 0.38f, 1f);
+
         private LevelRooms owner;
         private Collider2D[] colliders = Array.Empty<Collider2D>();
         private bool[] authoredColliderEnabled = Array.Empty<bool>();
+        private SpriteRenderer debugRenderer;
+        private Color debugClosedColor;
 
         public StableId RoomStableId { get; private set; }
 
@@ -111,6 +116,15 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                     && colliders[index].enabled;
             }
 
+            Transform debugVisual = transform.Find("Debug Visual");
+            debugRenderer = debugVisual == null
+                ? null
+                : debugVisual.GetComponent<SpriteRenderer>();
+            if (debugRenderer != null)
+            {
+                debugClosedColor = debugRenderer.color;
+            }
+
             IsConfigured = true;
         }
 
@@ -128,6 +142,13 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 {
                     colliders[index].enabled = !open && authoredColliderEnabled[index];
                 }
+            }
+
+            if (debugRenderer != null)
+            {
+                debugRenderer.color = open
+                    ? DebugOpenColor
+                    : debugClosedColor;
             }
         }
 

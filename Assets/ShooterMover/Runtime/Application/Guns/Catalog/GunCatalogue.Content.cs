@@ -277,10 +277,13 @@ namespace ShooterMover.Application.Guns.Catalog
                 throw new ArgumentOutOfRangeException(nameof(mark));
             }
 
+            double fireRate = mark == 1 ? 12d : 4d;
+            double damage = mark == 1 ? 2d : 1d;
+            int ricochet = mark == 1 ? 1 : 0;
             return TravellingProfile(
-                FireSettings.Automatic(4d),
+                FireSettings.Automatic(fireRate),
                 GunShotPattern.Canonical(1, 0d),
-                1d,
+                damage,
                 GunDamageCategory.Physical,
                 null,
                 1,
@@ -292,7 +295,8 @@ namespace ShooterMover.Application.Guns.Catalog
                 GunGuidanceSpec.Unguided(),
                 StandardTravellingImpact(),
                 GunEffects.None(),
-                "normal-physical");
+                "normal-physical",
+                ricochet);
         }
 
         private static ProvisionalCombatProfile SweeperProfile(int mark)
@@ -562,7 +566,8 @@ namespace ShooterMover.Application.Guns.Catalog
             GunGuidanceSpec guidance,
             GunImpactSpec impact,
             GunEffects effects,
-            string presentationKey)
+            string presentationKey,
+            int ricochet = 0)
         {
             GunNormalDeliverySettings normal = null;
             GunOrbDeliverySettings orb = null;
@@ -598,7 +603,7 @@ namespace ShooterMover.Application.Guns.Catalog
                     damageCategory,
                     damageOverTime,
                     PierceValue.FromLegacyInteger(legacyPierce),
-                    new RicochetValue(0),
+                    new RicochetValue(ricochet),
                     knockback,
                     GunAttackDistance.Limited(range)),
                 ShotPattern.Create(

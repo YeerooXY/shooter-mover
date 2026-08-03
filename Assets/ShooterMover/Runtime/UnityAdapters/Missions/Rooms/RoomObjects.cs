@@ -36,6 +36,11 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         private const string DebugFloorPresentation =
             "presentation.environment-floor-industrial";
 
+        private static readonly Color DebugBoundaryColor =
+            new Color(0.5f, 0.82f, 1f, 1f);
+        private static readonly Color DebugFloorColor =
+            new Color(0.025f, 0.09f, 0.24f, 1f);
+
         private static Sprite debugPixelSprite;
 
         private readonly Dictionary<StableId, RoomObjectInstance> spawnedPlacements =
@@ -100,6 +105,8 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 query.CurrentProjection.CurrentRoomStableId);
             RoomLiveRoomView projection = query.GetRoomProjection(
                 room.RoomStableId);
+
+            BuildDebugRoomBoundary(root, room.Bounds);
 
             for (int index = 0; index < room.Placements.Count; index++)
             {
@@ -295,11 +302,12 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             Color color;
             bool blocksMovement;
             int sortingOrder;
-            switch (presentationStableId.ToString())
+            string presentation = presentationStableId.ToString();
+            switch (presentation)
             {
                 case DebugFloorPresentation:
                     size = Vector2.one;
-                    color = new Color(0.18f, 0.2f, 0.24f, 1f);
+                    color = DebugFloorColor;
                     blocksMovement = false;
                     sortingOrder = -20;
                     break;
@@ -344,13 +352,30 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 0f,
                 (float)localRotationDegrees);
 
-            GameObject visual = new GameObject("Debug Visual");
-            visual.transform.SetParent(instance.transform, false);
-            visual.transform.localScale = new Vector3(size.x, size.y, 1f);
-            SpriteRenderer renderer = visual.AddComponent<SpriteRenderer>();
-            renderer.sprite = GetDebugPixelSprite();
-            renderer.color = color;
-            renderer.sortingOrder = sortingOrder;
+            if (presentation == DebugFloorPresentation)
+            {
+                AddDebugVisual(
+                    instance.transform,
+                    "Debug Floor Lattice",
+                    Vector2.one,
+                    Color.white,
+                    sortingOrder - 1);
+                AddDebugVisual(
+                    instance.transform,
+                    "Debug Floor",
+                    new Vector2(0.9f, 0.9f),
+                    color,
+                    sortingOrder);
+            }
+            else
+            {
+                AddDebugVisual(
+                    instance.transform,
+                    "Debug Visual",
+                    size,
+                    color,
+                    sortingOrder);
+            }
 
             if (blocksMovement)
             {
@@ -361,6 +386,76 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             instance.SetActive(true);
             spawnedObjects.Add(instance);
             return true;
+        }
+
+        private void BuildDebugRoomBoundary(
+            Transform root,
+            RoomBounds bounds)
+        {
+            float centerX = (float)bounds.Center.X;
+            float centerY = (float)bounds.Center.Y;
+            float width = (float)bounds.Size.X;
+            float height = (float)bounds.Size.Y;
+            const float thickness = 0.5f;
+
+            AddDebugBoundary(
+                root,
+                "North",
+                new Vector2(centerX, centerY + height * 0.5f),
+                new Vector2(width + thickness, thickness));
+            AddDebugBoundary(
+                root,
+                "South",
+                new Vector2(centerX, centerY - height * 0.5f),
+                new Vector2(width + thickness, thickness));
+            AddDebugBoundary(
+                root,
+                "East",
+                new Vector2(centerX + width * 0.5f, centerY),
+                new Vector2(thickness, height + thickness));
+            AddDebugBoundary(
+                root,
+                "West",
+                new Vector2(centerX - width * 0.5f, centerY),
+                new Vector2(thickness, height + thickness));
+        }
+
+        private void AddDebugBoundary(
+            Transform root,
+            string name,
+            Vector2 position,
+            Vector2 size)
+        {
+            GameObject boundary = new GameObject("Debug Room Boundary " + name);
+            boundary.transform.SetParent(root, false);
+            boundary.transform.localPosition = new Vector3(
+                position.x,
+                position.y,
+                0f);
+            AddDebugVisual(
+                boundary.transform,
+                "Debug Boundary Visual",
+                size,
+                DebugBoundaryColor,
+                1);
+            spawnedObjects.Add(boundary);
+        }
+
+        private static SpriteRenderer AddDebugVisual(
+            Transform parent,
+            string name,
+            Vector2 size,
+            Color color,
+            int sortingOrder)
+        {
+            GameObject visual = new GameObject(name);
+            visual.transform.SetParent(parent, false);
+            visual.transform.localScale = new Vector3(size.x, size.y, 1f);
+            SpriteRenderer renderer = visual.AddComponent<SpriteRenderer>();
+            renderer.sprite = GetDebugPixelSprite();
+            renderer.color = color;
+            renderer.sortingOrder = sortingOrder;
+            return renderer;
         }
 
         private static Sprite GetDebugPixelSprite()
