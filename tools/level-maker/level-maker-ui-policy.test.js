@@ -13,14 +13,27 @@ assert.equal(policy.isPlaceableAsset({
   source: "Content/Enemies/gunner-droid.json",
 }), true);
 
-assert.equal(policy.isPlaceableAsset({
-  id: "prop.003c93c3",
-  source: "Assets/ShooterMover/Content/Definitions/Missions/Rooms/Levels/Level3/Rooms/Room21/props.json",
-}), false);
+const generatedRoomSource =
+  "Assets/ShooterMover/Content/Definitions/Missions/Rooms/Levels/Level3/Rooms/Room21/props.json";
 
 assert.equal(policy.isPlaceableAsset({
-  id: "door.generated",
+  id: "tile.floor-industrial",
+  source: generatedRoomSource,
+}), true);
+
+assert.equal(policy.isPlaceableAsset({
+  id: "prop.wall-1x1",
+  source: generatedRoomSource,
+}), true);
+
+assert.equal(policy.isPlaceableAsset({
+  id: "door.room-standard",
   source: "Assets\\ShooterMover\\Content\\Definitions\\Missions\\Rooms\\Levels\\Level3\\Rooms\\Room21\\doors.json",
+}), true);
+
+assert.equal(policy.isPlaceableAsset({
+  id: "prop.003c93c3",
+  source: generatedRoomSource,
 }), false);
 
 assert.equal(policy.isPlaceableAsset({
@@ -34,6 +47,11 @@ assert.equal(policy.isPlaceableAsset({
 }), false);
 
 assert.equal(policy.isPlaceableAsset({
+  id: "tile.floor-industrial",
+  source: "level-reference",
+}), true);
+
+assert.equal(policy.isPlaceableAsset({
   id: "prop.manual",
   source: "manual",
 }), true);
@@ -45,5 +63,7 @@ assert.equal(policy.isPlaceableAsset({
 
 assert.equal(policy.isOpaqueInstanceId("0bb70945"), true);
 assert.equal(policy.isOpaqueInstanceId("enemy.gunner-droid"), false);
+assert.equal(policy.isReusableRuntimeAssetId("tile.floor-industrial"), true);
+assert.equal(policy.isReusableRuntimeAssetId("047c9cd9"), false);
 
 console.log("level-maker-ui-policy tests passed");
