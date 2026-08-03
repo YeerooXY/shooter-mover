@@ -31,16 +31,12 @@ jobs:
           node --check level-save.js
           node --check editor-file.js
           node --check start-server.js
-          node --check app-16-brush.js
-          node --check app-19-save.js
-          node --check app-20-plan.js
-          node --check app-21-editor.js
-          node --check app-22-recovery.js
-          node --check app-23-floor-cells.js
+          for file in app-*.js; do node --check "$file"; done
 
       - name: Run tests
         working-directory: tools/level-maker
         run: |
+          node compat-names.test.js
           node floor-data.test.js
           node level-state.test.js
           node level-save.test.js
