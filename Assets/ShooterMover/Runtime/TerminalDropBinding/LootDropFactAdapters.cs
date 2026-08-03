@@ -1,12 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Text;
 using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Enemies.Catalog;
 using ShooterMover.Domain.Props;
 using ShooterMover.Domain.Rewards.Model;
-using ShooterMover.EnemyRuntimeComposition;
 
 namespace ShooterMover.LootDropBinding
 {
@@ -116,143 +113,6 @@ namespace ShooterMover.LootDropBinding
             return profileStableId != null
                 && profiles.TryGetValue(profileStableId, out profile)
                 && profile != null;
-        }
-    }
-
-    internal sealed class EnemyDeathLootDropDefinitionView
-    {
-        public EnemyDeathLootDropDefinitionView(
-            EnemyDeathFact fact,
-            StableId declaredDropProfileStableId,
-            string definitionFingerprint,
-            string upstreamFactFingerprint)
-        {
-            Fact = fact ?? throw new ArgumentNullException(nameof(fact));
-            DeclaredDropProfileStableId = declaredDropProfileStableId;
-            DefinitionFingerprint = definitionFingerprint
-                ?? throw new ArgumentNullException(nameof(definitionFingerprint));
-            UpstreamFactFingerprint = upstreamFactFingerprint
-                ?? throw new ArgumentNullException(nameof(upstreamFactFingerprint));
-        }
-
-        public EnemyDeathFact Fact { get; }
-        public StableId DeclaredDropProfileStableId { get; }
-        public string DefinitionFingerprint { get; }
-        public string UpstreamFactFingerprint { get; }
-    }
-
-    internal sealed class EnemyDeathLootDropDefinitionViewResult
-    {
-        private EnemyDeathLootDropDefinitionViewResult(
-            EnemyDeathLootDropDefinitionView projection,
-            LootDropRejectionCode rejectionCode,
-            string diagnostic)
-        {
-            Projection = projection;
-            RejectionCode = rejectionCode;
-            Diagnostic = diagnostic ?? string.Empty;
-        }
-
-        public EnemyDeathLootDropDefinitionView Projection { get; }
-        public LootDropRejectionCode RejectionCode { get; }
-        public string Diagnostic { get; }
-        public bool Succeeded { get { return Projection != null; } }
-
-        public static EnemyDeathLootDropDefinitionViewResult Accepted(
-            EnemyDeathLootDropDefinitionView projection)
-        {
-            return new EnemyDeathLootDropDefinitionViewResult(
-                projection ?? throw new ArgumentNullException(nameof(projection)),
-                LootDropRejectionCode.None,
-                string.Empty);
-        }
-
-        public static EnemyDeathLootDropDefinitionViewResult Rejected(
-            LootDropRejectionCode code,
-            string diagnostic)
-        {
-            return new EnemyDeathLootDropDefinitionViewResult(
-                null,
-                code,
-                diagnostic);
-        }
-    }
-
-    /// <summary>
-    /// Internal catalog-only projection. It validates definition/profile ownership but
-    /// deliberately cannot construct a complete terminal-drop source fact because it
-    /// does not own Run Session lifecycle context.
-    /// </summary>
-    internal sealed class EnemyDeathLootDropDefinitionProjector
-    {
-        private readonly EnemyCatalog catalog;
-
-        public EnemyDeathLootDropDefinitionProjector(EnemyCatalog catalog)
-        {
-            this.catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
-        }
-
-        public EnemyDeathLootDropDefinitionViewResult Project(
-            EnemyDeathFact fact)
-        {
-            if (fact == null)
-            {
-                return EnemyDeathLootDropDefinitionViewResult.Rejected(
-                    LootDropRejectionCode.InvalidTerminalFact,
-                    "enemy-death-fact-type-mismatch");
-            }
-
-            EnemyDefinition definition;
-            if (!catalog.TryGetDefinition(fact.DefinitionStableId, out definition))
-            {
-                return EnemyDeathLootDropDefinitionViewResult.Rejected(
-                    LootDropRejectionCode.MissingDefinition,
-                    "enemy-definition-missing:" + fact.DefinitionStableId);
-            }
-            if (fact.Identity == null
-                || fact.Identity.RunStableId == null
-                || fact.Identity.EntityInstanceId == null
-                || fact.Identity.PlacementStableId == null)
-            {
-                return EnemyDeathLootDropDefinitionViewResult.Rejected(
-                    LootDropRejectionCode.InvalidTerminalFact,
-                    "enemy-death-identity-incomplete");
-            }
-            if (fact.DropProfileStableId != null
-                && definition.DropProfileId != fact.DropProfileStableId)
-            {
-                return EnemyDeathLootDropDefinitionViewResult.Rejected(
-                    LootDropRejectionCode.DropProfileMismatch,
-                    "enemy-drop-profile-mismatch:fact=" + fact.DropProfileStableId
-                    + ";definition=" + (definition.DropProfileId == null
-                        ? "none"
-                        : definition.DropProfileId.ToString()));
-            }
-
-            var upstream = new StringBuilder("schema=enemy-death-fact-drop-projection-v2");
-            LootDrop.Append(upstream, "death-event", fact.DeathEventStableId);
-            LootDrop.Append(upstream, "trigger", fact.TriggeringEventStableId);
-            LootDrop.Append(upstream, "definition", fact.DefinitionStableId);
-            LootDrop.Append(upstream, "level", fact.Level);
-            LootDrop.Append(upstream, "source-generation", fact.LifecycleGeneration);
-            LootDrop.Append(upstream, "killer-entity", fact.KillerEntityStableId);
-            LootDrop.Append(upstream, "killer-participant", fact.KillerRunParticipantStableId);
-            LootDrop.Append(upstream, "experience-profile", fact.ExperienceProfileStableId);
-            LootDrop.Append(upstream, "drop-profile", fact.DropProfileStableId);
-            LootDrop.Append(upstream, "death-cause", (int)fact.DeathCause);
-            LootDrop.Append(upstream, "run", fact.Identity.RunStableId);
-            LootDrop.Append(upstream, "room-runtime", fact.Identity.RoomRuntimeInstanceStableId);
-            LootDrop.Append(upstream, "room", fact.Identity.RoomStableId);
-            LootDrop.Append(upstream, "placement", fact.Identity.PlacementStableId);
-            LootDrop.Append(upstream, "entity", fact.Identity.EntityInstanceId);
-            LootDrop.Append(upstream, "source-participant", fact.Identity.RunParticipantId);
-
-            return EnemyDeathLootDropDefinitionViewResult.Accepted(
-                new EnemyDeathLootDropDefinitionView(
-                    fact,
-                    definition.DropProfileId,
-                    definition.Fingerprint,
-                    LootDrop.Hash(upstream.ToString())));
         }
     }
 

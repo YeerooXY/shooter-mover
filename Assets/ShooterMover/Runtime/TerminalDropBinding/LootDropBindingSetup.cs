@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Application.Rewards.Generation;
-using ShooterMover.Domain.Enemies.Catalog;
 using ShooterMover.Domain.Props;
 using ShooterMover.EnemyRuntimeComposition;
 
@@ -330,8 +329,6 @@ namespace ShooterMover.LootDropBinding
         public PropLootDropFactConsumer PropConsumer { get; }
 
         public static LootDropBindingSetup Create(
-            EnemyCatalog enemyCatalog,
-            IEnemyTerminalSourceContextResolver enemySourceContexts,
             PropCatalog propCatalog,
             IPropTerminalSourceContextResolver propSourceContexts,
             ILootDropRunContextResolver runContexts,
@@ -347,10 +344,6 @@ namespace ShooterMover.LootDropBinding
             IPersonalRewardDeliveryOutbox deliveryOutbox = null,
             bool requireAcceptedPublication = false)
         {
-            if (enemyCatalog == null)
-                throw new ArgumentNullException(nameof(enemyCatalog));
-            if (enemySourceContexts == null)
-                throw new ArgumentNullException(nameof(enemySourceContexts));
             if (propCatalog == null)
                 throw new ArgumentNullException(nameof(propCatalog));
             if (propSourceContexts == null)
@@ -362,9 +355,6 @@ namespace ShooterMover.LootDropBinding
 
             var adapters = new List<ILootDropFactBridge>
             {
-                new ContextResolvedEnemyDeathLootDropFactBridge(
-                    enemyCatalog,
-                    enemySourceContexts),
                 new PropDestructionLootDropFactBridge(
                     propCatalog,
                     propSourceContexts),

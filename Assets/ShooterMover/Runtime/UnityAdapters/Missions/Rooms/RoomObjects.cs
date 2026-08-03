@@ -100,6 +100,14 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                     placement.PlacementKind == RoomLivePlacementKind.Enemy
                     && CompactEnemyCatalog.IsCompactPresentation(
                         placement.PresentationStableId);
+                if (placement.PlacementKind == RoomLivePlacementKind.Enemy
+                    && !compactEnemy)
+                {
+                    throw new InvalidOperationException(
+                        "room-live-enemy-presentation-retired:"
+                        + placement.PresentationStableId);
+                }
+
                 GameObject instance = compactEnemy
                     ? InstantiateCompactPresentation(
                         root,
@@ -128,16 +136,6 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                         placement,
                         1);
                     instance.SetActive(true);
-                }
-                else if (placement.PlacementKind == RoomLivePlacementKind.Enemy)
-                {
-                    EnemyDeathSource terminalSource =
-                        instance.GetComponent<EnemyDeathSource>()
-                        ?? instance.AddComponent<EnemyDeathSource>();
-                    RoomEnemyDeathRelay relay =
-                        instance.GetComponent<RoomEnemyDeathRelay>()
-                        ?? instance.AddComponent<RoomEnemyDeathRelay>();
-                    relay.Configure(marker, terminalSource);
                 }
             }
 
