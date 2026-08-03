@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - "Content/Enemies/**"
+      - "Content/EnemyShots/**"
       - "tools/enemy-maker/**"
       - ".github/workflows/enemy-maker.yml"
   push:
     branches: [main]
     paths:
       - "Content/Enemies/**"
+      - "Content/EnemyShots/**"
       - "tools/enemy-maker/**"
       - ".github/workflows/enemy-maker.yml"
   workflow_dispatch:

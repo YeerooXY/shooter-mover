@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "id": "gunner-droid",
+  "name": "Gunner Droid",
+  "tags": [
+    "droid",
+    "ground",
+    "mobile",
+    "ranged"
+  ],
+  "hp": 16,
+  "healthPower": 0.7,
+  "movement": {
+    "kind": "strafe",
+    "speed": 3.5
+  },
+  "detectionRange": 16,
+  "mounts": [
+    {
+      "id": "center-gun",
+      "position": {
+        "x": 0,
+        "y": 0.24
+      },
+      "rotation": 0,
+      "art": "gun.small-cannon"
+    }
+  ],
+  "attacks": [
+    {
+      "id": "rifle-burst",
+      "kind": "shot",
+      "shot": "small-bullet",
+      "emitters": [
+        "center-gun"
+      ],
+      "firePattern": "single",
+      "cooldown": 1.5,
+      "sequence": {
+        "triggers": 4,
+        "interval": 0.2
+      },
+      "volley": {
+        "shotsPerTrigger": 1,
+        "spread": 0,
+        "distribution": "even"
+      },
+      "range": {
+        "min": 2,
+        "max": 12
+      },
+      "damage": [
+        {
+          "type": "kinetic",
+          "amount": 3
+        }
+      ]
+    }
+  ],
+  "drops": "normal",
+  "art": "gunner-droid",
+  "body": {
+    "shape": "circle",
+    "radius": 0.45,
+    "offset": {
+      "x": 0,
+      "y": 0
+    }
+  }
+}

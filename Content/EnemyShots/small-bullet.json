@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "small-bullet",
+  "delivery": {
+    "kind": "projectile",
+    "speed": 32,
+    "radius": 0.06,
+    "range": 18
+  },
+  "impact": {
+    "pierce": 1,
+    "ricochet": 0,
+    "knockback": 0
+  },
+  "art": {
+    "delivery": "enemy-shot.small-bullet",
+    "trail": "enemy-trail.small-bullet",
+    "impact": "enemy-impact.small-bullet"
+  }
+}
