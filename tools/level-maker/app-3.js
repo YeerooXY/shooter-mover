@@ -1,7 +1,7 @@
 function deleteActiveRoom(){
- const id=state.activeRoomId,stateIds=new Set(currentRoom().doors.map(d=>d.id));
- state.rooms=state.rooms.filter(r=>r.id!==id);state.connections=state.connections.filter(c=>!stateIds.has(c.fromDoorId)&&!stateIds.has(c.toDoorId));
- state.activeRoomId=state.rooms[0].id;if(state.level.startRoomId===id)state.level.startRoomId=state.activeRoomId;if(state.level.finalRoomId===id)state.level.finalRoomId=state.activeRoomId;
+ const id=state.editor.activeRoomId,stateIds=new Set(currentRoom().doors.map(d=>d.id));
+ state.level.rooms=state.level.rooms.filter(r=>r.id!==id);state.level.connections=state.level.connections.filter(c=>!stateIds.has(c.fromDoorId)&&!stateIds.has(c.toDoorId));
+ state.editor.activeRoomId=state.level.rooms[0].id;if(state.level.startRoomId===id)state.level.startRoomId=state.editor.activeRoomId;if(state.level.finalRoomId===id)state.level.finalRoomId=state.editor.activeRoomId;
 }
 
 function viewScale(){
@@ -73,7 +73,7 @@ function drawGrid(rect){
  }
 }
 function selectedFloorObject(){
- const a=state.catalog.find(x=>x.id===state.editor.selectedAssetId&&x.type==="floor");return a?.id||currentRoom()?.floorObject||"tile.floor-industrial"
+ const a=state.assets.find(x=>x.id===state.editor.selectedAssetId&&x.type==="floor");return a?.id||currentRoom()?.floorObject||"tile.floor-industrial"
 }
 function tileColor(id){
  let h=0;for(const c of String(id||"tile"))h=(h*31+c.charCodeAt(0))>>>0;
@@ -157,7 +157,7 @@ function drawMapConnection(c,previewEnd=null){
 }
 function drawMapRoomBody(r){
  const c=worldToScreen(mapRoomCenter(r)),w=MAP_ROOM_HALF[0]*2*state.editor.zoom,h=MAP_ROOM_HALF[1]*2*state.editor.zoom;
- ctx.fillStyle=r.id===state.activeRoomId?"#26384b":"#1b2430";ctx.strokeStyle=r.id===state.activeRoomId?"#79c9ff":"#6d7b91";ctx.lineWidth=r.id===state.activeRoomId?3:2;ctx.fillRect(c[0]-w/2,c[1]-h/2,w,h);ctx.strokeRect(c[0]-w/2,c[1]-h/2,w,h)
+ ctx.fillStyle=r.id===state.editor.activeRoomId?"#26384b":"#1b2430";ctx.strokeStyle=r.id===state.editor.activeRoomId?"#79c9ff":"#6d7b91";ctx.lineWidth=r.id===state.editor.activeRoomId?3:2;ctx.fillRect(c[0]-w/2,c[1]-h/2,w,h);ctx.strokeRect(c[0]-w/2,c[1]-h/2,w,h)
 }
 function drawMapRoomLabel(r){
  const c=worldToScreen(mapRoomCenter(r));
@@ -167,15 +167,15 @@ function drawMapDoorSocket(r,d){
  const p=worldToScreen(mapDoorWorldPosition(r,d));ctx.fillStyle=d.id===state.editor.selectedId?"#fff":"#ffd166";ctx.strokeStyle="#604d20";ctx.lineWidth=2;ctx.beginPath();ctx.arc(p[0],p[1],7,0,Math.PI*2);ctx.fill();ctx.stroke()
 }
 function drawLevelMap(){
- state.rooms.forEach(drawMapRoomBody);
- state.connections.forEach(c=>drawMapConnection(c));
+ state.level.rooms.forEach(drawMapRoomBody);
+ state.level.connections.forEach(c=>drawMapConnection(c));
  if(pointer.mode==="connect-door"&&pointer.sourceDoorId)drawMapConnection({fromDoorId:pointer.sourceDoorId},pointer.last);
- state.rooms.forEach(drawMapRoomLabel);
- for(const r of state.rooms)r.doors.forEach(d=>drawMapDoorSocket(r,d))
+ state.level.rooms.forEach(drawMapRoomLabel);
+ for(const r of state.level.rooms)r.doors.forEach(d=>drawMapDoorSocket(r,d))
 }
 function mapHitTest(screen){
- for(const r of [...state.rooms].reverse())for(const d of [...r.doors].reverse()){const p=worldToScreen(mapDoorWorldPosition(r,d));if(Math.hypot(screen[0]-p[0],screen[1]-p[1])<=12)return {type:"door",room:r,door:d}}
- const wp=screenToWorld(screen);for(const r of [...state.rooms].reverse()){const c=mapRoomCenter(r);if(Math.abs(wp[0]-c[0])<=MAP_ROOM_HALF[0]&&Math.abs(wp[1]-c[1])<=MAP_ROOM_HALF[1])return {type:"room",room:r}}
+ for(const r of [...state.level.rooms].reverse())for(const d of [...r.doors].reverse()){const p=worldToScreen(mapDoorWorldPosition(r,d));if(Math.hypot(screen[0]-p[0],screen[1]-p[1])<=12)return {type:"door",room:r,door:d}}
+ const wp=screenToWorld(screen);for(const r of [...state.level.rooms].reverse()){const c=mapRoomCenter(r);if(Math.abs(wp[0]-c[0])<=MAP_ROOM_HALF[0]&&Math.abs(wp[1]-c[1])<=MAP_ROOM_HALF[1])return {type:"room",room:r}}
  return null
 }
 function withTransform(e,fn){

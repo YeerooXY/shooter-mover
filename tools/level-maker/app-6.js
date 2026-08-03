@@ -29,12 +29,12 @@ function runtimeRoomFiles(r){
 }
 function buildExportFiles(){
  const target=cleanSlug(state.level.targetFolder).toLowerCase(),base=levelSourceBase(state.level.id,target);
- const roomBuilds=state.rooms.map(runtimeRoomFiles);
- const roomIndex=state.rooms.map((r,i)=>({room_id:r.id,grid_position:r.grid,slot:r.slot||1,folder:roomBuilds[i].folder}));
- const nodes=state.rooms.map(r=>({room_id:r.id,grid_position:r.grid,slot:r.slot||1,label:r.displayName,visible_on_map:r.visibleOnMap!==false}));
+ const roomBuilds=state.level.rooms.map(runtimeRoomFiles);
+ const roomIndex=state.level.rooms.map((r,i)=>({room_id:r.id,grid_position:r.grid,slot:r.slot||1,folder:roomBuilds[i].folder}));
+ const nodes=state.level.rooms.map(r=>({room_id:r.id,grid_position:r.grid,slot:r.slot||1,label:r.displayName,visible_on_map:r.visibleOnMap!==false}));
  const endpoint=doorId=>{const f=findDoor(doorId);return{room_id:f?.room.id||"",door_id:doorId||""}};
- const connections=state.connections.map(c=>({connection_id:c.id,from:endpoint(c.fromDoorId),to:endpoint(c.toDoorId),travel_policy:c.travelPolicy||"Bidirectional"}));
- const level={schema_version:2,level_id:state.level.id,display_name:state.level.name,authoring_state:"validated-playable",runtime_import_status:"compiler-ready",start_room_id:state.level.startRoomId,final_exit:{room_id:state.level.finalRoomId,door_id:state.level.finalExitDoorId||""},room_ids:state.rooms.map(r=>r.id),rooms:roomIndex};
+ const connections=state.level.connections.map(c=>({connection_id:c.id,from:endpoint(c.fromDoorId),to:endpoint(c.toDoorId),travel_policy:c.travelPolicy||"Bidirectional"}));
+ const level={schema_version:2,level_id:state.level.id,display_name:state.level.name,authoring_state:"validated-playable",runtime_import_status:"compiler-ready",start_room_id:state.level.startRoomId,final_exit:{room_id:state.level.finalRoomId,door_id:state.level.finalExitDoorId||""},room_ids:state.level.rooms.map(r=>r.id),rooms:roomIndex};
  const files={};
  files[`${base}/level.json`]=pretty(level);files[`${base}/map.json`]=pretty({schema_version:2,nodes,connections});
  roomBuilds.forEach(rb=>Object.entries(rb.documents).forEach(([name,obj])=>files[`${base}/Rooms/${rb.folder}/${name}`]=pretty(obj)));

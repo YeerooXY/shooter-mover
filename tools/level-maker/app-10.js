@@ -15,7 +15,7 @@
     if (!object) return "";
     if (object.kind === "door") return "Door";
     if (object.kind === "teleporter") return "Teleporter";
-    const asset = state.catalog?.find(value => value.id === object.object);
+    const asset = state.assets?.find(value => value.id === object.object);
     if (asset?.label) return asset.label;
     const value = object.object || object.id || object.kind || "Object";
     return String(value)
@@ -131,11 +131,11 @@
     const roomHud = document.querySelector("#room-hud");
     if (roomHud) {
       roomHud.innerHTML = state.editor.viewMode === "map"
-        ? `<b>${esc(state.level.name)}</b> · ${state.rooms.length} rooms`
+        ? `<b>${esc(state.level.name)}</b> · ${state.level.rooms.length} rooms`
         : `<b>${esc(room.displayName)}</b> · ${room.bounds.width} × ${room.bounds.height}`;
     }
 
-    const asset = state.catalog?.find(value => value.id === state.editor.selectedAssetId);
+    const asset = state.assets?.find(value => value.id === state.editor.selectedAssetId);
     const assetChip = document.querySelector("#selected-asset-chip");
     if (assetChip) {
       assetChip.textContent = asset ? `${iconFor(asset.type)} ${asset.label || objectLabel({ object: asset.id })}` : "";

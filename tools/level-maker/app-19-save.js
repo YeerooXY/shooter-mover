@@ -88,15 +88,15 @@
     (previousAssets || [])
       .filter(asset => asset?.source !== "manual")
       .forEach(asset => merged.set(asset.id, clone(asset)));
-    (state.catalog || []).forEach(asset => merged.set(asset.id, clone(asset)));
-    state.catalog = [...merged.values()].sort(
+    (state.assets || []).forEach(asset => merged.set(asset.id, clone(asset)));
+    state.assets = [...merged.values()].sort(
       (left, right) => left.type.localeCompare(right.type) || left.id.localeCompare(right.id)
     );
   }
 
   function openSavedLevel(project) {
     LevelSave.checkLevelFile(project);
-    const previousAssets = clone(state.catalog || []);
+    const previousAssets = clone(state.assets || []);
     const oldEditor = project.editor || project.activeRoomId || project.catalog
       ? LevelSave.makeEditorFile(project)
       : null;

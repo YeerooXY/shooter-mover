@@ -14,7 +14,7 @@
 
   function targetForIssue(issue) {
     const message = String(issue?.message || "");
-    for (const room of state.rooms) {
+    for (const room of state.level.rooms) {
       for (const entity of room.entities) {
         if (message.includes(entity.id)) return { room, id: entity.id };
       }
@@ -25,16 +25,16 @@
     }
 
     const roomIndex = String(issue?.path || "").match(/rooms\[(\d+)\]/);
-    if (roomIndex && state.rooms[Number(roomIndex[1])]) {
-      return { room: state.rooms[Number(roomIndex[1])], id: "" };
+    if (roomIndex && state.level.rooms[Number(roomIndex[1])]) {
+      return { room: state.level.rooms[Number(roomIndex[1])], id: "" };
     }
 
     if (issue?.path === "level.startRoomId") {
-      const room = state.rooms.find(value => value.id === state.level.startRoomId);
+      const room = state.level.rooms.find(value => value.id === state.level.startRoomId);
       return room ? { room, id: "" } : { map: true };
     }
     if (issue?.path === "level.finalRoomId") {
-      const room = state.rooms.find(value => value.id === state.level.finalRoomId);
+      const room = state.level.rooms.find(value => value.id === state.level.finalRoomId);
       return room ? { room, id: "" } : { map: true };
     }
     if (
@@ -66,7 +66,7 @@
     }
     if (!target.room) return;
 
-    state.activeRoomId = target.room.id;
+    state.editor.activeRoomId = target.room.id;
     setViewMode("room", { focus: true });
     state.editor.selectedId = target.id || null;
     fitRoom();

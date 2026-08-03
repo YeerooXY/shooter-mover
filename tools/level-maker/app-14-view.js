@@ -95,7 +95,7 @@
   };
 
   mapHitTest = function (screen) {
-    const doorLists = state.rooms.map(room => ({ room, doors: room.doors }));
+    const doorLists = state.level.rooms.map(room => ({ room, doors: room.doors }));
     try {
       if (!view.doors) {
         doorLists.forEach(value => {
@@ -118,7 +118,7 @@
       };
     }
 
-    const asset = state.catalog.find(item => item.id === value?.object);
+    const asset = state.assets.find(item => item.id === value?.object);
     const explicit = asset?.footprint || asset?.gridSize || asset?.size;
     if (Array.isArray(explicit) && explicit.length >= 2) {
       return {
@@ -189,7 +189,7 @@
 
   renderCanvas = function () {
     const starts = state.editor.viewMode === "map" && !view.spawn
-      ? state.rooms.map(room => ({ room, start: room.playerStart }))
+      ? state.level.rooms.map(room => ({ room, start: room.playerStart }))
       : [];
     const fillText = ctx.fillText;
     try {

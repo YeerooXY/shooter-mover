@@ -38,7 +38,7 @@
  stylesheet.rel="stylesheet";stylesheet.href="style-ux.css";document.head.appendChild(stylesheet);
 
  function catalogLabel(id){
-  const asset=state.catalog?.find(item=>item.id===id);
+  const asset=state.assets?.find(item=>item.id===id);
   if(asset?.label)return asset.label;
   return String(id||"Object").split(".").pop().replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase());
  }
@@ -60,12 +60,12 @@
  }
  function freshProject(name){
   const project=initialState(),title=String(name||"New Level").trim()||"New Level",target=targetSlug(title);
-  const room=project.rooms[0],door=room.doors[0];
+  const room=project.level.rooms[0],door=room.doors[0];
   room.id=`room.${target}-start`;room.displayName="START ROOM";
   door.id=`door.${target}-final-exit`;
   project.level={id:`level.${target}`,name:title,targetFolder:target,startRoomId:room.id,finalRoomId:room.id,finalExitDoorId:door.id};
-  project.activeRoomId=room.id;
-  project.catalog=clone(state.catalog?.length?state.catalog:defaultCatalog);
+  project.editor.activeRoomId=room.id;
+  project.assets=clone(state.assets?.length?state.assets:defaultCatalog);
   return project;
  }
  function removeField(control){
@@ -105,7 +105,7 @@
   const palette=$("#asset-palette");if(!palette)return;
   const category=state.editor.assetCategory||"";
   if(state.editor.viewMode!=="room"||!category){palette.style.display="none";palette.innerHTML="";return}
-  const list=state.catalog.filter(asset=>asset.type===category);
+  const list=state.assets.filter(asset=>asset.type===category);
   const title={enemy:"Enemies",prop:state.editor.tool==="wall"?"Wall assets":"Props",floor:"Floor tiles",door:"Doors"}[category]||"Assets";
   palette.style.display="block";
   palette.innerHTML=`<div class="palette-title">${title}</div><div class="palette-grid">${list.map(asset=>`<button class="palette-asset ${asset.id===state.editor.selectedAssetId?"selected":""}" data-palette-asset="${esc(asset.id)}" title="${esc(asset.id)}"><span>${iconFor(asset.type)}</span><b>${esc(asset.label||catalogLabel(asset.id))}</b></button>`).join("")||`<div class="help">No ${title.toLowerCase()} are available yet.</div>`}</div>`;
@@ -129,7 +129,7 @@
  renderRooms=function(){
   baseRenderRooms();
   $$("#roomList .room-item").forEach(item=>{
-   const room=state.rooms.find(value=>value.id===item.dataset.room),meta=item.querySelector(".room-meta");
+   const room=state.level.rooms.find(value=>value.id===item.dataset.room),meta=item.querySelector(".room-meta");
    if(room&&meta)meta.textContent=`${room.bounds.width}×${room.bounds.height} · ${room.entities.length} objects · ${room.doors.length} doors`;
   });
  };
@@ -147,7 +147,7 @@
   $("#map-tools").style.display=state.editor.viewMode==="map"?"flex":"none";
   $("#room-focus-tools").style.display=state.editor.viewMode==="room"&&state.editor.focusRoom!==false?"flex":"none";
   $("#snapSelect").value=String(state.editor.snapSize||1);
-  const asset=state.catalog.find(value=>value.id===state.editor.selectedAssetId);
+  const asset=state.assets.find(value=>value.id===state.editor.selectedAssetId);
   $("#selected-asset-chip").textContent=asset?`${iconFor(asset.type)} ${asset.label||catalogLabel(asset.id)}`:"No asset selected";
   const help=state.editor.mapMode==="connect"?(state.editor.connectSourceDoorId?"Click the destination door":"Click the first door"):{open:"Click a room to edit it",arrange:"Drag rooms on the graph grid"}[state.editor.mapMode];
   $("#map-mode-help").textContent=help||"";renderAssetPalette();
@@ -164,7 +164,7 @@
  function beginDoorConnection(doorId=""){
   const found=doorId?findDoor(doorId):null;
   state.editor.connectSourceDoorId=found?.door.id||null;
-  if(found){state.activeRoomId=found.room.id;state.editor.selectedId=found.door.id}else state.editor.selectedId=null;
+  if(found){state.editor.activeRoomId=found.room.id;state.editor.selectedId=found.door.id}else state.editor.selectedId=null;
   setViewMode("map",{focus:false});setMapMode("connect");fitMap();renderAll();
   setStatus(found?`Connecting from ${doorFriendlyLabel(found.door.id)}. Click the destination door.`:"Click the first yellow door, then the destination door.","good");
  }
@@ -175,10 +175,10 @@
   const source=findDoor(sourceId),target=findDoor(doorId);
   if(!source||!target){state.editor.connectSourceDoorId=null;renderAll();return}
   if(source.room.id===target.room.id){setStatus("Choose a door in another room.","warn");return}
-  const duplicate=state.connections.some(connection=>(connection.fromDoorId===sourceId&&connection.toDoorId===doorId)||(connection.toDoorId===sourceId&&connection.fromDoorId===doorId));
+  const duplicate=state.level.connections.some(connection=>(connection.fromDoorId===sourceId&&connection.toDoorId===doorId)||(connection.toDoorId===sourceId&&connection.fromDoorId===doorId));
   if(duplicate){setStatus("Those doors are already connected.","warn");return}
   mutate(()=>{
-   state.connections.push({id:uid("connection"),fromDoorId:sourceId,toDoorId:doorId,travelPolicy:"Bidirectional"});
+   state.level.connections.push({id:uid("connection"),fromDoorId:sourceId,toDoorId:doorId,travelPolicy:"Bidirectional"});
    state.editor.connectSourceDoorId=null;state.editor.selectedId=doorId;
   });
   setStatus(`${doorFriendlyLabel(sourceId)} connected to ${doorFriendlyLabel(doorId)}.`,"good");
@@ -187,12 +187,12 @@
  renderLogic=function(){
   baseRenderLogic();
   const list=$("#connectionList");
-  list.innerHTML=state.connections.map(connection=>`<div class="logic-item connection-card" data-connection="${esc(connection.id)}"><div class="connection-route"><b>${esc(doorFriendlyLabel(connection.fromDoorId))}</b><span>→</span><b>${esc(doorFriendlyLabel(connection.toDoorId))}</b></div><div class="row"><select data-policy class="grow"><option ${connection.travelPolicy==="Bidirectional"?"selected":""}>Bidirectional</option><option ${connection.travelPolicy==="OneWay"?"selected":""}>OneWay</option></select><button data-show>Show</button><button data-delete>Delete</button></div></div>`).join("")||`<div class="help">No room connections yet. Use the visual connector instead of choosing IDs.</div>`;
+  list.innerHTML=state.level.connections.map(connection=>`<div class="logic-item connection-card" data-connection="${esc(connection.id)}"><div class="connection-route"><b>${esc(doorFriendlyLabel(connection.fromDoorId))}</b><span>→</span><b>${esc(doorFriendlyLabel(connection.toDoorId))}</b></div><div class="row"><select data-policy class="grow"><option ${connection.travelPolicy==="Bidirectional"?"selected":""}>Bidirectional</option><option ${connection.travelPolicy==="OneWay"?"selected":""}>OneWay</option></select><button data-show>Show</button><button data-delete>Delete</button></div></div>`).join("")||`<div class="help">No room connections yet. Use the visual connector instead of choosing IDs.</div>`;
   list.querySelectorAll(".connection-card").forEach(card=>{
-   const connection=state.connections.find(value=>value.id===card.dataset.connection);
+   const connection=state.level.connections.find(value=>value.id===card.dataset.connection);
    card.querySelector("[data-policy]").onchange=event=>mutate(()=>connection.travelPolicy=event.target.value);
-   card.querySelector("[data-show]").onclick=()=>{const source=findDoor(connection.fromDoorId);if(source){state.activeRoomId=source.room.id;state.editor.selectedId=source.door.id;setViewMode("map",{focus:false});setMapMode("open");fitMap();renderAll()}};
-   card.querySelector("[data-delete]").onclick=()=>mutate(()=>state.connections=state.connections.filter(value=>value!==connection));
+   card.querySelector("[data-show]").onclick=()=>{const source=findDoor(connection.fromDoorId);if(source){state.editor.activeRoomId=source.room.id;state.editor.selectedId=source.door.id;setViewMode("map",{focus:false});setMapMode("open");fitMap();renderAll()}};
+   card.querySelector("[data-delete]").onclick=()=>mutate(()=>state.level.connections=state.level.connections.filter(value=>value!==connection));
   });
   const add=$("#addConnection");add.textContent="Connect doors visually";add.onclick=()=>beginDoorConnection();
  };
@@ -268,7 +268,7 @@
   try{
    const status=await helper("/api/status");helperToken=status.mutationToken;
    const [catalogue,levels]=await Promise.all([helper("/api/level-assets"),helper("/api/levels")]);
-   if(catalogue.assets?.length)state.catalog=catalogue.assets;repositoryLevels=levels.levels||[];
+   if(catalogue.assets?.length)state.assets=catalogue.assets;repositoryLevels=levels.levels||[];
    normalize();renderAll();setStatus(`Connected to ${status.branch}; choose a level to continue.`,"good");
   }catch(error){setStatus(`Local helper unavailable: ${error.message}`,"bad")}
   showStartDialog("startup");

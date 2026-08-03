@@ -14,7 +14,7 @@
 
   function assetFor(value) {
     const id = typeof value === "string" ? value : value?.object;
-    return state.catalog.find(asset => asset.id === id) || null;
+    return state.assets.find(asset => asset.id === id) || null;
   }
 
   function footprint(value) {

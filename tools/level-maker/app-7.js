@@ -11,9 +11,9 @@ async function connectHelper(){
   const status=await helper("/api/status");helperToken=status.mutationToken;
   const catalogue=await helper("/api/level-assets");
   if(catalogue.assets?.length){
-   const merged=new Map(state.catalog.map(asset=>[asset.id,asset]));
+   const merged=new Map(state.assets.map(asset=>[asset.id,asset]));
    catalogue.assets.forEach(asset=>merged.set(asset.id,{...merged.get(asset.id),...asset}));
-   state.catalog=[...merged.values()].sort((left,right)=>left.type.localeCompare(right.type)||left.id.localeCompare(right.id));
+   state.assets=[...merged.values()].sort((left,right)=>left.type.localeCompare(right.type)||left.id.localeCompare(right.id));
   }
   normalize();renderAll();setStatus(`Connected to ${status.branch}; ${catalogue.assets.length} project assets available.${recoveryNotice()}`,"good");
  }catch(error){setStatus(`Local helper unavailable: ${error.message}${recoveryNotice()}`,"bad")}
@@ -57,11 +57,11 @@ async function chooseProject(){
 }
 function addRoom(){
  const wasMap=state.editor.viewMode==="map";
- mutate(()=>{const i=state.rooms.length,roomKey=safeId(state.level.targetFolder||state.level.name||"level","level").replace(/\./g,"-");const r=newRoom(i);r.id=`room.${roomKey}-${i+1}`;r.grid=[i,0];state.rooms.push(r);state.activeRoomId=r.id;state.editor.selectedId=null});
+ mutate(()=>{const i=state.level.rooms.length,roomKey=safeId(state.level.targetFolder||state.level.name||"level","level").replace(/\./g,"-");const r=newRoom(i);r.id=`room.${roomKey}-${i+1}`;r.grid=[i,0];state.level.rooms.push(r);state.editor.activeRoomId=r.id;state.editor.selectedId=null});
  if(wasMap)fitMap();else fitRoom();renderAll()
 }
 function duplicateRoom(){
- const src=currentRoom();mutate(()=>{const r=clone(src);r.id=uid("room");r.displayName=src.displayName+" COPY";r.grid=[src.grid[0]+1,src.grid[1]];r.entities.forEach(e=>e.id=uid(e.kind));r.doors.forEach(d=>d.id=uid("door"));state.rooms.push(r);state.activeRoomId=r.id;state.editor.selectedId=null})
+ const src=currentRoom();mutate(()=>{const r=clone(src);r.id=uid("room");r.displayName=src.displayName+" COPY";r.grid=[src.grid[0]+1,src.grid[1]];r.entities.forEach(e=>e.id=uid(e.kind));r.doors.forEach(d=>d.id=uid("door"));state.level.rooms.push(r);state.editor.activeRoomId=r.id;state.editor.selectedId=null})
 }
 
 $("#newBtn").onclick=()=>{if(confirm("Start a new level project?")){pushHistory(snapshot());state=initialState();fitRoom();renderAll()}};
@@ -71,8 +71,8 @@ $("#saveBtn").onclick=saveProject;$("#downloadBtn").onclick=downloadProject;
 $("#undoBtn").onclick=undo;$("#redoBtn").onclick=redo;$("#validateBtn").onclick=showValidation;$("#exportBtn").onclick=publishProject;
 $("#assetSearch").oninput=renderAssets;$("#assetFilter").onchange=renderAssets;
 $("#addRoom").onclick=addRoom;$("#duplicateRoom").onclick=duplicateRoom;
-$("#addConnection").onclick=()=>mutate(()=>state.connections.push({id:uid("connection"),fromDoorId:"",toDoorId:"",travelPolicy:"Bidirectional"}));
-$("#addLogic").onclick=()=>mutate(()=>state.logic.push({id:uid("logic"),name:"New rule",when:"switch-activated",targetId:"",action:"open-door"}));
+$("#addConnection").onclick=()=>mutate(()=>state.level.connections.push({id:uid("connection"),fromDoorId:"",toDoorId:"",travelPolicy:"Bidirectional"}));
+$("#addLogic").onclick=()=>mutate(()=>state.level.logic.push({id:uid("logic"),name:"New rule",when:"switch-activated",targetId:"",action:"open-door"}));
 $$(".tabs button").forEach(b=>b.onclick=()=>{$$(".tabs button").forEach(x=>x.classList.toggle("active",x===b));$$(".tab-page").forEach(x=>x.classList.toggle("active",x.id===`tab-${b.dataset.tab}`))});
 $$("[data-tool]").forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
 $$("[data-view]").forEach(b=>b.onclick=()=>{setViewMode(b.dataset.view,{focus:b.dataset.view==="room"});if(b.dataset.view==="map")fitMap();else fitRoom();renderAll()});
@@ -84,7 +84,7 @@ $("#toggleInspectorDrawer").onclick=()=>toggleDrawer("right");
 $("#snapSelect").onchange=e=>{state.editor.snapSize=+e.target.value;state.editor.snap=true;renderAll()};
 $("#addCustomAsset").onclick=()=>$("#customAssetDialog").showModal();$("#cancelCustomAsset").onclick=()=>$("#customAssetDialog").close();
 $("#confirmCustomAsset").onclick=()=>{
- const id=$("#customAssetId").value.trim();if(!id)return;mutate(()=>state.catalog.push({id,label:$("#customAssetLabel").value.trim()||id,type:$("#customAssetType").value,source:"manual"}));$("#customAssetDialog").close();$("#customAssetId").value="";$("#customAssetLabel").value=""
+ const id=$("#customAssetId").value.trim();if(!id)return;mutate(()=>state.assets.push({id,label:$("#customAssetLabel").value.trim()||id,type:$("#customAssetType").value,source:"manual"}));$("#customAssetDialog").close();$("#customAssetId").value="";$("#customAssetLabel").value=""
 };
 bindChange("#levelId",v=>state.level.id=v);bindChange("#levelName",v=>state.level.name=v);bindChange("#targetFolder",v=>state.level.targetFolder=cleanSlug(v));
 bindChange("#startRoom",v=>state.level.startRoomId=v);bindChange("#finalRoom",v=>{state.level.finalRoomId=v;state.level.finalExitDoorId=""});

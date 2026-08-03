@@ -58,7 +58,7 @@
   }
 
   function assetForId(id) {
-    return state.catalog.find(asset => asset.id === id) || null;
+    return state.assets.find(asset => asset.id === id) || null;
   }
 
   function footprint(value) {
