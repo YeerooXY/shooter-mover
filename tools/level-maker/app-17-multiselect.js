@@ -11,7 +11,7 @@
   const baseRenderFooter = renderFooter;
 
   let selectedIds = new Set();
-  let selectionRoomId = state.activeRoomId;
+  let selectionRoomId = state.editor.activeRoomId;
   let lastPrimaryId = state.editor.selectedId;
   let marquee = null;
   let groupDrag = null;
@@ -26,7 +26,7 @@
   }
 
   function assetFor(value) {
-    return state.catalog.find(asset => asset.id === value?.object) || null;
+    return state.assets.find(asset => asset.id === value?.object) || null;
   }
 
   function footprint(value) {
@@ -657,11 +657,11 @@
     const ids = new Set(selectedIds);
     if (ids.size <= 1) return false;
     mutate(() => {
-      for (const room of state.rooms) {
+      for (const room of state.level.rooms) {
         room.entities = room.entities.filter(value => !ids.has(value.id));
         room.doors = room.doors.filter(value => !ids.has(value.id));
       }
-      state.connections = state.connections.filter(connection =>
+      state.level.connections = state.level.connections.filter(connection =>
         !ids.has(connection.fromDoorId) && !ids.has(connection.toDoorId)
       );
       if (ids.has(state.level.finalExitDoorId)) state.level.finalExitDoorId = "";

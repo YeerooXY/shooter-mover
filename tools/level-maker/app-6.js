@@ -1,15 +1,4 @@
-function compressedFloorTiles(r){
- if(!r.tileGridEnabled)return [{object:r.floorObject,fill:{from:[-r.bounds.width/2,-r.bounds.height/2],to:[r.bounds.width/2,r.bounds.height/2]}}];
- const {cols,rows}=tileDimensions(r),byKey=new Map(r.tiles.map(t=>[`${t.x},${t.y}`,t.object])),used=new Set(),out=[];
- for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
-  const key=`${x},${y}`,object=byKey.get(key);if(!object||used.has(key))continue;
-  let w=1;while(x+w<cols&&byKey.get(`${x+w},${y}`)===object&&!used.has(`${x+w},${y}`))w++;
-  let h=1,ok=true;while(y+h<rows&&ok){for(let xx=x;xx<x+w;xx++)if(byKey.get(`${xx},${y+h}`)!==object||used.has(`${xx},${y+h}`)){ok=false;break}if(ok)h++}
-  for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)used.add(`${xx},${yy}`);
-  out.push({object,fill:{from:[-r.bounds.width/2+x,-r.bounds.height/2+y],to:[-r.bounds.width/2+x+w,-r.bounds.height/2+y+h]}})
- }
- return out
-}
+function compressedFloorTiles(room){return FloorData.buildUnityTiles(room)}
 function runtimeRoomFiles(r){
  const folder=`Room_${r.grid[0]}_${r.grid[1]}_${String(r.slot||1).padStart(2,"0")}`;
  const enemies=r.entities.filter(e=>e.kind==="enemy").map(e=>({id:e.id,object:e.object,tier:Number(e.tier||1),position:e.position.map(round),rotation:round(e.rotation||0)}));
@@ -29,12 +18,12 @@ function runtimeRoomFiles(r){
 }
 function buildExportFiles(){
  const target=cleanSlug(state.level.targetFolder).toLowerCase(),base=levelSourceBase(state.level.id,target);
- const roomBuilds=state.rooms.map(runtimeRoomFiles);
- const roomIndex=state.rooms.map((r,i)=>({room_id:r.id,grid_position:r.grid,slot:r.slot||1,folder:roomBuilds[i].folder}));
- const nodes=state.rooms.map(r=>({room_id:r.id,grid_position:r.grid,slot:r.slot||1,label:r.displayName,visible_on_map:r.visibleOnMap!==false}));
+ const roomBuilds=state.level.rooms.map(runtimeRoomFiles);
+ const roomIndex=state.level.rooms.map((r,i)=>({room_id:r.id,grid_position:r.grid,slot:r.slot||1,folder:roomBuilds[i].folder}));
+ const nodes=state.level.rooms.map(r=>({room_id:r.id,grid_position:r.grid,slot:r.slot||1,label:r.displayName,visible_on_map:r.visibleOnMap!==false}));
  const endpoint=doorId=>{const f=findDoor(doorId);return{room_id:f?.room.id||"",door_id:doorId||""}};
- const connections=state.connections.map(c=>({connection_id:c.id,from:endpoint(c.fromDoorId),to:endpoint(c.toDoorId),travel_policy:c.travelPolicy||"Bidirectional"}));
- const level={schema_version:2,level_id:state.level.id,display_name:state.level.name,authoring_state:"validated-playable",runtime_import_status:"compiler-ready",start_room_id:state.level.startRoomId,final_exit:{room_id:state.level.finalRoomId,door_id:state.level.finalExitDoorId||""},room_ids:state.rooms.map(r=>r.id),rooms:roomIndex};
+ const connections=state.level.connections.map(c=>({connection_id:c.id,from:endpoint(c.fromDoorId),to:endpoint(c.toDoorId),travel_policy:c.travelPolicy||"Bidirectional"}));
+ const level={schema_version:2,level_id:state.level.id,display_name:state.level.name,authoring_state:"validated-playable",runtime_import_status:"compiler-ready",start_room_id:state.level.startRoomId,final_exit:{room_id:state.level.finalRoomId,door_id:state.level.finalExitDoorId||""},room_ids:state.level.rooms.map(r=>r.id),rooms:roomIndex};
  const files={};
  files[`${base}/level.json`]=pretty(level);files[`${base}/map.json`]=pretty({schema_version:2,nodes,connections});
  roomBuilds.forEach(rb=>Object.entries(rb.documents).forEach(([name,obj])=>files[`${base}/Rooms/${rb.folder}/${name}`]=pretty(obj)));

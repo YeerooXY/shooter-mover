@@ -27,7 +27,7 @@
     if (!object) return "";
     if (object.kind === "door") return object.id === state.level.finalExitDoorId ? "Final exit" : "Door";
     if (object.kind === "teleporter") return "Teleporter";
-    const asset = state.catalog?.find(item => item.id === object.object);
+    const asset = state.assets?.find(item => item.id === object.object);
     if (asset?.label) return asset.label;
     return String(object.object || object.id || object.kind || "Object")
       .split(".").pop()
@@ -36,7 +36,7 @@
   }
 
   function connectionsForDoor(doorId) {
-    return state.connections.filter(connection =>
+    return state.level.connections.filter(connection =>
       connection.fromDoorId === doorId || connection.toDoorId === doorId
     );
   }
@@ -154,7 +154,7 @@
     } else {
       const rows = connections.map(connection => {
         const target = otherDoor(connection, door.id);
-        const number = state.connections.indexOf(connection) + 1;
+        const number = state.level.connections.indexOf(connection) + 1;
         return `<div class="door-connection-row">
           <span class="connection-number">${number}</span>
           <b>${esc(friendlyDoor(target))}</b>
@@ -181,7 +181,7 @@
 
   function connectionNumbers(doorId) {
     const numbers = [];
-    state.connections.forEach((connection, index) => {
+    state.level.connections.forEach((connection, index) => {
       if (connection.fromDoorId === doorId || connection.toDoorId === doorId) numbers.push(index + 1);
     });
     return numbers;
@@ -197,7 +197,7 @@
   function highlightedDoor(doorId) {
     const selectedId = selectedDoor()?.id || highlightedDoorId;
     if (!selectedId) return false;
-    return state.connections.some(connection => highlightedConnection(connection)
+    return state.level.connections.some(connection => highlightedConnection(connection)
       && (connection.fromDoorId === doorId || connection.toDoorId === doorId));
   }
 
@@ -307,7 +307,7 @@
     if (!source || !target) return;
     const from = worldToScreen(mapDoorWorldPosition(source.room, source.door));
     const to = worldToScreen(mapDoorWorldPosition(target.room, target.door));
-    const number = state.connections.indexOf(connection) + 1;
+    const number = state.level.connections.indexOf(connection) + 1;
     const center = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
 
     ctx.save();
@@ -334,7 +334,7 @@
 
   function drawMapSpawns() {
     const half = [4.5, 3];
-    for (const room of state.rooms) {
+    for (const room of state.level.rooms) {
       if (!room.playerStart) continue;
       const center = mapRoomCenter(room);
       const horizontal = clamp(room.playerStart.position?.[0] / (room.bounds.width / 2 || 1), -0.78, 0.78);

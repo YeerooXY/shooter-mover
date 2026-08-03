@@ -33,7 +33,8 @@ pending editor update can still reach the local server while the tab closes.
 ## Project flow
 
 - **Open level** loads an editable project when one exists. Older combined
-  project files remain supported.
+  project files remain supported and are converted to the current live state as
+  they open.
 - When rebuilding from generated Unity room files, every floor area is expanded
   back into the editable floor grid, preserving holes and multiple floor types.
 - **Save to project** validates and atomically writes the compact editable level
@@ -105,7 +106,7 @@ ordinary JSON objects.
 
 ## State and undo
 
-The live browser state is divided into:
+The live browser state has only these top-level gameplay/editor buckets:
 
 ```text
 state.level
@@ -113,14 +114,14 @@ state.editor
 state.assets
 ```
 
+Rooms expose their floor only through `room.floor` and the `FloorData` helpers.
+Old combined project fields such as root-level rooms, catalogue, active room, or
+per-cell tile objects are accepted only by the import path and removed during
+conversion. They are never added back to live state.
+
 Undo and redo store the same compact level representation used by project saves.
 Typed floor buffers are rebuilt when an undo point is restored, while zoom, pan,
 the active room, the selected asset, and brush settings remain untouched.
-
-Temporary non-enumerable room properties keep older Level Maker code working
-with names such as `floorObject`, `tileGridEnabled`, and `tiles`. They are not
-written to project files and can be removed after the remaining UI code uses the
-new floor helpers directly.
 
 ## Level graph
 
@@ -188,6 +189,7 @@ the runtime gains a typed representation.
 From `tools/level-maker`:
 
 ```powershell
+node compat-names.test.js
 node floor-data.test.js
 node level-state.test.js
 node level-save.test.js
@@ -195,5 +197,5 @@ node app-19-save.test.js
 node editor-file.test.js
 ```
 
-The GitHub Actions workflow runs the same tests and syntax-checks the browser and
-server modules.
+The GitHub Actions workflow runs the same tests and syntax-checks every browser
+script plus the server modules.

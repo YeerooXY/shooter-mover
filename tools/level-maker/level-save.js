@@ -88,7 +88,7 @@
   function makeLevelFile(state) {
     if (!state?.level) throw new Error("The Level Maker has no level to save.");
 
-    const levelFile = LevelState.levelFile(LevelState.addOldNames(state));
+    const levelFile = LevelState.levelFile(state);
     levelFile.format = LEVEL_FORMAT;
     levelFile.schemaVersion = LEVEL_VERSION;
     levelFile.rooms = levelFile.rooms.map(FloorData.saveRoom);
@@ -99,11 +99,10 @@
   function makeEditorFile(state) {
     if (!state?.level) throw new Error("The Level Maker has no editor state to save.");
 
-    LevelState.addOldNames(state);
     const saved = LevelState.editorFile(state);
     const customAssets = [
       ...manualAssets(state.editor?.customAssets),
-      ...manualAssets(state.assets || state.catalog),
+      ...manualAssets(state.assets),
     ];
     const byId = new Map(customAssets.map(asset => [asset.id, asset]));
 
@@ -111,7 +110,7 @@
       version: EDITOR_VERSION,
       levelId: state.level.id,
       activeRoomId:
-        state.editor?.activeRoomId || state.level.startRoomId || state.rooms?.[0]?.id || null,
+        state.editor?.activeRoomId || state.level.startRoomId || state.level.rooms?.[0]?.id || null,
       editor: saved.editor,
       customAssets: [...byId.values()].sort((a, b) => a.id.localeCompare(b.id)),
     };
@@ -142,7 +141,6 @@
 
     const state = LevelState.makeState(openFile, chosenEditor, customAssets, defaultEditor);
     state.editor.customAssets = copy(customAssets);
-    LevelState.addOldNames(state);
     FloorData.prepareRooms(state.level.rooms);
     return state;
   }

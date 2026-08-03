@@ -26,7 +26,7 @@ function readRecoveryDraft(){
  try{
   const raw=localStorage.getItem(RECOVERY_STORAGE_KEY);if(!raw)return null;
   const value=JSON.parse(raw),project=value?.project;
-  if(!project||project.format!=="shooter-mover-web-level-project"||!Array.isArray(project.rooms)||!project.rooms.length)throw new Error("Recovery draft is not a valid Level Maker project.");
+  if(!project||project.format!=="shooter-mover-web-level-project"||!Array.isArray(project.level?.rooms)||!project.level.rooms.length)throw new Error("Recovery draft is not a valid Level Maker project.");
   recoveryRestoredAt=String(value.savedAt||"");return project;
  }catch(error){
   console.warn("Level Maker recovery draft could not be restored.",error);
@@ -57,32 +57,32 @@ function recoveryNotice(){
 
 function newRoom(index=0){
  const rid=`room.level-1-${index===0?"start":"room-"+(index+1)}`;
- return {
+ return FloorData.prepareRoom({
    id:rid, displayName:index===0?"START ROOM":`ROOM ${index+1}`, grid:[index,0], slot:1,
    bounds:{width:24,height:14}, playerStart:index===0?{position:[-9,0],rotation:0}:null,
-   floorObject:"tile.floor-industrial", tileGridEnabled:false, tiles:[], entities:[], doors:[],
+   floor:FloorData.makeFloor(24,14,"tile.floor-industrial"), entities:[], doors:[],
    encounter:{completion:"all-enemies"}, visibleOnMap:true
- };
+ });
 }
 function initialState(){
  const r=newRoom(0);
  const exit={id:"door.level-1-final-exit",kind:"door",position:[12,0],rotation:90,side:"East",placementMode:"Fixed",traversable:true,visibleOnMap:true,runtimeObject:"door.room-standard",openWhen:"room-complete"};
  r.doors.push(exit);
  return {
-  format:"shooter-mover-web-level-project",editorVersion:1,schemaVersion:2,
-  level:{id:"level.level-1",name:"Level 1",targetFolder:"level-1",startRoomId:r.id,finalRoomId:r.id,finalExitDoorId:exit.id},
-  rooms:[r],connections:[],logic:[],catalog:clone(defaultCatalog),activeRoomId:r.id,
-  editor:{tool:"select",viewMode:"room",mapMode:"open",placementMode:"single",focusRoom:true,selectedId:null,selectedAssetId:"prop.wall-1x1",zoom:32,pan:[0,0],snap:true,snapSize:1,roomView:{zoom:32,pan:[0,0]},mapView:{zoom:22,pan:[0,0]}}
+  format:"shooter-mover-web-level-project",editorVersion:1,schemaVersion:LevelSave?.LEVEL_VERSION||4,
+  level:{id:"level.level-1",name:"Level 1",targetFolder:"level-1",startRoomId:r.id,finalRoomId:r.id,finalExitDoorId:exit.id,rooms:[r],connections:[],logic:[]},
+  editor:{activeRoomId:r.id,tool:"select",viewMode:"room",mapMode:"open",placementMode:"single",focusRoom:true,selectedId:null,selectedAssetId:"prop.wall-1x1",zoom:32,pan:[0,0],snap:true,snapSize:1,roomView:{zoom:32,pan:[0,0]},mapView:{zoom:22,pan:[0,0]},customAssets:[]},
+  assets:clone(defaultCatalog)
  };
 }
 let state=readRecoveryDraft()||initialState(), history=[], future=[], gestureSnapshot=null;
 let pointer={down:false,last:[0,0],mode:null,dragOffset:[0,0],lastTileKey:null,lastPlacementKey:null,sourceDoorId:null,mapRoomOffset:[0,0],moved:false};
 let canvas=$("#stage"), ctx=canvas.getContext("2d"), dpr=1;
 
-function currentRoom(){return state.rooms.find(r=>r.id===state.activeRoomId)||state.rooms[0]}
-function allEntities(){return state.rooms.flatMap(r=>r.entities)}
-function findEntity(id){for(const r of state.rooms){const e=r.entities.find(x=>x.id===id);if(e)return {room:r,entity:e}} return null}
-function findDoor(id){for(const r of state.rooms){const d=r.doors.find(x=>x.id===id);if(d)return {room:r,door:d}} return null}
+function currentRoom(){return state.level.rooms.find(r=>r.id===state.editor.activeRoomId)||state.level.rooms[0]}
+function allEntities(){return state.level.rooms.flatMap(r=>r.entities)}
+function findEntity(id){for(const r of state.level.rooms){const e=r.entities.find(x=>x.id===id);if(e)return {room:r,entity:e}} return null}
+function findDoor(id){for(const r of state.level.rooms){const d=r.doors.find(x=>x.id===id);if(d)return {room:r,door:d}} return null}
 function selected(){return findEntity(state.editor.selectedId)||findDoor(state.editor.selectedId)}
 function snapshot(){return JSON.stringify({...state,editor:{...state.editor,pan:state.editor.pan}})}
 function pushHistory(before){
@@ -96,31 +96,37 @@ function undo(){if(!history.length)return;future.push(snapshot());state=JSON.par
 function redo(){if(!future.length)return;history.push(snapshot());state=JSON.parse(future.pop());normalize();renderAll()}
 function updateUndo(){$("#undoBtn").disabled=!history.length;$("#redoBtn").disabled=!future.length}
 function normalize(){
- const knownAssets=new Map(defaultCatalog.map(asset=>[asset.id,clone(asset)]));
- (state.catalog||[]).forEach(asset=>knownAssets.set(asset.id,{...knownAssets.get(asset.id),...asset}));
- state.catalog=[...knownAssets.values()].sort((left,right)=>left.type.localeCompare(right.type)||left.id.localeCompare(right.id));
- if(!state.rooms?.length){state.rooms=[newRoom(0)]}
- if(!state.rooms.some(r=>r.id===state.activeRoomId))state.activeRoomId=state.rooms[0].id;
- state.rooms.forEach((r,i)=>{
-   r.bounds ||= {width:24,height:14};
-   r.bounds.width=Math.max(2,Math.round(Number(r.bounds.width)||24));
-   r.bounds.height=Math.max(2,Math.round(Number(r.bounds.height)||14));
-   r.entities ||= []; r.doors ||= []; r.encounter ||= {completion:"all-enemies"};
-   r.doors.forEach(d=>{const placement=doorEdgePlacement(r,d.position||[0,0]);d.position=placement.position;d.side=placement.side;d.rotation=placement.rotation});
-   r.grid ||= [i,0]; r.slot ||= 1; r.floorObject ||= "tile.floor-industrial"; r.tiles ||= [];
-   if(typeof r.tileGridEnabled!=="boolean")r.tileGridEnabled=r.tiles.length>0;
-   const cols=Math.max(1,Math.round(r.bounds.width)),rows=Math.max(1,Math.round(r.bounds.height));
-   r.tiles=r.tiles.filter(t=>Number.isInteger(t.x)&&Number.isInteger(t.y)&&t.x>=0&&t.y>=0&&t.x<cols&&t.y<rows&&t.object);
- });
- state.connections ||= [];state.logic ||= [];
+ state.level ||= initialState().level;
+ state.level.rooms ||= [];
+ state.level.connections ||= [];
+ state.level.logic ||= [];
  state.editor ||= initialState().editor;
+ state.assets ||= [];
+
+ const knownAssets=new Map(defaultCatalog.map(asset=>[asset.id,clone(asset)]));
+ state.assets.forEach(asset=>knownAssets.set(asset.id,{...knownAssets.get(asset.id),...asset}));
+ state.assets=[...knownAssets.values()].sort((left,right)=>left.type.localeCompare(right.type)||left.id.localeCompare(right.id));
+ if(!state.level.rooms.length)state.level.rooms=[newRoom(0)];
+ if(!state.level.rooms.some(room=>room.id===state.editor.activeRoomId))state.editor.activeRoomId=state.level.rooms[0].id;
+ state.level.rooms.forEach((room,index)=>{
+   room.bounds ||= {width:24,height:14};
+   room.bounds.width=Math.max(2,Math.round(Number(room.bounds.width)||24));
+   room.bounds.height=Math.max(2,Math.round(Number(room.bounds.height)||14));
+   room.entities ||= [];
+   room.doors ||= [];
+   room.encounter ||= {completion:"all-enemies"};
+   room.doors.forEach(door=>{const placement=doorEdgePlacement(room,door.position||[0,0]);door.position=placement.position;door.side=placement.side;door.rotation=placement.rotation});
+   room.grid ||= [index,0];
+   room.slot ||= 1;
+   FloorData.prepareRoom(room);
+ });
  state.editor.viewMode ||= "room";
  state.editor.mapMode ||= "open";
  state.editor.placementMode ||= "single";
  if(typeof state.editor.focusRoom!=="boolean")state.editor.focusRoom=true;
  state.editor.roomView ||= {zoom:state.editor.zoom||32,pan:state.editor.pan||[0,0]};
  state.editor.mapView ||= {zoom:22,pan:[0,0]};
- state.level ||= initialState().level;
+ state.editor.customAssets ||= [];
 }
 
 function setStatus(text,kind=""){
@@ -160,16 +166,16 @@ function setPlacementMode(mode){
 function renderHeaderFields(){
  syncWorkspaceMode();
  $("#levelId").value=state.level.id;$("#levelName").value=state.level.name;$("#targetFolder").value=state.level.targetFolder;
- const opts=state.rooms.map(r=>`<option value="${esc(r.id)}">${esc(r.displayName)} · ${esc(r.id)}</option>`).join("");
+ const opts=state.level.rooms.map(r=>`<option value="${esc(r.id)}">${esc(r.displayName)} · ${esc(r.id)}</option>`).join("");
  $("#startRoom").innerHTML=opts;$("#finalRoom").innerHTML=opts;
  $("#startRoom").value=state.level.startRoomId;$("#finalRoom").value=state.level.finalRoomId;
- const fr=state.rooms.find(r=>r.id===state.level.finalRoomId);
+ const fr=state.level.rooms.find(r=>r.id===state.level.finalRoomId);
  $("#finalDoor").innerHTML=`<option value="">— none —</option>`+(fr?.doors||[]).map(d=>`<option value="${esc(d.id)}">${esc(d.id)}</option>`).join("");
  $("#finalDoor").value=state.level.finalExitDoorId||"";
  const r=currentRoom();
  $("#room-hud").innerHTML=state.editor.viewMode==="map"
   ? `<b>LEVEL GRAPH</b> · ${esc(({open:"open room",arrange:"arrange rooms",connect:"connect doors"})[state.editor.mapMode])}`
-  : `<b>${esc(r.displayName)}</b> · ${r.bounds.width} × ${r.bounds.height} · ${r.tileGridEnabled?r.tiles.length+" painted cells":"full-room floor fill"}`;
+  : `<b>${esc(r.displayName)}</b> · ${r.bounds.width} × ${r.bounds.height} · ${FloorData.isFullFloor(r)?"full-room floor fill":r.floor.count+" painted cells"}`;
  $$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===state.editor.viewMode));
  $$('[data-map-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mapMode===state.editor.mapMode));
  $$('[data-placement-mode]').forEach(b=>b.classList.toggle('active',b.dataset.placementMode===state.editor.placementMode));
@@ -177,7 +183,7 @@ function renderHeaderFields(){
  $("#map-tools").style.display=state.editor.viewMode==="map"?"flex":"none";
  $("#room-focus-tools").style.display=state.editor.viewMode==="room"&&state.editor.focusRoom!==false?"flex":"none";
  $("#snapSelect").value=String(state.editor.snapSize||1);
- const asset=state.catalog.find(a=>a.id===state.editor.selectedAssetId);
+ const asset=state.assets.find(a=>a.id===state.editor.selectedAssetId);
  $("#selected-asset-chip").textContent=asset?`${iconFor(asset.type)} ${asset.label||asset.id}`:"No asset selected";
  const help={open:"Click a room to edit it",arrange:"Drag rooms on the graph grid",connect:"Drag one door socket onto another"}[state.editor.mapMode];
  $("#map-mode-help").textContent=help;
@@ -185,28 +191,28 @@ function renderHeaderFields(){
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
 function renderAssets(){
  const q=$("#assetSearch").value.toLowerCase(),f=$("#assetFilter").value;
- const list=state.catalog.filter(a=>(f==="all"||a.type===f)&&(!q||`${a.id} ${a.label} ${a.path||""}`.toLowerCase().includes(q)));
+ const list=state.assets.filter(a=>(f==="all"||a.type===f)&&(!q||`${a.id} ${a.label} ${a.path||""}`.toLowerCase().includes(q)));
  $("#assetList").innerHTML=list.map(a=>`<div class="asset ${state.editor.selectedAssetId===a.id?"selected":""}" data-asset="${esc(a.id)}">
    <div class="asset-icon">${iconFor(a.type)}</div><div><div class="asset-name">${esc(a.label||a.id)}</div><div class="asset-path">${esc(a.id)}${a.path?" · "+esc(a.path):""}</div></div><span class="badge">${esc(a.type)}</span>
  </div>`).join("")||`<div class="notice">No matching project assets. Add an ID manually if its content package is still being prepared.</div>`;
  $$(".asset").forEach(el=>el.onclick=()=>{
    state.editor.selectedAssetId=el.dataset.asset;
-   const a=state.catalog.find(x=>x.id===el.dataset.asset);
+   const a=state.assets.find(x=>x.id===el.dataset.asset);
    if(a?.type==="enemy")setTool("enemy");else if(a?.type==="door")setTool("door");else if(a?.type==="floor")setTool("tile");else setTool("prop");
    if(document.body.classList.contains("room-focus"))closeDrawers();
    renderAssets();renderCanvas();scheduleRecoverySave();
  });
 }
 function renderRooms(){
- $("#roomList").innerHTML=state.rooms.map(r=>`<div class="room-item ${r.id===state.activeRoomId?"active":""}" data-room="${esc(r.id)}">
+ $("#roomList").innerHTML=state.level.rooms.map(r=>`<div class="room-item ${r.id===state.editor.activeRoomId?"active":""}" data-room="${esc(r.id)}">
   <div class="room-title">${esc(r.displayName)}</div><div class="room-meta">${esc(r.id)} · grid ${r.grid[0]},${r.grid[1]} · ${r.bounds.width}×${r.bounds.height}</div>
  </div>`).join("");
  $$(".room-item").forEach(x=>{
-  x.onclick=()=>{const room=state.rooms.find(r=>r.id===x.dataset.room);state.activeRoomId=x.dataset.room;state.editor.selectedId=null;if(state.editor.viewMode==="map"&&state.editor.mapMode==="open")openRoomEditor(room);else renderAll()};
-  x.ondblclick=()=>{const room=state.rooms.find(r=>r.id===x.dataset.room);if(room)openRoomEditor(room)};
+  x.onclick=()=>{const room=state.level.rooms.find(r=>r.id===x.dataset.room);state.editor.activeRoomId=x.dataset.room;state.editor.selectedId=null;if(state.editor.viewMode==="map"&&state.editor.mapMode==="open")openRoomEditor(room);else renderAll()};
+  x.ondblclick=()=>{const room=state.level.rooms.find(r=>r.id===x.dataset.room);if(room)openRoomEditor(room)};
  });
 }
 function doorOptions(selectedValue=""){
- const doors=state.rooms.flatMap(r=>r.doors.map(d=>({id:d.id,label:`${r.displayName}: ${d.id}`})));
+ const doors=state.level.rooms.flatMap(r=>r.doors.map(d=>({id:d.id,label:`${r.displayName}: ${d.id}`})));
  return `<option value="">— choose door —</option>`+doors.map(d=>`<option value="${esc(d.id)}" ${d.id===selectedValue?"selected":""}>${esc(d.label)}</option>`).join("");
 }

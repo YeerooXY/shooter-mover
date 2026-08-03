@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const vm = require("vm");
+const FloorData = require("./floor-data");
 const LevelSave = require("./level-save");
 
 const listeners = new Map();
@@ -16,6 +17,14 @@ function makeTarget() {
     removeEventListener() {},
   };
 }
+
+const room = {
+  id: "room.start",
+  entities: [],
+  doors: [],
+  bounds: { width: 4, height: 4 },
+  floor: FloorData.makeFloor(4, 4, "tile.floor-industrial"),
+};
 
 const context = {
   console,
@@ -40,30 +49,34 @@ const context = {
   clone: structuredClone,
   state: {
     format: "shooter-mover-web-level-project",
-    schemaVersion: 2,
+    schemaVersion: 4,
     level: {
       id: "level.test",
       name: "Test",
       targetFolder: "test",
       startRoomId: "room.start",
+      rooms: [room],
+      connections: [],
+      logic: [],
     },
-    rooms: [
-      {
-        id: "room.start",
-        entities: [],
-        doors: [],
-        bounds: { width: 4, height: 4 },
-        tiles: [],
-      },
-    ],
-    connections: [],
-    logic: [],
-    catalog: [{ id: "enemy.cached", type: "enemy", source: "repo" }],
-    activeRoomId: "room.start",
-    editor: { tool: "tile", selectedAssetId: "enemy.cached" },
+    assets: [{ id: "enemy.cached", type: "enemy", source: "repo" }],
+    editor: {
+      activeRoomId: "room.start",
+      customAssets: [],
+      tool: "tile",
+      selectedAssetId: "enemy.cached",
+    },
   },
   initialState() {
-    return { editor: { tool: "select", zoom: 32, pan: [0, 0] } };
+    return {
+      editor: {
+        activeRoomId: "room.start",
+        customAssets: [],
+        tool: "select",
+        zoom: 32,
+        pan: [0, 0],
+      },
+    };
   },
   normalize() {},
   document: makeTarget(),
@@ -109,6 +122,14 @@ const savedLevel = LevelSave.makeLevelFile(context.state);
 assertMissing(savedLevel, "editor");
 assertMissing(savedLevel, "catalog");
 assertMissing(savedLevel, "activeRoomId");
+for (const oldName of ["rooms", "connections", "logic", "catalog", "activeRoomId"]) {
+  if (oldName in context.state) throw new Error(`Live state still exposes ${oldName}.`);
+}
+for (const oldName of ["tiles", "tileGridEnabled", "floorObject"]) {
+  if (oldName in context.state.level.rooms[0]) {
+    throw new Error(`Live room still exposes ${oldName}.`);
+  }
+}
 
 context.writeRecoveryDraft();
 if (!local.has(LevelSave.levelRecoveryKey())) {

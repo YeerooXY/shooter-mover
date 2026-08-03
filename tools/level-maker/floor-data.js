@@ -8,8 +8,6 @@
   const EMPTY = ".";
   const GRID_SYMBOLS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
   const DEFAULT_TILE = "tile.floor-industrial";
-  const tileViews = new WeakMap();
-  const aliasedRooms = new WeakSet();
 
   function copy(value) {
     if (value == null) return value;
@@ -113,6 +111,14 @@
     return fillFloor(room, null);
   }
 
+  function setDefaultFloorTile(room, tile) {
+    const floor = roomFloor(room);
+    const wasFull = isFullFloor(room);
+    floor.defaultTile = tile || DEFAULT_TILE;
+    if (wasFull) fillCells(floor, floor.defaultTile);
+    return room;
+  }
+
   function copyFloor(source) {
     const floor = isFloor(source?.floor) ? source.floor : source;
     if (!isFloor(floor)) throw new Error("Cannot copy an invalid floor.");
@@ -152,7 +158,6 @@
     }
 
     room.floor = next;
-    addOldFloorNames(room);
     return room;
   }
 
@@ -206,7 +211,6 @@
 
     if (isFloor(room.floor)) {
       if (room.floor.width !== width || room.floor.height !== height) resizeFloor(room, width, height);
-      addOldFloorNames(room);
       return room;
     }
 
@@ -217,7 +221,6 @@
     delete room.floorObject;
     delete room.tileGridEnabled;
     delete room.tiles;
-    addOldFloorNames(room);
     return room;
   }
 
@@ -240,76 +243,6 @@
   function defaultFloorTile(room) {
     const floor = roomFloor(room);
     return floor.defaultTile || floor.tiles.find(Boolean) || DEFAULT_TILE;
-  }
-
-  function tileView(room) {
-    let view = tileViews.get(room);
-    if (view) return view;
-    view = {
-      get length() {
-        return roomFloor(room).count;
-      },
-      filter() {
-        return view;
-      },
-      *[Symbol.iterator]() {
-        const floor = roomFloor(room);
-        for (let y = 0; y < floor.height; y++) {
-          for (let x = 0; x < floor.width; x++) {
-            const object = floorTile(floor, x, y);
-            if (object) yield { x, y, object };
-          }
-        }
-      },
-    };
-    tileViews.set(room, view);
-    return view;
-  }
-
-  function useOldTiles(room, value) {
-    if (value === tileViews.get(room)) return;
-    const { width, height } = roomSize(room);
-    const floor = makeFloor(width, height, null);
-    floor.defaultTile = room.floor?.defaultTile || DEFAULT_TILE;
-    for (const tile of Array.isArray(value) ? value : []) {
-      if (!Number.isInteger(tile?.x) || !Number.isInteger(tile?.y)) continue;
-      if (tile.x < 0 || tile.y < 0 || tile.x >= width || tile.y >= height) continue;
-      if (tile.object) setFloorCell(floor, tile.x, tile.y, tile.object);
-    }
-    room.floor = floor;
-  }
-
-  function addOldFloorNames(room) {
-    if (aliasedRooms.has(room)) return room;
-    Object.defineProperties(room, {
-      floorObject: {
-        configurable: true,
-        enumerable: false,
-        get: () => defaultFloorTile(room),
-        set: value => {
-          const wasFull = isFullFloor(room);
-          const floor = roomFloor(room);
-          floor.defaultTile = value || DEFAULT_TILE;
-          if (wasFull) fillCells(floor, floor.defaultTile);
-        },
-      },
-      tileGridEnabled: {
-        configurable: true,
-        enumerable: false,
-        get: () => !isFullFloor(room),
-        set: value => {
-          if (value === false) fillFloor(room, defaultFloorTile(room));
-        },
-      },
-      tiles: {
-        configurable: true,
-        enumerable: false,
-        get: () => tileView(room),
-        set: value => useOldTiles(room, value),
-      },
-    });
-    aliasedRooms.add(room);
-    return room;
   }
 
   function readFloor(room) {
@@ -363,9 +296,6 @@
   function saveRoom(room) {
     prepareRoom(room);
     const saved = { ...room, floor: writeFloor(room) };
-    delete saved.floorObject;
-    delete saved.tileGridEnabled;
-    delete saved.tiles;
     return JSON.parse(JSON.stringify(saved));
   }
 
@@ -472,6 +402,7 @@
     clearFloorTile,
     fillFloor,
     clearFloor,
+    setDefaultFloorTile,
     defaultFloorTile,
     isFullFloor,
     readFloor,

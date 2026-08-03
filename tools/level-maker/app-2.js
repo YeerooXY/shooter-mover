@@ -1,32 +1,32 @@
 function renderLogic(){
- $("#connectionList").innerHTML=state.connections.map((c,i)=>`<div class="logic-item" data-connection="${esc(c.id)}">
+ $("#connectionList").innerHTML=state.level.connections.map((c,i)=>`<div class="logic-item" data-connection="${esc(c.id)}">
    <div class="section-title">${esc(c.id)}</div>
    <label>From</label><select data-field="from">${doorOptions(c.fromDoorId)}</select>
    <label>To</label><select data-field="to">${doorOptions(c.toDoorId)}</select>
    <div class="row"><select data-field="policy" class="grow"><option ${c.travelPolicy==="Bidirectional"?"selected":""}>Bidirectional</option><option ${c.travelPolicy==="OneWay"?"selected":""}>OneWay</option></select><button data-delete>Delete</button></div>
  </div>`).join("")||`<div class="help">No room connections yet.</div>`;
  $$("#connectionList .logic-item").forEach(el=>{
-  const c=state.connections.find(x=>x.id===el.dataset.connection);
+  const c=state.level.connections.find(x=>x.id===el.dataset.connection);
   el.querySelector('[data-field=from]').onchange=e=>mutate(()=>c.fromDoorId=e.target.value);
   el.querySelector('[data-field=to]').onchange=e=>mutate(()=>c.toDoorId=e.target.value);
   el.querySelector('[data-field=policy]').onchange=e=>mutate(()=>c.travelPolicy=e.target.value);
-  el.querySelector('[data-delete]').onclick=()=>mutate(()=>state.connections=state.connections.filter(x=>x!==c));
+  el.querySelector('[data-delete]').onclick=()=>mutate(()=>state.level.connections=state.level.connections.filter(x=>x!==c));
  });
- $("#logicList").innerHTML=state.logic.map(l=>`<div class="logic-item" data-logic="${esc(l.id)}">
+ $("#logicList").innerHTML=state.level.logic.map(l=>`<div class="logic-item" data-logic="${esc(l.id)}">
   <div class="row"><input data-field="name" value="${esc(l.name)}"><button data-delete>Delete</button></div>
   <label>When</label><select data-field="when"><option ${l.when==="switch-activated"?"selected":""}>switch-activated</option><option ${l.when==="room-complete"?"selected":""}>room-complete</option><option ${l.when==="enemy-count-zero"?"selected":""}>enemy-count-zero</option><option ${l.when==="player-enters-trigger"?"selected":""}>player-enters-trigger</option></select>
   <label>Target entity / door ID</label><input data-field="target" value="${esc(l.targetId||"")}">
   <label>Action</label><select data-field="action"><option ${l.action==="open-door"?"selected":""}>open-door</option><option ${l.action==="close-door"?"selected":""}>close-door</option><option ${l.action==="enable-entity"?"selected":""}>enable-entity</option><option ${l.action==="disable-entity"?"selected":""}>disable-entity</option><option ${l.action==="teleport"?"selected":""}>teleport</option></select>
  </div>`).join("")||`<div class="help">No custom rules.</div>`;
  $$("#logicList .logic-item").forEach(el=>{
-  const l=state.logic.find(x=>x.id===el.dataset.logic);
+  const l=state.level.logic.find(x=>x.id===el.dataset.logic);
   ["name","when","target","action"].forEach(k=>el.querySelector(`[data-field=${k}]`).onchange=e=>mutate(()=>l[k==="target"?"targetId":k]=e.target.value));
-  el.querySelector("[data-delete]").onclick=()=>mutate(()=>state.logic=state.logic.filter(x=>x!==l));
+  el.querySelector("[data-delete]").onclick=()=>mutate(()=>state.level.logic=state.level.logic.filter(x=>x!==l));
  });
 }
 function renderFooter(){
  const r=currentRoom(),en=r.entities.filter(e=>e.kind==="enemy").length,pr=r.entities.filter(e=>e.kind!=="enemy").length;
- $("#counts").textContent=`${state.rooms.length} room(s) · active: ${en} enemies, ${pr} objects, ${r.doors.length} doors`;
+ $("#counts").textContent=`${state.level.rooms.length} room(s) · active: ${en} enemies, ${pr} objects, ${r.doors.length} doors`;
  $("#view-hud").textContent=`${state.editor.viewMode==="map"?"MAP":"ROOM"} · ${Math.round(state.editor.zoom/32*100)}% · snap ${state.editor.snap?state.editor.snapSize:"off"}`;
  const sel=selected();$("#selection-hud").textContent=sel?(sel.entity?.id||sel.door?.id):"Nothing selected";
 }
@@ -45,27 +45,27 @@ function renderInspector(){
    <label>Display name</label><input data-r="displayName" value="${esc(r.displayName)}">
    <div class="grid2"><div><label>Map grid X</label><input data-r="gridX" type="number" value="${r.grid[0]}"></div><div><label>Map grid Y</label><input data-r="gridY" type="number" value="${r.grid[1]}"></div></div>
    <div class="grid2"><div><label>Width</label><input data-r="width" type="number" min="2" step="1" value="${r.bounds.width}"></div><div><label>Height</label><input data-r="height" type="number" min="2" step="1" value="${r.bounds.height}"></div></div>
-   <label>Default floor object</label><input data-r="floorObject" value="${esc(r.floorObject)}">
+   <label>Default floor object</label><input data-r="floorObject" value="${esc(FloorData.defaultFloorTile(r))}">
    <div class="section"><div class="section-title">Tile grid · 1 × 1 world units</div>
     <div class="tile-chip"><span class="tile-swatch" style="background:${tileColor(selectedFloorObject())}"></span>${esc(selectedFloorObject()||"Select a floor asset")}</div>
     <div class="row" style="margin-top:8px"><button data-action="fill-tiles">Fill all cells</button><button data-action="clear-tiles">Clear all cells</button></div>
     <div class="help" style="margin-top:6px">Choose a floor asset, then paint with <kbd>F</kbd>. Use <kbd>X</kbd> or right-click to erase.</div>
    </div>
    <label><input data-r="visible" type="checkbox" ${r.visibleOnMap!==false?"checked":""}> Visible on map</label>
-   <hr><div class="row"><button data-action="center">Center view</button><button data-action="map">Show level map</button><button class="danger" data-action="delete-room" ${state.rooms.length===1?"disabled":""}>Delete room</button></div>
+   <hr><div class="row"><button data-action="center">Center view</button><button data-action="map">Show level map</button><button class="danger" data-action="delete-room" ${state.level.rooms.length===1?"disabled":""}>Delete room</button></div>
    <div class="notice">Select an object to edit its gameplay properties. Place content from the catalogue on the left.</div>
   </div>`;
   wrap.querySelectorAll("[data-r]").forEach(el=>el.onchange=()=>mutate(()=>{
    const k=el.dataset.r;
-   if(k==="id"){const old=r.id;r.id=el.value;state.activeRoomId=r.id;if(state.level.startRoomId===old)state.level.startRoomId=r.id;if(state.level.finalRoomId===old)state.level.finalRoomId=r.id}
+   if(k==="id"){const old=r.id;r.id=el.value;state.editor.activeRoomId=r.id;if(state.level.startRoomId===old)state.level.startRoomId=r.id;if(state.level.finalRoomId===old)state.level.finalRoomId=r.id}
    else if(k==="gridX")r.grid[0]=+el.value;else if(k==="gridY")r.grid[1]=+el.value;
    else if(k==="width")r.bounds.width=Math.max(2,Math.round(+el.value));else if(k==="height")r.bounds.height=Math.max(2,Math.round(+el.value));
-   else if(k==="visible")r.visibleOnMap=el.checked;else r[k]=el.value;
+   else if(k==="visible")r.visibleOnMap=el.checked;else if(k==="floorObject")FloorData.setDefaultFloorTile(r,el.value);else r[k]=el.value;
   }));
   wrap.querySelector("[data-action=center]").onclick=()=>{state.editor.pan=[0,0];fitRoom();renderCanvas()};
   wrap.querySelector("[data-action=map]").onclick=()=>{setViewMode("map",{focus:false});fitMap();renderAll()};
-  wrap.querySelector("[data-action=fill-tiles]").onclick=()=>mutate(()=>fillRoomTiles(r,selectedFloorObject()||r.floorObject));
-  wrap.querySelector("[data-action=clear-tiles]").onclick=()=>mutate(()=>{r.tileGridEnabled=true;r.tiles=[]});
+  wrap.querySelector("[data-action=fill-tiles]").onclick=()=>mutate(()=>FloorData.fillFloor(r,selectedFloorObject()||FloorData.defaultFloorTile(r)));
+  wrap.querySelector("[data-action=clear-tiles]").onclick=()=>mutate(()=>FloorData.clearFloor(r));
   const del=wrap.querySelector("[data-action=delete-room]");if(del)del.onclick=()=>mutate(()=>deleteActiveRoom());
   return;
  }
@@ -122,7 +122,7 @@ function wireInspectorEntity(e,wrap){
 }
 function deleteSelected(){
  const id=state.editor.selectedId;if(!id)return;
- for(const r of state.rooms){r.entities=r.entities.filter(e=>e.id!==id);r.doors=r.doors.filter(d=>d.id!==id)}
- state.connections=state.connections.filter(c=>c.fromDoorId!==id&&c.toDoorId!==id);
+ for(const r of state.level.rooms){r.entities=r.entities.filter(e=>e.id!==id);r.doors=r.doors.filter(d=>d.id!==id)}
+ state.level.connections=state.level.connections.filter(c=>c.fromDoorId!==id&&c.toDoorId!==id);
  state.editor.selectedId=null;
 }

@@ -15,7 +15,7 @@
   let hoverConnectionId = "";
 
   function connectionsForDoor(doorId) {
-    return state.connections.filter(connection =>
+    return state.level.connections.filter(connection =>
       connection.fromDoorId === doorId || connection.toDoorId === doorId
     );
   }
@@ -55,7 +55,7 @@
       setStatus("The connected door could not be found.", "warn");
       return;
     }
-    state.activeRoomId = found.room.id;
+    state.editor.activeRoomId = found.room.id;
     setViewMode("room", { focus: true });
     state.editor.selectedId = found.door.id;
     fitRoom();
@@ -65,10 +65,10 @@
   }
 
   function disconnect(connectionId) {
-    const connection = state.connections.find(value => value.id === connectionId);
+    const connection = state.level.connections.find(value => value.id === connectionId);
     if (!connection) return;
     mutate(() => {
-      state.connections = state.connections.filter(value => value.id !== connectionId);
+      state.level.connections = state.level.connections.filter(value => value.id !== connectionId);
     });
     setStatus("Door connection removed.", "good");
   }
@@ -90,7 +90,7 @@
     } else {
       panel.innerHTML = `<div class="door-nav-heading">Connection tools</div>${connections.map(connection => {
         const target = targetFor(connection, door.id);
-        const number = state.connections.indexOf(connection) + 1;
+        const number = state.level.connections.indexOf(connection) + 1;
         return `<div class="door-nav-row" data-door-connection="${esc(connection.id)}">
           <span class="door-nav-number">${number}</span>
           <div class="door-nav-target"><b>${esc(friendlyDoor(target))}</b><span>${esc(directionLabel(connection, door.id))}</span></div>
@@ -215,11 +215,11 @@
   function relatedToHover(doorId) {
     if (doorId === hoverDoorId) return true;
     if (hoverConnectionId) {
-      const connection = state.connections.find(value => value.id === hoverConnectionId);
+      const connection = state.level.connections.find(value => value.id === hoverConnectionId);
       return connection?.fromDoorId === doorId || connection?.toDoorId === doorId;
     }
     if (!hoverDoorId) return false;
-    return state.connections.some(connection =>
+    return state.level.connections.some(connection =>
       (connection.fromDoorId === hoverDoorId || connection.toDoorId === hoverDoorId)
       && (connection.fromDoorId === doorId || connection.toDoorId === doorId)
     );
@@ -273,7 +273,7 @@
   function connectionAt(point) {
     let best = null;
     let distance = 9;
-    for (const connection of state.connections) {
+    for (const connection of state.level.connections) {
       const points = connectionPoints(connection);
       if (!points) continue;
       const current = distanceToSegment(point, points.from, points.to);

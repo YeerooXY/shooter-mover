@@ -39,7 +39,7 @@
   return [...byId.values()].sort((left,right)=>left.type.localeCompare(right.type)||String(left.label||left.id).localeCompare(String(right.label||right.id)));
  }
  function captureScannedCatalog(){
-  scannedCatalog=mergeCatalog(state.catalog||[]);
+  scannedCatalog=mergeCatalog(state.assets||[]);
   sharedCatalog=mergeCatalog([
    ...defaultCatalog,
    ...scannedCatalog.filter(asset=>!isGeneratedLevelAsset(asset)),
@@ -48,9 +48,9 @@
  }
  function usedAssetIds(project){
   const ids=new Set();
-  for(const room of project?.rooms||[]){
-   if(room.floorObject)ids.add(room.floorObject);
-   for(const tile of room.tiles||[])if(tile.object)ids.add(tile.object);
+  for(const room of project?.level?.rooms||[]){
+   FloorData.prepareRoom(room);
+   for(const tile of room.floor.tiles)if(tile)ids.add(tile);
    for(const entity of room.entities||[])if(entity.object)ids.add(entity.object);
    for(const door of room.doors||[])if(door.runtimeObject)ids.add(door.runtimeObject);
   }
@@ -58,7 +58,7 @@
  }
  function removeEnemyPlacements(project){
   let removed=0;
-  for(const room of project?.rooms||[]){
+  for(const room of project?.level?.rooms||[]){
    const entities=Array.isArray(room.entities)?room.entities:[];
    const kept=entities.filter(entity=>!String(entity?.object||"").startsWith("enemy."));
    removed+=entities.length-kept.length;
@@ -68,7 +68,7 @@
  }
  function catalogueForProject(project){
   if(!sharedCatalogCaptured)captureScannedCatalog();
-  const current=clone(project?.catalog||[]);
+  const current=clone(project?.assets||[]);
   const candidates=new Map();
   for(const item of [...scannedCatalog,...current])if(item?.id&&!isEnemyAsset(item))candidates.set(item.id,item);
   const kept=[...sharedCatalog];
@@ -82,14 +82,14 @@
   return mergeCatalog(kept);
  }
  function repairSelectedAsset(){
-  if(state.catalog.some(asset=>asset.id===state.editor.selectedAssetId))return;
+  if(state.assets.some(asset=>asset.id===state.editor.selectedAssetId))return;
   const wantedType=state.editor.tool==="door"?"door":state.editor.tool==="tile"?"floor":"prop";
-  state.editor.selectedAssetId=state.catalog.find(asset=>asset.type===wantedType)?.id||state.catalog[0]?.id||"";
+  state.editor.selectedAssetId=state.assets.find(asset=>asset.type===wantedType)?.id||state.assets[0]?.id||"";
  }
  function sanitizeCurrentProject(){
   if(!state?.rooms?.length)return;
   const removedEnemyPlacements=removeEnemyPlacements(state);
-  state.catalog=catalogueForProject(state);
+  state.assets=catalogueForProject(state);
   repairSelectedAsset();
   normalize();
   renderAll();
@@ -101,7 +101,7 @@
 
  normalize=function(){
   baseNormalize();
-  state.catalog=mergeCatalog(state.catalog||[]);
+  state.assets=mergeCatalog(state.assets||[]);
   repairSelectedAsset();
  };
 
@@ -110,10 +110,10 @@
   if(!target)return;
   if(target.closest("#createLevelBtn")){
    if(!sharedCatalogCaptured)captureScannedCatalog();
-   // app-8 creates a new project from state.catalog in the target-phase click handler.
+   // app-8 creates a new project from state.assets in the target-phase click handler.
    // Supplying only shared non-enemy assets here prevents deleted enemy catalogue
    // entries and prior level instances from being copied into a fresh project.
-   state.catalog=clone(sharedCatalog);
+   state.assets=clone(sharedCatalog);
    return;
   }
   if(target.closest("[data-continue], [data-level-target]")){
@@ -133,6 +133,6 @@
  };
 
  sharedCatalog=mergeCatalog(defaultCatalog);
- state.catalog=mergeCatalog(state.catalog||[]);
+ state.assets=mergeCatalog(state.assets||[]);
  repairSelectedAsset();
 })();

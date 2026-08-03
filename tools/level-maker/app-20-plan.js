@@ -3,13 +3,12 @@
 {
   const oldInitialState = initialState;
 
-  initialState = function makeBucketedInitialState() {
+  initialState = function makeCurrentInitialState() {
     const next = oldInitialState();
     next.schemaVersion = LevelSave.LEVEL_VERSION;
-    return LevelState.addOldNames(next);
+    return next;
   };
 
-  state = LevelState.addOldNames(state);
   state.schemaVersion = LevelSave.LEVEL_VERSION;
   state.editor.customAssets = [
     ...(state.editor.customAssets || []),
@@ -28,7 +27,6 @@
       state.editor
     );
     state.level = opened.level;
-    LevelState.addOldNames(state);
     LevelState.fixEditor(state);
     FloorData.prepareRooms(state.level.rooms);
   }

@@ -29,13 +29,13 @@ canvas.addEventListener("pointerdown",e=>{
    return
   }
   if(state.editor.mapMode==="connect"){
-   if(hit?.type==="door"){state.activeRoomId=hit.room.id;state.editor.selectedId=hit.door.id;pointer.mode="connect-door";pointer.sourceDoorId=hit.door.id;renderAll()}
-   else if(hit?.room){state.activeRoomId=hit.room.id;state.editor.selectedId=null;renderAll()}
+   if(hit?.type==="door"){state.editor.activeRoomId=hit.room.id;state.editor.selectedId=hit.door.id;pointer.mode="connect-door";pointer.sourceDoorId=hit.door.id;renderAll()}
+   else if(hit?.room){state.editor.activeRoomId=hit.room.id;state.editor.selectedId=null;renderAll()}
    else{pointer.mode="pan";canvas.style.cursor="grabbing"}
    return
   }
   if(state.editor.mapMode==="arrange"){
-   if(hit?.type==="room"){state.activeRoomId=hit.room.id;state.editor.selectedId=null;pointer.mode="drag-map-room";const c=mapRoomCenter(hit.room);pointer.mapRoomOffset=[wp[0]-c[0],wp[1]-c[1]];renderAll()}
+   if(hit?.type==="room"){state.editor.activeRoomId=hit.room.id;state.editor.selectedId=null;pointer.mode="drag-map-room";const c=mapRoomCenter(hit.room);pointer.mapRoomOffset=[wp[0]-c[0],wp[1]-c[1]];renderAll()}
    else{pointer.mode="pan";canvas.style.cursor="grabbing"}
    return
   }
@@ -90,8 +90,8 @@ canvas.addEventListener("pointerup",e=>{
  if(pointer.mode==="connect-door"&&pointer.sourceDoorId){
   const hit=mapHitTest(pointer.last),source=findDoor(pointer.sourceDoorId);
   if(hit?.type==="door"&&hit.door.id!==pointer.sourceDoorId&&hit.room.id!==source?.room.id){
-   const duplicate=state.connections.some(c=>(c.fromDoorId===pointer.sourceDoorId&&c.toDoorId===hit.door.id)||(c.toDoorId===pointer.sourceDoorId&&c.fromDoorId===hit.door.id));
-   if(!duplicate)state.connections.push({id:uid("connection"),fromDoorId:pointer.sourceDoorId,toDoorId:hit.door.id,travelPolicy:"Bidirectional"});else setStatus("Those doors are already connected.","warn")
+   const duplicate=state.level.connections.some(c=>(c.fromDoorId===pointer.sourceDoorId&&c.toDoorId===hit.door.id)||(c.toDoorId===pointer.sourceDoorId&&c.fromDoorId===hit.door.id));
+   if(!duplicate)state.level.connections.push({id:uid("connection"),fromDoorId:pointer.sourceDoorId,toDoorId:hit.door.id,travelPolicy:"Bidirectional"});else setStatus("Those doors are already connected.","warn")
   }
  }
  if(["drag","pan","tile-paint","entity-paint","drag-map-room","connect-door","placed"].includes(pointer.mode)&&gestureSnapshot&&gestureSnapshot!==snapshot())pushHistory(gestureSnapshot);
@@ -104,14 +104,14 @@ canvas.addEventListener("wheel",e=>{
 function validate(){
  const issues=[],err=(m,p="")=>issues.push({severity:"error",message:m,path:p}),warn=(m,p="")=>issues.push({severity:"warning",message:m,path:p});
  if(!state.level.id)err("Level ID is required.","level.id");
- if(!state.rooms.some(r=>r.id===state.level.startRoomId))err("Start room does not exist.","level.startRoomId");
- if(!state.rooms.some(r=>r.id===state.level.finalRoomId))err("Final room does not exist.","level.finalRoomId");
- const ids=new Set(),catalogIds=new Set(state.catalog.map(a=>a.id));
- state.rooms.forEach((r,ri)=>{
+ if(!state.level.rooms.some(r=>r.id===state.level.startRoomId))err("Start room does not exist.","level.startRoomId");
+ if(!state.level.rooms.some(r=>r.id===state.level.finalRoomId))err("Final room does not exist.","level.finalRoomId");
+ const ids=new Set(),catalogIds=new Set(state.assets.map(a=>a.id));
+ state.level.rooms.forEach((r,ri)=>{
   if(ids.has(r.id))err(`Duplicate room ID ${r.id}.`,`rooms[${ri}]`);ids.add(r.id);
   if(r.bounds.width<=0||r.bounds.height<=0)err(`Room ${r.id} has invalid size.`);
   if(!r.playerStart&&r.id===state.level.startRoomId)err(`Start room ${r.id} needs a player start.`);
-  if(r.tileGridEnabled&&r.tiles.length===0)warn(`Room ${r.id} has an enabled tile grid but no painted floor cells.`);
+  if(!FloorData.isFullFloor(r)&&r.floor.count===0)warn(`Room ${r.id} has no painted floor cells.`);
   const instanceIds=new Set();
   [...r.entities,...r.doors].forEach(o=>{if(instanceIds.has(o.id))err(`Duplicate instance ID ${o.id} in ${r.id}.`);instanceIds.add(o.id)});
   r.entities.forEach(e=>{
@@ -123,11 +123,11 @@ function validate(){
   });
   r.doors.forEach(d=>{if(!d.runtimeObject)err(`${d.id} has no runtime door object.`);if(d.runtimeObject&&!catalogIds.has(d.runtimeObject))warn(`${d.id} uses unknown door object ${d.runtimeObject}.`);if(!doorIsOnRoomEdge(r,d))err(`${d.id} must be placed on a room edge.`);if(!["always","room-complete"].includes(d.openWhen||"always"))warn(`${d.id} uses ${d.openWhen}; this rule is preserved in editor metadata but not emitted to the current runtime encounter schema.`)});
  });
- const allDoorIds=new Set(state.rooms.flatMap(r=>r.doors.map(d=>d.id)));
- state.connections.forEach(c=>{if(!allDoorIds.has(c.fromDoorId))err(`${c.id} has an invalid source door.`);if(!allDoorIds.has(c.toDoorId))err(`${c.id} has an invalid destination door.`);if(c.fromDoorId===c.toDoorId)err(`${c.id} connects a door to itself.`)});
+ const allDoorIds=new Set(state.level.rooms.flatMap(r=>r.doors.map(d=>d.id)));
+ state.level.connections.forEach(c=>{if(!allDoorIds.has(c.fromDoorId))err(`${c.id} has an invalid source door.`);if(!allDoorIds.has(c.toDoorId))err(`${c.id} has an invalid destination door.`);if(c.fromDoorId===c.toDoorId)err(`${c.id} connects a door to itself.`)});
  if(!state.level.finalExitDoorId)err("A final exit door is required.","level.finalExitDoorId");
  if(state.level.finalExitDoorId&&!allDoorIds.has(state.level.finalExitDoorId))err("Final exit door does not exist.");
- const tele=state.rooms.flatMap(r=>r.entities.filter(e=>e.kind==="teleporter"));const pairs={};tele.forEach(t=>(pairs[t.pairId]??=[]).push(t));Object.entries(pairs).forEach(([id,v])=>{if(v.length!==2)warn(`Teleporter pair ${id} has ${v.length} endpoints; expected 2.`)});
+ const tele=state.level.rooms.flatMap(r=>r.entities.filter(e=>e.kind==="teleporter"));const pairs={};tele.forEach(t=>(pairs[t.pairId]??=[]).push(t));Object.entries(pairs).forEach(([id,v])=>{if(v.length!==2)warn(`Teleporter pair ${id} has ${v.length} endpoints; expected 2.`)});
  return issues;
 }
 function showValidation(){

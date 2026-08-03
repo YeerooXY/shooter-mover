@@ -58,7 +58,7 @@
   }
 
   function assetForId(id) {
-    return state.catalog.find(asset => asset.id === id) || null;
+    return state.assets.find(asset => asset.id === id) || null;
   }
 
   function footprint(value) {
@@ -182,28 +182,18 @@
   }
 
   function drawFloorImages(room) {
-    const { cols, rows } = tileDimensions(room);
-    const cells = room.tileGridEnabled
-      ? room.tiles
-      : Array.from({ length: cols * rows }, (_, index) => ({
-          x: index % cols,
-          y: Math.floor(index / cols),
-          object: room.floorObject
-        }));
-    for (const tile of cells) {
-      const image = imageFor(tile.object);
-      if (!image) continue;
-      const screen = visibleCell(room, tile.x, tile.y);
-      if (!screen) continue;
-      const inset = Math.min(3, Math.max(1, screen.width * 0.06));
-      drawImageInScreenRect(
-        image,
-        screen.left + inset,
-        screen.top + inset,
-        Math.max(0, screen.width - inset * 2),
-        Math.max(0, screen.height - inset * 2),
-        0.72
-      );
+    FloorData.prepareRoom(room);
+    for (let y = 0; y < room.floor.height; y++) {
+      for (let x = 0; x < room.floor.width; x++) {
+        const object = FloorData.getFloorTile(room, x, y);
+        if (!object) continue;
+        const image = imageFor(object);
+        if (!image) continue;
+        const screen = visibleCell(room, x, y);
+        if (!screen) continue;
+        const inset = Math.min(3, Math.max(1, screen.width * 0.06));
+        drawImageInScreenRect(image, screen.left + inset, screen.top + inset, Math.max(0, screen.width - inset * 2), Math.max(0, screen.height - inset * 2), 0.72);
+      }
     }
   }
 

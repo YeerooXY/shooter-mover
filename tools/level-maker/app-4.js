@@ -25,8 +25,8 @@ function fitRoom(){
  const r=currentRoom(),rect=canvas.getBoundingClientRect();state.editor.zoom=clamp(Math.min((rect.width-80)/r.bounds.width,(rect.height-80)/r.bounds.height),8,80);state.editor.pan=[0,0];saveCurrentView()
 }
 function fitMap(){
- const rect=canvas.getBoundingClientRect();if(state.rooms.length===1){state.editor.zoom=28;state.editor.pan=[0,0];saveCurrentView();return}
- const pts=state.rooms.map(mapRoomCenter),xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),w=Math.max(10,Math.max(...xs)-Math.min(...xs)+12),h=Math.max(8,Math.max(...ys)-Math.min(...ys)+9);
+ const rect=canvas.getBoundingClientRect();if(state.level.rooms.length===1){state.editor.zoom=28;state.editor.pan=[0,0];saveCurrentView();return}
+ const pts=state.level.rooms.map(mapRoomCenter),xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),w=Math.max(10,Math.max(...xs)-Math.min(...xs)+12),h=Math.max(8,Math.max(...ys)-Math.min(...ys)+9);
  state.editor.zoom=clamp(Math.min((rect.width-100)/w,(rect.height-100)/h),6,42);const center=[(Math.min(...xs)+Math.max(...xs))/2,(Math.min(...ys)+Math.max(...ys))/2];state.editor.pan=[-center[0]*state.editor.zoom,center[1]*state.editor.zoom];saveCurrentView()
 }
 function saveCurrentView(){const key=state.editor.viewMode==="map"?"mapView":"roomView";state.editor[key]={zoom:state.editor.zoom,pan:[...state.editor.pan]}}
@@ -43,18 +43,18 @@ function setViewMode(mode,{focus=true}={}){
  requestAnimationFrame(resizeCanvas);renderAll()
 }
 function openRoomEditor(room){
- if(!room)return;state.activeRoomId=room.id;state.editor.selectedId=null;setViewMode("room",{focus:true});requestAnimationFrame(()=>{fitRoom();renderAll()})
+ if(!room)return;state.editor.activeRoomId=room.id;state.editor.selectedId=null;setViewMode("room",{focus:true});requestAnimationFrame(()=>{fitRoom();renderAll()})
 }
 function setTool(t){
  if(state.editor.viewMode!=="room")setViewMode("room",{focus:true});state.editor.tool=t;$$('[data-tool]').forEach(b=>b.classList.toggle("active",b.dataset.tool===t));canvas.style.cursor=t==="pan"?"grab":t==="select"?"default":"crosshair";renderFooter()
 }
 function assetForTool(tool){
- const a=state.catalog.find(x=>x.id===state.editor.selectedAssetId);
+ const a=state.assets.find(x=>x.id===state.editor.selectedAssetId);
  if(tool==="enemy"&&a?.type==="enemy")return a;
  if(tool==="prop"&&a?.type==="prop")return a;
  if(tool==="wall")return a?.type==="prop"&&a.id.startsWith("prop.wall-")
   ?a
-  :state.catalog.find(x=>x.id==="prop.wall-1x1");
+  :state.assets.find(x=>x.id==="prop.wall-1x1");
  if(tool==="door"&&a?.type==="door")return a;
  if(tool==="tile"&&a?.type==="floor")return a;
  return null;

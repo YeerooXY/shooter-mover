@@ -19,12 +19,12 @@
   let dragInvalid = false;
 
   function selectedAsset() {
-    return state.catalog?.find(asset => asset.id === state.editor.selectedAssetId) || null;
+    return state.assets?.find(asset => asset.id === state.editor.selectedAssetId) || null;
   }
 
   function footprintFrom(value) {
     const asset = typeof value === "string"
-      ? state.catalog?.find(item => item.id === value)
+      ? state.assets?.find(item => item.id === value)
       : value;
     const explicit = asset?.footprint || asset?.gridSize || asset?.size;
     if (Array.isArray(explicit) && explicit.length >= 2) {
@@ -347,7 +347,7 @@
 
   function connectionNumbersForDoor(doorId) {
     const numbers = [];
-    state.connections.forEach((connection, index) => {
+    state.level.connections.forEach((connection, index) => {
       if (connection.fromDoorId === doorId || connection.toDoorId === doorId) numbers.push(index + 1);
     });
     return numbers;
@@ -384,7 +384,7 @@
     if (!source || !target) return;
     const a = worldToScreen(mapDoorWorldPosition(source.room, source.door));
     const b = worldToScreen(mapDoorWorldPosition(target.room, target.door));
-    const number = state.connections.indexOf(connection) + 1;
+    const number = state.level.connections.indexOf(connection) + 1;
     const x = (a[0] + b[0]) / 2;
     const y = (a[1] + b[1]) / 2;
     ctx.save();
