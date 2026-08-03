@@ -1,0 +1,14 @@
+{
+  "minLevel": 1,
+  "maxLevel": 100,
+  "strengthAtMax": 50,
+  "damagePower": 0.35,
+  "colors": [
+    { "level": 1, "color": "#55D66B" },
+    { "level": 20, "color": "#9EDB43" },
+    { "level": 40, "color": "#E4D542" },
+    { "level": 60, "color": "#F29A3D" },
+    { "level": 80, "color": "#E84F58" },
+    { "level": 100, "color": "#A653DF" }
+  ]
+}
