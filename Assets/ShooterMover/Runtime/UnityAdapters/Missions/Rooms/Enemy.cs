@@ -68,9 +68,6 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         private readonly Dictionary<GunDamageCategory, double> resistances =
             new Dictionary<GunDamageCategory, double>();
         private EnemyInstance runtime;
-        private RoomEnemyDeathRelay legacyRelay;
-        private bool legacyRelayEnabled;
-        private bool legacyRelayStateCaptured;
         private bool terminalPresentationDisabled;
         private bool volatileBlastEmitted;
 
@@ -190,14 +187,6 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             TraitRoller.Roll(value, Rules);
 
             bool reactivateAfterDeath = terminalPresentationDisabled;
-            legacyRelay = GetComponent<RoomEnemyDeathRelay>();
-            if (legacyRelay != null)
-            {
-                legacyRelayEnabled = legacyRelay.enabled;
-                legacyRelayStateCaptured = true;
-                legacyRelay.enabled = false;
-            }
-
             runtime = value;
             resistances.Clear();
             volatileBlastEmitted = false;
@@ -218,14 +207,6 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             runtime = null;
             resistances.Clear();
             volatileBlastEmitted = false;
-            if (legacyRelayStateCaptured && legacyRelay != null)
-            {
-                legacyRelay.enabled = legacyRelayEnabled;
-            }
-
-            legacyRelay = null;
-            legacyRelayEnabled = false;
-            legacyRelayStateCaptured = false;
         }
 
         public override void TakeHit(Hit hit)
