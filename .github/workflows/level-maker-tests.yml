@@ -42,5 +42,6 @@ jobs:
           node level-state.test.js
           node level-save.test.js
           node level-authoring.test.js
+          node map-door-shortcut.test.js
           node app-19-save.test.js
           node editor-file.test.js
