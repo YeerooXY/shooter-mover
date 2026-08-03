@@ -3,7 +3,7 @@
 const assert = require("assert");
 const FloorData = require("./floor-data");
 
-function makeRoom(width, height, floor) {
+function makeOldRoom(width, height, floor) {
   const tiles = [];
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -22,6 +22,12 @@ function makeRoom(width, height, floor) {
   };
 }
 
+function assertNoOldFloorNames(room) {
+  for (const oldName of ["tiles", "tileGridEnabled", "floorObject"]) {
+    assert.strictEqual(oldName in room, false, `${oldName} must not exist on a live room`);
+  }
+}
+
 const width = 50;
 const height = 50;
 const cross = new Array(width * height).fill(null);
@@ -35,20 +41,17 @@ assert.deepStrictEqual(crossAreas, [
   { tile: "tile.floor-industrial", x: 24, y: 25, width: 1, height: 25 },
 ]);
 
-const crossRoom = FloorData.prepareRoom(makeRoom(width, height, cross));
+const crossRoom = FloorData.prepareRoom(makeOldRoom(width, height, cross));
 assert.ok(crossRoom.floor.cells instanceof Uint16Array);
 assert.strictEqual(crossRoom.floor.cells.length, width * height);
 assert.strictEqual(crossRoom.floor.count, 99);
-assert.ok(!Object.keys(crossRoom).includes("tiles"));
-assert.ok(!Object.keys(crossRoom).includes("tileGridEnabled"));
-assert.ok(!Object.keys(crossRoom).includes("floorObject"));
-assert.strictEqual(crossRoom.tiles.length, 99);
+assertNoOldFloorNames(crossRoom);
 
 const savedCrossRoom = FloorData.saveRoom(crossRoom);
 assert.strictEqual(savedCrossRoom.floor.format, "grid");
 assert.strictEqual(savedCrossRoom.floor.rows.length, height);
 assert.strictEqual(savedCrossRoom.floor.rows[0].length, width);
-assert.ok(!("tiles" in savedCrossRoom));
+assertNoOldFloorNames(savedCrossRoom);
 assert.deepStrictEqual(FloorData.readFloor(FloorData.openRoom(savedCrossRoom)), cross);
 
 const unityTiles = FloorData.buildUnityTiles(crossRoom);
@@ -57,6 +60,7 @@ const rebuiltFromUnity = FloorData.openUnityTiles(
   { id: "room.test", bounds: { width, height }, entities: [], doors: [] },
   unityTiles
 );
+assertNoOldFloorNames(rebuiltFromUnity);
 assert.deepStrictEqual(FloorData.readFloor(rebuiltFromUnity), cross);
 
 const fullRoom = FloorData.prepareRoom({
@@ -66,6 +70,7 @@ const fullRoom = FloorData.prepareRoom({
   tileGridEnabled: false,
   tiles: [],
 });
+assertNoOldFloorNames(fullRoom);
 assert.ok(fullRoom.floor.cells instanceof Uint16Array);
 assert.strictEqual(fullRoom.floor.count, 96);
 assert.strictEqual(FloorData.isFullFloor(fullRoom), true);
@@ -75,14 +80,19 @@ assert.deepStrictEqual(FloorData.buildUnityTiles(fullRoom), [
     fill: { from: [-6, -4], to: [6, 4] },
   },
 ]);
+FloorData.setDefaultFloorTile(fullRoom, "tile.floor-hazard");
+assert.strictEqual(FloorData.defaultFloorTile(fullRoom), "tile.floor-hazard");
+assert.strictEqual(FloorData.getFloorTile(fullRoom, 0, 0), "tile.floor-hazard");
 
-const largeRoom = FloorData.prepareRoom({
+const largeRoom = {
   id: "room.large",
   bounds: { width: 200, height: 200 },
-  floorObject: "tile.floor-industrial",
-  tileGridEnabled: false,
-  tiles: [],
-});
+  floor: FloorData.makeFloor(200, 200, "tile.floor-industrial"),
+  entities: [],
+  doors: [],
+};
+FloorData.prepareRoom(largeRoom);
+assertNoOldFloorNames(largeRoom);
 assert.ok(largeRoom.floor.cells instanceof Uint16Array);
 assert.strictEqual(largeRoom.floor.cells.length, 40_000);
 assert.strictEqual(largeRoom.floor.cells.byteLength, 80_000);
@@ -117,6 +127,7 @@ resizeRoom.bounds = { width: 2, height: 1 };
 FloorData.prepareRoom(resizeRoom);
 assert.strictEqual(FloorData.getFloorTile(resizeRoom, 0, 0), "tile.floor-a");
 assert.strictEqual(resizeRoom.floor.count, 1);
+assertNoOldFloorNames(resizeRoom);
 
 const checkerWidth = 20;
 const checkerHeight = 20;
@@ -131,7 +142,7 @@ assert.strictEqual(
 );
 
 const manyTiles = Array.from({ length: 65 }, (_, index) => `tile.floor-${index}`);
-const manyTileRoom = FloorData.prepareRoom(makeRoom(65, 1, manyTiles));
+const manyTileRoom = FloorData.prepareRoom(makeOldRoom(65, 1, manyTiles));
 const manyTileSave = FloorData.writeFloor(manyTileRoom);
 assert.strictEqual(manyTileSave.format, "number-grid");
 assert.strictEqual(manyTileSave.legend.length, 66);
