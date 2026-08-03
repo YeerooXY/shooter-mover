@@ -10,7 +10,6 @@ using ShooterMover.Contracts.Missions.Rooms;
 using ShooterMover.Domain.Common;
 using ShooterMover.UI.LevelSelection;
 using ShooterMover.UnityAdapters.Authoring.LevelDesign;
-using ShooterMover.UnityAdapters.Enemies;
 using ShooterMover.UnityAdapters.Missions.Rooms;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -21,6 +20,7 @@ namespace ShooterMover.UI.Game
     /// <summary>
     /// Generic production traversal composition for catalogue-selected authored JSON levels.
     /// The selected character graph remains the sole owner of profile, holdings and loadout.
+    /// Compact enemies are instantiated by the room presentation runtime itself.
     /// </summary>
     [DefaultExecutionOrder(500)]
     [DisallowMultipleComponent]
@@ -29,7 +29,6 @@ namespace ShooterMover.UI.Game
         [SerializeField] private RoomLoader roomBootstrap;
         [SerializeField] private LevelRooms roomRuntime;
         [SerializeField] private RoomView visualPresentation;
-        [SerializeField] private RoomEnemies enemySpawner;
         [SerializeField] private RoomArt presentationCatalog;
         [SerializeField] private Transform presentationRoot;
         [SerializeField] private GameObject playerPrefab;
@@ -120,7 +119,7 @@ namespace ShooterMover.UI.Game
                 rejectionCode = "playable-level-incomplete-state-conflict";
                 return false;
             }
-            if (runFailure == null || !runFailure(completionState))
+            if (runFailure != null && !runFailure(completionState))
             {
                 rejectionCode = "playable-level-incomplete-settlement-rejected";
                 return false;
@@ -155,8 +154,7 @@ namespace ShooterMover.UI.Game
 
         private void Update()
         {
-            if (!isConfigured
-                || completionAccepted)
+            if (!isConfigured || completionAccepted)
             {
                 return;
             }
@@ -272,8 +270,7 @@ namespace ShooterMover.UI.Game
             {
                 FailAndReturn(
                     "playable-level-character-context-missing:"
-                        + CharacterSave
-                            .CurrentDiagnostic);
+                        + CharacterSave.CurrentDiagnostic);
                 return;
             }
             if (!HasSameCharacterRouteIdentity(routePayload, graph, profile)
@@ -289,9 +286,7 @@ namespace ShooterMover.UI.Game
 
             // Navigation payloads are immutable snapshots. Inventory/equipment changes
             // can legitimately occur after the snapshot used to enter Play was created.
-            // The selected character and class still have to match exactly, but a stale
-            // gun-slot fingerprint must not reject the run. Gameplay binds to the
-            // current character graph below, which is the authoritative payload.
+            // Gameplay binds to the current character graph, which is authoritative.
             Begin(selectedLevel, graph);
         }
 
@@ -340,15 +335,6 @@ namespace ShooterMover.UI.Game
                         "playable-level-json-asset-missing:"
                         + selectedLevel.RoomContentResourcePath);
                 }
-                EnemyCatalogAsset enemyCatalog =
-                    Resources.Load<EnemyCatalogAsset>(
-                        selectedLevel.EnemyCatalogResourcePath);
-                if (enemyCatalog == null)
-                {
-                    throw Failure(
-                        "playable-level-enemy-catalog-missing:"
-                        + selectedLevel.EnemyCatalogResourcePath);
-                }
 
                 roomBootstrap.Configure(
                     roomContent,
@@ -375,12 +361,6 @@ namespace ShooterMover.UI.Game
                         "playable-level-room-visual-composition-rejected:"
                         + visualPresentation.LastBuildError);
                 }
-                if (!enemySpawner.Synchronize())
-                {
-                    throw Failure(
-                        "playable-level-room-enemy-composition-rejected:"
-                        + enemySpawner.LastBuildError);
-                }
                 isConfigured = true;
                 diagnostic = string.Empty;
             }
@@ -396,16 +376,23 @@ namespace ShooterMover.UI.Game
 
         private void ValidateSceneReferences()
         {
-            if (roomBootstrap == null) throw Failure("playable-level-json-bootstrap-missing");
-            if (roomRuntime == null) throw Failure("playable-level-room-composition-missing");
-            if (visualPresentation == null) throw Failure("playable-level-visual-presentation-missing");
-            if (enemySpawner == null) throw Failure("playable-level-enemy-binding-missing");
-            if (presentationCatalog == null) throw Failure("playable-level-presentation-catalog-missing");
-            if (presentationRoot == null) throw Failure("playable-level-presentation-root-missing");
-            if (playerPrefab == null) throw Failure("playable-level-player-prefab-missing");
+            if (roomBootstrap == null)
+                throw Failure("playable-level-json-bootstrap-missing");
+            if (roomRuntime == null)
+                throw Failure("playable-level-room-composition-missing");
+            if (visualPresentation == null)
+                throw Failure("playable-level-visual-presentation-missing");
+            if (presentationCatalog == null)
+                throw Failure("playable-level-presentation-catalog-missing");
+            if (presentationRoot == null)
+                throw Failure("playable-level-presentation-root-missing");
+            if (playerPrefab == null)
+                throw Failure("playable-level-player-prefab-missing");
             ValidateAuthoredPlayerPresentation();
-            if (playerSpeed <= 0f) throw Failure("playable-level-player-speed-invalid");
-            if (cameraSize <= 0f) throw Failure("playable-level-camera-size-invalid");
+            if (playerSpeed <= 0f)
+                throw Failure("playable-level-player-speed-invalid");
+            if (cameraSize <= 0f)
+                throw Failure("playable-level-camera-size-invalid");
         }
 
         private void ValidateAuthoredPlayerPresentation()
@@ -480,8 +467,10 @@ namespace ShooterMover.UI.Game
                     }
                 }
             }
-            if (finalExits == 0) throw Failure("playable-level-authored-exit-missing");
-            if (finalExits != 1) throw Failure("playable-level-authored-exit-duplicated");
+            if (finalExits == 0)
+                throw Failure("playable-level-authored-exit-missing");
+            if (finalExits != 1)
+                throw Failure("playable-level-authored-exit-duplicated");
         }
 
         private void SpawnExactlyOnePlayer()
@@ -654,13 +643,21 @@ namespace ShooterMover.UI.Game
             float width = (float)bounds.Size.X;
             float height = (float)bounds.Size.Y;
             const float thickness = 0.5f;
-            AddBoundary("North", new Vector2(centerX, centerY + height * 0.5f),
+            AddBoundary(
+                "North",
+                new Vector2(centerX, centerY + height * 0.5f),
                 new Vector2(width + thickness, thickness));
-            AddBoundary("South", new Vector2(centerX, centerY - height * 0.5f),
+            AddBoundary(
+                "South",
+                new Vector2(centerX, centerY - height * 0.5f),
                 new Vector2(width + thickness, thickness));
-            AddBoundary("East", new Vector2(centerX + width * 0.5f, centerY),
+            AddBoundary(
+                "East",
+                new Vector2(centerX + width * 0.5f, centerY),
                 new Vector2(thickness, height + thickness));
-            AddBoundary("West", new Vector2(centerX - width * 0.5f, centerY),
+            AddBoundary(
+                "West",
+                new Vector2(centerX - width * 0.5f, centerY),
                 new Vector2(thickness, height + thickness));
         }
 
@@ -846,11 +843,17 @@ namespace ShooterMover.UI.Game
             }
             float horizontal = 0f;
             float vertical = 0f;
-            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed) horizontal -= 1f;
-            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) horizontal += 1f;
-            if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed) vertical -= 1f;
-            if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed) vertical += 1f;
-            input = Vector2.ClampMagnitude(new Vector2(horizontal, vertical), 1f);
+            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)
+                horizontal -= 1f;
+            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)
+                horizontal += 1f;
+            if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed)
+                vertical -= 1f;
+            if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)
+                vertical += 1f;
+            input = Vector2.ClampMagnitude(
+                new Vector2(horizontal, vertical),
+                1f);
         }
 
         private void FixedUpdate()
@@ -916,8 +919,7 @@ namespace ShooterMover.UI.Game
         private void OnTriggerEnter2D(Collider2D other)
         {
             if (accepted || door == null || !door.IsOpen || other == null) return;
-            PlayerMarker entered =
-                other.GetComponentInParent<PlayerMarker>();
+            PlayerMarker entered = other.GetComponentInParent<PlayerMarker>();
             if (entered == null || !ReferenceEquals(entered, player)) return;
 
             accepted = true;

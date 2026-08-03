@@ -16,7 +16,8 @@ namespace ShooterMover.Tests.EditMode
         [TestCase("tools/benchmarks/fire_loop_benchmark.py")]
         public void RetiredRuntimeFilesRemainAbsent(string repositoryPath)
         {
-            string repositoryRoot = Directory.GetParent(Application.dataPath).FullName;
+            string repositoryRoot = Directory.GetParent(
+                UnityEngine.Application.dataPath).FullName;
             string absolute = Path.Combine(
                 repositoryRoot,
                 repositoryPath.Replace('/', Path.DirectorySeparatorChar));
