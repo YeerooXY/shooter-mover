@@ -51,7 +51,6 @@ namespace ShooterMover.Application.Flow.Game
                 Money(money),
                 Scrap(scrap, scrapAuthorityId, scrapCurrencyId),
                 Skills(skills, skillProfileId),
-                RetiredArmorLoadout(),
                 GunAugmentSavePart.CreateAdapter(
                     strongboxes.AugmentSignatures),
                 ShopPurchaseSavePart.CreateAdapter(
@@ -241,24 +240,6 @@ namespace ShooterMover.Application.Flow.Game
                         ? SavePartApplyResult.Applied()
                         : SavePartApplyResult.Rejected(
                             "ranked-skill-seed-mismatch");
-                });
-        }
-
-        private static ISavePart RetiredArmorLoadout()
-        {
-            return KnownSavePartAdapters.ExactInstanceLoadout(
-                RetiredArmorLoadoutCompatibility.Empty,
-                snapshot => GameSaveFormats.ExactInstanceLoadout
-                    .Validate(snapshot),
-                snapshot =>
-                {
-                    SavePartValidationResult validation =
-                        GameSaveFormats.ExactInstanceLoadout
-                            .Validate(snapshot);
-                    return validation.Succeeded
-                        ? SavePartApplyResult.Applied()
-                        : SavePartApplyResult.Rejected(
-                            validation.RejectionCode);
                 });
         }
 

@@ -280,19 +280,16 @@ namespace ShooterMover.Tests.EditMode.Persistence.SaveParts
                 GameSaveFormats.MoneyWallet.ContractId,
                 GameSaveFormats.ScrapWallet.ContractId,
                 GameSaveFormats.RankedSkillAllocation.ContractId,
-                GameSaveFormats.ExactInstanceLoadout.ContractId,
                 GameSaveFormats.StrongboxState.ContractId,
             };
 
-            Assert.That(contracts.Count, Is.EqualTo(7));
+            Assert.That(contracts.Count, Is.EqualTo(6));
             Assert.That(contracts, Does.Contain("player-experience-explicit-v1"));
             Assert.That(contracts, Does.Contain("player-holdings-explicit-v1"));
             Assert.That(contracts, Does.Contain("money-wallet-explicit-v1"));
             Assert.That(contracts, Does.Contain("scrap-wallet-explicit-v1"));
             Assert.That(contracts,
                 Does.Contain("ranked-skill-allocation-explicit-v2"));
-            Assert.That(contracts,
-                Does.Contain("inventory-loadout-explicit-v1"));
             Assert.That(contracts,
                 Does.Contain("strongbox-opening-explicit-v1"));
         }

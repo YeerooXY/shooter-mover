@@ -269,9 +269,7 @@ namespace ShooterMover.Tests.PlayMode.CollectedRunRewards
                 restored.LoadoutRuntime.MountLoadoutAuthority);
             var inventory = new InventoryMenuActions(
                 restored.LoadoutRuntime.CurrentRoutePayload,
-                restored.LoadoutRuntime.Holdings,
                 restored.LoadoutRuntime.GunInventory,
-                restored.LoadoutRuntime.LoadoutAuthority,
                 restored.LoadoutRuntime.MountLayout,
                 restored.LoadoutRuntime.GunCatalog);
             StableId firstActiveSlot = restored.LoadoutRuntime.MountLayout

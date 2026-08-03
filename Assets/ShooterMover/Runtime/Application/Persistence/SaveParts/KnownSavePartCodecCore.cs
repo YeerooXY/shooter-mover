@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Rewards.Generation;
 using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Contracts.Economy;
@@ -163,10 +162,6 @@ namespace ShooterMover.Application.Persistence.SaveParts
         public static readonly SkillsCodec
             RankedSkillAllocation =
                 new SkillsCodec();
-
-        public static readonly LoadoutCodec
-            ExactInstanceLoadout =
-                new LoadoutCodec();
 
         public static readonly StrongboxOpeningCodec
             StrongboxState = new StrongboxOpeningCodec();

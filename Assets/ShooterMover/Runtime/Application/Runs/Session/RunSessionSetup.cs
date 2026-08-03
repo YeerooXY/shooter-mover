@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using ShooterMover.Application.Flow.Game;
-using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Holdings;
@@ -135,8 +134,8 @@ namespace ShooterMover.Application.Runs.Session
                     "run-selected-character-fingerprint-stale");
             }
 
-            InventoryLoadoutStateSnapshot loadout =
-                graph.LoadoutRuntime.LoadoutAuthority.ExportSnapshot();
+            LoadoutSnapshot loadout =
+                graph.LoadoutRuntime.MountLoadoutAuthority.ExportSnapshot();
             PlayerHoldingsSnapshot holdings =
                 graph.LoadoutRuntime.Holdings.ExportSnapshot();
             if (loadout == null
@@ -295,7 +294,7 @@ namespace ShooterMover.Application.Runs.Session
 
         private static bool TryFreezeEquipment(
             CharacterLiveGraph graph,
-            InventoryLoadoutStateSnapshot loadout,
+            LoadoutSnapshot loadout,
             PlayerHoldingsSnapshot holdings,
             out PlayerRouteProfilePayload currentRoute,
             out List<FrozenRunEquipment> frozenEquipment,
@@ -304,34 +303,54 @@ namespace ShooterMover.Application.Runs.Session
             currentRoute = null;
             frozenEquipment = new List<FrozenRunEquipment>();
             rejectionCode = string.Empty;
-            var routeEquipment = new List<StableId>(
-                PlayerRouteProfilePayload.GunSlotCount);
+            if (graph == null
+                || graph.LoadoutRuntime == null
+                || loadout == null
+                || !loadout.HasValidFingerprint()
+                || holdings == null)
+            {
+                rejectionCode = "run-production-upstream-snapshot-invalid";
+                return false;
+            }
+
+            GunSlots layout = graph.LoadoutRuntime.MountLayout;
+            if (layout == null
+                || loadout.Bindings.Count != layout.PhysicalPositions.Count)
+            {
+                rejectionCode = "run-gun-mount-layout-mismatch";
+                return false;
+            }
 
             for (int index = 0;
-                index < InventoryLoadoutSlots.All.Count;
-                index++)
+                 index < layout.PhysicalPositions.Count;
+                 index++)
             {
-                InventoryLoadoutSlotDescriptor descriptor =
-                    InventoryLoadoutSlots.All[index];
-                InventoryLoadoutSlotBinding binding =
-                    loadout.GetBinding(descriptor.SlotStableId);
-                if (descriptor.Kind == InventoryLoadoutSlotKind.Gun)
+                GunSlot position = layout.PhysicalPositions[index];
+                EquippedGun binding = loadout.Find(position.MountStableId);
+                if (binding == null)
                 {
-                    routeEquipment.Add(binding.EquipmentInstanceStableId);
+                    rejectionCode = "run-gun-mount-binding-missing:"
+                        + position.MountStableId;
+                    return false;
                 }
-                if (binding.EquipmentInstanceStableId == null)
+                if (!position.IsActive && binding.InstanceId != null)
+                {
+                    rejectionCode = "run-locked-gun-mount-is-bound:"
+                        + position.MountStableId;
+                    return false;
+                }
+                if (binding.InstanceId == null)
                 {
                     continue;
                 }
 
                 EquipmentInstance instance = FindEquipment(
                     holdings,
-                    binding.EquipmentInstanceStableId);
+                    binding.InstanceId);
                 if (instance == null)
                 {
-                    rejectionCode =
-                        "run-equipped-instance-not-owned:"
-                        + binding.EquipmentInstanceStableId;
+                    rejectionCode = "run-equipped-instance-not-owned:"
+                        + binding.InstanceId;
                     return false;
                 }
                 EquipmentDefinition definition = graph.LoadoutRuntime
@@ -339,37 +358,29 @@ namespace ShooterMover.Application.Runs.Session
                         instance.DefinitionId);
                 if (definition == null)
                 {
-                    rejectionCode =
-                        "run-equipped-definition-unresolved:"
+                    rejectionCode = "run-equipped-definition-unresolved:"
                         + instance.DefinitionId;
                     return false;
                 }
-                if (descriptor.Kind == InventoryLoadoutSlotKind.Gun
-                    && definition.RuntimeGunReferenceId == null)
+                if (definition.RuntimeGunReferenceId == null)
                 {
-                    rejectionCode =
-                        "run-equipped-gun-runtime-unresolved:"
+                    rejectionCode = "run-equipped-gun-runtime-unresolved:"
                         + instance.InstanceId;
                     return false;
                 }
                 frozenEquipment.Add(new FrozenRunEquipment(
-                    descriptor.SlotStableId,
+                    position.LoadoutSlotStableId,
                     instance,
                     definition));
             }
 
-            if (routeEquipment.Count
-                != PlayerRouteProfilePayload.GunSlotCount)
-            {
-                rejectionCode = "run-loadout-gun-slot-count-invalid";
-                return false;
-            }
             try
             {
-                currentRoute = PlayerRouteProfilePayload.Create(
+                currentRoute = LoadoutView.Route(
                     graph.Character.CharacterInstanceStableId,
                     graph.RoutePayload.LoadoutProfileStableId,
-                    routeEquipment);
+                    layout,
+                    loadout);
             }
             catch (Exception exception)
             {

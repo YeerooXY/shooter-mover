@@ -100,7 +100,7 @@ namespace ShooterMover.UI.Game
             PlayerRouteProfilePayload graphRoutePayload,
             PlayerRouteProfilePayload profileRoutePayload,
             object currentHoldingsAuthority,
-            object currentLoadoutAuthority,
+            object currentGunMountLoadoutAuthority,
             out string rejectionCode)
         {
             rejectionCode = string.Empty;
@@ -110,7 +110,7 @@ namespace ShooterMover.UI.Game
                 || graphRoutePayload == null
                 || profileRoutePayload == null
                 || currentHoldingsAuthority == null
-                || currentLoadoutAuthority == null)
+                || currentGunMountLoadoutAuthority == null)
             {
                 rejectionCode =
                     "playable-player-vitals-character-context-missing";
@@ -128,8 +128,8 @@ namespace ShooterMover.UI.Game
                     player.HoldingsAuthority,
                     currentHoldingsAuthority)
                 || !ReferenceEquals(
-                    player.LoadoutAuthority,
-                    currentLoadoutAuthority))
+                    player.GunMountLoadoutAuthority,
+                    currentGunMountLoadoutAuthority))
             {
                 rejectionCode =
                     "playable-player-vitals-character-authority-changed";
@@ -173,7 +173,7 @@ namespace ShooterMover.UI.Game
                     graph.RoutePayload,
                     profile.Payload,
                     graph.LoadoutRuntime.Holdings,
-                    graph.LoadoutRuntime.LoadoutAuthority,
+                    graph.LoadoutRuntime.MountLoadoutAuthority,
                     out rejectionCode))
             {
                 return false;
@@ -529,7 +529,7 @@ namespace ShooterMover.UI.Game
                 || marker.ClassDefinitionStableId == null
                 || marker.RoutePayload == null
                 || marker.HoldingsAuthority == null
-                || marker.LoadoutAuthority == null)
+                || marker.GunMountLoadoutAuthority == null)
             {
                 throw new InvalidOperationException(
                     "playable-player-vitals-player-context-incomplete");

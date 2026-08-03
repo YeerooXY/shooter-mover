@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using ShooterMover.Application.Inventory.LoadoutScreen;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
 
@@ -308,6 +307,27 @@ namespace ShooterMover.Application.Flow.Game
         }
     }
 
+    public static class GunLoadoutSlotIds
+    {
+        public static readonly StableId GunOne =
+            StableId.Parse("gun-slot.slot-1");
+        public static readonly StableId GunTwo =
+            StableId.Parse("gun-slot.slot-2");
+        public static readonly StableId GunThree =
+            StableId.Parse("gun-slot.slot-3");
+        public static readonly StableId GunFour =
+            StableId.Parse("gun-slot.slot-4");
+
+        public static int IndexOf(StableId slotStableId)
+        {
+            if (slotStableId == GunOne) return 0;
+            if (slotStableId == GunTwo) return 1;
+            if (slotStableId == GunThree) return 2;
+            if (slotStableId == GunFour) return 3;
+            return -1;
+        }
+    }
+
     public static class GunMountPolicy
     {
         public const string AggressiveLoadoutProfileId =
@@ -336,39 +356,39 @@ namespace ShooterMover.Application.Flow.Game
         private static readonly GunSlot OuterLeft =
             new GunSlot(
                 OuterLeftMountStableId,
-                InventoryLoadoutSlotIds.GunOne,
+                GunLoadoutSlotIds.GunOne,
                 "Outer Left",
                 -0.9d);
         private static readonly GunSlot InnerLeft =
             new GunSlot(
                 InnerLeftMountStableId,
-                InventoryLoadoutSlotIds.GunTwo,
+                GunLoadoutSlotIds.GunTwo,
                 "Inner Left",
                 -0.3d);
         private static readonly GunSlot Center =
             new GunSlot(
                 CenterMountStableId,
-                InventoryLoadoutSlotIds.GunTwo,
+                GunLoadoutSlotIds.GunTwo,
                 "Center",
                 0d);
         private static readonly GunSlot
             AggressiveLockedCenter =
                 new GunSlot(
                     CenterMountStableId,
-                    InventoryLoadoutSlotIds.GunTwo,
+                    GunLoadoutSlotIds.GunTwo,
                     "Center",
                     GunMountAvailability.LockedBySkill,
                     0d);
         private static readonly GunSlot InnerRight =
             new GunSlot(
                 InnerRightMountStableId,
-                InventoryLoadoutSlotIds.GunThree,
+                GunLoadoutSlotIds.GunThree,
                 "Inner Right",
                 0.3d);
         private static readonly GunSlot OuterRight =
             new GunSlot(
                 OuterRightMountStableId,
-                InventoryLoadoutSlotIds.GunFour,
+                GunLoadoutSlotIds.GunFour,
                 "Outer Right",
                 0.9d);
 
