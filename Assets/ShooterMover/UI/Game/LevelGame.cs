@@ -580,9 +580,22 @@ namespace ShooterMover.UI.Game
             }
 
             RoomSpawnPointDefinition spawn = ResolveCurrentSpawn();
-            playerBody.position = new Vector2(
+            Vector2 position = new Vector2(
                 (float)spawn.LocalPosition.X,
                 (float)spawn.LocalPosition.Y);
+            if (roomRuntime.PresentationRevision > 1)
+            {
+                AuthorableRoomDefinition room = roomRuntime.Definition.GetRoom(
+                    roomRuntime.CurrentRoomStableId);
+                Vector2 towardRoom = new Vector2(
+                    (float)room.Bounds.Center.X - position.x,
+                    (float)room.Bounds.Center.Y - position.y);
+                if (towardRoom.sqrMagnitude > 0f)
+                {
+                    position += towardRoom.normalized * 2f;
+                }
+            }
+            playerBody.position = position;
             playerBody.rotation = (float)spawn.LocalRotationDegrees;
             playerBody.linearVelocity = Vector2.zero;
             RebuildOwnedBindings();
