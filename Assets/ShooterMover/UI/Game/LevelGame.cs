@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Missions.Rooms;
+using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Content.Definitions.Levels.Selection;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Contracts.Missions.Results;
@@ -261,11 +262,14 @@ namespace ShooterMover.UI.Game
 
             CharacterLiveGraph graph;
             FlowProfileRecord profile;
+            CharacterSetupFlow composition;
             if (!CharacterSave.TryResolveCurrent(
                     out graph,
-                    out profile)
+                    out profile,
+                    out composition)
                 || graph == null
                 || profile == null
+                || composition == null
                 || graph.IsDisposed)
             {
                 FailAndReturn(
@@ -287,7 +291,7 @@ namespace ShooterMover.UI.Game
             // Navigation payloads are immutable snapshots. Inventory/equipment changes
             // can legitimately occur after the snapshot used to enter Play was created.
             // Gameplay binds to the current character graph, which is authoritative.
-            Begin(selectedLevel, graph);
+            Begin(selectedLevel, selectedModeStableId, graph, composition);
         }
 
         private static bool HasSameCharacterRouteIdentity(
@@ -313,7 +317,9 @@ namespace ShooterMover.UI.Game
 
         private void Begin(
             PlayableLevelDefinition selectedLevel,
-            CharacterLiveGraph graph)
+            StableId selectedModeStableId,
+            CharacterLiveGraph graph,
+            CharacterSetupFlow composition)
         {
             try
             {
@@ -352,6 +358,7 @@ namespace ShooterMover.UI.Game
                 }
                 ValidateImportedLevel();
                 SpawnExactlyOnePlayer();
+                ConfigureRunRewards(selectedModeStableId, composition);
                 CreateExactlyOneGameplayCamera();
                 SynchronizeCurrentRoom();
 
@@ -513,6 +520,32 @@ namespace ShooterMover.UI.Game
                 player.GetComponent<TopDownMovement>()
                 ?? player.AddComponent<TopDownMovement>();
             movement.Bind(playerBody, playerSpeed);
+        }
+
+        private void ConfigureRunRewards(
+            StableId selectedModeStableId,
+            CharacterSetupFlow composition)
+        {
+            if (selectedModeStableId == null)
+            {
+                throw Failure("playable-level-game-mode-missing");
+            }
+            if (composition == null)
+            {
+                throw Failure("playable-level-character-composition-missing");
+            }
+            RunRewards rewards = GetComponent<RunRewards>();
+            if (rewards == null)
+            {
+                rewards = gameObject.AddComponent<RunRewards>();
+            }
+            rewards.Configure(
+                levelDefinition,
+                selectedModeStableId,
+                characterGraph,
+                composition,
+                roomRuntime,
+                playerMarker);
         }
 
         private int CountPlayersInScene()
