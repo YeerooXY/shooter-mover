@@ -71,7 +71,7 @@ const Authoring = require("./level-authoring.js");
     finalRoomId: "room.empty-start",
     finalExitDoorId: "door.empty-final-exit",
     rooms: [{
-      id: "room.empty-start",
+      id: "room.level-1-start",
       displayName: "START ROOM",
       bounds: { width: 24, height: 14 },
       playerStart: { position: [0, 0] },
@@ -81,6 +81,7 @@ const Authoring = require("./level-authoring.js");
     logic: [],
   };
   Authoring.repairLevelReferences(level, {});
+  assert.equal(level.rooms[0].id, "room.empty-start");
   assert.equal(level.rooms[0].doors.length, 1);
   assert.equal(level.rooms[0].doors[0].id, "door.empty-final-exit");
   assert.deepEqual(level.rooms[0].doors[0].position, [12, 0]);

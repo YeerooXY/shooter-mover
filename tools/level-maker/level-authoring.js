@@ -90,6 +90,7 @@
     if (!level || rooms.length === 0) return changes;
 
     let startRoom = rooms.find(room => room.id === level.startRoomId) || null;
+    let restoredFreshProjectRoom = false;
     if (!startRoom) {
       startRoom = preferredStartRoom(level);
       if (startRoom) {
@@ -102,6 +103,7 @@
         if (canRestoreFreshProjectId) {
           const oldId = startRoom.id;
           startRoom.id = requestedId;
+          restoredFreshProjectRoom = true;
           if (editor?.activeRoomId === oldId) editor.activeRoomId = requestedId;
           for (const rule of level.logic || []) {
             if (rule.targetId === oldId) rule.targetId = requestedId;
@@ -118,56 +120,39 @@
       level.startRoomId = startRoom.id;
     }
 
-    if (!rooms.some(room => room.id === level.finalRoomId)) {
-      level.finalRoomId = level.startRoomId || rooms.at(-1).id;
-      changes.push(`Recovered final room ${level.finalRoomId}.`);
-    }
-
     const finalRoom = rooms.find(room => room.id === level.finalRoomId) || null;
-    const allDoors = rooms.flatMap(room => Array.isArray(room.doors) ? room.doors : []);
-    if (!allDoors.some(door => door.id === level.finalExitDoorId)) {
-      const requestedDoorId = String(level.finalExitDoorId || "");
-      const candidate = (finalRoom?.doors || []).find(door => /final[-.]?exit/i.test(String(door.id || "")))
-        || finalRoom?.doors?.[0]
-        || null;
+    const requestedDoorId = String(level.finalExitDoorId || "");
+    const freshFinalExitId = /^door\.[a-z0-9][a-z0-9.-]*-final-exit$/i.test(requestedDoorId);
+    if (rooms.length === 1 && finalRoom && freshFinalExitId) {
+      const allDoors = rooms.flatMap(room => Array.isArray(room.doors) ? room.doors : []);
+      if (!allDoors.some(door => door.id === requestedDoorId)) {
+        const candidate = (finalRoom.doors || []).find(door =>
+          door.id === "door.level-1-final-exit"
+          || /final[-.]?exit/i.test(String(door.id || ""))
+        ) || null;
 
-      if (candidate) {
-        const canRestoreFreshProjectDoorId = rooms.length === 1
-          && candidate.id === "door.level-1-final-exit"
-          && /^door\.[a-z0-9][a-z0-9.-]*-final-exit$/i.test(requestedDoorId)
-          && !allDoors.some(door => door !== candidate && door.id === requestedDoorId);
-
-        if (canRestoreFreshProjectDoorId) {
+        if (candidate && restoredFreshProjectRoom) {
           const oldId = candidate.id;
           candidate.id = requestedDoorId;
           renameDoorReferences(level, oldId, requestedDoorId);
-          level.finalExitDoorId = requestedDoorId;
           changes.push(`Restored final exit door ID ${requestedDoorId}.`);
-        } else {
-          level.finalExitDoorId = candidate.id;
-          changes.push(`Recovered final exit door ${candidate.id}.`);
+        } else if (!candidate && restoredFreshProjectRoom) {
+          const width = Math.max(2, Number(finalRoom.bounds?.width) || 24);
+          finalRoom.doors ||= [];
+          finalRoom.doors.push({
+            id: requestedDoorId,
+            kind: "door",
+            position: [width / 2, 0],
+            rotation: 90,
+            side: "East",
+            placementMode: "Fixed",
+            traversable: true,
+            visibleOnMap: true,
+            runtimeObject: "door.room-standard",
+            openWhen: "room-complete",
+          });
+          changes.push(`Recreated final exit door ${requestedDoorId}.`);
         }
-      } else if (
-        rooms.length === 1
-        && finalRoom
-        && /^door\.[a-z0-9][a-z0-9.-]*-final-exit$/i.test(requestedDoorId)
-      ) {
-        const width = Math.max(2, Number(finalRoom.bounds?.width) || 24);
-        finalRoom.doors ||= [];
-        finalRoom.doors.push({
-          id: requestedDoorId,
-          kind: "door",
-          position: [width / 2, 0],
-          rotation: 90,
-          side: "East",
-          placementMode: "Fixed",
-          traversable: true,
-          visibleOnMap: true,
-          runtimeObject: "door.room-standard",
-          openWhen: "room-complete",
-        });
-        level.finalExitDoorId = requestedDoorId;
-        changes.push(`Recreated final exit door ${requestedDoorId}.`);
       }
     }
 
