@@ -213,6 +213,8 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
         {
             GameObject instance = new GameObject(instanceName);
             instance.SetActive(false);
+            instance.AddComponent<Rigidbody2D>();
+            instance.AddComponent<CircleCollider2D>();
             instance.transform.SetParent(root, false);
             instance.transform.localPosition = new Vector3(
                 (float)localPosition.X,
