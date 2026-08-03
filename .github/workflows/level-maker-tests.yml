@@ -3,12 +3,16 @@ name: Level Maker tests
 on:
   pull_request:
     paths:
+      - "Content/Enemies/**"
+      - "tools/enemy-maker/enemy-schema.js"
       - "tools/level-maker/**"
       - ".github/workflows/level-maker-tests.yml"
   push:
     branches:
       - main
     paths:
+      - "Content/Enemies/**"
+      - "tools/enemy-maker/enemy-schema.js"
       - "tools/level-maker/**"
       - ".github/workflows/level-maker-tests.yml"
 
@@ -32,6 +36,7 @@ jobs:
           node --check level-authoring.js
           node --check authoring-ux.js
           node --check editor-file.js
+          node --check enemy-definition-assets.js
           node --check start-server.js
           for file in app-*.js; do node --check "$file"; done
 
@@ -47,3 +52,4 @@ jobs:
           node authoring-ux.test.js
           node app-19-save.test.js
           node editor-file.test.js
+          node enemy-definition-assets.test.js
