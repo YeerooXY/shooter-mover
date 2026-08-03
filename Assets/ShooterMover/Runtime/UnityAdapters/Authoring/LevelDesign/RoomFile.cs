@@ -45,6 +45,13 @@ namespace ShooterMover.UnityAdapters.Authoring.LevelDesign
         [SerializeField] private RoomDocument[] documents =
             Array.Empty<RoomDocument>();
 
+        public TextAsset Manifest { get { return manifest; } }
+
+        public IReadOnlyList<RoomDocument> Documents
+        {
+            get { return documents ?? Array.Empty<RoomDocument>(); }
+        }
+
         public RoomContentImportResult Import()
         {
             return Import(BuiltInRoomContentObjectCatalog.Create());
