@@ -1,380 +1,43 @@
 "use strict";
-
-const schema = window.EnemySchema;
-const $ = id => document.getElementById(id);
-const fields = ["id", "name", "type", "hp", "speed", "move", "gun", "damage", "range", "detect", "scale", "drops", "art", "radius", "offsetX", "offsetY"];
-let mutationToken = "";
-let enemies = [];
-let guns = [];
-let currentId = null;
-let leveling = null;
-let jsonEditing = false;
-
-function defaultEnemy() {
-  return {
-    id: "new-enemy",
-    name: "New Enemy",
-    type: "shooter",
-    hp: 16,
-    speed: 3.5,
-    gun: guns[0]?.id || "",
-    range: 7,
-    detect: 16,
-    scale: 0.7,
-    drops: "normal",
-    art: "new-enemy",
-    body: { shape: "circle", radius: 0.45, offset: { x: 0, y: 0 } }
-  };
-}
-
-function numberValue(id) {
-  const value = Number($(id).value);
-  return Number.isFinite(value) ? value : 0;
-}
-
-function compactEnemy() {
-  const type = $("type").value;
-  const enemy = {
-    id: $("id").value.trim(),
-    name: $("name").value.trim(),
-    type,
-    hp: numberValue("hp"),
-    scale: numberValue("scale"),
-    body: {
-      shape: "circle",
-      radius: numberValue("radius"),
-      offset: { x: numberValue("offsetX"), y: numberValue("offsetY") }
-    }
-  };
-  const speed = numberValue("speed");
-  if (speed > 0 || $("move").value !== "stationary") enemy.speed = speed;
-  if ($("move").value !== "direct") enemy.move = $("move").value;
-  if (type === "shooter") enemy.gun = $("gun").value.trim();
-  else enemy.damage = numberValue("damage");
-  if (numberValue("range") > 0) enemy.range = numberValue("range");
-  if (numberValue("detect") > 0) enemy.detect = numberValue("detect");
-  if ($("drops").value.trim()) enemy.drops = $("drops").value.trim();
-  if ($("art").value.trim()) enemy.art = $("art").value.trim();
-  return enemy;
-}
-
-function applyEnemyToForm(enemy, persistedId, preserveJson) {
-  $("id").value = enemy.id || "";
-  $("name").value = enemy.name || "";
-  $("type").value = enemy.type || "shooter";
-  $("hp").value = enemy.hp ?? 16;
-  $("speed").value = enemy.speed ?? 0;
-  $("move").value = enemy.move || "direct";
-  $("gun").value = enemy.gun || "";
-  $("damage").value = enemy.damage ?? 0;
-  $("range").value = enemy.range ?? 0;
-  $("detect").value = enemy.detect ?? 0;
-  $("scale").value = enemy.scale ?? 0.7;
-  $("drops").value = enemy.drops || "";
-  $("art").value = enemy.art || "";
-  $("shape").value = enemy.body?.shape || "circle";
-  $("radius").value = enemy.body?.radius ?? 0.45;
-  $("offsetX").value = enemy.body?.offset?.x ?? 0;
-  $("offsetY").value = enemy.body?.offset?.y ?? 0;
-  currentId = persistedId || null;
-  $("id").readOnly = Boolean(currentId);
-  jsonEditing = Boolean(preserveJson);
-  sync();
-}
-
-function currentEnemy() {
-  if (jsonEditing) {
-    try { return JSON.parse($("json").value); }
-    catch (_) { return null; }
-  }
-  return compactEnemy();
-}
-
-function syncType() {
-  const shooter = $("type").value === "shooter";
-  $("gunRow").hidden = !shooter;
-  $("damageRow").hidden = shooter;
-}
-
-function syncJson() {
-  if (jsonEditing) return;
-  $("json").value = `${JSON.stringify(compactEnemy(), null, 2)}\n`;
-}
-
-function clientErrors(enemy) {
-  const errors = enemy ? schema.validateEnemy(enemy) : ["Advanced JSON is not valid JSON."];
-  if (enemy?.type === "shooter" && !guns.some(gun => gun.id === enemy.gun)) {
-    errors.push(`gun '${enemy.gun || ""}' is not present in Content/Weapons.`);
-  }
-  if (currentId && enemy?.id !== currentId) {
-    errors.push("A loaded enemy ID is fixed in the first iteration. Use New enemy to create another ID.");
-  }
-  return errors;
-}
-
-function renderChecks(message) {
-  const errors = clientErrors(currentEnemy());
-  if (message && !errors.length) {
-    $("checks").innerHTML = `<div class="check ok">${escapeHtml(message)}</div>`;
-    return errors;
-  }
-  $("checks").innerHTML = errors.length
-    ? errors.map(error => `<div class="check">${escapeHtml(error)}</div>`).join("")
-    : '<div class="check ok">Enemy definition is valid.</div>';
-  return errors;
-}
-
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[char]));
-}
-
-function renderList() {
-  const query = $("search").value.trim().toLowerCase();
-  const visible = enemies.filter(enemy => `${enemy.name} ${enemy.id} ${enemy.type}`.toLowerCase().includes(query));
-  $("enemyList").innerHTML = visible.map(enemy => `
-    <button class="enemy-item ${enemy.id === currentId ? "active" : ""}" data-id="${enemy.id}">
-      <strong>${escapeHtml(enemy.name)}</strong><span>${escapeHtml(enemy.type)} · ${escapeHtml(enemy.id)}</span>
-    </button>`).join("") || '<p class="path">No enemies yet.</p>';
-  document.querySelectorAll(".enemy-item").forEach(button => button.addEventListener("click", () => loadEnemy(button.dataset.id)));
-}
-
-function renderGuns() {
-  $("gunOptions").innerHTML = guns.map(gun => `<option value="${escapeHtml(gun.id)}">${escapeHtml(gun.name)} · ${escapeHtml(gun.category)}</option>`).join("");
-  $("gunCount").textContent = guns.length ? `${guns.length} canonical gun definitions found.` : "No canonical gun definitions found.";
-}
-
-function renderLeveling() {
-  $("maxLevel").value = leveling.maxLevel;
-  $("strengthAtMax").value = leveling.strengthAtMax;
-  $("damagePower").value = leveling.damagePower;
-  renderColorStops();
-  $("level").max = leveling.maxLevel;
-}
-
-function readLevelingForm() {
-  return {
-    minLevel: 1,
-    maxLevel: Number($("maxLevel").value),
-    strengthAtMax: Number($("strengthAtMax").value),
-    damagePower: Number($("damagePower").value),
-    colors: Array.from(document.querySelectorAll(".color-stop")).map(row => ({
-      level: Number(row.querySelector(".stop-level").value),
-      color: row.querySelector(".stop-color").value.toUpperCase()
-    })).sort((a, b) => a.level - b.level)
-  };
-}
-
-function renderColorStops() {
-  $("colorStops").innerHTML = leveling.colors.map((stop, index) => `
-    <div class="color-stop" data-index="${index}">
-      <input class="stop-level" type="number" min="1" max="${leveling.maxLevel}" step="1" value="${stop.level}" aria-label="Stop level">
-      <input class="stop-color" type="color" value="${stop.color}" aria-label="Stop color">
-      <button type="button" class="remove-stop" aria-label="Remove stop">×</button>
-    </div>`).join("");
-  document.querySelectorAll(".color-stop input").forEach(input => input.addEventListener("input", updateLevelingFromForm));
-  document.querySelectorAll(".remove-stop").forEach(button => button.addEventListener("click", event => {
-    if (leveling.colors.length <= 2) return;
-    const index = Number(event.currentTarget.parentElement.dataset.index);
-    leveling.colors.splice(index, 1);
-    renderColorStops();
-    sync();
-  }));
-  renderGradient();
-}
-
-function updateLevelingFromForm() {
-  leveling = readLevelingForm();
-  renderGradient();
-  sync();
-}
-
-function renderGradient() {
-  const max = Math.max(2, leveling.maxLevel);
-  const stops = leveling.colors.map(stop => `${stop.color} ${((stop.level - 1) / (max - 1)) * 100}%`).join(", ");
-  $("gradient").style.background = `linear-gradient(90deg, ${stops})`;
-}
-
-function drawPreview() {
-  const canvas = $("preview");
-  const ctx = canvas.getContext("2d");
-  const enemy = currentEnemy();
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#090d13";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = "#151d29";
-  ctx.lineWidth = 1;
-  for (let x = 20; x < canvas.width; x += 20) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
-  for (let y = 20; y < canvas.height; y += 20) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
-  if (!enemy || !leveling || schema.validateEnemy(enemy).length || schema.validateLeveling(leveling).length) return;
-
-  const level = Number($("level").value);
-  const stats = schema.resolvedStats(enemy, level, leveling);
-  const cx = canvas.width / 2;
-  const cy = canvas.height / 2;
-  const unit = 18;
-  const drawRing = (radius, color, dash) => {
-    if (!(radius > 0)) return;
-    ctx.save();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash(dash);
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius * unit, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-  };
-  drawRing(enemy.detect, "rgba(140,170,220,.35)", [7, 7]);
-  drawRing(enemy.range, "rgba(255,177,43,.55)", [3, 5]);
-
-  const bodyX = cx + enemy.body.offset.x * unit;
-  const bodyY = cy - enemy.body.offset.y * unit;
-  ctx.fillStyle = stats.color;
-  ctx.strokeStyle = "#111722";
-  ctx.lineWidth = 8;
-  ctx.beginPath();
-  ctx.arc(bodyX, bodyY, enemy.body.radius * unit * 4, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.strokeStyle = "#dce4ef";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(bodyX, bodyY);
-  ctx.lineTo(bodyX + 45, bodyY);
-  ctx.stroke();
-  ctx.fillStyle = "#dce4ef";
-  ctx.beginPath();
-  ctx.arc(cx, cy, 3, 0, Math.PI * 2);
-  ctx.fill();
-
-  $("levelValue").textContent = level;
-  $("previewHp").textContent = stats.hp.toFixed(stats.hp < 100 ? 1 : 0);
-  $("previewDamage").textContent = enemy.damage === undefined ? `gun ×${stats.damageMultiplier.toFixed(2)}` : stats.damage.toFixed(1);
-  $("previewStrength").textContent = `×${stats.strength.toFixed(2)}`;
-  $("previewColor").textContent = stats.color;
-  $("shapeBadge").textContent = enemy.body.shape;
-}
-
-function sync() {
-  syncType();
-  syncJson();
-  renderChecks();
-  drawPreview();
-  renderList();
-}
-
-async function request(url, options = {}) {
-  const headers = { ...(options.headers || {}) };
-  if (options.method && options.method !== "GET") headers["x-enemy-maker-token"] = mutationToken;
-  const response = await fetch(url, { ...options, headers });
-  const result = await response.json();
-  if (!response.ok) throw new Error((result.errors || [result.error || "Request failed."]).join("\n"));
-  return result;
-}
-
-async function loadEnemy(id) {
-  const result = await request(`/api/enemy?id=${encodeURIComponent(id)}`);
-  applyEnemyToForm(result.enemy, id, false);
-}
-
-async function loadAll() {
-  const [status, list, gunData, levelData] = await Promise.all([
-    request("/api/status"),
-    request("/api/enemies"),
-    request("/api/guns"),
-    request("/api/leveling")
-  ]);
-  mutationToken = status.token;
-  $("contentPath").textContent = `${status.content} · guns from ${status.weapons}`;
-  enemies = list.enemies;
-  guns = gunData.guns;
-  leveling = levelData.leveling;
-  renderGuns();
-  renderLeveling();
-  if (enemies.length) await loadEnemy(enemies[0].id);
-  else applyEnemyToForm(defaultEnemy(), null, false);
-}
-
-async function saveCurrent() {
-  const active = document.querySelector(".tab.active").dataset.workspace;
-  $("save").disabled = true;
-  $("save").textContent = "Saving…";
-  try {
-    if (active === "leveling") {
-      leveling = readLevelingForm();
-      const errors = schema.validateLeveling(leveling);
-      if (errors.length) throw new Error(errors.join("\n"));
-      await request("/api/leveling", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leveling })
-      });
-      renderChecks("Leveling saved successfully.");
-    } else {
-      const enemy = currentEnemy();
-      const errors = clientErrors(enemy);
-      if (errors.length) throw new Error(errors.join("\n"));
-      await request("/api/enemy", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enemy, previousId: currentId })
-      });
-      currentId = enemy.id;
-      const list = await request("/api/enemies");
-      enemies = list.enemies;
-      applyEnemyToForm(enemy, currentId, false);
-      renderChecks("Enemy saved successfully.");
-    }
-  } catch (error) {
-    $("checks").innerHTML = error.message.split("\n").map(line => `<div class="check">${escapeHtml(line)}</div>`).join("");
-  } finally {
-    $("save").disabled = false;
-    $("save").textContent = "Save";
-  }
-}
-
-function switchWorkspace(name) {
-  document.querySelectorAll(".tab").forEach(tab => tab.classList.toggle("active", tab.dataset.workspace === name));
-  $("enemyWorkspace").hidden = name !== "enemy";
-  $("levelingWorkspace").hidden = name !== "leveling";
-  $("jsonWorkspace").hidden = name !== "json";
-  $("newEnemy").hidden = name === "leveling";
-  if (name === "json" && !jsonEditing) syncJson();
-}
-
-fields.forEach(id => $(id).addEventListener("input", () => {
-  jsonEditing = false;
-  sync();
-}));
-$("shape").addEventListener("change", sync);
-$("level").addEventListener("input", drawPreview);
-$("search").addEventListener("input", renderList);
-$("newEnemy").addEventListener("click", () => applyEnemyToForm(defaultEnemy(), null, false));
-$("save").addEventListener("click", saveCurrent);
-$("addColor").addEventListener("click", () => {
-  leveling.colors.push({ level: Math.max(2, leveling.maxLevel - 1), color: "#FFFFFF" });
-  leveling.colors.sort((a, b) => a.level - b.level);
-  renderColorStops();
-  sync();
-});
-["maxLevel", "strengthAtMax", "damagePower"].forEach(id => $(id).addEventListener("input", updateLevelingFromForm));
-$("json").addEventListener("input", () => {
-  jsonEditing = true;
-  try {
-    const parsed = JSON.parse($("json").value);
-    applyEnemyToForm(parsed, currentId, true);
-  } catch (_) {
-    renderChecks();
-    drawPreview();
-  }
-});
-document.querySelectorAll(".tab").forEach(tab => tab.addEventListener("click", () => switchWorkspace(tab.dataset.workspace)));
-window.addEventListener("keydown", event => {
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
-    event.preventDefault();
-    saveCurrent();
-  }
-});
-
-loadAll().catch(error => {
-  $("checks").innerHTML = `<div class="check">${escapeHtml(error.message)}</div>`;
-});
+const S=window.EnemySchema,$=id=>document.getElementById(id);
+const baseIds=["id","name","tags","art","drops","traitPool","hp","healthPower","detectionRange","moveKind","moveSpeed","radius","offsetX","offsetY"];
+let token="",enemies=[],shots=[],leveling=null,model=null,currentId=null,jsonMode=false,selectedMount=0,selectedAttack=0,dragMount=null;
+const copy=v=>JSON.parse(JSON.stringify(v));
+const esc=v=>String(v).replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num=e=>{const v=Number(e.value);return Number.isFinite(v)?v:0};
+const tags=v=>v.split(",").map(x=>x.trim()).filter(Boolean);
+function mount(i=0){return{id:i?`gun-${i+1}`:"center-gun",position:{x:i*.25,y:.24},rotation:0,art:"gun.small-cannon"}}
+function attack(){return{id:"rifle-burst",kind:"shot",shot:shots[0]?.id||"small-bullet",emitters:[model?.mounts?.[0]?.id||"center-gun"],firePattern:"single",cooldown:1.5,sequence:{triggers:4,interval:.2},volley:{shotsPerTrigger:1,spread:0,distribution:"even"},range:{min:2,max:12},damage:[{type:"kinetic",amount:3}]}}
+function fresh(){const e={schema:1,id:"new-droid",name:"New Droid",tags:["droid","ground","mobile","ranged"],hp:16,healthPower:.7,movement:{kind:"strafe",speed:3.5},detectionRange:16,mounts:[mount()],attacks:[],drops:"normal",art:"new-droid",body:{shape:"circle",radius:.45,offset:{x:0,y:0}}};model=e;e.attacks.push(attack());return e}
+function readBase(){if(!model)return;model.schema=1;model.id=$("id").value.trim();model.name=$("name").value.trim();model.tags=tags($("tags").value);model.hp=num($("hp"));model.healthPower=num($("healthPower"));model.detectionRange=num($("detectionRange"));model.movement={kind:$("moveKind").value,speed:num($("moveSpeed"))};model.body={shape:"circle",radius:num($("radius")),offset:{x:num($("offsetX")),y:num($("offsetY"))}};for(const k of ["art","drops","traitPool"]){const v=$(k).value.trim();if(v)model[k]=v;else delete model[k]}}
+function fill(e,id=null,preserve=false){model=copy(e);model.mounts=Array.isArray(model.mounts)?model.mounts:[];model.attacks=Array.isArray(model.attacks)?model.attacks:[];$("id").value=model.id||"";$("name").value=model.name||"";$("tags").value=(model.tags||[]).join(", ");$("art").value=model.art||"";$("drops").value=model.drops||"";$("traitPool").value=model.traitPool||"";$("hp").value=model.hp??16;$("healthPower").value=model.healthPower??.7;$("detectionRange").value=model.detectionRange??16;$("moveKind").value=model.movement?.kind||"direct";$("moveSpeed").value=model.movement?.speed??0;$("shape").value=model.body?.shape||"circle";$("radius").value=model.body?.radius??.45;$("offsetX").value=model.body?.offset?.x??0;$("offsetY").value=model.body?.offset?.y??0;currentId=id;$("id").readOnly=!!id;jsonMode=preserve;selectedMount=Math.min(selectedMount,Math.max(0,model.mounts.length-1));selectedAttack=Math.min(selectedAttack,Math.max(0,model.attacks.length-1));renderMounts();renderAttacks();sync()}
+function current(){if(jsonMode){try{return JSON.parse($("json").value)}catch{return null}}readBase();return model}
+function errors(e){const out=e?S.validateEnemy(e):["Advanced JSON is not valid JSON."];const known=new Set(shots.map(x=>x.id));for(const a of e?.attacks||[])if(a.kind==="shot"&&!known.has(a.shot))out.push(`attack '${a.id||"unknown"}' references unknown Enemy Shot '${a.shot||""}'.`);if(currentId&&e?.id!==currentId)out.push("A loaded enemy ID is fixed. Use New enemy to create another identity.");return out}
+function checks(ok=""){const out=errors(current());$("checks").innerHTML=out.length?out.map(x=>`<div class="check">${esc(x)}</div>`).join(""):`<div class="check ok">${esc(ok||"Enemy definition is valid.")}</div>`;return out}
+function sync(){if(!jsonMode&&model)$("json").value=JSON.stringify(model,null,2)+"\n";checks();draw();list()}
+function list(){const q=$("search").value.trim().toLowerCase(),v=enemies.filter(e=>`${e.name} ${e.id} ${e.movement}`.toLowerCase().includes(q));$("enemyList").innerHTML=v.map(e=>`<button class="enemy-item ${e.id===currentId?"active":""}" data-id="${esc(e.id)}"><strong>${esc(e.name)}</strong><span>${esc(e.movement)} · ${e.mountCount} mounts · ${e.attackCount} attacks</span></button>`).join("")||'<p class="path">No enemies yet.</p>';document.querySelectorAll(".enemy-item").forEach(b=>b.onclick=()=>loadEnemy(b.dataset.id))}
+function renderShots(){$("shotOptions").innerHTML=shots.map(s=>`<option value="${esc(s.id)}">${esc(s.kind)} · range ${s.range}</option>`).join("");$("shotCount").textContent=shots.length?`${shots.length} reusable Enemy Shot definitions found.`:"No valid Enemy Shot definitions found under Content/EnemyShots."}
+function renderMounts(){$("mounts").innerHTML=model.mounts.map((m,i)=>`<div class="editor-card mount-card ${i===selectedMount?"selected":""}" data-index="${i}"><div class="card-heading"><strong>Mount ${i+1}</strong><button class="danger-link remove-mount" type="button" >Remove</button></div><div class="compact-grid mount-grid"><label>ID <input data-field="id" value="${esc(m.id||"")}"></label><label>Position X <input data-field="position.x" type="number" step=".01" value="${m.position?.x??0}"></label><label>Position Y <input data-field="position.y" type="number" step=".01" value="${m.position?.y??0}"></label><label>Rotation ° <input data-field="rotation" type="number" step="1" value="${m.rotation??0}"></label><label class="span-2">Gun art <input data-field="art" value="${esc(m.art||"")}" placeholder="optional"></label></div></div>`).join("")||'<p class="help">No mounts. Contact-only enemies may leave this empty.</p>'}
+const opts=(values,selected)=>values.map(v=>`<option value="${v}" ${v===selected?"selected":""}>${v}</option>`).join("");
+function renderAttacks(){$("attacks").innerHTML=model.attacks.map((a,i)=>{const d=a.damage?.[0]||{type:"kinetic",amount:1},shot=a.kind==="shot",chosen=new Set(a.emitters||[]);return`<div class="editor-card attack-card ${i===selectedAttack?"selected":""}" data-index="${i}"><div class="card-heading"><strong>Attack ${i+1}</strong><div class="card-actions"><button class="ghost tiny duplicate-attack" type="button">Duplicate</button><button class="danger-link remove-attack" type="button">Remove</button></div></div><div class="compact-grid"><label>ID <input data-field="id" value="${esc(a.id||"")}"></label><label>Kind <select data-field="kind">${opts(["shot","contact","suicide"],a.kind)}</select></label><label>Cooldown s <input data-field="cooldown" type="number" min="0" step=".05" value="${a.cooldown??0}"></label><label>Damage type <select data-field="damage.0.type">${opts(["kinetic","thermal","electric","explosive","impact"],d.type)}</select></label><label>Direct damage <input data-field="damage.0.amount" type="number" min=".01" step=".1" value="${d.amount??1}"></label><label>Min range <input data-field="range.min" type="number" min="0" step=".1" value="${a.range?.min??0}"></label><label>Max range <input data-field="range.max" type="number" min=".01" step=".1" value="${a.range?.max??1}"></label></div><div class="shot-fields" ${shot?"":"hidden"}><h3>Shot firing</h3><div class="compact-grid"><label>Enemy Shot <input data-field="shot" list="shotOptions" value="${esc(a.shot||"")}"></label><label>Fire pattern <select data-field="firePattern">${opts(["single","simultaneous","alternate","round-robin"],a.firePattern)}</select></label><label>Triggers <input data-field="sequence.triggers" type="number" min="1" step="1" value="${a.sequence?.triggers??1}"></label><label>Interval s <input data-field="sequence.interval" type="number" min="0" step=".01" value="${a.sequence?.interval??0}"></label><label>Shots per trigger <input data-field="volley.shotsPerTrigger" type="number" min="1" step="1" value="${a.volley?.shotsPerTrigger??1}"></label><label>Spread ° <input data-field="volley.spread" type="number" min="0" step="1" value="${a.volley?.spread??0}"></label><label>Distribution <select data-field="volley.distribution">${opts(["even","random"],a.volley?.distribution)}</select></label><label>Emitters <select data-field="emitters" multiple>${model.mounts.map(m=>`<option value="${esc(m.id)}" ${chosen.has(m.id)?"selected":""}>${esc(m.id)}</option>`).join("")}</select></label></div></div></div>`}).join("")||'<p class="help">No attacks. This is valid for harmless or purely scripted enemies.</p>'}
+function set(obj,path,value){const p=path.split(".");let t=obj;for(let i=0;i<p.length-1;i++){const k=/^\d+$/.test(p[i])?Number(p[i]):p[i];if(t[k]==null)t[k]=/^\d+$/.test(p[i+1])?[]:{};t=t[k]}t[/^\d+$/.test(p.at(-1))?Number(p.at(-1)):p.at(-1)]=value}
+function ensureShot(a){if(a.kind!=="shot"){for(const k of ["shot","emitters","firePattern","sequence","volley"])delete a[k];return}a.shot??=shots[0]?.id||"small-bullet";a.emitters=Array.isArray(a.emitters)&&a.emitters.length?a.emitters:[model.mounts[0]?.id].filter(Boolean);a.firePattern??="single";a.sequence??={triggers:1,interval:0};a.volley??={shotsPerTrigger:1,spread:0,distribution:"even"}}
+function levelForm(){return{minLevel:1,maxLevel:Number($("maxLevel").value),strengthAtMax:Number($("strengthAtMax").value),damagePower:Number($("damagePower").value),colors:[...document.querySelectorAll(".color-stop")].map(r=>({level:Number(r.querySelector(".stop-level").value),color:r.querySelector(".stop-color").value.toUpperCase()})).sort((a,b)=>a.level-b.level)}}
+function renderLevel(){ $("maxLevel").value=leveling.maxLevel;$("strengthAtMax").value=leveling.strengthAtMax;$("damagePower").value=leveling.damagePower;$("level").max=leveling.maxLevel;renderColors() }
+function renderColors(){$("colorStops").innerHTML=leveling.colors.map((s,i)=>`<div class="color-stop" data-index="${i}"><input class="stop-level" type="number" min="1" max="${leveling.maxLevel}" value="${s.level}"><input class="stop-color" type="color" value="${s.color}"><button class="remove-stop" type="button">×</button></div>`).join("");document.querySelectorAll(".color-stop input").forEach(x=>x.oninput=updateLevel);document.querySelectorAll(".remove-stop").forEach(b=>b.onclick=()=>{if(leveling.colors.length<=2)return;leveling.colors.splice(Number(b.parentElement.dataset.index),1);renderColors();sync()});gradient()}
+function updateLevel(){leveling=levelForm();gradient();sync()}
+function gradient(){const max=Math.max(2,leveling.maxLevel);$("gradient").style.background=`linear-gradient(90deg, ${leveling.colors.map(s=>`${s.color} ${((s.level-1)/(max-1))*100}%`).join(", ")})`}
+function screen(m,c,u){return{x:c.width/2+m.position.x*u,y:c.height/2-m.position.y*u}}
+function draw(){const c=$("preview"),x=c.getContext("2d"),e=current();x.clearRect(0,0,c.width,c.height);x.fillStyle="#090d13";x.fillRect(0,0,c.width,c.height);x.strokeStyle="#151d29";for(let a=20;a<c.width;a+=20){x.beginPath();x.moveTo(a,0);x.lineTo(a,c.height);x.stroke()}for(let a=20;a<c.height;a+=20){x.beginPath();x.moveTo(0,a);x.lineTo(c.width,a);x.stroke()}if(!e||!leveling||S.validateEnemy(e).length||S.validateLeveling(leveling).length)return;const level=Number($("level").value),st=S.resolvedStats(e,level,leveling),cx=c.width/2,cy=c.height/2,ru=12,mu=86;const ring=(r,col,d=[])=>{if(!(r>0))return;x.save();x.strokeStyle=col;x.setLineDash(d);x.beginPath();x.arc(cx,cy,r*ru,0,Math.PI*2);x.stroke();x.restore()};ring(e.detectionRange,"rgba(140,170,220,.35)",[7,7]);for(const a of e.attacks||[])ring(a.range?.max,"rgba(255,177,43,.28)",[3,5]);const bx=cx+e.body.offset.x*mu,by=cy-e.body.offset.y*mu;x.fillStyle=st.color;x.strokeStyle="#111722";x.lineWidth=8;x.beginPath();x.arc(bx,by,e.body.radius*mu,0,Math.PI*2);x.fill();x.stroke();x.strokeStyle="#dce4ef";x.lineWidth=2;x.beginPath();x.moveTo(cx,cy);x.lineTo(cx,cy-48);x.stroke();const a=e.attacks[selectedAttack]||e.attacks[0];for(let i=0;i<e.mounts.length;i++){const m=e.mounts[i],p=screen(m,c,mu),r=(m.rotation||0)*Math.PI/180,dx=Math.sin(r)*25,dy=-Math.cos(r)*25;x.strokeStyle=i===selectedMount?"#fff1c9":"#ffb12b";x.beginPath();x.moveTo(p.x,p.y);x.lineTo(p.x+dx,p.y+dy);x.stroke();x.fillStyle="#ffb12b";x.beginPath();x.arc(p.x,p.y,i===selectedMount?8:6,0,Math.PI*2);x.fill();x.fillStyle="#111";x.font="10px sans-serif";x.textAlign="center";x.fillText(String(i+1),p.x,p.y+3)}if(a?.kind==="shot"&&a.volley?.spread>0){x.save();x.strokeStyle="rgba(255,177,43,.55)";x.setLineDash([4,4]);for(const id of a.emitters||[]){const m=e.mounts.find(v=>v.id===id);if(!m)continue;const p=screen(m,c,mu),half=a.volley.spread/2;for(const deg of [(m.rotation||0)-half,(m.rotation||0)+half]){const r=deg*Math.PI/180;x.beginPath();x.moveTo(p.x,p.y);x.lineTo(p.x+Math.sin(r)*78,p.y-Math.cos(r)*78);x.stroke()}}x.restore()}const projectiles=a?S.projectilesPerSequence(a):0,direct=a?S.directDamagePerHit(a):0;$("levelValue").textContent=level;$("previewHp").textContent=st.hp.toFixed(st.hp<100?1:0);$("previewDamage").textContent=`×${st.damageMultiplier.toFixed(2)}`;$("previewProjectiles").textContent=projectiles||"—";$("previewBurst").textContent=a?(projectiles*direct*st.damageMultiplier).toFixed(1):"—";$("previewStrength").textContent=`×${st.strength.toFixed(2)}`;$("previewColor").textContent=st.color;$("shapeBadge").textContent=e.body.shape}
+async function req(url,o={}){const h={...(o.headers||{})};if(o.method&&o.method!=="GET")h["x-enemy-maker-token"]=token;const r=await fetch(url,{...o,headers:h}),v=await r.json();if(!r.ok)throw new Error((v.errors||[v.error||"Request failed."]).join("\n"));return v}
+async function loadEnemy(id){const r=await req(`/api/enemy?id=${encodeURIComponent(id)}`);selectedMount=selectedAttack=0;fill(r.enemy,id)}
+async function load(){const [s,l,sh,lv]=await Promise.all([req("/api/status"),req("/api/enemies"),req("/api/shots"),req("/api/leveling")]);token=s.token;$("contentPath").textContent=`${s.content} · shots from ${s.shots}`;enemies=l.enemies;shots=sh.shots;leveling=lv.leveling;renderShots();renderLevel();if(enemies.length)await loadEnemy(enemies[0].id);else fill(fresh())}
+async function save(){const active=document.querySelector(".tab.active").dataset.workspace;$("save").disabled=true;$("save").textContent="Saving…";try{if(active==="leveling"){leveling=levelForm();const e=S.validateLeveling(leveling);if(e.length)throw new Error(e.join("\n"));await req("/api/leveling",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({leveling})});checks("Leveling saved successfully.")}else{const e=current(),bad=errors(e);if(bad.length)throw new Error(bad.join("\n"));await req("/api/enemy",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({enemy:e,previousId:currentId})});currentId=e.id;enemies=(await req("/api/enemies")).enemies;fill(e,currentId);checks("Enemy saved successfully.")}}catch(e){$("checks").innerHTML=e.message.split("\n").map(x=>`<div class="check">${esc(x)}</div>`).join("")}finally{$("save").disabled=false;$("save").textContent="Save"}}
+function workspace(n){if(n!=="json"&&jsonMode){try{fill(JSON.parse($("json").value),currentId)}catch{}}document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.workspace===n));$("enemyWorkspace").hidden=n!=="enemy";$("levelingWorkspace").hidden=n!=="leveling";$("jsonWorkspace").hidden=n!=="json";$("newEnemy").hidden=n==="leveling";if(n==="json"&&!jsonMode)sync()}
+function handleMount(e){const card=e.target.closest(".mount-card");if(!card||!e.target.dataset.field)return;const i=Number(card.dataset.index),path=e.target.dataset.field;set(model.mounts[i],path,e.target.type==="number"?num(e.target):e.target.value.trim());selectedMount=i;if(path==="id"&&e.type==="change")renderAttacks();sync()}
+function handleAttack(e){const card=e.target.closest(".attack-card");if(!card||!e.target.dataset.field)return;const i=Number(card.dataset.index),a=model.attacks[i],path=e.target.dataset.field;let v;if(path==="emitters")v=[...e.target.selectedOptions].map(o=>o.value);else v=e.target.type==="number"?num(e.target):e.target.value;set(a,path,v);if(path==="kind"){ensureShot(a);renderAttacks()}selectedAttack=i;sync()}
+function point(e){const c=$("preview"),r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*c.width/r.width,y:(e.clientY-r.top)*c.height/r.height}}
+function hit(p){const c=$("preview"),u=86;let best=null,d=14;for(let i=0;i<(model?.mounts||[]).length;i++){const s=screen(model.mounts[i],c,u),n=Math.hypot(p.x-s.x,p.y-s.y);if(n<d){best=i;d=n}}return best}
+function drag(e){if(dragMount===null)return;const c=$("preview"),p=point(e),u=86,m=model.mounts[dragMount];m.position.x=Math.round(((p.x-c.width/2)/u)*100)/100;m.position.y=Math.round(((c.height/2-p.y)/u)*100)/100;const card=document.querySelector(`.mount-card[data-index="${dragMount}"]`);if(card){card.querySelector('[data-field="position.x"]').value=m.position.x;card.querySelector('[data-field="position.y"]').value=m.position.y}sync()}
+baseIds.forEach(id=>$(id).oninput=()=>{jsonMode=false;sync()});$("shape").onchange=sync;$("level").oninput=draw;$("search").oninput=list;$("save").onclick=save;$("newEnemy").onclick=()=>{selectedMount=selectedAttack=0;fill(fresh());workspace("enemy")};$("addMount").onclick=()=>{readBase();model.mounts.push(mount(model.mounts.length));selectedMount=model.mounts.length-1;renderMounts();renderAttacks();sync()};$("addAttack").onclick=()=>{readBase();model.attacks.push(attack());selectedAttack=model.attacks.length-1;renderAttacks();sync()};$("mounts").oninput=handleMount;$("mounts").onchange=handleMount;$("mounts").onclick=e=>{const card=e.target.closest(".mount-card");if(!card)return;const i=Number(card.dataset.index);selectedMount=i;if(e.target.classList.contains("remove-mount")){const id=model.mounts[i].id;model.mounts.splice(i,1);for(const a of model.attacks)a.emitters=a.emitters?.filter(x=>x!==id);selectedMount=Math.max(0,Math.min(i,model.mounts.length-1));renderMounts();renderAttacks()}else renderMounts();sync()};$("attacks").oninput=handleAttack;$("attacks").onchange=handleAttack;$("attacks").onclick=e=>{const card=e.target.closest(".attack-card");if(!card)return;const i=Number(card.dataset.index);selectedAttack=i;if(e.target.classList.contains("remove-attack")){model.attacks.splice(i,1);selectedAttack=Math.max(0,Math.min(i,model.attacks.length-1))}else if(e.target.classList.contains("duplicate-attack")){const a=copy(model.attacks[i]);a.id+="-copy";model.attacks.splice(i+1,0,a);selectedAttack=i+1}renderAttacks();sync()};$("json").oninput=()=>{jsonMode=true;try{fill(JSON.parse($("json").value),currentId,true)}catch{checks()}};$("addColor").onclick=()=>{leveling.colors.push({level:Math.max(2,Math.round(leveling.maxLevel/2)),color:"#FFFFFF"});leveling.colors.sort((a,b)=>a.level-b.level);renderColors();sync()};["maxLevel","strengthAtMax","damagePower"].forEach(id=>$(id).oninput=updateLevel);document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>workspace(t.dataset.workspace));window.onkeydown=e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){e.preventDefault();save()}};$("preview").onpointerdown=e=>{const i=hit(point(e));if(i===null)return;dragMount=selectedMount=i;$("preview").setPointerCapture(e.pointerId);renderMounts();draw()};$("preview").onpointermove=drag;$("preview").onpointerup=e=>{if(dragMount!==null)$("preview").releasePointerCapture(e.pointerId);dragMount=null};$("preview").onpointercancel=()=>dragMount=null;
+load().catch(e=>$("checks").innerHTML=`<div class="check">${esc(e.message||e)}</div>`);

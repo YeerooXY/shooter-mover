@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { URL } = require("url");
-const { validateEnemy, validateLeveling } = require("./enemy-schema.js");
+const { validateEnemy, validateShot, validateLeveling } = require("./enemy-schema.js");
 
 function parseArgument(name, fallback) {
   const index = process.argv.indexOf(name);
@@ -16,7 +16,7 @@ function createEnemyMaker(options = {}) {
   const root = path.resolve(options.root || parseArgument("--repo", path.join(__dirname, "..", "..")));
   const requestedPort = Number(options.port ?? parseArgument("--port", 4174));
   const content = path.resolve(root, "Content/Enemies");
-  const weapons = path.resolve(root, "Content/Weapons");
+  const shots = path.resolve(root, "Content/EnemyShots");
   const token = crypto.randomBytes(24).toString("hex");
   const staticTypes = {
     ".html": "text/html",
@@ -61,11 +61,15 @@ function createEnemyMaker(options = {}) {
     });
   }
 
-  function safeEnemyFile(id) {
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id || "")) throw new Error("Invalid enemy ID.");
-    const file = path.resolve(content, `${id}.json`);
-    if (!file.startsWith(content + path.sep)) throw new Error("Enemy path escaped its content folder.");
+  function safeJsonFile(folder, id, label) {
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id || "")) throw new Error(`Invalid ${label} ID.`);
+    const file = path.resolve(folder, `${id}.json`);
+    if (!file.startsWith(folder + path.sep)) throw new Error(`${label} path escaped its content folder.`);
     return file;
+  }
+
+  function safeEnemyFile(id) {
+    return safeJsonFile(content, id, "enemy");
   }
 
   function atomicWrite(file, value) {
@@ -84,58 +88,51 @@ function createEnemyMaker(options = {}) {
         const id = name.slice(0, -5);
         try {
           const enemy = JSON.parse(fs.readFileSync(path.join(content, name), "utf8"));
-          return { id, name: enemy.name || id, type: enemy.type || "unknown" };
+          return {
+            id,
+            name: enemy.name || id,
+            movement: enemy.movement?.kind || "unknown",
+            attackCount: Array.isArray(enemy.attacks) ? enemy.attacks.length : 0,
+            mountCount: Array.isArray(enemy.mounts) ? enemy.mounts.length : 0
+          };
         } catch (_) {
-          return { id, name: id, type: "invalid" };
+          return { id, name: id, movement: "invalid", attackCount: 0, mountCount: 0 };
         }
       });
   }
 
-  function listGuns() {
-    if (!fs.existsSync(weapons)) return [];
-    const result = [];
-    const categories = fs.readdirSync(weapons, { withFileTypes: true })
-      .filter(entry => entry.isDirectory())
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    for (const category of categories) {
-      const categoryPath = path.join(weapons, category.name);
-      const families = fs.readdirSync(categoryPath, { withFileTypes: true })
-        .filter(entry => entry.isDirectory())
-        .sort((a, b) => a.name.localeCompare(b.name));
-
-      for (const family of families) {
-        const familyPath = path.join(categoryPath, family.name);
-        const sharedFile = path.join(familyPath, "weapon.json");
-        if (!fs.existsSync(sharedFile)) continue;
-        let shared;
-        try { shared = JSON.parse(fs.readFileSync(sharedFile, "utf8")); }
-        catch (_) { continue; }
-
-        for (let mark = 1; mark <= 3; mark += 1) {
-          const markFile = path.join(familyPath, `mk${mark}.json`);
-          if (!fs.existsSync(markFile)) continue;
-          let markValue;
-          try { markValue = JSON.parse(fs.readFileSync(markFile, "utf8")); }
-          catch (_) { continue; }
-          if (markValue.available === false) continue;
-          result.push({
-            id: `${family.name}.mk${mark}`,
-            name: `${shared.name || family.name} MK${mark}`,
-            family: family.name,
-            category: category.name,
-            mark
-          });
+  function listShots() {
+    if (!fs.existsSync(shots)) return [];
+    return fs.readdirSync(shots)
+      .filter(name => name.endsWith(".json"))
+      .sort()
+      .flatMap(name => {
+        const id = name.slice(0, -5);
+        try {
+          const shot = JSON.parse(fs.readFileSync(path.join(shots, name), "utf8"));
+          const errors = validateShot(shot, id);
+          if (errors.length) return [];
+          return [{
+            id,
+            kind: shot.delivery.kind,
+            speed: shot.delivery.speed,
+            range: shot.delivery.range
+          }];
+        } catch (_) {
+          return [];
         }
-      }
-    }
-    return result.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+      });
   }
 
-  function validateGunReference(enemy) {
-    if (enemy.type !== "shooter") return [];
-    const known = new Set(listGuns().map(gun => gun.id));
-    return known.has(enemy.gun) ? [] : [`gun '${enemy.gun}' is not a canonical definition under Content/Weapons.`];
+  function validateShotReferences(enemy) {
+    const known = new Set(listShots().map(shot => shot.id));
+    const errors = [];
+    for (const attack of enemy?.attacks || []) {
+      if (attack?.kind === "shot" && !known.has(attack.shot)) {
+        errors.push(`attack '${attack.id || "unknown"}' references unknown Enemy Shot '${attack.shot || ""}'.`);
+      }
+    }
+    return errors;
   }
 
   async function api(req, res, url) {
@@ -143,11 +140,11 @@ function createEnemyMaker(options = {}) {
       return sendJson(res, 200, {
         token,
         content: path.relative(root, content).replace(/\\/g, "/"),
-        weapons: path.relative(root, weapons).replace(/\\/g, "/")
+        shots: path.relative(root, shots).replace(/\\/g, "/")
       });
     }
     if (req.method === "GET" && url.pathname === "/api/enemies") return sendJson(res, 200, { enemies: listEnemies() });
-    if (req.method === "GET" && url.pathname === "/api/guns") return sendJson(res, 200, { guns: listGuns() });
+    if (req.method === "GET" && url.pathname === "/api/shots") return sendJson(res, 200, { shots: listShots() });
     if (req.method === "GET" && url.pathname === "/api/enemy") {
       const id = url.searchParams.get("id");
       const file = safeEnemyFile(id);
@@ -166,7 +163,7 @@ function createEnemyMaker(options = {}) {
       const body = await readBody(req);
       const enemy = body.enemy;
       const previousId = body.previousId || null;
-      const errors = validateEnemy(enemy).concat(validateGunReference(enemy || {}));
+      const errors = validateEnemy(enemy).concat(validateShotReferences(enemy));
       if (previousId && previousId !== enemy?.id) {
         errors.push("Changing the ID of an existing enemy is not supported yet. Create a new enemy instead.");
       }
@@ -221,7 +218,7 @@ function createEnemyMaker(options = {}) {
     });
   }
 
-  return { root, content, weapons, server, start, listEnemies, listGuns };
+  return { root, content, shots, server, start, listEnemies, listShots };
 }
 
 if (require.main === module) {
@@ -229,7 +226,7 @@ if (require.main === module) {
   maker.start().then(port => {
     console.log(`Enemy Maker: http://127.0.0.1:${port}/`);
     console.log(`Enemy definitions: ${maker.content}`);
-    console.log(`Canonical weapons: ${maker.weapons}`);
+    console.log(`Enemy shots: ${maker.shots}`);
   }).catch(error => {
     console.error(error.stack || error.message || String(error));
     process.exitCode = 1;

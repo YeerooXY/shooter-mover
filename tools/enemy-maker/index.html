@@ -34,37 +34,21 @@
       <div class="form-grid">
         <article class="panel">
           <h2>Identity</h2>
-          <label>ID <input id="id" autocomplete="off" placeholder="rattler-droid"></label>
-          <label>Name <input id="name" autocomplete="off" placeholder="Rattler Droid"></label>
-          <label>Type
-            <select id="type">
-              <option value="shooter">Shooter</option>
-              <option value="contact">Contact</option>
-              <option value="pouncer">Pouncer</option>
-              <option value="popcorn">Popcorn</option>
-            </select>
-          </label>
-          <label>Art ID <input id="art" autocomplete="off" placeholder="rattler-droid"></label>
+          <label>ID <input id="id" autocomplete="off" placeholder="gunner-droid"></label>
+          <label>Name <input id="name" autocomplete="off" placeholder="Gunner Droid"></label>
+          <label>Tags <input id="tags" autocomplete="off" placeholder="droid, ground, mobile, ranged"></label>
+          <label>Art ID <input id="art" autocomplete="off" placeholder="gunner-droid"></label>
           <label>Drop profile <input id="drops" autocomplete="off" placeholder="normal"></label>
+          <label>Trait pool <input id="traitPool" autocomplete="off" placeholder="optional"></label>
         </article>
 
         <article class="panel">
-          <h2>Combat</h2>
+          <h2>Stats & movement</h2>
           <label>Base health <input id="hp" type="number" min="0.01" step="0.1"></label>
-          <label id="gunRow">Canonical gun
-            <input id="gun" list="gunOptions" autocomplete="off" placeholder="rattler.mk1">
-            <datalist id="gunOptions"></datalist>
-            <span id="gunCount" class="field-note"></span>
-          </label>
-          <label id="damageRow" hidden>Contact damage <input id="damage" type="number" min="0.01" step="0.1"></label>
-          <label>Preferred range <input id="range" type="number" min="0" step="0.1"></label>
-          <label>Detection range <input id="detect" type="number" min="0" step="0.1"></label>
-        </article>
-
-        <article class="panel">
-          <h2>Movement & scaling</h2>
+          <label>Health power <input id="healthPower" type="number" min="0.01" step="0.01"></label>
+          <label>Detection range <input id="detectionRange" type="number" min="0.01" step="0.1"></label>
           <label>Movement
-            <select id="move">
+            <select id="moveKind">
               <option value="direct">Direct</option>
               <option value="wander">Wander</option>
               <option value="strafe">Strafe</option>
@@ -72,9 +56,8 @@
               <option value="stationary">Stationary</option>
             </select>
           </label>
-          <label>Speed <input id="speed" type="number" min="0" step="0.1"></label>
-          <label>Health scale <input id="scale" type="number" min="0.01" step="0.01"></label>
-          <p class="help">Health uses <code>strength ^ scale</code>. Damage uses the global power in Leveling.</p>
+          <label>Speed <input id="moveSpeed" type="number" min="0" step="0.1"></label>
+          <p class="help">Local +Y is forward; local +X is right. Mount coordinates use the enemy visual root, not the collider offset.</p>
         </article>
 
         <article class="panel">
@@ -92,7 +75,25 @@
             <label>Offset X <input id="offsetX" type="number" step="0.01"></label>
             <label>Offset Y <input id="offsetY" type="number" step="0.01"></label>
           </div>
-          <p class="help">The saved <code>body.shape</code> is permanent. Circle is only the first supported adapter.</p>
+          <p class="help">The body offset moves the collider. It does not move weapon mounts.</p>
+        </article>
+
+        <article class="panel mounts-panel wide-panel">
+          <div class="panel-heading">
+            <div><h2>Mounts</h2><p class="help">Drag mount handles in the preview or edit their relative coordinates.</p></div>
+            <button id="addMount" class="ghost small" type="button">Add mount</button>
+          </div>
+          <div id="mounts" class="card-list"></div>
+        </article>
+
+        <article class="panel attacks-panel wide-panel">
+          <div class="panel-heading">
+            <div><h2>Attacks</h2><p class="help">One attack may fire one or many mounts. A trigger is one firing event; <code>shotsPerTrigger</code> applies to every emitter that fires.</p></div>
+            <button id="addAttack" class="ghost small" type="button">Add attack</button>
+          </div>
+          <datalist id="shotOptions"></datalist>
+          <p id="shotCount" class="field-note"></p>
+          <div id="attacks" class="card-list"></div>
         </article>
       </div>
     </section>
@@ -104,7 +105,7 @@
           <label>Maximum level <input id="maxLevel" type="number" min="2" step="1"></label>
           <label>Strength at maximum <input id="strengthAtMax" type="number" min="1" step="0.1"></label>
           <label>Enemy damage power <input id="damagePower" type="number" min="0.01" step="0.01"></label>
-          <p class="help">Strength grows exponentially from ×1 at level 1 to this maximum. Each enemy chooses how much of that curve its health follows.</p>
+          <p class="help">Health uses each enemy's <code>healthPower</code>. Every authored damage component receives the global damage multiplier exactly once.</p>
         </article>
         <article class="panel color-panel">
           <div class="panel-heading"><h2>Level colors</h2><button id="addColor" class="ghost small">Add stop</button></div>
@@ -118,18 +119,23 @@
       <article class="panel json-panel">
         <h2>Canonical enemy JSON</h2>
         <textarea id="json" spellcheck="false"></textarea>
-        <p class="help">This is the exact file saved to the repository. Valid JSON updates the guided form without rewriting the text or moving the cursor.</p>
+        <p class="help">The guided editor writes schema 1 directly. Advanced JSON can add multiple damage components or simple DoT packages without creating an editor-only format.</p>
       </article>
     </section>
 
     <aside class="preview-column">
       <article class="preview-card">
-        <div class="panel-heading"><h2>Preview</h2><span id="shapeBadge" class="badge">circle</span></div>
-        <canvas id="preview" width="520" height="420"></canvas>
+        <div class="panel-heading">
+          <div><h2>Preview</h2><p class="help">Drag orange mount handles.</p></div>
+          <span id="shapeBadge" class="badge">circle</span>
+        </div>
+        <canvas id="preview" width="560" height="460"></canvas>
         <label class="level-slider">Enemy level <strong id="levelValue">1</strong><input id="level" type="range" min="1" max="100" value="1"></label>
         <div class="stats">
           <div><span>Health</span><strong id="previewHp">—</strong></div>
-          <div><span>Damage</span><strong id="previewDamage">—</strong></div>
+          <div><span>Damage multiplier</span><strong id="previewDamage">—</strong></div>
+          <div><span>Sequence projectiles</span><strong id="previewProjectiles">—</strong></div>
+          <div><span>Max direct burst</span><strong id="previewBurst">—</strong></div>
           <div><span>Strength</span><strong id="previewStrength">—</strong></div>
           <div><span>Color</span><strong id="previewColor">—</strong></div>
         </div>

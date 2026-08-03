@@ -6,99 +6,143 @@ Launch from the repository root:
 .\tools\enemy-maker\Start-EnemyMaker.ps1
 ```
 
-The browser editor writes canonical enemy definitions directly to:
+The browser editor writes canonical schema-1 enemy definitions directly to:
 
 ```text
 Content/Enemies/
 ```
 
-It discovers canonical guns directly from:
+Reusable enemy projectile mechanics live under:
 
 ```text
-Content/Weapons/<category>/<family>/weapon.json
-Content/Weapons/<category>/<family>/mk1.json
-Content/Weapons/<category>/<family>/mk2.json
-Content/Weapons/<category>/<family>/mk3.json
+Content/EnemyShots/
 ```
 
-There is no editor-only enemy format, enemy catalogue, or Item Package dependency.
+There is no editor-only enemy format and no enemy catalogue.
 
-## Identity safety
+## Current authoring boundary
 
-A loaded enemy ID is read-only in the guided editor. The server also rejects changing `previousId` into a different ID, so an accidental edit cannot silently leave the old JSON behind and create a duplicate enemy.
+An enemy definition owns:
 
-Use **New enemy** to create another identity. Explicit rename support can be added later as an atomic operation.
+- identity and tags;
+- base health and health scaling power;
+- one movement object;
+- detection range;
+- relative weapon mounts;
+- zero, one, or many attacks;
+- drops, art, and a circle body.
 
-## Canonical guns
-
-Shooter enemies must select a definition discovered under `Content/Weapons`. The server rejects unknown gun IDs. The enemy JSON stores only the canonical reference:
-
-```json
-"gun": "rattler.mk1"
-```
-
-It does not copy damage, cadence, spread, projectile, explosion, or status values.
-
-## First body shape
-
-The first implementation supports circles:
+A shot attack references one reusable Enemy Shot, one or more mount IDs, and an explicit firing pattern. It owns its timing, valid range, and damage.
 
 ```json
-"body": {
-  "shape": "circle",
-  "radius": 0.45,
-  "offset": { "x": 0, "y": 0 }
+{
+  "id": "dual-burst",
+  "kind": "shot",
+  "shot": "small-bullet",
+  "emitters": ["left-gun", "right-gun"],
+  "firePattern": "simultaneous",
+  "cooldown": 1.5,
+  "sequence": {
+    "triggers": 4,
+    "interval": 0.2
+  },
+  "volley": {
+    "shotsPerTrigger": 1,
+    "spread": 0,
+    "distribution": "even"
+  },
+  "range": {
+    "min": 2,
+    "max": 12
+  },
+  "damage": [
+    { "type": "kinetic", "amount": 3 }
+  ]
 }
 ```
 
-The top-level `body.shape` discriminator is intentionally permanent. Later adapters can add shapes without changing ordinary enemy fields:
+`shotsPerTrigger` applies to every emitter that fires during that trigger. Two simultaneous emitters, four triggers, and one shot per trigger produce eight projectiles. With `alternate` or `round-robin`, one emitter fires per trigger.
+
+## Relative mount coordinates
+
+Mounts use enemy-local coordinates relative to the visual root:
+
+```text
++Y = forward
++X = right
+rotation 0° = forward
+positive rotation = clockwise
+```
+
+The collider's `body.offset` is independent. Moving the collider does not move the guns.
+
+The preview renders mounts as orange handles. Dragging a handle updates its relative X/Y values.
+
+## Enemy Shots
+
+Enemy Shot definitions contain reusable projectile delivery, impact, and art only. They do not contain enemy damage, cooldown, trigger count, spread, or mount placement.
 
 ```json
-"body": {
-  "shape": "box",
-  "size": { "x": 0.8, "y": 1.2 },
-  "offset": { "x": 0, "y": 0 },
-  "angle": 0
+{
+  "schema": 1,
+  "id": "small-bullet",
+  "delivery": {
+    "kind": "projectile",
+    "speed": 32,
+    "radius": 0.06,
+    "range": 18
+  },
+  "impact": {
+    "pierce": 1,
+    "ricochet": 0,
+    "knockback": 0
+  },
+  "art": {
+    "delivery": "enemy-shot.small-bullet",
+    "trail": "enemy-trail.small-bullet",
+    "impact": "enemy-impact.small-bullet"
+  }
 }
 ```
 
+The Enemy Maker currently discovers and validates shots but does not edit shot files. A focused Shot Maker can be added later if hand-authoring two or three reusable shots becomes painful.
+
+## Guided editor limits
+
+The guided attack card edits one direct-damage component. Advanced JSON can author additional direct components or a complete DoT package:
+
 ```json
-"body": {
-  "shape": "ellipse",
-  "size": { "x": 0.8, "y": 1.2 },
-  "offset": { "x": 0, "y": 0 },
-  "angle": 0
+{
+  "type": "thermal",
+  "perSecond": 2,
+  "duration": 4,
+  "stack": "refresh"
 }
 ```
 
-```json
-"body": {
-  "shape": "polygon",
-  "points": [
-    { "x": -0.5, "y": -0.4 },
-    { "x": 0.5, "y": -0.4 },
-    { "x": 0, "y": 0.5 }
-  ],
-  "offset": { "x": 0, "y": 0 },
-  "angle": 0
-}
+The guided editor preserves additional damage components.
+
+The first iteration supports attack kinds:
+
+```text
+shot
+contact
+suicide
 ```
 
-A triangle is a polygon with three points. A square is a box with equal width and height. An oval is an ellipse.
-
-The first validator fails closed for those planned shapes instead of pretending the current runtime supports them. Adding one later requires a shape validator, preview renderer, and Unity collider adapter; enemy identity, combat, movement, scaling, level placement, and art references remain unchanged.
+It deliberately does not add combat states, traits, bosses, arbitrary condition trees, a runtime spawner, or an encounter generator yet.
 
 ## Leveling
 
-`leveling.json` owns the global exponential strength target, enemy damage power, and level-color stops. Each enemy owns one numeric `scale` that controls how much of the strength curve its health follows.
+`Content/Enemies/leveling.json` owns the global exponential strength target, damage power, and level-color stops.
 
 ```text
 strength(level) = strengthAtMax ^ normalizedLevel
-health(level)   = baseHealth × strength(level) ^ enemy.scale
+health(level)   = baseHealth × strength(level) ^ healthPower
 damage(level)   = baseDamage × strength(level) ^ damagePower
 ```
 
-Gun-using enemies do not author copied damage. Their canonical gun execution receives the enemy damage multiplier later when runtime integration is implemented.
+Damage scaling is applied exactly once to every authored damage component.
 
 ## Checks
 
@@ -109,9 +153,3 @@ node --check tools/enemy-maker/app.js
 node tools/enemy-maker/test-enemy-maker.js
 node tools/enemy-maker/test-enemy-maker-server.js
 ```
-
-The server test creates a temporary repository, discovers canonical guns, saves and reloads an enemy, and verifies that duplicate creation, ID mutation, unknown guns, and reserved future collider shapes fail closed.
-
-## Deliberate boundary
-
-This first slice is an authoring tool and schema validator. It does not add a replacement enemy spawner, `EnemyFactory`, enemy-owned guns/projectiles, Unity collider realization, Level Maker placement integration, or playable enemies.

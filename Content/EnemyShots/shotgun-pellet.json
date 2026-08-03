@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "shotgun-pellet",
+  "delivery": {
+    "kind": "projectile",
+    "speed": 28,
+    "radius": 0.05,
+    "range": 12
+  },
+  "impact": {
+    "pierce": 1,
+    "ricochet": 0,
+    "knockback": 0.15
+  },
+  "art": {
+    "delivery": "enemy-shot.shotgun-pellet",
+    "trail": "enemy-trail.shotgun-pellet",
+    "impact": "enemy-impact.shotgun-pellet"
+  }
+}
