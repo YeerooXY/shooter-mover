@@ -1,9 +1,12 @@
-using ShooterMover.Application.Missions.Rooms.Content;
 using ShooterMover.Domain.Common;
-using ShooterMover.Domain.Enemies.Catalog;
 
 namespace ShooterMover.EnemyRuntimeComposition
 {
+    /// <summary>
+    /// Retained engine-neutral policy registrations used by the live-state contracts. The retired
+    /// catalogue-driven factory entry point has been removed; new enemy composition must consume
+    /// the compact definition workflow and shared canonical guns.
+    /// </summary>
     public static class BuiltInEnemyRules
     {
         public static EnemyRules Create()
@@ -60,31 +63,6 @@ namespace ShooterMover.EnemyRuntimeComposition
                     Attack("enemy-attack.pounce", lockedAim,
                         EnemyAttackExecutionKind.Pounce, attackAdapter),
                 });
-        }
-
-        public static EnemyFactory CreateFactory(
-            IRoomContentObjectCatalog roomObjects,
-            EnemyCatalog enemyCatalog,
-            EnemyLiveDownstreamPorts downstream)
-        {
-            return new EnemyFactory(
-                roomObjects,
-                enemyCatalog,
-                Create(),
-                new DeterministicEnemyLiveIdentityDeriver(),
-                new EnemyDifficultyLiveRegistration(
-                    new EnemyDifficultyScalingConfiguration(
-                        StableId.Parse("enemy-difficulty.scalar-standard"),
-                        1d,
-                        0.5d,
-                        0.2d,
-                        0.15d),
-                    new ScalarEnemyDifficultyScalingPolicy()),
-                new EnemyPerceptionLiveRegistration(
-                    new EnemyPerceptionPolicyConfiguration(
-                        StableId.Parse("enemy-perception.validated-standard")),
-                    new ValidatedEnemyPerceptionLiveBridge()),
-                downstream ?? EnemyLiveDownstreamPorts.None());
         }
 
         private static EnemyMovementPolicyRegistration Movement(
