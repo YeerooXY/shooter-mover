@@ -1,0 +1,36 @@
+name: Enemy Maker tests
+
+on:
+  pull_request:
+    paths:
+      - "Content/Enemies/**"
+      - "tools/enemy-maker/**"
+      - ".github/workflows/enemy-maker.yml"
+  push:
+    branches: [main]
+    paths:
+      - "Content/Enemies/**"
+      - "tools/enemy-maker/**"
+      - ".github/workflows/enemy-maker.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check browser and server syntax
+        run: |
+          node --check tools/enemy-maker/enemy-schema.js
+          node --check tools/enemy-maker/server.js
+          node --check tools/enemy-maker/app.js
+      - name: Run Enemy Maker schema tests
+        run: node tools/enemy-maker/test-enemy-maker.js
+      - name: Run Enemy Maker HTTP tests
+        run: node tools/enemy-maker/test-enemy-maker-server.js
