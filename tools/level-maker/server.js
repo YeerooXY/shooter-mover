@@ -7,6 +7,7 @@ const path = require("path");
 const { execFileSync } = require("child_process");
 const { URL } = require("url");
 const { createAssetPreviewService } = require("./asset-preview-service");
+const { projectEnemyDefinitionAssets } = require("./enemy-definition-assets");
 
 const args = process.argv.slice(2);
 const repo = path.resolve(argument("--repo") || path.join(__dirname, "..", ".."));
@@ -169,6 +170,9 @@ function collectAssets(value, source, found) {
 
 function projectAssets() {
   const found = new Map();
+  for (const asset of projectEnemyDefinitionAssets(repo)) {
+    found.set(asset.id, asset);
+  }
   const roots = [
     "Assets/ShooterMover/Content/Definitions/Enemies",
     "Assets/ShooterMover/Content/Definitions/Missions/Rooms",
