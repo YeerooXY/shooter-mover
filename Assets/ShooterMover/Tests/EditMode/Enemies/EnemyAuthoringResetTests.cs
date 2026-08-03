@@ -21,7 +21,9 @@ namespace ShooterMover.Tests.EditMode.Enemies
             string normalized = relativeAssetPath.Replace(
                 '/',
                 Path.DirectorySeparatorChar);
-            string absolute = Path.Combine(Application.dataPath, normalized);
+            string absolute = Path.Combine(
+                UnityEngine.Application.dataPath,
+                normalized);
 
             Assert.That(
                 File.Exists(absolute),
