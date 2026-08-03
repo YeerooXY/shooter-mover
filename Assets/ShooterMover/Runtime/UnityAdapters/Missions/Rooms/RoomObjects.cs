@@ -343,9 +343,11 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
                 0f,
                 0f,
                 (float)localRotationDegrees);
-            instance.transform.localScale = new Vector3(size.x, size.y, 1f);
 
-            SpriteRenderer renderer = instance.AddComponent<SpriteRenderer>();
+            GameObject visual = new GameObject("Debug Visual");
+            visual.transform.SetParent(instance.transform, false);
+            visual.transform.localScale = new Vector3(size.x, size.y, 1f);
+            SpriteRenderer renderer = visual.AddComponent<SpriteRenderer>();
             renderer.sprite = GetDebugPixelSprite();
             renderer.color = color;
             renderer.sortingOrder = sortingOrder;
@@ -353,7 +355,7 @@ namespace ShooterMover.UnityAdapters.Missions.Rooms
             if (blocksMovement)
             {
                 BoxCollider2D collider = instance.AddComponent<BoxCollider2D>();
-                collider.size = Vector2.one;
+                collider.size = size;
             }
 
             instance.SetActive(true);
