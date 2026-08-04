@@ -11,8 +11,8 @@ namespace ShooterMover.UI.Game
     public sealed class FloorGrid
     {
         private const float TileHalfSize = 0.5f;
-        private const float SweepStep = 0.1f;
-        private const int MaximumSweepSteps = 512;
+        private const float MaximumDisplacement = 51.2f;
+        private const int SafePositionSearchIterations = 20;
         private const float GeometryTolerance = 0.0001f;
 
         private readonly HashSet<Vector2Int> cells;
@@ -78,16 +78,17 @@ namespace ShooterMover.UI.Game
             }
 
             Vector2 displacement = velocity * fixedDeltaTime;
-            int requestedSteps = RequiredSweepSteps(displacement);
-            if (requestedSteps > MaximumSweepSteps)
+            float distance = displacement.magnitude;
+            if (!IsFinite(displacement)
+                || !IsFinite(distance)
+                || distance > MaximumDisplacement)
             {
                 return Vector2.zero;
             }
 
-            // Rigidbody2D receives one velocity for the entire physics step, so every
-            // candidate below is swept as the same straight path physics will follow.
-            // A simulated two-part route must never be collapsed into a corner-cutting
-            // diagonal velocity.
+            // Rigidbody2D follows one straight velocity during this physics step.
+            // Each candidate is therefore checked as that exact continuous segment,
+            // rather than as sampled or piecewise movement that could cut a corner.
             Vector2 accepted = SweepStraight(center, displacement, radius);
             Vector2 horizontal = SweepStraight(
                 center,
@@ -118,6 +119,11 @@ namespace ShooterMover.UI.Game
             out Vector2 position)
         {
             position = Vector2.zero;
+            if (!IsFinite(origin) || !IsFinite(radius) || radius < 0f)
+            {
+                return false;
+            }
+
             bool found = false;
             float bestDistance = float.PositiveInfinity;
             Vector2Int bestCell = default(Vector2Int);
@@ -158,16 +164,67 @@ namespace ShooterMover.UI.Game
                 return Vector2.zero;
             }
 
-            int steps = RequiredSweepSteps(displacement);
-            Vector2 step = displacement / steps;
-            Vector2 accepted = Vector2.zero;
-            for (int index = 0; index < steps; index++)
+            Vector2 destination = center + displacement;
+            if (IsSegmentSupported(center, destination, radius))
             {
-                Vector2 candidate = center + accepted + step;
-                if (!FitsCircle(candidate, radius)) break;
-                accepted += step;
+                return displacement;
             }
-            return accepted;
+
+            float safe = 0f;
+            float blocked = 1f;
+            for (int index = 0; index < SafePositionSearchIterations; index++)
+            {
+                float fraction = (safe + blocked) * 0.5f;
+                Vector2 candidate = center + displacement * fraction;
+                if (IsSegmentSupported(center, candidate, radius))
+                {
+                    safe = fraction;
+                }
+                else
+                {
+                    blocked = fraction;
+                }
+            }
+            return displacement * safe;
+        }
+
+        private bool IsSegmentSupported(
+            Vector2 start,
+            Vector2 end,
+            float radius)
+        {
+            if (!FitsCircle(end, radius)) return false;
+
+            float safeRadius = Mathf.Max(0f, radius - GeometryTolerance);
+            if (safeRadius <= GeometryTolerance)
+            {
+                return true;
+            }
+
+            int minX = Mathf.FloorToInt(
+                Mathf.Min(start.x, end.x) - safeRadius - TileHalfSize);
+            int maxX = Mathf.CeilToInt(
+                Mathf.Max(start.x, end.x) + safeRadius + TileHalfSize);
+            int minY = Mathf.FloorToInt(
+                Mathf.Min(start.y, end.y) - safeRadius - TileHalfSize);
+            int maxY = Mathf.CeilToInt(
+                Mathf.Max(start.y, end.y) + safeRadius + TileHalfSize);
+            float radiusSquared = safeRadius * safeRadius;
+
+            for (int y = minY; y <= maxY; y++)
+            {
+                for (int x = minX; x <= maxX; x++)
+                {
+                    var cell = new Vector2Int(x, y);
+                    if (cells.Contains(cell)) continue;
+                    if (SegmentDistanceToCellSquared(start, end, cell)
+                        < radiusSquared)
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
 
         private bool ContainsPoint(Vector2 point)
@@ -191,11 +248,159 @@ namespace ShooterMover.UI.Game
             return false;
         }
 
-        private static int RequiredSweepSteps(Vector2 displacement)
+        private static float SegmentDistanceToCellSquared(
+            Vector2 start,
+            Vector2 end,
+            Vector2Int cell)
         {
-            return Mathf.Max(
-                1,
-                Mathf.CeilToInt(displacement.magnitude / SweepStep));
+            float minX = cell.x - TileHalfSize;
+            float maxX = cell.x + TileHalfSize;
+            float minY = cell.y - TileHalfSize;
+            float maxY = cell.y + TileHalfSize;
+            if (SegmentIntersectsRectangle(
+                    start,
+                    end,
+                    minX,
+                    maxX,
+                    minY,
+                    maxY))
+            {
+                return 0f;
+            }
+
+            float distance = Mathf.Min(
+                DistancePointToRectangleSquared(
+                    start,
+                    minX,
+                    maxX,
+                    minY,
+                    maxY),
+                DistancePointToRectangleSquared(
+                    end,
+                    minX,
+                    maxX,
+                    minY,
+                    maxY));
+            distance = Mathf.Min(
+                distance,
+                DistancePointToSegmentSquared(
+                    new Vector2(minX, minY),
+                    start,
+                    end));
+            distance = Mathf.Min(
+                distance,
+                DistancePointToSegmentSquared(
+                    new Vector2(minX, maxY),
+                    start,
+                    end));
+            distance = Mathf.Min(
+                distance,
+                DistancePointToSegmentSquared(
+                    new Vector2(maxX, minY),
+                    start,
+                    end));
+            return Mathf.Min(
+                distance,
+                DistancePointToSegmentSquared(
+                    new Vector2(maxX, maxY),
+                    start,
+                    end));
+        }
+
+        private static bool SegmentIntersectsRectangle(
+            Vector2 start,
+            Vector2 end,
+            float minX,
+            float maxX,
+            float minY,
+            float maxY)
+        {
+            float minimumTime = 0f;
+            float maximumTime = 1f;
+            Vector2 movement = end - start;
+            return ClipAxis(
+                    start.x,
+                    movement.x,
+                    minX,
+                    maxX,
+                    ref minimumTime,
+                    ref maximumTime)
+                && ClipAxis(
+                    start.y,
+                    movement.y,
+                    minY,
+                    maxY,
+                    ref minimumTime,
+                    ref maximumTime);
+        }
+
+        private static bool ClipAxis(
+            float start,
+            float movement,
+            float minimum,
+            float maximum,
+            ref float minimumTime,
+            ref float maximumTime)
+        {
+            if (Mathf.Abs(movement) <= GeometryTolerance)
+            {
+                return start >= minimum && start <= maximum;
+            }
+
+            float first = (minimum - start) / movement;
+            float second = (maximum - start) / movement;
+            if (first > second)
+            {
+                float swap = first;
+                first = second;
+                second = swap;
+            }
+
+            minimumTime = Mathf.Max(minimumTime, first);
+            maximumTime = Mathf.Min(maximumTime, second);
+            return minimumTime <= maximumTime;
+        }
+
+        private static float DistancePointToRectangleSquared(
+            Vector2 point,
+            float minX,
+            float maxX,
+            float minY,
+            float maxY)
+        {
+            float x = Mathf.Max(minX - point.x, 0f, point.x - maxX);
+            float y = Mathf.Max(minY - point.y, 0f, point.y - maxY);
+            return x * x + y * y;
+        }
+
+        private static float DistancePointToSegmentSquared(
+            Vector2 point,
+            Vector2 start,
+            Vector2 end)
+        {
+            Vector2 segment = end - start;
+            float lengthSquared = segment.sqrMagnitude;
+            if (lengthSquared <= GeometryTolerance)
+            {
+                return (point - start).sqrMagnitude;
+            }
+
+            float time = Mathf.Clamp01(
+                Vector2.Dot(point - start, segment) / lengthSquared);
+            Vector2 nearest = start + segment * time;
+            return (point - nearest).sqrMagnitude;
+        }
+
+        private static float DistancePointToCellSquared(
+            Vector2 point,
+            Vector2Int cell)
+        {
+            return DistancePointToRectangleSquared(
+                point,
+                cell.x - TileHalfSize,
+                cell.x + TileHalfSize,
+                cell.y - TileHalfSize,
+                cell.y + TileHalfSize);
         }
 
         private static Vector2 Longer(Vector2 current, Vector2 candidate)
@@ -210,16 +415,9 @@ namespace ShooterMover.UI.Game
             float radius,
             Vector2Int cell)
         {
-            float minX = cell.x - TileHalfSize;
-            float maxX = cell.x + TileHalfSize;
-            float minY = cell.y - TileHalfSize;
-            float maxY = cell.y + TileHalfSize;
-            float closestX = Mathf.Clamp(center.x, minX, maxX);
-            float closestY = Mathf.Clamp(center.y, minY, maxY);
-            float dx = center.x - closestX;
-            float dy = center.y - closestY;
             float safeRadius = Mathf.Max(0f, radius - GeometryTolerance);
-            return dx * dx + dy * dy < safeRadius * safeRadius;
+            return DistancePointToCellSquared(center, cell)
+                < safeRadius * safeRadius;
         }
 
         private static bool ComesBefore(Vector2Int candidate, Vector2Int current)
