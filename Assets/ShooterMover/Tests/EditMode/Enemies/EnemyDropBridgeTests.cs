@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
 using ShooterMover.Domain.Rewards.Model;
@@ -7,17 +8,17 @@ using ShooterMover.UI.Game;
 
 namespace ShooterMover.Tests.EditMode.Enemies
 {
-    public sealed class CompactEnemyLootBridgeTests
+    public sealed class EnemyDropBridgeTests
     {
         [Test]
-        public void GunnerDroidNormalProfileProjectsToCanonicalEnemyDropFact()
+        public void GunnerDroidNormalProfileProjectsToEnemyDropFact()
         {
             StableId definitionId = StableId.Parse("enemy.gunner-droid");
             Assert.That(
-                CompactEnemyDropProfiles.Resolve("normal", definitionId),
+                EnemyDropProfiles.Resolve("normal", definitionId),
                 Is.EqualTo(LootSourceCatalog.NormalEnemyId));
 
-            var fact = new CompactEnemyTerminalRewardFact(
+            var fact = new EnemyDropFact(
                 StableId.Parse("enemy-death.test-gunner"),
                 StableId.Parse("hit.test-gunner"),
                 StableId.Parse("run.test-gunner"),
@@ -35,7 +36,7 @@ namespace ShooterMover.Tests.EditMode.Enemies
                 EnemyActorDeathCause.IncomingDamage);
 
             LootDropAdaptationResult result =
-                new CompactEnemyLootDropFactBridge().Adapt(fact);
+                new EnemyDropBridge().Adapt(fact);
 
             Assert.That(result, Is.Not.Null);
             Assert.That(result.Succeeded, Is.True, result.Diagnostic);
@@ -65,11 +66,11 @@ namespace ShooterMover.Tests.EditMode.Enemies
         }
 
         [Test]
-        public void UnsupportedCompactEnemyDropProfileFailsClosed()
+        public void UnsupportedDropProfileFailsClosed()
         {
             Assert.Throws<System.InvalidOperationException>(delegate
             {
-                CompactEnemyDropProfiles.Resolve(
+                EnemyDropProfiles.Resolve(
                     "mystery",
                     StableId.Parse("enemy.gunner-droid"));
             });

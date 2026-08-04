@@ -1,6 +1,5 @@
 using System;
-using System.Security.Cryptography;
-using System.Text;
+using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
 using ShooterMover.Domain.Rewards.Model;
@@ -10,7 +9,7 @@ using UnityEngine;
 
 namespace ShooterMover.UI.Game
 {
-    public static class CompactEnemyDropProfiles
+    public static class EnemyDropProfiles
     {
         public static StableId Resolve(
             string authoredValue,
@@ -39,10 +38,9 @@ namespace ShooterMover.UI.Game
         }
     }
 
-    public sealed class CompactEnemyTerminalRewardFact :
-        ITerminalRewardPlacementFact
+    public sealed class EnemyDropFact : ITerminalRewardPlacementFact
     {
-        public CompactEnemyTerminalRewardFact(
+        public EnemyDropFact(
             StableId deathEventStableId,
             StableId triggeringEventStableId,
             StableId runStableId,
@@ -135,7 +133,7 @@ namespace ShooterMover.UI.Game
         {
             get
             {
-                return CompactEnemyLootFingerprint.Hash(
+                return RunRewards.Hash(
                     "compact-enemy-reward-placement-v1|"
                     + RunStableId + "|" + RoomStableId + "|"
                     + RoomLifecycleGeneration + "|" + PlacementStableId + "|"
@@ -144,7 +142,7 @@ namespace ShooterMover.UI.Game
         }
     }
 
-    public sealed class CompactEnemyLootDropFactBridge : ILootDropFactBridge
+    public sealed class EnemyDropBridge : ILootDropFactBridge
     {
         public StableId FactKindStableId
         {
@@ -153,13 +151,12 @@ namespace ShooterMover.UI.Game
 
         public Type FactType
         {
-            get { return typeof(CompactEnemyTerminalRewardFact); }
+            get { return typeof(EnemyDropFact); }
         }
 
         public LootDropAdaptationResult Adapt(object terminalFact)
         {
-            CompactEnemyTerminalRewardFact fact =
-                terminalFact as CompactEnemyTerminalRewardFact;
+            EnemyDropFact fact = terminalFact as EnemyDropFact;
             if (fact == null
                 || fact.DeathEventStableId == null
                 || fact.TriggeringEventStableId == null
@@ -188,7 +185,7 @@ namespace ShooterMover.UI.Game
             StableId declared;
             try
             {
-                declared = CompactEnemyDropProfiles.Resolve(
+                declared = EnemyDropProfiles.Resolve(
                     definition.drops,
                     fact.DefinitionStableId);
             }
@@ -212,13 +209,13 @@ namespace ShooterMover.UI.Game
                     "compact-enemy-terminal-participant-missing");
             }
 
-            string sourceContextFingerprint = CompactEnemyLootFingerprint.Hash(
+            string sourceContextFingerprint = RunRewards.Hash(
                 "compact-enemy-source-context-v1|" + fact.RunStableId + "|"
                 + fact.RoomStableId + "|" + fact.SourceEntityStableId + "|"
                 + fact.PlacementStableId + "|" + fact.SourceLifecycleGeneration);
-            string definitionFingerprint = CompactEnemyLootFingerprint.Hash(
+            string definitionFingerprint = RunRewards.Hash(
                 "compact-enemy-definition-v1|" + JsonUtility.ToJson(definition));
-            string upstreamFingerprint = CompactEnemyLootFingerprint.Hash(
+            string upstreamFingerprint = RunRewards.Hash(
                 "compact-enemy-death-fact-v1|" + fact.DeathEventStableId + "|"
                 + fact.TriggeringEventStableId + "|" + fact.RunStableId + "|"
                 + fact.RoomStableId + "|" + fact.SourceEntityStableId + "|"
@@ -250,21 +247,6 @@ namespace ShooterMover.UI.Game
                     sourceContextFingerprint,
                     definitionFingerprint,
                     upstreamFingerprint));
-        }
-    }
-
-    internal static class CompactEnemyLootFingerprint
-    {
-        public static string Hash(string material)
-        {
-            using (SHA256 hash = SHA256.Create())
-            {
-                byte[] digest = hash.ComputeHash(
-                    Encoding.UTF8.GetBytes(material ?? string.Empty));
-                return BitConverter.ToString(digest)
-                    .Replace("-", string.Empty)
-                    .ToLowerInvariant();
-            }
         }
     }
 }

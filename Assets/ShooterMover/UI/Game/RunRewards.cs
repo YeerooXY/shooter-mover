@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using ShooterMover.Application.Flow.Game;
+using ShooterMover.Application.Missions.Rooms;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Application.Rewards.Generation;
@@ -231,7 +232,7 @@ namespace ShooterMover.UI.Game
                     "compact-enemy-reward-source-incomplete");
             }
 
-            StableId dropProfile = CompactEnemyDropProfiles.Resolve(
+            StableId dropProfile = EnemyDropProfiles.Resolve(
                 definition.drops,
                 enemy.DefinitionStableId);
             RoomLiveView roomProjection = rooms.CurrentProjection;
@@ -251,7 +252,7 @@ namespace ShooterMover.UI.Game
                     + roomStableId + "|" + placementStableId + "|"
                     + enemy.DamageableLifecycleGeneration + "|"
                     + triggeringEventStableId).Substring(0, 32));
-            var fact = new CompactEnemyTerminalRewardFact(
+            var fact = new EnemyDropFact(
                 deathEventStableId,
                 triggeringEventStableId,
                 run.RunStableId,
@@ -329,7 +330,7 @@ namespace ShooterMover.UI.Game
                 pendingAdmission,
                 new ILootDropFactBridge[]
                 {
-                    new CompactEnemyLootDropFactBridge(),
+                    new EnemyDropBridge(),
                 },
                 pickupBridge,
                 new PersonalRewardGenerationActions(
