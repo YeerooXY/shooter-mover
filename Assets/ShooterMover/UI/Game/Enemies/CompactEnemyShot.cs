@@ -155,6 +155,7 @@ namespace ShooterMover.UI.Game.Enemies
         private void OnTriggerEnter2D(Collider2D other)
         {
             if (completed || other == null || IsSource(other)) return;
+            if (IsEnemyBody(other)) return;
 
             PlayerHUD receiver = other.GetComponentInParent<PlayerHUD>();
             if (receiver != null && receiver.IsBound && !receiver.IsDefeated)
@@ -195,6 +196,12 @@ namespace ShooterMover.UI.Game.Enemies
             if (sourceRoot == null || other == null) return false;
             Transform candidate = other.transform;
             return candidate == sourceRoot || candidate.IsChildOf(sourceRoot);
+        }
+
+        private static bool IsEnemyBody(Collider2D other)
+        {
+            return other != null
+                && other.GetComponentInParent<CompactEnemy>() != null;
         }
 
         private void Complete()
