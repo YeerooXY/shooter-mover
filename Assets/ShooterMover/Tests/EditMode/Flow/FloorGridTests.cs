@@ -81,15 +81,45 @@ namespace ShooterMover.Tests.EditMode.Flow
                 new Vector2Int(0, 0),
                 new Vector2Int(1, 0),
             });
+            Vector2 requested = new Vector2(20f, 20f);
 
             Vector2 velocity = floor.LimitVelocity(
-                new Vector2(0f, 0.1f),
-                new Vector2(20f, 20f),
+                new Vector2(0f, -0.1f),
+                requested,
                 0.02f,
                 0.4f);
 
-            Assert.That(velocity.x, Is.GreaterThan(0f));
+            Assert.That(velocity.x, Is.EqualTo(requested.x).Within(0.001f));
             Assert.That(velocity.y, Is.EqualTo(0f).Within(0.001f));
+        }
+
+        [Test]
+        public void ReturnedVelocityCannotCutAcrossMissingCorner()
+        {
+            var floor = new FloorGrid(new[]
+            {
+                new Vector2Int(-1, 0),
+                new Vector2Int(-1, -1),
+                new Vector2Int(0, -1),
+            });
+            Vector2 start = new Vector2(-1f, 0f);
+
+            Vector2 velocity = floor.LimitVelocity(
+                start,
+                new Vector2(10f, -45f),
+                0.02f,
+                0.4f);
+            Vector2 displacement = velocity * 0.02f;
+
+            for (int step = 1; step <= 20; step++)
+            {
+                Vector2 position = start + displacement * (step / 20f);
+                Assert.That(
+                    floor.FitsCircle(position, 0.4f),
+                    Is.True,
+                    "Returned Rigidbody2D velocity crossed unsupported floor at step "
+                        + step);
+            }
         }
 
         [Test]
