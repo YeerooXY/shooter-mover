@@ -1,4 +1,5 @@
 using System;
+using ShooterMover.Application.Missions.Rooms;
 using ShooterMover.Contracts.Missions.Rooms;
 using ShooterMover.Domain.Common;
 using ShooterMover.UnityAdapters.Missions.Rooms;
