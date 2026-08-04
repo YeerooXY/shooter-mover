@@ -11,7 +11,7 @@
   "hp": 16,
   "healthPower": 0.7,
   "movement": {
-    "kind": "strafe",
+    "kind": "direct",
     "speed": 3.5
   },
   "detectionRange": 16,
