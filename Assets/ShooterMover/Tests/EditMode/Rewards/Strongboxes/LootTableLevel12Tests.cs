@@ -3,14 +3,14 @@ using ShooterMover.Application.Rewards.Strongboxes;
 
 namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
 {
-    public sealed class StrongboxHybridLootLevel12RegressionTests
+    public sealed class LootTableLevel12Tests
     {
         [Test]
-        public void TierElevenCatalogAcceptsItsAuthoredLevelTwelveOutcome()
+        public void TierElevenAcceptsItsAuthoredLevelTwelveOutcome()
         {
             Assert.DoesNotThrow(delegate
             {
-                StrongboxHybridLootCatalog.GetByTierNumber(11);
+                LootTable.GetTier(11);
             });
         }
     }
