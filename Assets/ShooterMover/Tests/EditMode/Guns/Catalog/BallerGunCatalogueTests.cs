@@ -25,7 +25,7 @@ namespace ShooterMover.Tests.EditMode.Guns.Catalog
                 Assert.That(mark.Mark, Is.EqualTo(index + 1));
                 Assert.That(mark.DropAnchorLevel, Is.EqualTo(anchors[index]));
                 Assert.That(mark.CraftUnlockLevel, Is.EqualTo(anchors[index]));
-                Assert.That(mark.IsCombatTuningProvisional, Is.True);
+                Assert.That(mark.IsCombatTuningProvisional, Is.False);
 
                 Assert.That(gun.DisplayName, Is.EqualTo("Baller MK" + (index + 1)));
                 Assert.That(gun.FireSettings.Mode, Is.EqualTo(GunFireMode.Automatic));
@@ -60,9 +60,10 @@ namespace ShooterMover.Tests.EditMode.Guns.Catalog
 
         private static GunFamily FindFamily(string familyId)
         {
-            for (int index = 0; index < GunCatalogue.Current.Families.Count; index++)
+            GunCatalogueView catalogue = AuthoredGunCatalogue.Current;
+            for (int index = 0; index < catalogue.Families.Count; index++)
             {
-                GunFamily family = GunCatalogue.Current.Families[index];
+                GunFamily family = catalogue.Families[index];
                 if (family.FamilyId == familyId)
                 {
                     return family;
