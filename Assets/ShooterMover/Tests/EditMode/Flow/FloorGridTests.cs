@@ -83,7 +83,7 @@ namespace ShooterMover.Tests.EditMode.Flow
             });
 
             Vector2 velocity = floor.LimitVelocity(
-                Vector2.zero,
+                new Vector2(0f, 0.1f),
                 new Vector2(20f, 20f),
                 0.02f,
                 0.4f);
