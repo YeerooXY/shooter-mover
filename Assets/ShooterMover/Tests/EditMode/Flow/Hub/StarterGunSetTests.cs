@@ -38,12 +38,12 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                         && item.GunDefinitionId.Value
                             == StarterLoadout.DefaultGunId)),
                 Is.True);
-            Assert.That(actual, Has.None.EqualTo("rattler.mk1"));
-            Assert.That(actual, Has.None.EqualTo("sweeper.mk1"));
-            Assert.That(actual, Has.None.EqualTo("voltspike.mk1"));
-            Assert.That(actual, Has.None.EqualTo("prismata.mk1"));
-            Assert.That(actual, Has.None.EqualTo("crownfall.mk1"));
-            Assert.That(actual, Has.None.EqualTo("nullstar.mk1"));
+            Assert.That(actual, Does.Not.Contain("rattler.mk1"));
+            Assert.That(actual, Does.Not.Contain("sweeper.mk1"));
+            Assert.That(actual, Does.Not.Contain("voltspike.mk1"));
+            Assert.That(actual, Does.Not.Contain("prismata.mk1"));
+            Assert.That(actual, Does.Not.Contain("crownfall.mk1"));
+            Assert.That(actual, Does.Not.Contain("nullstar.mk1"));
         }
     }
 }
