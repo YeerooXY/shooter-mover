@@ -142,7 +142,7 @@ namespace ShooterMover.Tests.EditMode.Flow
             });
 
             Vector2 position;
-            bool found = floor.TryFindNearestPosition(
+            bool found = floor.TryFindNearestCellCenter(
                 Vector2.zero,
                 0.4f,
                 out position);
