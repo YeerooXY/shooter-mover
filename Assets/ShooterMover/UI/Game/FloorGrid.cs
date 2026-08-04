@@ -78,46 +78,38 @@ namespace ShooterMover.UI.Game
             }
 
             Vector2 displacement = velocity * fixedDeltaTime;
-            int steps = Mathf.Max(
-                1,
-                Mathf.CeilToInt(displacement.magnitude / SweepStep));
-            if (steps > MaximumSweepSteps)
+            int requestedSteps = RequiredSweepSteps(displacement);
+            if (requestedSteps > MaximumSweepSteps)
             {
                 return Vector2.zero;
             }
 
-            Vector2 step = displacement / steps;
-            Vector2 accepted = center;
-            for (int index = 0; index < steps; index++)
+            // Rigidbody2D receives one velocity for the entire physics step, so every
+            // candidate below is swept as the same straight path physics will follow.
+            // A simulated two-part route must never be collapsed into a corner-cutting
+            // diagonal velocity.
+            Vector2 accepted = SweepStraight(center, displacement, radius);
+            Vector2 horizontal = SweepStraight(
+                center,
+                new Vector2(displacement.x, 0f),
+                radius);
+            Vector2 vertical = SweepStraight(
+                center,
+                new Vector2(0f, displacement.y),
+                radius);
+
+            if (Mathf.Abs(displacement.x) >= Mathf.Abs(displacement.y))
             {
-                Vector2 full = accepted + step;
-                if (FitsCircle(full, radius))
-                {
-                    accepted = full;
-                    continue;
-                }
-
-                Vector2 horizontal = accepted + new Vector2(step.x, 0f);
-                Vector2 vertical = accepted + new Vector2(0f, step.y);
-                bool canMoveHorizontally = Mathf.Abs(step.x) > GeometryTolerance
-                    && FitsCircle(horizontal, radius);
-                bool canMoveVertically = Mathf.Abs(step.y) > GeometryTolerance
-                    && FitsCircle(vertical, radius);
-                if (!canMoveHorizontally && !canMoveVertically) break;
-
-                if (canMoveHorizontally && canMoveVertically)
-                {
-                    accepted = Mathf.Abs(step.x) >= Mathf.Abs(step.y)
-                        ? horizontal
-                        : vertical;
-                }
-                else
-                {
-                    accepted = canMoveHorizontally ? horizontal : vertical;
-                }
+                accepted = Longer(accepted, horizontal);
+                accepted = Longer(accepted, vertical);
+            }
+            else
+            {
+                accepted = Longer(accepted, vertical);
+                accepted = Longer(accepted, horizontal);
             }
 
-            return (accepted - center) / fixedDeltaTime;
+            return accepted / fixedDeltaTime;
         }
 
         public bool TryFindNearestPosition(
@@ -156,6 +148,28 @@ namespace ShooterMover.UI.Game
             return found;
         }
 
+        private Vector2 SweepStraight(
+            Vector2 center,
+            Vector2 displacement,
+            float radius)
+        {
+            if (displacement.sqrMagnitude < 0.000001f)
+            {
+                return Vector2.zero;
+            }
+
+            int steps = RequiredSweepSteps(displacement);
+            Vector2 step = displacement / steps;
+            Vector2 accepted = Vector2.zero;
+            for (int index = 0; index < steps; index++)
+            {
+                Vector2 candidate = center + accepted + step;
+                if (!FitsCircle(candidate, radius)) break;
+                accepted += step;
+            }
+            return accepted;
+        }
+
         private bool ContainsPoint(Vector2 point)
         {
             int minX = Mathf.FloorToInt(point.x - TileHalfSize);
@@ -175,6 +189,20 @@ namespace ShooterMover.UI.Game
                 }
             }
             return false;
+        }
+
+        private static int RequiredSweepSteps(Vector2 displacement)
+        {
+            return Mathf.Max(
+                1,
+                Mathf.CeilToInt(displacement.magnitude / SweepStep));
+        }
+
+        private static Vector2 Longer(Vector2 current, Vector2 candidate)
+        {
+            return candidate.sqrMagnitude > current.sqrMagnitude + GeometryTolerance
+                ? candidate
+                : current;
         }
 
         private static bool CircleOverlapsCell(
