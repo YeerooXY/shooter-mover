@@ -358,13 +358,13 @@ namespace ShooterMover.Application.Flow.Game
                 OuterLeftMountStableId,
                 GunLoadoutSlotIds.GunOne,
                 "Outer Left",
-                -0.9d);
+                -0.28d);
         private static readonly GunSlot InnerLeft =
             new GunSlot(
                 InnerLeftMountStableId,
                 GunLoadoutSlotIds.GunTwo,
                 "Inner Left",
-                -0.3d);
+                -0.09d);
         private static readonly GunSlot Center =
             new GunSlot(
                 CenterMountStableId,
@@ -384,13 +384,13 @@ namespace ShooterMover.Application.Flow.Game
                 InnerRightMountStableId,
                 GunLoadoutSlotIds.GunThree,
                 "Inner Right",
-                0.3d);
+                0.09d);
         private static readonly GunSlot OuterRight =
             new GunSlot(
                 OuterRightMountStableId,
                 GunLoadoutSlotIds.GunFour,
                 "Outer Right",
-                0.9d);
+                0.28d);
 
         private static readonly GunSlots Aggressive =
             new GunSlots(
