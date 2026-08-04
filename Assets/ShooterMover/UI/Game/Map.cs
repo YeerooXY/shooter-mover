@@ -263,6 +263,9 @@ namespace ShooterMover.UI.Game
                 roomIndex++)
             {
                 MapLayout.Room room = layout.Rooms[roomIndex];
+                view.SetCleared(
+                    room.RoomStableId,
+                    IsRoomCleared(room.RoomStableId));
                 bool roomOpen = sourceReady && IsRoomComplete(room.RoomStableId);
                 for (int teleporterIndex = 0;
                     teleporterIndex < room.Teleporters.Count;
@@ -300,6 +303,25 @@ namespace ShooterMover.UI.Game
                 if (room.Teleporters[index].Enabled) return true;
             }
             return false;
+        }
+
+        private bool IsRoomCleared(StableId roomStableId)
+        {
+            if (roomStableId == null
+                || rooms == null
+                || rooms.Query == null)
+            {
+                return false;
+            }
+            try
+            {
+                var room = rooms.Query.GetRoomProjection(roomStableId);
+                return room.IsVisited && room.IsCleared;
+            }
+            catch (KeyNotFoundException)
+            {
+                return false;
+            }
         }
 
         private bool IsRoomComplete(StableId roomStableId)
