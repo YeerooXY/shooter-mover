@@ -122,6 +122,32 @@ namespace ShooterMover.Tests.PlayMode.CollectedRunRewards
             Assert.That(receipts.ExportSnapshot().Receipts.Count, Is.EqualTo(1));
             AssertCanonicalBox(graph, pickup);
 
+            StrongboxOpenCommand open =
+                StrongboxOpenCommand.CreateForCollectedRun(
+                    runId,
+                    pickup.GeneratedRewardChildStableId,
+                    graph.Character.CharacterInstanceStableId,
+                    MoneyWalletIds.AuthorityStableId,
+                    graph.ScrapWallet.AuthorityStableId,
+                    graph.LoadoutRuntime.Holdings.AuthorityStableId);
+            StrongboxOpeningRecordSnapshot preparedOpening = graph
+                .StrongboxAuthority.ExportSnapshot().Openings.Single(item =>
+                    item.Command.StrongboxInstanceStableId
+                        == pickup.GeneratedRewardChildStableId);
+            Assert.That(
+                preparedOpening.Stage,
+                Is.EqualTo(StrongboxOpeningStage.Prepared),
+                "The atomic transfer must resolve Strongbox loot before its final save.");
+            StrongboxGeneratedOutcome preparedOutcome =
+                preparedOpening.GeneratedOutcome;
+            Assert.That(preparedOutcome, Is.Not.Null);
+            Assert.That(
+                graph.LoadoutRuntime.Holdings.ExportSnapshot()
+                    .UniqueHoldings.Any(item => item.InstanceStableId
+                        == pickup.GeneratedRewardChildStableId),
+                Is.True,
+                "Preparing the exact loot must not consume the Strongbox.");
+
             PlayerAccountSnapshot durable = Account(graph);
             SavePartValidationResult validation = GameSaveRules.Validate(
                 durable,
@@ -214,14 +240,18 @@ namespace ShooterMover.Tests.PlayMode.CollectedRunRewards
                 restoredReceipts.ExportSnapshot().Receipts.Count,
                 Is.EqualTo(1));
 
-            StrongboxOpenCommand open = StrongboxOpenCommand.Create(
-                Id("opening." + suffix),
-                runId,
-                pickup.GeneratedRewardChildStableId,
-                restored.Character.CharacterInstanceStableId,
-                MoneyWalletIds.AuthorityStableId,
-                restored.ScrapWallet.AuthorityStableId,
-                restored.LoadoutRuntime.Holdings.AuthorityStableId);
+            StrongboxOpeningRecordSnapshot restoredPreparation = restored
+                .StrongboxAuthority.ExportSnapshot().Openings.Single(item =>
+                    item.Command.StrongboxInstanceStableId
+                        == pickup.GeneratedRewardChildStableId);
+            Assert.That(
+                restoredPreparation.Stage,
+                Is.EqualTo(StrongboxOpeningStage.Prepared));
+            Assert.That(
+                restoredPreparation.GeneratedOutcome.Fingerprint,
+                Is.EqualTo(preparedOutcome.Fingerprint),
+                "The exact generated loot must survive save and reload.");
+
             int gunsBeforeOpening = restored.LoadoutRuntime.GunInventory
                 .ExportSnapshot().Instances.Count;
             StrongboxOpeningResultLive opened =
@@ -232,6 +262,10 @@ namespace ShooterMover.Tests.PlayMode.CollectedRunRewards
                 opened.Status,
                 Is.EqualTo(StrongboxOpeningLiveStatus.Opened),
                 opened.RejectionCode);
+            Assert.That(
+                opened.GeneratedOutcome.Fingerprint,
+                Is.EqualTo(preparedOutcome.Fingerprint),
+                "Opening must grant the exact loot resolved before Results.");
             Assert.That(
                 openingReplay.Status,
                 Is.EqualTo(StrongboxOpeningLiveStatus.ExactDuplicateNoChange),

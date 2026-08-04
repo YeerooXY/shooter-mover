@@ -552,6 +552,7 @@ namespace ShooterMover.UI.Game
                 composition,
                 roomRuntime,
                 playerMarker);
+            ConfigureRunCompletion(rewards.TryFinishVictory);
         }
 
         private int CountPlayersInScene()

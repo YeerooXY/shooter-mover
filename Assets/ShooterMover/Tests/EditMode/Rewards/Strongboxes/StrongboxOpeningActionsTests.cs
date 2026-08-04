@@ -207,6 +207,65 @@ namespace ShooterMover.Tests.EditMode.Rewards.Strongboxes
         }
 
         [Test]
+        public void PreparedOpeningSurvivesSnapshotWithoutGrantingUntilOpen()
+        {
+            CapturingGenerator capture = new CapturingGenerator();
+            Fixture fixture = new Fixture(generator: capture);
+            fixture.AddAndRegisterBox();
+
+            StrongboxGeneratedOutcome prepared;
+            string rejectionCode;
+            Assert.That(
+                fixture.Service.TryPrepare(
+                    fixture.Command(),
+                    out prepared,
+                    out rejectionCode),
+                Is.True,
+                rejectionCode);
+
+            StrongboxOpeningSnapshot snapshot =
+                fixture.Service.ExportSnapshot();
+            Assert.That(snapshot.Openings, Has.Count.EqualTo(1));
+            Assert.That(
+                snapshot.Openings[0].Stage,
+                Is.EqualTo(StrongboxOpeningStage.Prepared));
+            Assert.That(capture.CallCount, Is.EqualTo(1));
+            Assert.That(fixture.Scrap.Balance, Is.Zero);
+            UniqueHoldingSnapshot owned;
+            Assert.That(fixture.Holdings.TryGetUnique(BoxId, out owned), Is.True);
+
+            StrongboxOpeningActions restored = fixture.CreateOpeningService();
+            Assert.That(restored.ImportSnapshot(snapshot).Succeeded, Is.True);
+
+            StrongboxGeneratedOutcome replayedPreparation;
+            Assert.That(
+                restored.TryPrepare(
+                    fixture.Command(),
+                    out replayedPreparation,
+                    out rejectionCode),
+                Is.True,
+                rejectionCode);
+            Assert.That(
+                replayedPreparation.Fingerprint,
+                Is.EqualTo(prepared.Fingerprint));
+            Assert.That(capture.CallCount, Is.EqualTo(1),
+                "Reloading and preparing the same box must not generate loot again.");
+
+            StrongboxOpeningResultLive opened =
+                restored.Open(fixture.Command());
+
+            Assert.That(
+                opened.Status,
+                Is.EqualTo(StrongboxOpeningLiveStatus.Opened));
+            Assert.That(
+                opened.GeneratedOutcome.Fingerprint,
+                Is.EqualTo(prepared.Fingerprint));
+            Assert.That(capture.CallCount, Is.EqualTo(1));
+            Assert.That(fixture.Scrap.Balance, Is.EqualTo(4L));
+            Assert.That(fixture.Holdings.TryGetUnique(BoxId, out owned), Is.False);
+        }
+
+        [Test]
         public void ExactDuplicateOpeningGivesNoAdditionalReward()
         {
             Fixture fixture = new Fixture();
