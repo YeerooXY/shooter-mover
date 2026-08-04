@@ -96,12 +96,7 @@ namespace ShooterMover.Tests.EditMode.Flow
         [Test]
         public void ReturnedVelocityCannotCutAcrossMissingCorner()
         {
-            var floor = new FloorGrid(new[]
-            {
-                new Vector2Int(-1, 0),
-                new Vector2Int(-1, -1),
-                new Vector2Int(0, -1),
-            });
+            var floor = InsideCornerFloor();
             Vector2 start = new Vector2(-1f, 0f);
 
             Vector2 velocity = floor.LimitVelocity(
@@ -109,17 +104,32 @@ namespace ShooterMover.Tests.EditMode.Flow
                 new Vector2(10f, -45f),
                 0.02f,
                 0.4f);
-            Vector2 displacement = velocity * 0.02f;
 
-            for (int step = 1; step <= 20; step++)
-            {
-                Vector2 position = start + displacement * (step / 20f);
-                Assert.That(
-                    floor.FitsCircle(position, 0.4f),
-                    Is.True,
-                    "Returned Rigidbody2D velocity crossed unsupported floor at step "
-                        + step);
-            }
+            AssertStraightPathIsSupported(
+                floor,
+                start,
+                velocity * 0.02f,
+                0.4f);
+        }
+
+        [Test]
+        public void FastDiagonalCannotSkipNarrowInsideCorner()
+        {
+            var floor = InsideCornerFloor();
+            Vector2 start = new Vector2(-1f, 0f);
+
+            Vector2 velocity = floor.LimitVelocity(
+                start,
+                new Vector2(20f, -55f),
+                0.02f,
+                0.3f);
+
+            Assert.That(velocity.x, Is.EqualTo(0f).Within(0.001f));
+            AssertStraightPathIsSupported(
+                floor,
+                start,
+                velocity * 0.02f,
+                0.3f);
         }
 
         [Test]
@@ -156,6 +166,33 @@ namespace ShooterMover.Tests.EditMode.Flow
                 0.4f);
 
             Assert.That(velocity, Is.EqualTo(Vector2.zero));
+        }
+
+        private static FloorGrid InsideCornerFloor()
+        {
+            return new FloorGrid(new[]
+            {
+                new Vector2Int(-1, 0),
+                new Vector2Int(-1, -1),
+                new Vector2Int(0, -1),
+            });
+        }
+
+        private static void AssertStraightPathIsSupported(
+            FloorGrid floor,
+            Vector2 start,
+            Vector2 displacement,
+            float radius)
+        {
+            for (int step = 1; step <= 100; step++)
+            {
+                Vector2 position = start + displacement * (step / 100f);
+                Assert.That(
+                    floor.FitsCircle(position, radius),
+                    Is.True,
+                    "Returned Rigidbody2D velocity crossed unsupported floor at step "
+                        + step);
+            }
         }
     }
 }
