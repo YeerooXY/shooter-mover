@@ -1,0 +1,26 @@
+{
+  "id": "shotguns",
+  "name": "Shotguns",
+  "order": 30,
+  "createdLevel": 10,
+  "augmentSlots": 3,
+  "items": [
+    {
+      "id": "rattler",
+      "order": 10,
+      "recipes": [
+        {
+          "itemId": "rattler.mk1",
+          "mark": "mk1",
+          "unlockLevel": 5,
+          "costs": [
+            {
+              "resourceId": "scrap",
+              "amount": 50
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
