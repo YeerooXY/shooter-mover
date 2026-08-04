@@ -20,9 +20,10 @@ Prefer:
 - `EnemyDefinition`, not `CompactEnemyDefinition`;
 - `EnemySpawner`, not `CompactEnemySceneFactory`;
 - `EnemyCollisionRules`, not `CompactEnemyCollisionPolicy`;
-- `StrongboxLootTable`, not `StrongboxHybridLootCatalog`;
-- `StrongboxLootRules`, not `StrongboxHybridLootPolicy`;
-- `StrongboxLootValidator`, not `StrongboxHybridLootPolicyValidation`.
+- `LootTable`, not `StrongboxHybridLootCatalog`, inside `Rewards.Strongboxes`;
+- `LootRules`, not `StrongboxHybridLootPolicy`, inside `Rewards.Strongboxes`;
+- `LootValidator`, not `StrongboxHybridLootPolicyValidation`, inside `Rewards.Strongboxes`;
+- `ItemGenerator`, not `StrongboxHybridEquipmentGenerationResolver`, when its Strongbox ownership is already supplied by the namespace or containing feature.
 
 These examples define the intended direction. They are not permission for a repository-wide textual replacement.
 
@@ -63,7 +64,7 @@ Avoid generic verbs such as `Handle`, `Process`, `Execute`, `Configure`, and `Re
 
 ## Context should remove repetition
 
-Do not repeat information already supplied by the containing type.
+Do not repeat information already supplied by the containing type, namespace, or tightly bounded feature.
 
 Prefer:
 
@@ -84,6 +85,17 @@ graph.MoneyWallet;
 graph.ScrapWallet;
 graph.LoadoutRuntime;
 ```
+
+Inside `ShooterMover.Application.Rewards.Strongboxes`, prefer:
+
+```csharp
+LootTable.GetTier(tier);
+LootRules rules;
+LootValidator.Validate(...);
+ItemGenerator generator;
+```
+
+Do not shorten a name until it becomes ambiguous. A type used from a broad mixed namespace may still need a feature prefix; a type already owned by `Rewards.Strongboxes` normally does not.
 
 ## Keep explicit version suffixes only where versions coexist
 
@@ -112,7 +124,7 @@ Every code review that touches public or feature-level names must check:
 
 1. Does the name explain the game concept without knowledge of repository history?
 2. Does it contain temporary migration or architecture vocabulary?
-3. Does the containing type already provide part of the name's context?
+3. Does the containing type or namespace already provide part of the name's context?
 4. Is a shorter name equally precise?
 5. Would a developer naturally use this term when discussing the feature?
 6. Does the name describe the actual behavior rather than the mechanism used to implement it?
@@ -125,6 +137,8 @@ Renames must be performed by bounded feature area, with all references, Unity me
 
 Do not run a repository-wide blind textual replacement. Preserve Unity script GUIDs during file moves. Where persisted or external names must remain stable, separate the game-facing code name from the stored representation explicitly.
 
+Temporary compatibility bridges are acceptable only when the caller inventory cannot be proven. Mark them obsolete, document their removal condition, and do not let them become the permanent API.
+
 ## Test terminology
 
 Tests should describe game behavior rather than implementation generation.
@@ -133,6 +147,7 @@ Prefer:
 
 - `GroundEnemiesBlockEachOther`;
 - `FlyingAndGroundEnemiesMayOverlap`;
+- `TierElevenAcceptsItsAuthoredLevelTwelveOutcome`;
 - `SelectingLockedLevelDoesNotLoadScene`.
 
 Avoid test names that encode temporary architecture, migrations, or version suffixes unless the test specifically verifies that representation.
