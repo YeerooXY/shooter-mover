@@ -13,6 +13,8 @@ namespace ShooterMover.UI.Game
             new HashSet<string>(StringComparer.Ordinal);
         private readonly Dictionary<StableId, int> boxes =
             new Dictionary<StableId, int>();
+        private readonly HashSet<StableId> clearedRooms =
+            new HashSet<StableId>();
         private readonly HashSet<StableId> openTeleporters =
             new HashSet<StableId>();
 
@@ -37,6 +39,7 @@ namespace ShooterMover.UI.Game
                 ?? throw new ArgumentNullException(nameof(configuredLayout));
             links.Clear();
             linkKeys.Clear();
+            clearedRooms.Clear();
             openTeleporters.Clear();
             roomNameStyle = null;
             playerStyle = null;
@@ -94,6 +97,22 @@ namespace ShooterMover.UI.Game
         public void ClearBoxes()
         {
             boxes.Clear();
+        }
+
+        public void SetCleared(StableId roomStableId, bool isCleared)
+        {
+            EnsureBuilt();
+            MapLayout.Room room;
+            if (roomStableId == null
+                || !layout.TryGetRoom(roomStableId, out room))
+            {
+                throw new InvalidOperationException(
+                    "map-view-room-missing:" + roomStableId);
+            }
+            if (isCleared)
+                clearedRooms.Add(roomStableId);
+            else
+                clearedRooms.Remove(roomStableId);
         }
 
         public void SetTeleporterOpen(
@@ -257,6 +276,9 @@ namespace ShooterMover.UI.Game
                     : new Color(0.08f, 0.12f, 0.17f, 1f);
                 GUI.DrawTexture(body, Texture2D.whiteTexture);
 
+                if (clearedRooms.Contains(room.RoomStableId))
+                    DrawLattice(body, current);
+
                 GUI.color = Color.white;
                 float titleHeight = Mathf.Max(14f, 18f * layout.Scale);
                 GUI.Label(
@@ -316,6 +338,28 @@ namespace ShooterMover.UI.Game
                         playerStyle);
                 }
             }
+        }
+
+        private void DrawLattice(Rect body, bool current)
+        {
+            GUI.BeginGroup(body);
+            GUI.color = current
+                ? new Color(0.4f, 0.8f, 1f, 0.24f)
+                : new Color(0.48f, 0.6f, 0.74f, 0.2f);
+            float spacing = Mathf.Max(8f, 12f * layout.Scale);
+            float width = Mathf.Max(1f, 1.2f * layout.Scale);
+            for (float x = -body.height; x < body.width; x += spacing)
+            {
+                DrawLine(
+                    new Vector2(x, 0f),
+                    new Vector2(x + body.height, body.height),
+                    width);
+                DrawLine(
+                    new Vector2(x, body.height),
+                    new Vector2(x + body.height, 0f),
+                    width);
+            }
+            GUI.EndGroup();
         }
 
         private void DrawPoint(Vector2 mapPoint, Color color, string label)
