@@ -55,6 +55,10 @@ namespace ShooterMover.UI.Game.Enemies
             bodyCollider = target.GetComponent<Collider2D>()
                 ?? throw new InvalidOperationException(
                     "enemy-collision-collider-missing");
+            CircleCollider2D floorCollider =
+                target.GetComponent<CircleCollider2D>()
+                ?? throw new InvalidOperationException(
+                    "enemy-floor-circle-collider-missing");
             flying = ReadFlying(target.Definition);
 
             // Dynamic bodies receive separation from static walls and other dynamic enemy
@@ -64,6 +68,11 @@ namespace ShooterMover.UI.Game.Enemies
             body.freezeRotation = true;
             body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
             body.interpolation = RigidbodyInterpolation2D.Interpolate;
+
+            EnemyFloorRules floorRules =
+                target.GetComponent<EnemyFloorRules>()
+                ?? target.gameObject.AddComponent<EnemyFloorRules>();
+            floorRules.Bind(body, floorCollider);
 
             ready = true;
             if (isActiveAndEnabled)
