@@ -13,23 +13,22 @@ namespace ShooterMover.UnityAdapters.Enemies
         RoomPlacedEntityDefinition placement,
         int enemyLevel);
 
-    public delegate void CompactEnemyCollisionPolicyFactoryDelegate(
-        GameObject gameObject);
+    public delegate void EnemyCollisionRulesFactory(GameObject gameObject);
 
     /// <summary>
     /// Tiny composition seam between room-owned GameObjects and the gameplay assembly that
-    /// can access the live player-damage authority. It carries no enemy catalogue or policy.
+    /// can access the live player-damage authority. It carries no enemy catalogue or rules.
     /// </summary>
     public static class CompactEnemySceneFactory
     {
         private static CompactEnemySceneFactoryDelegate factory;
-        private static CompactEnemyCollisionPolicyFactoryDelegate collisionPolicyFactory;
+        private static EnemyCollisionRulesFactory collisionRulesFactory;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Reset()
         {
             factory = null;
-            collisionPolicyFactory = null;
+            collisionRulesFactory = null;
         }
 
         public static void Register(CompactEnemySceneFactoryDelegate configuredFactory)
@@ -48,22 +47,22 @@ namespace ShooterMover.UnityAdapters.Enemies
             factory = configuredFactory;
         }
 
-        public static void RegisterCollisionPolicy(
-            CompactEnemyCollisionPolicyFactoryDelegate configuredFactory)
+        public static void SetCollisionRules(
+            EnemyCollisionRulesFactory configuredFactory)
         {
             if (configuredFactory == null)
             {
                 throw new ArgumentNullException(nameof(configuredFactory));
             }
 
-            if (collisionPolicyFactory != null
-                && collisionPolicyFactory != configuredFactory)
+            if (collisionRulesFactory != null
+                && collisionRulesFactory != configuredFactory)
             {
                 throw new InvalidOperationException(
-                    "compact-enemy-collision-policy-factory-already-registered");
+                    "enemy-collision-rules-already-set");
             }
 
-            collisionPolicyFactory = configuredFactory;
+            collisionRulesFactory = configuredFactory;
         }
 
         public static void Configure(
@@ -102,9 +101,9 @@ namespace ShooterMover.UnityAdapters.Enemies
                 placement,
                 enemyLevel);
 
-            if (collisionPolicyFactory != null)
+            if (collisionRulesFactory != null)
             {
-                collisionPolicyFactory(gameObject);
+                collisionRulesFactory(gameObject);
             }
 
             CompactEnemyRoomClamp clamp =
