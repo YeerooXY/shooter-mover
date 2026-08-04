@@ -117,6 +117,51 @@ namespace ShooterMover.Application.Rewards.Strongboxes
             }
         }
 
+        /// <summary>
+        /// Resolves and stores the exact immutable reward payload for one owned Strongbox
+        /// without granting the reward or consuming the box. Repeating the exact command
+        /// returns the already stored outcome and never runs generation again.
+        /// </summary>
+        public bool TryPrepare(
+            StrongboxOpenCommand command,
+            out StrongboxGeneratedOutcome outcome,
+            out string rejectionCode)
+        {
+            lock (sync)
+            {
+                outcome = null;
+                rejectionCode = string.Empty;
+                if (command == null)
+                {
+                    rejectionCode = "opening-command-null";
+                    return false;
+                }
+
+                OpeningRecord record;
+                StrongboxOpeningLiveStatus ignoredLiveStatus;
+                StrongboxOpeningStatus ignoredContractStatus;
+                if (!TryGetOrCreatePreparedRecord(
+                        command,
+                        out record,
+                        out ignoredLiveStatus,
+                        out ignoredContractStatus,
+                        out rejectionCode))
+                {
+                    return false;
+                }
+
+                outcome = record == null
+                    ? null
+                    : record.GeneratedOutcome;
+                if (outcome == null)
+                {
+                    rejectionCode = "opening-prepared-outcome-missing";
+                    return false;
+                }
+                return true;
+            }
+        }
+
         public StrongboxOpeningResultLive Open(StrongboxOpenCommand command)
         {
             lock (sync)
@@ -138,180 +183,200 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                         "opening-command-null");
                 }
 
-                OpeningRecord existing;
-                if (openings.TryGetValue(command.OpeningStableId, out existing))
+                OpeningRecord record;
+                StrongboxOpeningLiveStatus rejectedLiveStatus;
+                StrongboxOpeningStatus rejectedContractStatus;
+                string rejectionCode;
+                if (!TryGetOrCreatePreparedRecord(
+                        command,
+                        out record,
+                        out rejectedLiveStatus,
+                        out rejectedContractStatus,
+                        out rejectionCode))
                 {
-                    if (!string.Equals(existing.Command.Fingerprint, command.Fingerprint, StringComparison.Ordinal))
-                    {
-                        return Rejected(
-                            command,
-                            StrongboxOpeningLiveStatus.ConflictingDuplicate,
-                            StrongboxOpeningStatus.ConflictingDuplicate,
-                            before,
-                            existing,
-                            "opening-identity-conflicting-duplicate");
-                    }
-
-                    if (existing.Stage == StrongboxOpeningStage.Opened)
-                    {
-                        StrongboxOpeningResult replay = StrongboxOpeningResult.Create(
-                            existing.GeneratedOutcome.Operation.SourceOperationStableId,
-                            StrongboxOpeningStatus.ExactDuplicateNoChange,
-                            existing.GeneratedOutcome.OpeningRequest.Fingerprint,
-                            existing.GeneratedOutcome.RewardResult,
-                            existing.GeneratedOutcome.RewardTrace,
-                            before,
-                            before);
-                        return RuntimeResult(
-                            StrongboxOpeningLiveStatus.ExactDuplicateNoChange,
-                            command.OpeningStableId,
-                            before,
-                            before,
-                            command.Fingerprint,
-                            existing.GeneratedOutcome,
-                            existing.TerminalFact,
-                            replay,
-                            null,
-                            null,
-                            null);
-                    }
-
-                    if (existing.Stage == StrongboxOpeningStage.GeneratorRejected)
-                    {
-                        return Rejected(
-                            command,
-                            StrongboxOpeningLiveStatus.GeneratorRejected,
-                            StrongboxOpeningStatus.InvalidRequest,
-                            before,
-                            existing,
-                            existing.RejectionCode);
-                    }
-
-                    if (existing.Stage == StrongboxOpeningStage.PayloadRejected)
-                    {
-                        return Rejected(
-                            command,
-                            StrongboxOpeningLiveStatus.RewardRejected,
-                            StrongboxOpeningStatus.InvalidRequest,
-                            before,
-                            existing,
-                            existing.RejectionCode);
-                    }
-
-                    return Continue(existing, before);
+                    return Rejected(
+                        command,
+                        rejectedLiveStatus,
+                        rejectedContractStatus,
+                        before,
+                        record,
+                        rejectionCode);
                 }
 
-                StableId boundOpeningStableId;
-                if (openingByBox.TryGetValue(
+                if (record.Stage == StrongboxOpeningStage.Opened)
+                {
+                    StrongboxOpeningResult replay = StrongboxOpeningResult.Create(
+                        record.GeneratedOutcome.Operation.SourceOperationStableId,
+                        StrongboxOpeningStatus.ExactDuplicateNoChange,
+                        record.GeneratedOutcome.OpeningRequest.Fingerprint,
+                        record.GeneratedOutcome.RewardResult,
+                        record.GeneratedOutcome.RewardTrace,
+                        before,
+                        before);
+                    return RuntimeResult(
+                        StrongboxOpeningLiveStatus.ExactDuplicateNoChange,
+                        command.OpeningStableId,
+                        before,
+                        before,
+                        command.Fingerprint,
+                        record.GeneratedOutcome,
+                        record.TerminalFact,
+                        replay,
+                        null,
+                        null,
+                        null);
+                }
+
+                return Continue(record, before);
+            }
+        }
+
+        private bool TryGetOrCreatePreparedRecord(
+            StrongboxOpenCommand command,
+            out OpeningRecord record,
+            out StrongboxOpeningLiveStatus rejectedLiveStatus,
+            out StrongboxOpeningStatus rejectedContractStatus,
+            out string rejectionCode)
+        {
+            record = null;
+            rejectedLiveStatus = StrongboxOpeningLiveStatus.InvalidRequest;
+            rejectedContractStatus = StrongboxOpeningStatus.InvalidRequest;
+            rejectionCode = string.Empty;
+
+            OpeningRecord existing;
+            if (openings.TryGetValue(command.OpeningStableId, out existing))
+            {
+                record = existing;
+                if (!string.Equals(
+                        existing.Command.Fingerprint,
+                        command.Fingerprint,
+                        StringComparison.Ordinal))
+                {
+                    rejectedLiveStatus =
+                        StrongboxOpeningLiveStatus.ConflictingDuplicate;
+                    rejectedContractStatus =
+                        StrongboxOpeningStatus.ConflictingDuplicate;
+                    rejectionCode =
+                        "opening-identity-conflicting-duplicate";
+                    return false;
+                }
+                if (existing.Stage == StrongboxOpeningStage.GeneratorRejected)
+                {
+                    rejectedLiveStatus =
+                        StrongboxOpeningLiveStatus.GeneratorRejected;
+                    rejectionCode = existing.RejectionCode;
+                    return false;
+                }
+                if (existing.Stage == StrongboxOpeningStage.PayloadRejected)
+                {
+                    rejectedLiveStatus =
+                        StrongboxOpeningLiveStatus.RewardRejected;
+                    rejectionCode = existing.RejectionCode;
+                    return false;
+                }
+                return true;
+            }
+
+            StableId boundOpeningStableId;
+            if (openingByBox.TryGetValue(
                     command.StrongboxInstanceStableId,
                     out boundOpeningStableId))
-                {
-                    return Rejected(
-                        command,
-                        StrongboxOpeningLiveStatus.ConflictingDuplicate,
-                        StrongboxOpeningStatus.ConflictingDuplicate,
-                        before,
-                        null,
-                        "strongbox-instance-opening-already-bound-" + boundOpeningStableId);
-                }
-
-                if (command.ExpectedOpeningSequence.HasValue
-                    && command.ExpectedOpeningSequence.Value != sequence)
-                {
-                    return Rejected(
-                        command,
-                        StrongboxOpeningLiveStatus.ExpectedSequenceConflict,
-                        StrongboxOpeningStatus.ExpectedSequenceConflict,
-                        before,
-                        null,
-                        "opening-expected-sequence-conflict");
-                }
-
-                StrongboxInstanceContext context;
-                if (!contexts.TryGetValue(command.StrongboxInstanceStableId, out context))
-                {
-                    return Rejected(
-                        command,
-                        StrongboxOpeningLiveStatus.UnknownBoxInstance,
-                        StrongboxOpeningStatus.StrongboxNotOwned,
-                        before,
-                        null,
-                        "strongbox-instance-unknown");
-                }
-
-                StrongboxDefinition definition;
-                if (!catalog.TryGet(context.TierStableId, out definition))
-                {
-                    return Rejected(
-                        command,
-                        StrongboxOpeningLiveStatus.InvalidDefinition,
-                        StrongboxOpeningStatus.InvalidRequest,
-                        before,
-                        null,
-                        "strongbox-tier-unknown");
-                }
-
-                if (context.AlgorithmContentFingerprint != null
-                    && !string.Equals(context.AlgorithmContentFingerprint, definition.Fingerprint, StringComparison.Ordinal))
-                {
-                    return Rejected(
-                        command,
-                        StrongboxOpeningLiveStatus.InvalidDefinition,
-                        StrongboxOpeningStatus.InvalidRequest,
-                        before,
-                        null,
-                        "strongbox-definition-fingerprint-mismatch");
-                }
-
-                UniqueHoldingSnapshot owned;
-                if (!TryFindOwnedStrongbox(context.InstanceStableId, out owned))
-                {
-                    return Rejected(
-                        command,
-                        StrongboxOpeningLiveStatus.StrongboxNotOwned,
-                        StrongboxOpeningStatus.StrongboxNotOwned,
-                        before,
-                        null,
-                        "strongbox-not-owned");
-                }
-
-                if (owned.DefinitionStableId != context.TierStableId)
-                {
-                    return Rejected(
-                        command,
-                        StrongboxOpeningLiveStatus.InvalidDefinition,
-                        StrongboxOpeningStatus.InvalidRequest,
-                        before,
-                        null,
-                        "strongbox-owned-definition-mismatch");
-                }
-
-                OpeningRecord prepared = Prepare(command, context, definition);
-                openings.Add(command.OpeningStableId, prepared);
-                openingByBox.Add(command.StrongboxInstanceStableId, command.OpeningStableId);
-                if (prepared.Stage == StrongboxOpeningStage.GeneratorRejected)
-                {
-                    return Rejected(
-                        command,
-                        StrongboxOpeningLiveStatus.GeneratorRejected,
-                        StrongboxOpeningStatus.InvalidRequest,
-                        before,
-                        prepared,
-                        prepared.RejectionCode);
-                }
-                if (prepared.Stage == StrongboxOpeningStage.PayloadRejected)
-                {
-                    return Rejected(
-                        command,
-                        StrongboxOpeningLiveStatus.RewardRejected,
-                        StrongboxOpeningStatus.InvalidRequest,
-                        before,
-                        prepared,
-                        prepared.RejectionCode);
-                }
-
-                return Continue(prepared, before);
+            {
+                rejectedLiveStatus =
+                    StrongboxOpeningLiveStatus.ConflictingDuplicate;
+                rejectedContractStatus =
+                    StrongboxOpeningStatus.ConflictingDuplicate;
+                rejectionCode =
+                    "strongbox-instance-opening-already-bound-"
+                    + boundOpeningStableId;
+                return false;
             }
+
+            if (command.ExpectedOpeningSequence.HasValue
+                && command.ExpectedOpeningSequence.Value != sequence)
+            {
+                rejectedLiveStatus =
+                    StrongboxOpeningLiveStatus.ExpectedSequenceConflict;
+                rejectedContractStatus =
+                    StrongboxOpeningStatus.ExpectedSequenceConflict;
+                rejectionCode = "opening-expected-sequence-conflict";
+                return false;
+            }
+
+            StrongboxInstanceContext context;
+            if (!contexts.TryGetValue(
+                    command.StrongboxInstanceStableId,
+                    out context))
+            {
+                rejectedLiveStatus =
+                    StrongboxOpeningLiveStatus.UnknownBoxInstance;
+                rejectedContractStatus =
+                    StrongboxOpeningStatus.StrongboxNotOwned;
+                rejectionCode = "strongbox-instance-unknown";
+                return false;
+            }
+
+            StrongboxDefinition definition;
+            if (!catalog.TryGet(context.TierStableId, out definition))
+            {
+                rejectedLiveStatus =
+                    StrongboxOpeningLiveStatus.InvalidDefinition;
+                rejectionCode = "strongbox-tier-unknown";
+                return false;
+            }
+
+            if (context.AlgorithmContentFingerprint != null
+                && !string.Equals(
+                    context.AlgorithmContentFingerprint,
+                    definition.Fingerprint,
+                    StringComparison.Ordinal))
+            {
+                rejectedLiveStatus =
+                    StrongboxOpeningLiveStatus.InvalidDefinition;
+                rejectionCode =
+                    "strongbox-definition-fingerprint-mismatch";
+                return false;
+            }
+
+            UniqueHoldingSnapshot owned;
+            if (!TryFindOwnedStrongbox(context.InstanceStableId, out owned))
+            {
+                rejectedLiveStatus =
+                    StrongboxOpeningLiveStatus.StrongboxNotOwned;
+                rejectedContractStatus =
+                    StrongboxOpeningStatus.StrongboxNotOwned;
+                rejectionCode = "strongbox-not-owned";
+                return false;
+            }
+
+            if (owned.DefinitionStableId != context.TierStableId)
+            {
+                rejectedLiveStatus =
+                    StrongboxOpeningLiveStatus.InvalidDefinition;
+                rejectionCode = "strongbox-owned-definition-mismatch";
+                return false;
+            }
+
+            record = Prepare(command, context, definition);
+            openings.Add(command.OpeningStableId, record);
+            openingByBox.Add(
+                command.StrongboxInstanceStableId,
+                command.OpeningStableId);
+            if (record.Stage == StrongboxOpeningStage.GeneratorRejected)
+            {
+                rejectedLiveStatus =
+                    StrongboxOpeningLiveStatus.GeneratorRejected;
+                rejectionCode = record.RejectionCode;
+                return false;
+            }
+            if (record.Stage == StrongboxOpeningStage.PayloadRejected)
+            {
+                rejectedLiveStatus =
+                    StrongboxOpeningLiveStatus.RewardRejected;
+                rejectionCode = record.RejectionCode;
+                return false;
+            }
+            return true;
         }
 
         public StrongboxOpeningSnapshot ExportSnapshot()

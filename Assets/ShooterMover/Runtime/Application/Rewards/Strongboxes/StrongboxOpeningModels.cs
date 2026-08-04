@@ -248,6 +248,36 @@ namespace ShooterMover.Application.Rewards.Strongboxes
                 expectedOpeningSequence);
         }
 
+        public static StrongboxOpenCommand CreateForCollectedRun(
+            StableId runStableId,
+            StableId strongboxInstanceStableId,
+            StableId claimantStableId,
+            StableId moneyAuthorityStableId,
+            StableId scrapAuthorityStableId,
+            StableId holdingsAuthorityStableId)
+        {
+            if (runStableId == null)
+                throw new ArgumentNullException(nameof(runStableId));
+            if (strongboxInstanceStableId == null)
+            {
+                throw new ArgumentNullException(
+                    nameof(strongboxInstanceStableId));
+            }
+
+            return Create(
+                Strongbox.DeriveId(
+                    "opening",
+                    "collected-run",
+                    runStableId.ToString(),
+                    strongboxInstanceStableId.ToString()),
+                runStableId,
+                strongboxInstanceStableId,
+                claimantStableId,
+                moneyAuthorityStableId,
+                scrapAuthorityStableId,
+                holdingsAuthorityStableId);
+        }
+
         public string ToCanonicalString() { return canonicalText; }
         public bool Equals(StrongboxOpenCommand other)
         {

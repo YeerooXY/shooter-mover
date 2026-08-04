@@ -254,6 +254,38 @@ namespace ShooterMover.Application.Rewards.CollectedRunTransfers
                 }
             }
 
+            for (int index = 0;
+                index < plan.StrongboxContexts.Count;
+                index++)
+            {
+                StrongboxInstanceContext context =
+                    plan.StrongboxContexts[index];
+                StrongboxGeneratedOutcome preparedOutcome;
+                string preparationRejection;
+                if (!graph.StrongboxAuthority.TryPrepare(
+                        StrongboxOpenCommand.CreateForCollectedRun(
+                            plan.RunStableId,
+                            context.InstanceStableId,
+                            plan.SelectedCharacterStableId,
+                            MoneyWalletIds.AuthorityStableId,
+                            graph.ScrapWallet.AuthorityStableId,
+                            graph.LoadoutRuntime.Holdings
+                                .AuthorityStableId),
+                        out preparedOutcome,
+                        out preparationRejection)
+                    || preparedOutcome == null)
+                {
+                    return RejectedApply(
+                        "collected-run-transfer-box-preparation-rejected:"
+                        + context.InstanceStableId
+                        + ":"
+                        + (string.IsNullOrWhiteSpace(
+                                preparationRejection)
+                            ? "outcome-missing"
+                            : preparationRejection));
+                }
+            }
+
             var rewardIds = new List<StableId>(plan.Rewards.Count);
             for (int index = 0; index < plan.Rewards.Count; index++)
             {

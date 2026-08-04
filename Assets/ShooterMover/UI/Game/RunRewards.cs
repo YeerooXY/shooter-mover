@@ -3,13 +3,18 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using ShooterMover.Application.Economy.Money;
 using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Missions.Rooms;
 using ShooterMover.Application.Persistence.Composition;
+using ShooterMover.Application.Rewards.Application;
+using ShooterMover.Application.Rewards.CollectedRunTransfers;
 using ShooterMover.Application.Rewards.Drops;
 using ShooterMover.Application.Rewards.Generation;
+using ShooterMover.Application.Rewards.Strongboxes;
 using ShooterMover.Application.Runs.Session;
 using ShooterMover.Content.Definitions.Levels.Selection;
+using ShooterMover.Contracts.Missions.Results;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Enemies;
@@ -31,7 +36,8 @@ namespace ShooterMover.UI.Game
     /// <summary>
     /// Definition-driven compact-enemy reward composition. Enemy JSON selects an existing
     /// production drop-source profile; accepted rewards become run-local physical pickups.
-    /// Wallets, scrap, holdings, and Strongboxes are never mutated directly on enemy death.
+    /// Victory transfers collected rewards to the selected character, resolves exact
+    /// Strongbox loot, saves it, and only then opens the Results flow.
     /// </summary>
     [DefaultExecutionOrder(-1000)]
     [DisallowMultipleComponent]
@@ -50,6 +56,9 @@ namespace ShooterMover.UI.Game
 
         private RunSessionState runSessions;
         private RunSessionAggregate run;
+        private CharacterLiveGraph characterGraph;
+        private CharacterSetupFlow characterComposition;
+        private LevelPorts levelPorts;
         private ProgressionContext frozenProgression;
         private LevelRooms rooms;
         private LootBridge pickupBridge;
@@ -58,6 +67,16 @@ namespace ShooterMover.UI.Game
         private RunLootView pickupView;
         private StableId playerParticipantStableId;
         private StableId playerDamageSourceStableId;
+        private EndRunSessionCommand victoryEndCommand;
+        private RewardClaimPreparedTransfer victoryAwaitingTransfer;
+        private RewardClaimPreparedTransfer victoryPreparedTransfer;
+        private RewardClaimAtomicPlan victoryPlan;
+        private RunSessionEndResult victoryEndResult;
+        private RewardClaimTransferResult victoryTransferResult;
+        private MissionResultPayload victoryMissionResult;
+        private ResultsContext victoryResultsContext;
+        private bool victoryAwaitingSaved;
+        private bool victoryBlocked;
         private bool configured;
         private string diagnostic = "compact-enemy-rewards-not-configured";
 
@@ -90,6 +109,9 @@ namespace ShooterMover.UI.Game
             if (composition == null) throw new ArgumentNullException(nameof(composition));
             rooms = configuredRooms ?? throw new ArgumentNullException(nameof(configuredRooms));
             if (player == null) throw new ArgumentNullException(nameof(player));
+            characterGraph = graph;
+            characterComposition = composition;
+            RewardClaimLiveRegistry.BindRuntime(graph, composition);
 
             ProgressionContext currentProgression =
                 graph.ExperienceAuthority.CurrentContext;
@@ -108,12 +130,12 @@ namespace ShooterMover.UI.Game
             StableId runId = StableId.Create("run", "playable-level-" + token);
             long seed = BitConverter.ToInt64(Guid.NewGuid().ToByteArray(), 0)
                 & long.MaxValue;
-            var livePorts = new LevelPorts(rooms, graph);
+            levelPorts = new LevelPorts(rooms, graph);
             runSessions = new RunSessionState(
                 new CharacterRunSessionStartSource(
                     composition,
                     new LevelStats(level, frozenProgression),
-                    livePorts));
+                    levelPorts));
             RunSessionStartResult start = runSessions.Start(
                 new StartRunSessionCommand(
                     StableId.Create("operation", "start-playable-run-" + token),
@@ -141,7 +163,7 @@ namespace ShooterMover.UI.Game
                     "compact-enemy-reward-run-start-rejected:"
                     + (start == null ? "result-null" : start.RejectionCode));
             }
-            livePorts.BindRun(run);
+            levelPorts.BindRun(run);
 
             RankedSkillAllocationSnapshot allocation;
             if (!graph.SkillAuthority.TryGet(graph.SkillProfileId, out allocation)
@@ -174,6 +196,334 @@ namespace ShooterMover.UI.Game
             configured = true;
             diagnostic = string.Empty;
             SynchronizeCurrentRoom();
+        }
+
+        /// <summary>
+        /// Completes one victorious run. Collected rewards are transferred exactly once,
+        /// every collected Strongbox stores its exact generated loot, and the character is
+        /// saved before Results becomes visible.
+        /// </summary>
+        public bool TryFinishVictory()
+        {
+            if (victoryBlocked)
+            {
+                return false;
+            }
+            if (!configured
+                || run == null
+                || characterGraph == null
+                || characterGraph.IsDisposed
+                || characterComposition == null
+                || levelPorts == null)
+            {
+                return RejectVictory(
+                    "playable-run-victory-context-unavailable");
+            }
+
+            try
+            {
+                if (!TryTransferVictoryRewards())
+                {
+                    return false;
+                }
+                if (!VictoryStrongboxesArePrepared())
+                {
+                    return false;
+                }
+
+                if (victoryResultsContext == null)
+                {
+                    victoryResultsContext = new ResultsContext(
+                        victoryMissionResult,
+                        characterGraph.StrongboxAuthority,
+                        CreateStrongboxOpenCommand,
+                        characterGraph.LoadoutRuntime.EquipmentCatalog,
+                        characterGraph.LoadoutRuntime.GunCatalog,
+                        RefreshVictoryMissionResult);
+                }
+                if (!GameFlow.PresentResults(victoryResultsContext))
+                {
+                    return RejectVictory(
+                        "playable-run-results-transition-rejected");
+                }
+
+                diagnostic = string.Empty;
+                return true;
+            }
+            catch (Exception exception)
+            {
+                if (IsFatal(exception)) throw;
+                return RejectVictory(
+                    "playable-run-victory-threw-"
+                    + exception.GetType().Name.ToLowerInvariant());
+            }
+        }
+
+        private bool TryTransferVictoryRewards()
+        {
+            if (victoryTransferResult != null
+                && victoryTransferResult.Succeeded)
+            {
+                return true;
+            }
+
+            RewardApplicationActions rewardApplication;
+            RewardClaimPreparedTransferStore preparedTransfers;
+            RewardClaimTransferReceiptState receipts;
+            if (!RewardClaimLiveRegistry.TryResolve(
+                    characterGraph.Character.CharacterInstanceStableId,
+                    out rewardApplication,
+                    out preparedTransfers,
+                    out receipts))
+            {
+                return RejectVictory(
+                    "playable-run-reward-transfer-unavailable");
+            }
+
+            if (victoryEndCommand == null)
+            {
+                victoryEndCommand = new EndRunSessionCommand(
+                    StableId.Create(
+                        "operation",
+                        "finish-playable-run-"
+                        + Hash(
+                            "finish-playable-run-v1|"
+                            + run.RunStableId
+                            + "|"
+                            + run.LifecycleGeneration)
+                            .Substring(0, 32)),
+                    run.RunStableId,
+                    run.LifecycleGeneration,
+                    MissionRunCompletionState.Completed,
+                    run.AuthoritativeTick);
+            }
+
+            var persistence = new RewardClaimPersistence(
+                characterComposition,
+                preparedTransfers,
+                receipts,
+                characterGraph.Character.CharacterInstanceStableId);
+
+            if (victoryAwaitingTransfer == null)
+            {
+                string preparationDiagnostic;
+                if (!RewardClaimTransferPreparationFactory
+                    .TryCreateAwaitingAcceptedEnd(
+                        victoryEndCommand,
+                        run.ExportRewardClaims(),
+                        characterGraph,
+                        rewardApplication,
+                        receipts,
+                        preparedTransfers,
+                        new RewardClaimGenerationContext(
+                            checked((ulong)run.StartCommand.DeterministicSeed),
+                            GenerationAlgorithmVersion,
+                            frozenProgression,
+                            run.StartCommand
+                                .EventModifierContextFingerprint),
+                        new RejectingCollectedRunEquipmentPayloadSource(),
+                        out victoryAwaitingTransfer,
+                        out preparationDiagnostic))
+                {
+                    return RejectVictory(
+                        "playable-run-reward-preparation-rejected:"
+                        + preparationDiagnostic);
+                }
+            }
+
+            if (!victoryAwaitingSaved)
+            {
+                RewardClaimTransferPersistenceResult custody =
+                    persistence.PersistPreparedCustody(
+                        victoryAwaitingTransfer);
+                if (custody == null || !custody.Succeeded)
+                {
+                    if (custody != null
+                        && custody.DurableStateUncertain)
+                    {
+                        victoryBlocked = true;
+                    }
+                    RewardClaimResultsBridge.PublishPreparationFailure(
+                        victoryAwaitingTransfer,
+                        custody == null
+                            ? "victory-custody-save-result-null"
+                            : custody.Diagnostic);
+                    return RejectVictory(
+                        "playable-run-reward-custody-save-rejected:"
+                        + (custody == null
+                            ? "result-null"
+                            : custody.Diagnostic));
+                }
+                victoryAwaitingSaved = true;
+            }
+
+            if (victoryEndResult == null)
+            {
+                victoryEndResult = run.End(victoryEndCommand);
+            }
+            if (victoryEndResult == null
+                || !victoryEndResult.Succeeded
+                || victoryEndResult.Receipt == null
+                || victoryEndResult.Receipt.MissionResult == null)
+            {
+                return RejectVictory(
+                    "playable-run-end-rejected:"
+                    + (victoryEndResult == null
+                        ? "result-null"
+                        : victoryEndResult.RejectionCode));
+            }
+
+            if (victoryPreparedTransfer == null || victoryPlan == null)
+            {
+                string planDiagnostic;
+                if (!RewardClaimTransferPreparationFactory
+                    .TryAcceptEndAndBuildPlan(
+                        victoryEndResult,
+                        victoryAwaitingTransfer,
+                        characterGraph,
+                        rewardApplication,
+                        out victoryPreparedTransfer,
+                        out victoryPlan,
+                        out planDiagnostic))
+                {
+                    RewardClaimResultsBridge.PublishPreparationFailure(
+                        victoryAwaitingTransfer,
+                        planDiagnostic);
+                    return RejectVictory(
+                        "playable-run-reward-plan-rejected:"
+                        + planDiagnostic);
+                }
+            }
+
+            var authority = new RewardClaimAtomicState(
+                characterGraph,
+                rewardApplication,
+                preparedTransfers,
+                receipts);
+            victoryTransferResult = new RewardClaimTransferActions(
+                victoryPlan,
+                authority,
+                persistence).Apply();
+            if (victoryTransferResult == null)
+            {
+                return RejectVictory(
+                    "playable-run-reward-transfer-rejected:result-null");
+            }
+            RewardClaimResultsBridge.Publish(
+                victoryPreparedTransfer,
+                victoryTransferResult);
+            if (!victoryTransferResult.Succeeded)
+            {
+                if (victoryTransferResult != null
+                    && (victoryTransferResult.Status
+                            == RewardClaimTransferStatus
+                                .FatalCompensationFailure
+                        || victoryTransferResult.Persistence
+                            .DurableStateUncertain))
+                {
+                    victoryBlocked = true;
+                }
+                return RejectVictory(
+                    "playable-run-reward-transfer-rejected:"
+                    + victoryTransferResult.Diagnostic);
+            }
+
+            victoryMissionResult =
+                victoryEndResult.Receipt.MissionResult;
+            return true;
+        }
+
+        private bool VictoryStrongboxesArePrepared()
+        {
+            if (victoryMissionResult == null)
+            {
+                return RejectVictory(
+                    "playable-run-victory-result-missing");
+            }
+
+            StrongboxOpeningSnapshot snapshot = characterGraph
+                .StrongboxAuthority.ExportSnapshot();
+            for (int boxIndex = 0;
+                 boxIndex < victoryMissionResult
+                     .UnopenedStrongboxes.Count;
+                 boxIndex++)
+            {
+                MissionRunStrongboxResult strongbox =
+                    victoryMissionResult
+                        .UnopenedStrongboxes[boxIndex];
+                StrongboxOpenCommand expected =
+                    CreateStrongboxOpenCommand(strongbox);
+                StrongboxOpeningRecordSnapshot found = null;
+                for (int openingIndex = 0;
+                     openingIndex < snapshot.Openings.Count;
+                     openingIndex++)
+                {
+                    StrongboxOpeningRecordSnapshot candidate =
+                        snapshot.Openings[openingIndex];
+                    if (candidate.Command.StrongboxInstanceStableId
+                        != strongbox.InstanceStableId)
+                    {
+                        continue;
+                    }
+                    if (found != null)
+                    {
+                        return RejectVictory(
+                            "playable-run-strongbox-preparation-duplicated:"
+                            + strongbox.InstanceStableId);
+                    }
+                    found = candidate;
+                }
+
+                if (found == null
+                    || found.Stage != StrongboxOpeningStage.Prepared
+                    || found.GeneratedOutcome == null
+                    || !found.Command.Equals(expected))
+                {
+                    return RejectVictory(
+                        "playable-run-strongbox-preparation-missing-or-mismatched:"
+                        + strongbox.InstanceStableId);
+                }
+            }
+            return true;
+        }
+
+        private StrongboxOpenCommand CreateStrongboxOpenCommand(
+            MissionRunStrongboxResult strongbox)
+        {
+            if (strongbox == null)
+            {
+                throw new ArgumentNullException(nameof(strongbox));
+            }
+            return StrongboxOpenCommand.CreateForCollectedRun(
+                run.RunStableId,
+                strongbox.InstanceStableId,
+                characterGraph.Character.CharacterInstanceStableId,
+                MoneyWalletIds.AuthorityStableId,
+                characterGraph.ScrapWallet.AuthorityStableId,
+                characterGraph.LoadoutRuntime.Holdings.AuthorityStableId);
+        }
+
+        private MissionResultPayload RefreshVictoryMissionResult()
+        {
+            victoryMissionResult = levelPorts.RefreshMissionResult(
+                victoryMissionResult);
+            return victoryMissionResult;
+        }
+
+        private bool RejectVictory(string code)
+        {
+            diagnostic = string.IsNullOrWhiteSpace(code)
+                ? "playable-run-victory-rejected"
+                : code;
+            Debug.LogError(diagnostic, this);
+            return false;
+        }
+
+        private static bool IsFatal(Exception exception)
+        {
+            return exception is OutOfMemoryException
+                || exception is StackOverflowException
+                || exception is AccessViolationException;
         }
 
         internal static void ReportCompactEnemyDefeat(
