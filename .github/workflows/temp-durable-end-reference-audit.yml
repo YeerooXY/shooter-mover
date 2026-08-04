@@ -1,0 +1,63 @@
+name: Temporary durable-end reference audit
+
+on:
+  push:
+    branches:
+      - cleanup/remove-unused-durable-run-end
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Reject remaining durable-end references
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          audit_file='.github/workflows/temp-durable-end-reference-audit.yml'
+          patterns=(
+            'EndWithDurableAcceptance'
+            'RunSessionDurableAcceptanceStatus'
+            'RunSessionDurableAcceptanceResult'
+            'RunSessionDurableEndState'
+            'PendingDurableEndCandidate'
+            'DurableEndDiagnostic'
+            'pendingDurableEndCandidate'
+            'pendingDurableEndOperationStableId'
+            'pendingDurableEndCommandFingerprint'
+            'durableEndState'
+            'durableEndDiagnostic'
+            'RunSessionDurableEndTests'
+            'run-end-durable-acceptance'
+            'run-end-terminal-preparation-failure'
+            'run-end-durable-state-uncertain'
+            'run-end-pending-durable-operation-conflict'
+            '041bd07be4dc4619a1f66f16bc12a76e'
+            '324931b3e3ad4e46a67b7d891295b877'
+          )
+
+          found=0
+          for pattern in "${patterns[@]}"; do
+            matches="$(git grep -n -F -- "$pattern" -- . ":!$audit_file" || true)"
+            if [[ -n "$matches" ]]; then
+              printf 'Remaining reference for %s:\n%s\n' "$pattern" "$matches"
+              found=1
+            fi
+          done
+
+          if git ls-files | grep -E '(^|/)RunSessionDurableEnd(V1)?(Tests)?\.cs(\.meta)?$'; then
+            echo 'A durable-end source or test file still exists.'
+            found=1
+          fi
+
+          if [[ "$found" -ne 0 ]]; then
+            exit 1
+          fi
+
+          echo 'No remaining runtime, test, documentation, workflow, serialized GUID, or filename references found.'
