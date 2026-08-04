@@ -14,8 +14,9 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
     [DisallowMultipleComponent]
     public sealed class RunLoot : MonoBehaviour
     {
-        private CircleCollider2D collectionTrigger;
+        private Collider2D collectionTrigger;
         private SpriteRenderer spriteRenderer;
+        private TextMesh labelText;
         private RunLootSnapshot pickup;
         private RunLootSession authorityHost;
         private RunLootView presenter;
@@ -31,6 +32,8 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
         {
             get { return pickup == null ? null : pickup.PickupStableId; }
         }
+        public Collider2D CollectionTrigger { get { return collectionTrigger; } }
+        public TextMesh LabelText { get { return labelText; } }
         public bool IsRetired { get { return retired; } }
         public bool IsRetirementFeedbackPending
         {
@@ -74,10 +77,11 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
             this.pickup = pickup;
             this.authorityHost = authorityHost;
             this.presenter = presenter;
-            EnsureComponents(presentation.TriggerRadius);
+            transform.localScale = presentation.LocalScale;
+            EnsureComponents(presentation);
             if (presentation.Sprite != null)
                 spriteRenderer.sprite = presentation.Sprite;
-            transform.localScale = presentation.LocalScale;
+            EnsureLabel(presentation.Label);
             transform.position = new Vector3(
                 (float)pickup.WorldSpawnContext.PositionX,
                 (float)pickup.WorldSpawnContext.PositionY,
@@ -205,17 +209,86 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
             TryCollect(other.GetComponentInParent<RunLootCollector>());
         }
 
-        private void EnsureComponents(float triggerRadius)
+        private void EnsureComponents(RunLootPresentationEntry presentation)
         {
-            collectionTrigger = GetComponent<CircleCollider2D>();
-            if (collectionTrigger == null)
-                collectionTrigger = gameObject.AddComponent<CircleCollider2D>();
-            collectionTrigger.isTrigger = true;
-            collectionTrigger.radius = triggerRadius;
+            CircleCollider2D circle = GetComponent<CircleCollider2D>();
+            BoxCollider2D rectangle = GetComponent<BoxCollider2D>();
+            if (presentation.TriggerShape == RunLootTriggerShape.Rectangle)
+            {
+                if (rectangle == null)
+                    rectangle = gameObject.AddComponent<BoxCollider2D>();
+                float scaleX = Mathf.Max(0.01f, Mathf.Abs(transform.localScale.x));
+                float scaleY = Mathf.Max(0.01f, Mathf.Abs(transform.localScale.y));
+                rectangle.isTrigger = true;
+                rectangle.size = new Vector2(
+                    presentation.TriggerSize.x / scaleX,
+                    presentation.TriggerSize.y / scaleY);
+                rectangle.enabled = true;
+                if (circle != null) circle.enabled = false;
+                collectionTrigger = rectangle;
+            }
+            else
+            {
+                if (circle == null)
+                    circle = gameObject.AddComponent<CircleCollider2D>();
+                circle.isTrigger = true;
+                circle.radius = presentation.TriggerRadius;
+                circle.enabled = true;
+                if (rectangle != null) rectangle.enabled = false;
+                collectionTrigger = circle;
+            }
 
             spriteRenderer = GetComponent<SpriteRenderer>();
             if (spriteRenderer == null)
                 spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
+        }
+
+        private void EnsureLabel(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                if (labelText != null) labelText.gameObject.SetActive(false);
+                return;
+            }
+
+            if (labelText == null)
+            {
+                Transform existing = transform.Find("Pickup Label");
+                GameObject labelObject = existing == null
+                    ? new GameObject("Pickup Label")
+                    : existing.gameObject;
+                labelObject.transform.SetParent(transform, false);
+                labelText = labelObject.GetComponent<TextMesh>();
+                if (labelText == null)
+                    labelText = labelObject.AddComponent<TextMesh>();
+            }
+
+            float scaleX = Mathf.Max(0.01f, Mathf.Abs(transform.localScale.x));
+            float scaleY = Mathf.Max(0.01f, Mathf.Abs(transform.localScale.y));
+            float visualHeight = spriteRenderer != null && spriteRenderer.sprite != null
+                ? spriteRenderer.sprite.bounds.size.y * scaleY
+                : scaleY;
+            labelText.gameObject.SetActive(true);
+            labelText.text = text.Trim();
+            labelText.anchor = TextAnchor.LowerCenter;
+            labelText.alignment = TextAlignment.Center;
+            labelText.fontSize = 32;
+            labelText.characterSize = 0.075f;
+            labelText.color = Color.white;
+            labelText.transform.localScale = new Vector3(
+                1f / scaleX,
+                1f / scaleY,
+                1f);
+            labelText.transform.localPosition = new Vector3(
+                0f,
+                (visualHeight * 0.5f + 0.14f) / scaleY,
+                -0.01f);
+            MeshRenderer labelRenderer = labelText.GetComponent<MeshRenderer>();
+            if (labelRenderer != null && spriteRenderer != null)
+            {
+                labelRenderer.sortingLayerID = spriteRenderer.sortingLayerID;
+                labelRenderer.sortingOrder = spriteRenderer.sortingOrder + 1;
+            }
         }
 
         private void BindOptionalPresentation(RunLootSnapshot immutablePickup)
@@ -339,6 +412,11 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
         {
             if (collectionTrigger != null) collectionTrigger.enabled = visible;
             if (spriteRenderer != null) spriteRenderer.enabled = visible;
+            if (labelText != null)
+            {
+                labelText.gameObject.SetActive(
+                    visible && !string.IsNullOrWhiteSpace(labelText.text));
+            }
             gameObject.SetActive(visible);
         }
     }

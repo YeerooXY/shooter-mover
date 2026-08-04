@@ -121,11 +121,11 @@ namespace ShooterMover.Domain.Rewards.Strongboxes
         {
             for (int index = 0; index < augmentLevelOutcomes.Count; index++)
             {
-                if (augmentLevelOutcomes[index].Value > 11)
+                if (augmentLevelOutcomes[index].Value > 12)
                 {
                     throw new ArgumentOutOfRangeException(
                         nameof(augmentLevelOutcomes),
-                        "V1 supports shared augment levels through level 11.");
+                        "V1 supports shared augment levels through level 12.");
                 }
             }
             for (int index = 0; index < augmentSlotOutcomes.Count; index++)

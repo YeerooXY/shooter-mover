@@ -6,6 +6,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
     /// <summary>
     /// Small live-only shot timer. It keeps no replay history, receipts, hashes, or saved commands.
     /// At most one shot is returned per game tick so a slow frame cannot create a catch-up storm.
+    /// Player guns repeat while fire is held; authored fire mode still controls burst scheduling.
     /// </summary>
     public sealed class GunTimer
     {
@@ -38,9 +39,8 @@ namespace ShooterMover.UnityAdapters.Guns.Live
             switch (fire.Mode)
             {
                 case GunFireMode.Automatic:
-                    return StepAuto(fire, held, pressed, now);
                 case GunFireMode.SemiAutomatic:
-                    return StepSemi(fire, pressed, now);
+                    return StepHeld(fire, held, pressed, now);
                 case GunFireMode.Burst:
                     return StepBurst(fire, pressed, now);
                 default:
@@ -48,7 +48,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
             }
         }
 
-        private int StepAuto(
+        private int StepHeld(
             FireSettings fire,
             bool held,
             bool pressed,
@@ -59,20 +59,6 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 NextShot = now;
             }
             if ((!held && !pressed) || now + Epsilon < NextShot)
-            {
-                return 0;
-            }
-
-            NextShot = MoveNext(NextShot, now, ShotGap(fire));
-            return 1;
-        }
-
-        private int StepSemi(
-            FireSettings fire,
-            bool pressed,
-            double now)
-        {
-            if (!pressed || now + Epsilon < NextShot)
             {
                 return 0;
             }

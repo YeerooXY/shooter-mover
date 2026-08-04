@@ -40,15 +40,17 @@ namespace ShooterMover.Tests.EditMode.Guns.Live
         }
 
         [Test]
-        public void SemiAutomatic_HeldInput_DoesNotRepeat()
+        public void SemiAutomatic_HeldInput_RepeatsAtAuthoredCadence()
         {
             var timer = new GunTimer();
             timer.Reset(0d);
             FireSettings fire = FireSettings.SemiAutomatic(4d);
 
             Assert.That(timer.Step(fire, true, true, 0d), Is.EqualTo(1));
-            Assert.That(timer.Step(fire, true, false, 1d), Is.EqualTo(0));
-            Assert.That(timer.Step(fire, true, true, 1d), Is.EqualTo(1));
+            Assert.That(timer.Step(fire, true, false, 0.2d), Is.EqualTo(0));
+            Assert.That(timer.Step(fire, true, false, 0.25d), Is.EqualTo(1));
+            Assert.That(timer.Step(fire, true, false, 0.5d), Is.EqualTo(1));
+            Assert.That(timer.Step(fire, false, false, 0.75d), Is.EqualTo(0));
         }
 
         [Test]
