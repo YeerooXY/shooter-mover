@@ -67,6 +67,10 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                         throw new InvalidOperationException(
                             "bullet-spawn-config-failed");
                     }
+                    BulletPresentation.Apply(
+                        bulletObject,
+                        effect.Profile,
+                        sprite);
                 }
 
                 for (int index = 0; index < bullets.Count; index++)

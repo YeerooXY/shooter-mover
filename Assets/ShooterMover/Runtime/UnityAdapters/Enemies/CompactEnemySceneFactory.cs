@@ -13,18 +13,22 @@ namespace ShooterMover.UnityAdapters.Enemies
         RoomPlacedEntityDefinition placement,
         int enemyLevel);
 
+    public delegate void EnemyCollisionRulesFactory(GameObject gameObject);
+
     /// <summary>
     /// Tiny composition seam between room-owned GameObjects and the gameplay assembly that
-    /// can access the live player-damage authority. It carries no enemy catalogue or policy.
+    /// can access the live player-damage authority. It carries no enemy catalogue or rules.
     /// </summary>
     public static class CompactEnemySceneFactory
     {
         private static CompactEnemySceneFactoryDelegate factory;
+        private static EnemyCollisionRulesFactory collisionRulesFactory;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Reset()
         {
             factory = null;
+            collisionRulesFactory = null;
         }
 
         public static void Register(CompactEnemySceneFactoryDelegate configuredFactory)
@@ -41,6 +45,24 @@ namespace ShooterMover.UnityAdapters.Enemies
             }
 
             factory = configuredFactory;
+        }
+
+        public static void SetCollisionRules(
+            EnemyCollisionRulesFactory configuredFactory)
+        {
+            if (configuredFactory == null)
+            {
+                throw new ArgumentNullException(nameof(configuredFactory));
+            }
+
+            if (collisionRulesFactory != null
+                && collisionRulesFactory != configuredFactory)
+            {
+                throw new InvalidOperationException(
+                    "enemy-collision-rules-already-set");
+            }
+
+            collisionRulesFactory = configuredFactory;
         }
 
         public static void Configure(
@@ -78,6 +100,11 @@ namespace ShooterMover.UnityAdapters.Enemies
                 roomStableId,
                 placement,
                 enemyLevel);
+
+            if (collisionRulesFactory != null)
+            {
+                collisionRulesFactory(gameObject);
+            }
 
             CompactEnemyRoomClamp clamp =
                 gameObject.GetComponent<CompactEnemyRoomClamp>()
