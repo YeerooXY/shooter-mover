@@ -1,72 +1,60 @@
 # Shooter Mover Implementation Rules
 
-This document is the mandatory implementation contract for all planning, coding, review, and AI-assisted development in this repository.
+This is the mandatory contract for planning, implementation, review, and AI-assisted development in this repository.
 
-Its purpose is to prevent architectural drift, unnecessary complexity, naming inflation, oversized changes, and undocumented deviations from approved plans.
+> **Plan broadly. Implement narrowly. Review literally.**
 
-These rules apply to humans and AI agents.
+The committed plan defines the design. Implementation follows it. An implementation pass must not quietly redesign the feature.
 
-## Core principle
-
-> Plan broadly. Implement narrowly. Review literally.
-
-The plan defines the design. Implementation follows the plan. An implementation pass must not quietly redesign the feature.
-
-If the plan is wrong, incomplete, or impossible to follow, amend the plan first. Do not silently invent a replacement architecture while coding.
+If the plan is wrong, incomplete, or impossible to follow, amend and commit the plan before changing production code.
 
 ---
 
 # 1. The plan is authoritative
 
-Every non-trivial feature, refactor, or subsystem change must have an approved Markdown plan inside the repository before implementation begins.
+Every non-trivial feature, refactor, or subsystem change requires an approved Markdown plan inside the repository before implementation begins.
 
-The plan must define the intended result precisely enough that later implementation passes do not need to reinterpret the design.
+The plan must define:
 
-The plan must include:
-
-- exact feature scope;
-- exact class, struct, enum, interface, method, property, field, event, and file names when known;
+- exact scope and player-facing result;
 - exact namespaces and file paths;
-- exact stable IDs, JSON keys, resource paths, and persisted identifiers;
-- existing classes and systems that must be reused;
-- the source of truth for every important piece of data;
-- the expected data and call flow;
-- explicit exclusions and forbidden additions;
+- exact class, struct, enum, interface, method, property, field, and event names when known;
+- exact stable IDs, JSON keys, persisted identifiers, and resource paths;
+- existing types and systems that must be reused;
+- the source of truth for every important value;
+- expected data and call flow;
+- forbidden additions and explicit exclusions;
 - ordered implementation steps with checkboxes;
-- acceptance criteria for every step;
-- manual verification instructions;
-- expected files changed;
-- expected production-line budget;
+- acceptance criteria and manual verification for every step;
+- expected changed files and production-line budget;
 - commit checkpoints.
 
-Do not begin coding from a loose conversation summary when an exact plan is required.
-
-Do not rely on remembered chat context. The committed plan is authoritative.
+Do not implement from remembered chat or a loose summary when an implementation plan exists. The committed plan is authoritative.
 
 ---
 
 # 2. Mandatory section in every implementation plan
 
-Every implementation plan must contain the following section near the beginning. It may add stricter rules, but it may not omit or weaken these rules.
+Every implementation plan must contain this section near the beginning. It may add stricter rules, but it may not omit or weaken these rules.
 
 ```markdown
 ## Mandatory implementation rules
 
 - Follow `IMPLEMENTATION_RULES.md`.
 - The names, paths, IDs, ownership, and data flow in this plan are authoritative.
-- Implement only the currently assigned checkbox or explicitly approved group of checkboxes.
+- Implement only the assigned checkbox or explicitly approved group of checkboxes.
 - Target approximately 100–250 changed production lines per implementation step.
 - Do not exceed 350 changed production lines in one step without an approved plan amendment.
-- Do not create unplanned abstractions, interfaces, wrappers, adapters, compatibility layers, managers, policies, authorities, or duplicate models.
-- Do not rename or clean up unrelated code.
-- Reuse the existing types listed by this plan.
+- Do not create unplanned abstractions, interfaces, wrappers, adapters, compatibility layers, managers, policies, authorities, catalogues, registries, or duplicate models.
+- Do not rename, reformat, or clean up unrelated code.
+- Reuse the existing types named by this plan.
 - Keep one source of truth for each value.
 - Use simple, game-facing names.
-- Inside a bounded feature namespace or folder, omit the repeated feature prefix unless needed to prevent a real ambiguity.
-- If the plan cannot be followed exactly, stop implementation and record a plan conflict. Amend and commit the plan before continuing.
+- Inside a bounded feature namespace or folder, omit the repeated feature prefix unless it prevents a real ambiguity.
+- If the plan cannot be followed exactly, stop and record a plan conflict. Amend and commit the plan before continuing.
 - Complete one small step at a time and commit after each completed step.
-- Keep each commit reviewable and compiling whenever technically possible.
-- After completing a step, update only its checkbox and optional commit or PR reference. Do not create a separate implementation report unless requested.
+- Keep each commit independently reviewable and compiling whenever technically possible.
+- After completing a step, tick only its checkbox and optionally add its commit or PR reference. Do not create a separate implementation report unless requested.
 ```
 
 A plan without this section is not ready for implementation.
@@ -77,112 +65,98 @@ A plan without this section is not ready for implementation.
 
 Implementation must be divided into small, reviewable slices.
 
-The normal target is:
+Normal target per step:
 
-- 100–250 changed production lines;
-- 2–5 changed production files;
-- 0–2 new production classes;
+- **100–250 changed production lines**;
+- **2–5 changed production files**;
+- **0–2 new production classes**;
 - one clear behaviour or responsibility;
 - one independently reviewable checkbox;
 - one manual verification path.
 
-A step may be smaller. Small is not a problem.
+A step may be smaller. Small is good.
 
-A step above 350 changed production lines requires an approved explanation in the plan before coding begins.
+A step above 350 changed production lines requires an approved explanation in the plan before coding begins. Generated files, Unity metadata, large data files, mechanical renames, and deletions may justify larger diffs, but the plan must identify them in advance.
 
-Generated files, Unity metadata, large data files, mechanical renames, and deletions may justify larger diffs, but the plan must identify them in advance.
+Unless Nemo explicitly approves a grouped change, one AI implementation pass implements only one checkbox.
 
-## One implementation pass, one step
+Do not:
 
-Unless the user explicitly approves a grouped change, one AI implementation pass should implement only one plan checkbox.
+- implement later checkboxes because they look easy;
+- prepare speculative code for later steps;
+- perform opportunistic cleanup;
+- broaden the task after finding nearby problems.
 
-Do not implement later checkboxes because they appear easy or closely related.
-
-Do not prepare speculative code for future steps.
-
-Do not perform opportunistic cleanup.
-
-Do not broaden the task after discovering nearby problems. Record them separately.
+Record nearby problems separately.
 
 ---
 
 # 4. Exact step contract
 
-Every implementation checkbox must define enough detail to be reviewed literally.
-
-Recommended format:
+Each implementation checkbox must define:
 
 ```markdown
-### Step 3 — Load recipe definitions
+### Step N — Clear step name
 
 Status: [ ]
 
 Create:
-- `Assets/ShooterMover/Runtime/Crafting/RecipeLoader.cs`
+- exact paths
 
 Modify:
-- `Assets/ShooterMover/Runtime/Crafting/Crafting.asmdef`
+- exact paths
 
 Reuse:
-- `JsonFileLoader`
-- `WeaponDefinitionLoader`
+- exact existing types
 
-Exact public API:
-- `public sealed class RecipeLoader`
-- `public Recipe GetRecipe(string recipeId)`
-- `public IReadOnlyList<Recipe> GetAllRecipes()`
+Exact names and public API:
+- exact classes, methods, properties, fields, IDs, and JSON keys
 
 Source of truth:
-- Recipe data comes only from `Content/Crafting/*.json`.
+- exact owner of each affected value
 
 Do not create:
-- `CraftingManager`
-- `RecipeProvider`
-- `RecipeCatalogEntry`
-- a second in-memory recipe model
+- named forbidden classes, models, layers, or behaviours
 
 Acceptance:
-- one recipe JSON can be loaded by ID;
-- an unknown ID produces the documented error;
-- no later crafting behaviour is implemented;
-- expected production change: 100–180 lines.
+- exact behaviour that proves the step is complete
+- explicit statement of what later behaviour is not included
+- expected production change: 100–250 lines
 
 Manual verification:
-- describe the exact Unity or command-line action and expected result.
+- exact action and expected result
 
 Commit checkpoint:
-- `crafting: load recipe definitions`
+- `feature: clear completed behaviour`
 ```
 
-The more architecture-sensitive the feature is, the more exact the step must be.
+Architecture-sensitive steps require more exact detail, not more implementation freedom.
 
 ---
 
-# 5. Naming conventions
+# 5. Naming rules
 
 Use simple game-facing names based on what developers and players call the concept.
 
-Names should describe the current game, not the history of the architecture.
+Names describe the current game, not temporary architecture or migration history.
 
-Do not preserve temporary migration, compatibility, or architecture terminology in current names.
+Avoid these words unless they distinguish two real current concepts and the plan explains why:
 
-Avoid words such as:
+```text
+Compact
+Live
+Production
+Hybrid
+Graph
+Composition
+Authority
+Policy
+Runtime
+```
 
-- `Compact`
-- `Live`
-- `Production`
-- `Hybrid`
-- `Graph`
-- `Composition`
-- `Authority`
-- `Policy`
-- `Runtime`
+## The feature boundary supplies context
 
-Use one of these words only when it distinguishes two real, current concepts and the plan explicitly explains the distinction.
-
-## Feature context supplies the prefix
-
-Inside a bounded feature namespace or folder, do not repeat the feature name on every type.
+Inside a bounded feature namespace or folder, omit the repeated feature prefix.
 
 Prefer:
 
@@ -206,7 +180,7 @@ StrongboxOpenResult
 StrongboxRewardView
 ```
 
-Inside strongbox code, prefer variables such as:
+Inside strongbox code, prefer:
 
 ```text
 lootTable
@@ -216,9 +190,9 @@ tier
 openResult
 ```
 
-Do not repeat `strongbox` when the surrounding type, namespace, or method already supplies that context.
+Do not repeat `strongbox` when the surrounding namespace, type, or method already supplies that context.
 
-Apply the same rule to other bounded features:
+Apply the same rule elsewhere:
 
 ```text
 ShooterMover.Weapons.Definition
@@ -228,16 +202,16 @@ ShooterMover.Crafting.Recipe
 ShooterMover.Rooms.Reward
 ```
 
-Keep the feature name when it is genuinely needed at a cross-feature boundary, for example:
+Keep the feature name where it prevents genuine ambiguity, especially:
 
 - persisted IDs such as `strongbox.gold`;
 - cross-feature events such as `StrongboxOpened`;
-- APIs in a shared namespace where the shorter name would be ambiguous;
+- shared namespaces or APIs where the shorter name is unclear;
 - two genuinely different current concepts with otherwise identical names.
 
-Do not use short names that become unclear. Context-aware naming is not permission to use unexplained acronyms or vague words.
+Context-aware naming is not permission to use vague names or unexplained acronyms.
 
-## Useful suffixes
+## Suffixes
 
 Use suffixes only when they describe a real responsibility:
 
@@ -246,37 +220,37 @@ Use suffixes only when they describe a real responsibility:
 - `View` — presentation only;
 - `Controller` — coordinates a concrete behaviour;
 - `Spawner` — creates scene instances;
-- `Loader` — loads persisted or authored data;
+- `Loader` — loads authored or persisted data;
 - `Validator` — validates data and reports errors;
-- `Service` — a focused shared operation with no clearer game-facing noun.
+- `Service` — focused shared operation with no clearer game-facing noun.
 
-Do not automatically create every possible suffix variation for a feature.
+Do not automatically create every suffix variation for a feature.
 
-## Names requiring justification
+## Names requiring plan justification
 
-The following words require explicit justification in the plan before being introduced:
+```text
+Manager
+System
+Handler
+Processor
+Coordinator
+Orchestrator
+Provider
+Resolver
+Adapter
+Bridge
+Facade
+Pipeline
+Context
+Registry
+Catalog
+```
 
-- `Manager`
-- `System`
-- `Handler`
-- `Processor`
-- `Coordinator`
-- `Orchestrator`
-- `Provider`
-- `Resolver`
-- `Adapter`
-- `Bridge`
-- `Facade`
-- `Pipeline`
-- `Context`
-- `Registry`
-- `Catalog`
-
-They are not universally forbidden, but they often hide unclear ownership or an unnecessary layer.
+These words are not universally forbidden, but they often hide unclear ownership or an unnecessary layer.
 
 ## Variables and methods
 
-Variables must describe what they contain:
+Variables describe what they contain:
 
 ```text
 currentHealth
@@ -286,20 +260,9 @@ moneyEarned
 remainingDashCharges
 ```
 
-Avoid vague names such as:
+Avoid vague names such as `data`, `info`, `result`, `value`, `obj`, `thing`, `temp`, and `stateData` unless the tiny local scope makes the meaning obvious.
 
-```text
-data
-info
-result
-value
-obj
-thing
-temp
-stateData
-```
-
-Booleans should read as questions:
+Booleans read as questions:
 
 ```text
 isAlive
@@ -309,7 +272,7 @@ shouldDropLoot
 wasRoomCompleted
 ```
 
-Methods should begin with clear actions:
+Methods begin with clear actions:
 
 ```text
 Fire
@@ -322,7 +285,7 @@ CompleteRoom
 RefreshWeaponList
 ```
 
-Avoid vague methods such as `Process`, `Execute`, `Apply`, `Handle`, or `UpdateData` without a specific object or behaviour.
+Avoid vague names such as `Process`, `Execute`, `Apply`, `Handle`, or `UpdateData` without a specific object or behaviour.
 
 ---
 
@@ -330,35 +293,30 @@ Avoid vague methods such as `Process`, `Execute`, `Apply`, `Handle`, or `UpdateD
 
 Choose the shortest understandable design that satisfies the approved requirement.
 
-Do not design for hypothetical future needs unless the current plan explicitly requires them.
+Do not design for hypothetical future needs unless the current plan requires them.
 
-## No abstraction without a current reason
+Do not add:
 
-Do not add an interface because another implementation might exist one day.
-
-Do not add a factory when normal construction, a Unity prefab, or an existing loader already expresses the operation clearly.
-
-Do not add a policy class for a few direct conditions.
-
-Do not add a wrapper whose only purpose is to forward calls to another wrapper.
-
-Do not introduce a new representation of data when an existing representation can be used directly.
-
-## New class test
+- an interface because another implementation might exist one day;
+- a factory when construction, a prefab, or an existing loader is already clear;
+- a policy class for a few direct conditions;
+- a wrapper that only forwards calls to another wrapper;
+- a second representation of data that an existing type already provides;
+- a compatibility layer without a documented coexistence reason and deletion step.
 
 Every proposed class must answer:
 
 1. What information or behaviour does it own?
 2. Who calls it?
-3. Why should the caller not perform this responsibility directly?
-4. Why can an existing class not own this responsibility?
+3. Why should the caller not own that responsibility directly?
+4. Why can an existing class not own it?
 5. What becomes simpler because this class exists?
 
-If these answers are weak, do not create the class.
+If the answers are weak, do not create the class.
 
 ## One source of truth
 
-Every important value must have one named owner in the plan.
+The plan must name one owner for every important value.
 
 Example:
 
@@ -370,22 +328,9 @@ Current room rewards -> RunResult
 Enemy health -> Health.Current
 ```
 
-Views may display values. They must not create independent authoritative copies.
+Views may display values. They must not become independent authoritative copies.
 
-Adapters and mappings between nearly identical models are a warning sign and require explicit plan approval.
-
-## Avoid compatibility architecture by default
-
-Do not preserve obsolete systems merely to reduce immediate edits.
-
-Do not add a compatibility layer unless:
-
-- both systems must genuinely coexist;
-- the coexistence period is documented;
-- the owner and removal condition are documented;
-- the compatibility code has a planned deletion step.
-
-A temporary bridge without a removal plan becomes permanent architecture.
+Mappings between nearly identical models require explicit plan approval.
 
 ---
 
@@ -393,26 +338,25 @@ A temporary bridge without a removal plan becomes permanent architecture.
 
 If implementation cannot follow the plan exactly, stop before making unapproved production changes.
 
-Record the conflict in this format:
+Record:
 
 ```markdown
 ## Plan conflict
 
 Step:
-- Step 4 — Add reward transfer
+- exact checkbox
 
 The plan requires:
-- `PlayerProfile.Inventory`
+- exact planned type, path, ID, or behaviour
 
 The repository currently provides:
-- `PlayerProfile.WeaponInventory`
+- exact conflicting reality
 
 Why the plan cannot be followed:
-- describe the exact technical conflict.
+- concise technical explanation
 
 Recommended amendment:
-- replace the planned type or path with the exact existing type or path;
-- list every affected step.
+- exact replacement and every affected step
 
 Production code changed:
 - none
@@ -422,43 +366,36 @@ Then:
 
 1. amend the plan;
 2. review the amendment;
-3. commit the amended plan;
+3. commit the amendment;
 4. continue implementation in a later pass.
 
 Do not silently choose a different design.
-
-Do not use a plan conflict as permission to broaden the feature.
 
 ---
 
 # 8. Commit regularly
 
-Git is the durable project history. Chat is not.
+Git is durable. Chat is not.
 
-Implementation must be committed in small, meaningful checkpoints.
+> **One completed implementation checkbox equals one commit by default.**
 
-## Default commit rule
+A task or pull request may contain several planned commits, but each step remains independently reviewable.
 
-> One completed implementation checkbox equals one commit.
+Do not:
 
-A task or pull request may contain several planned commits, but each step must remain independently reviewable.
-
-Do not accumulate several completed checkboxes into one large final commit.
-
-Do not move to the next checkbox while the current completed step remains uncommitted.
-
-## Commit quality
+- accumulate several completed checkboxes into one final commit;
+- move to the next checkbox while the completed step is uncommitted;
+- mix unrelated formatting, cleanup, or renames into the step commit.
 
 Each implementation commit should:
 
-- correspond to one plan step;
-- use a clear game-facing commit message;
-- contain only the files required by that step;
+- correspond to one plan checkbox;
+- contain only the required files;
 - compile whenever technically possible;
-- avoid unrelated formatting or cleanup;
-- include the plan checkbox update when the step is complete.
+- include the checkbox update;
+- use a clear game-facing message.
 
-Recommended messages:
+Good examples:
 
 ```text
 strongboxes: load loot tables
@@ -467,29 +404,13 @@ weapons: add held-fire timing
 hub: show saved money and scrap
 ```
 
-Avoid messages such as:
-
-```text
-updates
-fix stuff
-refactor
-changes
-cleanup
-```
-
-## Plan commits
-
-An approved plan must be committed before production implementation begins.
-
-Any plan amendment must be committed before code that depends on the amendment.
+An approved plan must be committed before implementation begins. Any amendment must be committed before code that depends on it.
 
 ---
 
-# 9. Minimal documentation after implementation
+# 9. Minimal completion documentation
 
-Do not create duplicate implementation reports, handoff essays, architecture summaries, or extra Markdown files for ordinary completed steps.
-
-The normal documentation update is only:
+For an ordinary completed step, change only:
 
 ```markdown
 - [ ] Step 4 — Transfer room rewards
@@ -501,120 +422,106 @@ to:
 - [x] Step 4 — Transfer room rewards
 ```
 
-An optional short reference is allowed:
+An optional reference is allowed:
 
 ```markdown
 - [x] Step 4 — Transfer room rewards — commit `abc1234`
 ```
 
-Create additional documentation only when:
+Do not create duplicate implementation reports, handoff essays, architecture summaries, or extra Markdown files unless:
 
-- the plan explicitly requires it;
-- the change alters a public workflow or content format;
+- the plan requires one;
+- a public workflow or content format changed;
 - migration or persistence behaviour must be recorded;
 - a milestone gate requires durable evidence;
-- the user explicitly requests it.
-
-The repository and the checked plan should tell the implementation story without another generated report.
+- Nemo explicitly requests it.
 
 ---
 
-# 10. Required pre-implementation response
+# 10. Required implementation reporting
 
-Before editing code for a plan step, the implementation agent must state:
+Before editing a step, state:
 
-1. the exact checkbox being implemented;
+1. exact checkbox;
 2. files to create;
 3. files to modify;
 4. existing types being reused;
 5. expected changed production lines;
-6. the source of truth affected;
+6. affected source of truth;
 7. confirmation that no later checkbox will be implemented.
 
-If any of these cannot be answered from the plan, the step is not ready.
-
----
-
-# 11. Required post-implementation response
-
-After implementing a plan step, report only:
+After implementing it, report only:
 
 1. completed checkbox;
 2. files created, modified, or deleted;
 3. production lines added and removed;
 4. manual verification performed or still required;
-5. commit SHA or pull request reference when available;
-6. known limitation directly relevant to that step.
+5. commit SHA or PR reference when available;
+6. limitation directly relevant to that step.
 
-Do not add a new architecture proposal after implementation.
-
-Do not claim later steps are complete.
+Do not add a new architecture proposal after implementation or claim later steps are complete.
 
 ---
 
-# 12. Review checklist
+# 11. Review checklist
 
-Review the change against the plan before reviewing style preferences.
+Review the change against the plan before reviewing stylistic preferences.
 
-## Contract review
+## Contract
 
 - Did it implement exactly the assigned checkbox?
-- Did it use the exact planned names, paths, and IDs?
+- Did it use the planned names, paths, and IDs?
 - Did it reuse the required existing types?
-- Did it introduce an unplanned class, interface, abstraction, mapping, or model?
+- Did it introduce any unplanned class, interface, abstraction, mapping, or model?
 - Did it alter code outside the allowed area?
 - Did it implement part of a later checkbox?
-- Did it remain within the planned line and file budget?
+- Did it remain within the line and file budget?
 - Did it preserve one source of truth?
 - Did it omit repeated feature prefixes where context already supplies them?
-- Did it avoid vague or architecture-heavy naming?
 - Did it update only the correct checkbox?
 - Was the step committed separately?
 
-## Simplicity review
+## Simplicity
 
-- Could the same result be implemented clearly with fewer classes?
+- Could the result be clear with fewer classes?
 - Is any class only forwarding calls?
 - Are two types carrying nearly identical data?
-- Is a new interface backed by only one implementation without a current need?
-- Is future flexibility being purchased with present complexity?
-- Is a temporary compatibility layer missing a deletion step?
-- Would deleting a new class only require deleting another wrapper around it?
+- Does a new interface have only one implementation without a current need?
+- Is future flexibility creating present complexity?
+- Is temporary compatibility code missing a deletion step?
 
-## Behaviour review
+## Behaviour
 
 - Does the acceptance criterion pass?
-- Does the manual verification match the planned player-facing behaviour?
-- Does the change preserve existing working behaviour outside the task?
+- Does manual verification prove the planned player-facing result?
+- Is existing behaviour outside the task preserved?
 - Is failure behaviour understandable and local?
 
-A change that works but violates the approved structure is not complete.
+A change that works but violates the approved contract is not complete.
 
 ---
 
-# 13. Warning thresholds
+# 12. Warning thresholds
 
-These thresholds do not automatically prove a design is wrong, but they require review:
+These require explicit review:
 
-- one small feature touches more than 8 production files;
-- one implementation step exceeds 350 production lines;
+- a small feature touches more than 8 production files;
+- one step exceeds 350 changed production lines;
 - one class exceeds 500 lines;
 - one class exceeds 800 lines without a documented reason;
-- a feature introduces more than two new production classes in one step;
+- one step introduces more than two new production classes;
 - a new interface has only one implementation;
-- the same value exists in three representations;
-- adding ordinary content requires editing C# catalogues or switch statements;
-- a class name requires explaining project history to understand it;
+- one value exists in three representations;
+- ordinary content requires editing C# catalogues or switch statements;
+- a class name requires project-history knowledge to understand;
 - more code maps models than implements game behaviour;
-- a simple UI display needs a new resolver despite the source definition already owning the displayed value.
+- a simple display needs a resolver even though its definition already owns the value.
 
-When a warning threshold is crossed, simplify the plan before continuing unless the complexity is clearly justified.
+Simplify the plan before continuing unless the complexity is clearly justified.
 
 ---
 
-# 14. Planning template
-
-New implementation plans should use this structure:
+# 13. Planning template
 
 ```markdown
 # Feature Name — Implementation Plan
@@ -658,12 +565,12 @@ New implementation plans should use this structure:
 ## Completion definition
 ```
 
-Each step must then include its exact create/modify/reuse/API/acceptance/line-budget/verification/commit contract.
+Each checkbox must include its create/modify/reuse/API/source-of-truth/forbidden-additions/acceptance/line-budget/manual-verification/commit contract.
 
 ---
 
-# 15. Final rule
+# Final rule
 
-When choosing between a clever architecture and a small understandable implementation that satisfies the approved game requirement, choose the small understandable implementation.
+When choosing between clever architecture and a small understandable implementation that satisfies the approved game requirement, choose the small understandable implementation.
 
-The project should become easier to reason about after each feature, not harder.
+The project must become easier to reason about after each feature, not harder.
