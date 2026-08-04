@@ -27,6 +27,12 @@ namespace ShooterMover.UI.Game.Enemies
         public Rigidbody2D Body { get { return body; } }
         public Collider2D BodyCollider { get { return bodyCollider; } }
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetActivePolicies()
+        {
+            active.Clear();
+        }
+
         public void Configure(CompactEnemy configuredEnemy)
         {
             if (configuredEnemy == null)
