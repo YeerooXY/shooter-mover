@@ -50,6 +50,13 @@ jobs:
             echo "Retired GunCatalogue authority type returned."
             exit 1
           fi
+          if grep -R -E \
+            '(^|[^[:alnum:]_])GunCatalogue\.' \
+            Assets/ShooterMover \
+            --include='*.cs'; then
+            echo "A source file still references the retired GunCatalogue authority."
+            exit 1
+          fi
 
       - name: Check scripts
         run: |
