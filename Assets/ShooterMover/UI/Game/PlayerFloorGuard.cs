@@ -105,6 +105,7 @@ namespace ShooterMover.UI.Game
             }
 
             floor = new FloorGrid(floorCells);
+            RoomFloor.Set(floor);
             body.linearVelocity = Vector2.zero;
             if (!floor.HasCells)
             {
@@ -147,21 +148,30 @@ namespace ShooterMover.UI.Game
                 return;
             }
 
+            Vector2 requestedVelocity = body.linearVelocity;
             Vector2 centerOffset = ResolveCenterOffset();
             float radius = ResolveRadius();
             Vector2 currentPosition = body.position;
             Vector2 currentCenter = currentPosition + centerOffset;
             if (!floor.FitsCircle(currentCenter, radius))
             {
-                HoldLastPosition();
-                return;
+                if (!TryRestoreValidPosition(
+                        centerOffset,
+                        radius,
+                        currentCenter,
+                        out currentPosition,
+                        out currentCenter))
+                {
+                    body.linearVelocity = Vector2.zero;
+                    return;
+                }
             }
 
             lastValidPosition = currentPosition;
             hasLastValidPosition = true;
             body.linearVelocity = floor.LimitVelocity(
                 currentCenter,
-                body.linearVelocity,
+                requestedVelocity,
                 fixedDeltaTime,
                 radius);
         }
@@ -169,6 +179,42 @@ namespace ShooterMover.UI.Game
         private void FixedUpdate()
         {
             ApplyMovement(Time.fixedDeltaTime);
+        }
+
+        private bool TryRestoreValidPosition(
+            Vector2 centerOffset,
+            float radius,
+            Vector2 currentCenter,
+            out Vector2 restoredPosition,
+            out Vector2 restoredCenter)
+        {
+            if (hasLastValidPosition)
+            {
+                Vector2 lastCenter = lastValidPosition + centerOffset;
+                if (floor.FitsCircle(lastCenter, radius))
+                {
+                    restoredPosition = lastValidPosition;
+                    restoredCenter = lastCenter;
+                    body.position = restoredPosition;
+                    return true;
+                }
+            }
+
+            Vector2 nearestCenter;
+            if (floor.TryFindNearestCellCenter(
+                    currentCenter,
+                    radius,
+                    out nearestCenter))
+            {
+                restoredPosition = nearestCenter - centerOffset;
+                restoredCenter = nearestCenter;
+                body.position = restoredPosition;
+                return true;
+            }
+
+            restoredPosition = body.position;
+            restoredCenter = currentCenter;
+            return false;
         }
 
         private void HoldLastPosition()
