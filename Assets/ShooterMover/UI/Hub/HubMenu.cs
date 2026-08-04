@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Reflection;
 using ShooterMover.Application.Flow.Game;
 using ShooterMover.Application.Flow.Hub;
+using ShooterMover.Application.Guns.Catalog;
 using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
@@ -44,6 +45,14 @@ namespace ShooterMover.UI.Hub
         private GUIStyle headingStyle;
         private GUIStyle bodyStyle;
         private GUIStyle secondaryStyle;
+        private GUIStyle sectionStyle;
+        private GUIStyle leftHeadingStyle;
+        private GUIStyle leftBodyStyle;
+        private GUIStyle levelNumberStyle;
+        private GUIStyle progressTextStyle;
+        private GUIStyle weaponNameStyle;
+        private GUIStyle weaponSlotStyle;
+        private GUIStyle rightSecondaryStyle;
         private Vector2 scrollPosition;
 
         public HubRoute CurrentRoute
@@ -114,42 +123,195 @@ namespace ShooterMover.UI.Hub
             GUILayout.BeginArea(panel, GUI.skin.window);
             scrollPosition = GUILayout.BeginScrollView(scrollPosition);
             GUILayout.Label("SHOOTER MOVER", titleStyle);
-            GUILayout.Label("HUB", headingStyle);
+            GUILayout.Label("COMMAND HUB", secondaryStyle);
+            GUILayout.Space(10f);
 
             HubStatus status = ResolveStatus();
             if (status == null)
             {
-                GUILayout.Label("CHARACTER DATA UNAVAILABLE", bodyStyle);
+                GUILayout.BeginVertical(sectionStyle);
+                GUILayout.Label("CHARACTER DATA UNAVAILABLE", headingStyle);
+                GUILayout.Label(
+                    "Return to Character Select and choose a character before entering the Hub.",
+                    bodyStyle);
+                GUILayout.EndVertical();
             }
             else
             {
-                GUILayout.Label(
-                    "CHARACTER SLOT " + status.Slot.ToString(CultureInfo.InvariantCulture)
-                    + "   •   " + status.ClassName.ToUpperInvariant()
-                    + "   •   LEVEL " + status.Level.ToString(CultureInfo.InvariantCulture),
-                    headingStyle);
-                GUILayout.Label(
-                    "MONEY  " + status.Money.ToString("N0", CultureInfo.InvariantCulture)
-                    + "      SCRAP  " + status.Scrap.ToString("N0", CultureInfo.InvariantCulture),
-                    bodyStyle);
-                GUILayout.Label(status.StrongboxSummary, secondaryStyle);
+                DrawCharacterCard(status);
+                GUILayout.Space(12f);
+                DrawLoadout(status);
             }
 
             GUILayout.Space(16f);
-            GUILayout.Label("GUN LOADOUT", headingStyle);
-            if (status != null && status.Guns.Count > 0)
+            DrawNavigation();
+
+            if (IsTransitionPending)
             {
-                for (int index = 0; index < status.Guns.Count; index++)
-                {
-                    GUILayout.Label(status.Guns[index], bodyStyle);
-                }
+                GUILayout.Space(8f);
+                GUILayout.Label("Loading… repeated input is locked.", secondaryStyle);
+            }
+
+            GUILayout.EndScrollView();
+            GUILayout.EndArea();
+            GUI.depth = priorDepth;
+        }
+
+        private void DrawCharacterCard(HubStatus status)
+        {
+            GUILayout.BeginVertical(sectionStyle);
+            GUILayout.BeginHorizontal();
+
+            GUILayout.BeginVertical();
+            GUILayout.Label(
+                "CHARACTER SLOT " + status.Slot.ToString(CultureInfo.InvariantCulture),
+                secondaryStyle);
+            GUILayout.Label(status.ClassName.ToUpperInvariant(), leftHeadingStyle);
+            GUILayout.EndVertical();
+
+            GUILayout.FlexibleSpace();
+            GUILayout.BeginVertical(GUILayout.Width(160f));
+            GUILayout.Label("LEVEL", secondaryStyle);
+            GUILayout.Label(
+                status.Level.ToString(CultureInfo.InvariantCulture),
+                levelNumberStyle);
+            GUILayout.EndVertical();
+
+            GUILayout.EndHorizontal();
+            GUILayout.Space(8f);
+            DrawExperience(status);
+            GUILayout.Space(12f);
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(
+                "MONEY  " + status.Money.ToString("N0", CultureInfo.InvariantCulture),
+                leftBodyStyle);
+            GUILayout.FlexibleSpace();
+            GUILayout.Label(
+                "SCRAP  " + status.Scrap.ToString("N0", CultureInfo.InvariantCulture),
+                leftBodyStyle);
+            GUILayout.EndHorizontal();
+            GUILayout.Label(status.StrongboxSummary, secondaryStyle);
+            GUILayout.EndVertical();
+        }
+
+        private void DrawExperience(HubStatus status)
+        {
+            Rect progressRect = GUILayoutUtility.GetRect(
+                10f,
+                24f,
+                GUILayout.ExpandWidth(true));
+            GUI.Box(progressRect, GUIContent.none);
+
+            float progress = status.IsAtLevelCap
+                ? 1f
+                : status.ExperienceRequiredForNextLevel <= 0L
+                    ? 0f
+                    : Mathf.Clamp01(
+                        (float)status.ExperienceIntoCurrentLevel
+                        / status.ExperienceRequiredForNextLevel);
+            if (progress > 0f)
+            {
+                Rect fillRect = new Rect(
+                    progressRect.x + 2f,
+                    progressRect.y + 2f,
+                    Mathf.Max(0f, (progressRect.width - 4f) * progress),
+                    Mathf.Max(0f, progressRect.height - 4f));
+                GUI.Box(fillRect, GUIContent.none, GUI.skin.button);
+            }
+
+            string progressText = status.IsAtLevelCap
+                ? "MAX LEVEL   •   TOTAL XP "
+                    + status.CumulativeExperience.ToString(
+                        "N0",
+                        CultureInfo.InvariantCulture)
+                : "XP  "
+                    + status.ExperienceIntoCurrentLevel.ToString(
+                        "N0",
+                        CultureInfo.InvariantCulture)
+                    + " / "
+                    + status.ExperienceRequiredForNextLevel.ToString(
+                        "N0",
+                        CultureInfo.InvariantCulture);
+            GUI.Label(progressRect, progressText, progressTextStyle);
+
+            if (!status.IsAtLevelCap)
+            {
+                GUILayout.Label(
+                    status.ExperienceToNextLevel.ToString(
+                        "N0",
+                        CultureInfo.InvariantCulture)
+                    + " XP TO LEVEL "
+                    + (status.Level + 1).ToString(CultureInfo.InvariantCulture),
+                    secondaryStyle);
+            }
+        }
+
+        private void DrawLoadout(HubStatus status)
+        {
+            GUILayout.BeginVertical(sectionStyle);
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("GUN LOADOUT", leftHeadingStyle);
+            GUILayout.FlexibleSpace();
+            GUILayout.Label(
+                status.EquippedGunCount.ToString(CultureInfo.InvariantCulture)
+                + " / "
+                + status.Guns.Count.ToString(CultureInfo.InvariantCulture)
+                + " EQUIPPED",
+                rightSecondaryStyle);
+            GUILayout.EndHorizontal();
+            GUILayout.Space(6f);
+
+            if (status.Guns.Count == 0)
+            {
+                GUILayout.Label("NO GUN MOUNTS AVAILABLE", bodyStyle);
             }
             else
             {
-                GUILayout.Label("NO GUNS EQUIPPED", bodyStyle);
+                for (int index = 0; index < status.Guns.Count; index++)
+                {
+                    DrawGunCard(status.Guns[index]);
+                    if (index < status.Guns.Count - 1)
+                    {
+                        GUILayout.Space(4f);
+                    }
+                }
             }
 
-            GUILayout.Space(20f);
+            GUILayout.EndVertical();
+        }
+
+        private void DrawGunCard(HubGunStatus gun)
+        {
+            GUILayout.BeginVertical(GUI.skin.box);
+            GUILayout.BeginHorizontal();
+
+            GUILayout.BeginVertical(GUILayout.Width(115f));
+            GUILayout.Label(
+                "WEAPON " + gun.Number.ToString(CultureInfo.InvariantCulture),
+                weaponSlotStyle);
+            GUILayout.Label(gun.MountName.ToUpperInvariant(), secondaryStyle);
+            GUILayout.EndVertical();
+
+            GUILayout.BeginVertical();
+            GUILayout.Label(
+                gun.IsEquipped
+                    ? gun.DisplayName.ToUpperInvariant()
+                    : "EMPTY SLOT",
+                weaponNameStyle);
+            GUILayout.Label(
+                gun.IsEquipped
+                    ? "READY"
+                    : "Open Inventory to equip a weapon.",
+                gun.IsEquipped ? leftBodyStyle : secondaryStyle);
+            GUILayout.EndVertical();
+
+            GUILayout.EndHorizontal();
+            GUILayout.EndVertical();
+        }
+
+        private void DrawNavigation()
+        {
             GUI.enabled = !IsTransitionPending;
             GUILayout.BeginHorizontal();
             DrawButton("INVENTORY", delegate { return OpenDestination(HubRoute.Inventory); });
@@ -160,19 +322,10 @@ namespace ShooterMover.UI.Hub
             DrawButton("CRAFTING", delegate { return OpenDestination(HubRoute.Crafting); });
             DrawButton("PLAY", delegate { return OpenDestination(HubRoute.Play); });
             GUILayout.EndHorizontal();
-            GUILayout.Space(16f);
+            GUILayout.Space(12f);
             DrawButton("BACK", NavigateBack);
             DrawButton("MAIN MENU", GoToMainMenu);
             GUI.enabled = true;
-
-            if (IsTransitionPending)
-            {
-                GUILayout.Label("Loading… repeated input is locked.", secondaryStyle);
-            }
-
-            GUILayout.EndScrollView();
-            GUILayout.EndArea();
-            GUI.depth = priorDepth;
         }
 
         public void ConfigureForTests(
@@ -267,35 +420,155 @@ namespace ShooterMover.UI.Hub
                 return null;
             }
 
-            int level = graph.ExperienceAuthority == null
-                || graph.ExperienceAuthority.CurrentState == null
-                ? 1
-                : graph.ExperienceAuthority.CurrentState.Level;
+            var experience = graph.ExperienceAuthority == null
+                ? null
+                : graph.ExperienceAuthority.CurrentState;
+            int level = experience == null ? 1 : experience.Level;
+            long experienceIntoLevel = experience == null
+                ? 0L
+                : experience.ExperienceIntoCurrentLevel;
+            long experienceRequired = experience == null
+                ? 0L
+                : experience.ExperienceRequiredForNextLevel;
+            long experienceToNextLevel = experience == null
+                ? 0L
+                : experience.ExperienceToNextLevel;
+            long cumulativeExperience = experience == null
+                ? 0L
+                : experience.CumulativeExperience;
+            bool isAtLevelCap = experience != null && experience.IsAtLevelCap;
             long money = graph.MoneyWallet == null ? 0L : graph.MoneyWallet.Balance;
             long scrap = graph.ScrapWallet == null ? 0L : graph.ScrapWallet.Balance;
-            var guns = new List<string>();
-            PlayerRouteProfilePayload route = graph.LoadoutRuntime.CurrentRoutePayload;
-            for (int index = 0; index < route.GunSlots.Count; index++)
+
+            PlayerRouteProfilePayload route =
+                graph.LoadoutRuntime.CurrentRoutePayload;
+            GunSlots layout = graph.LoadoutRuntime.MountLayout;
+            var guns = new List<HubGunStatus>();
+            int equippedGunCount = 0;
+            for (int index = 0;
+                 index < layout.ConfigurablePositions.Count;
+                 index++)
             {
-                PlayerRouteGunSlot slot = route.GunSlots[index];
-                GunItem item = slot.EquipmentInstanceStableId == null
+                GunSlot position = layout.ConfigurablePositions[index];
+                PlayerRouteGunSlot routeSlot = FindRouteSlot(
+                    route,
+                    position.LoadoutSlotStableId);
+                GunItem item = routeSlot == null
+                    || routeSlot.EquipmentInstanceStableId == null
                     ? null
-                    : graph.LoadoutRuntime.GunInventory.Find(slot.EquipmentInstanceStableId);
-                string name = item == null
-                    ? "EMPTY"
-                    : FriendlyName(item.GunDefinitionId.Value);
-                guns.Add("SLOT " + (index + 1).ToString(CultureInfo.InvariantCulture)
-                    + "   •   " + name.ToUpperInvariant());
+                    : graph.LoadoutRuntime.GunInventory.Find(
+                        routeSlot.EquipmentInstanceStableId);
+                if (item != null)
+                {
+                    equippedGunCount++;
+                }
+
+                guns.Add(new HubGunStatus(
+                    index + 1,
+                    position.DisplayName,
+                    item == null ? string.Empty : ResolveGunName(item),
+                    item != null));
             }
 
             return new HubStatus(
                 graph.Character.SlotIndex + 1,
                 FriendlyClass(graph.Character.ClassDefinitionStableId),
                 level,
+                experienceIntoLevel,
+                experienceRequired,
+                experienceToNextLevel,
+                cumulativeExperience,
+                isAtLevelCap,
                 money,
                 scrap,
                 BuildStrongboxSummary(graph.LoadoutRuntime.Holdings),
-                guns);
+                guns,
+                equippedGunCount);
+        }
+
+        private static PlayerRouteGunSlot FindRouteSlot(
+            PlayerRouteProfilePayload route,
+            StableId loadoutSlotId)
+        {
+            if (route == null || loadoutSlotId == null)
+            {
+                return null;
+            }
+
+            for (int index = 0; index < route.GunSlots.Count; index++)
+            {
+                PlayerRouteGunSlot slot = route.GunSlots[index];
+                if (slot.GunSlotStableId == loadoutSlotId)
+                {
+                    return slot;
+                }
+            }
+
+            return null;
+        }
+
+        private static string ResolveGunName(GunItem item)
+        {
+            if (item == null || item.GunDefinitionId == null)
+            {
+                return "Unknown Weapon";
+            }
+
+            GunMark mark;
+            if (AuthoredGunCatalogue.Current.TryGetMark(
+                    item.GunDefinitionId.Value,
+                    out mark)
+                && mark != null
+                && mark.Blueprint != null
+                && !string.IsNullOrWhiteSpace(mark.Blueprint.DisplayName))
+            {
+                return mark.Blueprint.DisplayName.Trim();
+            }
+
+            return FriendlyGunName(item.GunDefinitionId.Value);
+        }
+
+        private static string FriendlyGunName(string definitionId)
+        {
+            if (string.IsNullOrWhiteSpace(definitionId))
+            {
+                return "Unknown Weapon";
+            }
+
+            string[] sections = definitionId.Split('.');
+            var words = new List<string>();
+            for (int sectionIndex = 0;
+                 sectionIndex < sections.Length;
+                 sectionIndex++)
+            {
+                string[] sectionWords = sections[sectionIndex]
+                    .Replace('-', ' ')
+                    .Replace('_', ' ')
+                    .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                for (int wordIndex = 0;
+                     wordIndex < sectionWords.Length;
+                     wordIndex++)
+                {
+                    words.Add(FriendlyGunWord(sectionWords[wordIndex]));
+                }
+            }
+
+            return words.Count == 0
+                ? "Unknown Weapon"
+                : string.Join(" ", words.ToArray());
+        }
+
+        private static string FriendlyGunWord(string word)
+        {
+            if (string.Equals(word, "mk1", StringComparison.OrdinalIgnoreCase))
+                return "MK I";
+            if (string.Equals(word, "mk2", StringComparison.OrdinalIgnoreCase))
+                return "MK II";
+            if (string.Equals(word, "mk3", StringComparison.OrdinalIgnoreCase))
+                return "MK III";
+
+            return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(
+                word.ToLowerInvariant());
         }
 
         private static string BuildStrongboxSummary(object holdings)
@@ -437,21 +710,57 @@ namespace ShooterMover.UI.Hub
         private void EnsureStyles()
         {
             if (titleStyle != null) return;
-            titleStyle = Style(30, FontStyle.Bold);
-            headingStyle = Style(19, FontStyle.Bold);
-            bodyStyle = Style(15, FontStyle.Normal);
-            secondaryStyle = Style(12, FontStyle.Normal);
+
+            titleStyle = Style(30, FontStyle.Bold, TextAnchor.MiddleCenter);
+            headingStyle = Style(19, FontStyle.Bold, TextAnchor.MiddleCenter);
+            bodyStyle = Style(15, FontStyle.Normal, TextAnchor.MiddleCenter);
+            secondaryStyle = Style(12, FontStyle.Normal, TextAnchor.MiddleCenter);
+            leftHeadingStyle = Style(20, FontStyle.Bold, TextAnchor.MiddleLeft);
+            leftBodyStyle = Style(14, FontStyle.Normal, TextAnchor.MiddleLeft);
+            levelNumberStyle = Style(32, FontStyle.Bold, TextAnchor.MiddleCenter);
+            progressTextStyle = Style(12, FontStyle.Bold, TextAnchor.MiddleCenter);
+            weaponNameStyle = Style(17, FontStyle.Bold, TextAnchor.MiddleLeft);
+            weaponSlotStyle = Style(13, FontStyle.Bold, TextAnchor.MiddleLeft);
+            rightSecondaryStyle = Style(12, FontStyle.Normal, TextAnchor.MiddleRight);
+            sectionStyle = new GUIStyle(GUI.skin.box)
+            {
+                padding = new RectOffset(18, 18, 14, 14),
+                margin = new RectOffset(8, 8, 4, 4),
+            };
         }
 
-        private static GUIStyle Style(int size, FontStyle fontStyle)
+        private static GUIStyle Style(
+            int size,
+            FontStyle fontStyle,
+            TextAnchor alignment)
         {
             return new GUIStyle(GUI.skin.label)
             {
-                alignment = TextAnchor.MiddleCenter,
+                alignment = alignment,
                 fontSize = size,
                 fontStyle = fontStyle,
                 wordWrap = true,
             };
+        }
+
+        private sealed class HubGunStatus
+        {
+            internal HubGunStatus(
+                int number,
+                string mountName,
+                string displayName,
+                bool isEquipped)
+            {
+                Number = number;
+                MountName = mountName ?? string.Empty;
+                DisplayName = displayName ?? string.Empty;
+                IsEquipped = isEquipped;
+            }
+
+            internal int Number { get; }
+            internal string MountName { get; }
+            internal string DisplayName { get; }
+            internal bool IsEquipped { get; }
         }
 
         private sealed class HubStatus
@@ -460,27 +769,45 @@ namespace ShooterMover.UI.Hub
                 int slot,
                 string className,
                 int level,
+                long experienceIntoCurrentLevel,
+                long experienceRequiredForNextLevel,
+                long experienceToNextLevel,
+                long cumulativeExperience,
+                bool isAtLevelCap,
                 long money,
                 long scrap,
                 string strongboxSummary,
-                IReadOnlyList<string> guns)
+                IReadOnlyList<HubGunStatus> guns,
+                int equippedGunCount)
             {
                 Slot = slot;
                 ClassName = className;
                 Level = level;
+                ExperienceIntoCurrentLevel = experienceIntoCurrentLevel;
+                ExperienceRequiredForNextLevel = experienceRequiredForNextLevel;
+                ExperienceToNextLevel = experienceToNextLevel;
+                CumulativeExperience = cumulativeExperience;
+                IsAtLevelCap = isAtLevelCap;
                 Money = money;
                 Scrap = scrap;
                 StrongboxSummary = strongboxSummary;
                 Guns = guns;
+                EquippedGunCount = equippedGunCount;
             }
 
             internal int Slot { get; }
             internal string ClassName { get; }
             internal int Level { get; }
+            internal long ExperienceIntoCurrentLevel { get; }
+            internal long ExperienceRequiredForNextLevel { get; }
+            internal long ExperienceToNextLevel { get; }
+            internal long CumulativeExperience { get; }
+            internal bool IsAtLevelCap { get; }
             internal long Money { get; }
             internal long Scrap { get; }
             internal string StrongboxSummary { get; }
-            internal IReadOnlyList<string> Guns { get; }
+            internal IReadOnlyList<HubGunStatus> Guns { get; }
+            internal int EquippedGunCount { get; }
         }
     }
 }
