@@ -22,16 +22,16 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
             Assert.That(
                 GunInventoryCardPresentation.TryCreate(
                     GunCatalogProvider.GunCatalog,
-                    StarterLoadout.StarterGunDefinitionId,
+                    StarterLoadout.DefaultGunId,
                     out presentation,
                     out rejectionCode),
                 Is.True,
                 rejectionCode);
             Assert.That(presentation, Is.Not.Null);
             Assert.That(presentation.DisplayName, Is.EqualTo("Rattler MK1"));
-            Assert.That(presentation.DamagePerShot, Is.EqualTo(1d));
+            Assert.That(presentation.DamagePerShot, Is.EqualTo(2d));
             Assert.That(presentation.ProjectilesPerShot, Is.EqualTo(1));
-            Assert.That(presentation.RateOfFire, Is.EqualTo(4d));
+            Assert.That(presentation.RateOfFire, Is.EqualTo(12d));
             Assert.That(
                 presentation.SideProfileArtReference,
                 Is.EqualTo("gun-art.rattler.mk1.side-v1"));
@@ -87,7 +87,7 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
             Assert.That(
                 controller.CanonicalSnapshot.OwnedGuns.Count,
                 Is.EqualTo(7),
-                "Two starter Rattlers, one Sweeper, and four trial guns are owned.");
+                "Two equipped Rattlers and five authored extra guns are owned.");
             Assert.That(
                 controller.CanonicalSnapshot.Mounts.Count,
                 Is.EqualTo(3));
@@ -125,7 +125,7 @@ namespace ShooterMover.Tests.PlayMode.Flow.InventoryLoadout
                     Is.True,
                     "One exact instance must produce only one owned card.");
                 if (card.Instance.GunDefinitionId.Value
-                    == StarterLoadout.StarterGunDefinitionId)
+                    == StarterLoadout.DefaultGunId)
                 {
                     rattlerCount++;
                 }
