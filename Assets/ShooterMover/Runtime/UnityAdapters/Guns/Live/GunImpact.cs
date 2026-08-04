@@ -165,6 +165,7 @@ namespace ShooterMover.UnityAdapters.Guns.Live
                 targets,
                 GunEffectLineOfSightPolicy.Ignore,
                 null);
+            GunExplosionView.Show(emission, targets);
             for (int index = 0; index < resolution.Decisions.Count; index++)
             {
                 GunExplosionDamageDecision decision =
