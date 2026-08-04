@@ -1,7 +1,7 @@
 using System;
 using NUnit.Framework;
-using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Rewards.Model;
 using ShooterMover.UnityAdapters.Rewards.RunLoots;
 using UnityEngine;
 
