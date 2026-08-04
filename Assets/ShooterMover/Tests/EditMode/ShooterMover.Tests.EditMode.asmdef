@@ -6,6 +6,7 @@
     "ShooterMover.Contracts",
     "ShooterMover.Application",
     "ShooterMover.UnityAdapters",
+    "ShooterMover.RunPickupUnity",
     "ShooterMover.Presentation",
     "ShooterMover.GameplayEntities",
     "ShooterMover.EnemyRuntimeComposition",
