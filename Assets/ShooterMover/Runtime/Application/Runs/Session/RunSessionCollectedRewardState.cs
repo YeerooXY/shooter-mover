@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
 
 namespace ShooterMover.Application.Runs.Session
@@ -69,18 +70,24 @@ namespace ShooterMover.Application.Runs.Session
                 reward.CollectionOperationStableId,
                 out existing))
             {
-                return string.Equals(
+                if (!string.Equals(
                     existing.Fingerprint,
                     reward.Fingerprint,
-                    StringComparison.Ordinal)
-                    ? RewardCollectionResult(
-                        RunSessionRewardCollectionStatus.ExactReplay,
-                        existing,
-                        string.Empty)
-                    : RewardCollectionResult(
+                    StringComparison.Ordinal))
+                {
+                    return RewardCollectionResult(
                         RunSessionRewardCollectionStatus.ConflictingDuplicate,
                         existing,
                         "run-session-collected-reward-operation-conflict");
+                }
+
+                string resultsError = AddStrongboxToResults(existing);
+                return RewardCollectionResult(
+                    string.IsNullOrEmpty(resultsError)
+                        ? RunSessionRewardCollectionStatus.ExactReplay
+                        : RunSessionRewardCollectionStatus.Rejected,
+                    existing,
+                    resultsError);
             }
 
             RunPlayerSnapshot player = ExportPlayerSnapshot();
@@ -146,10 +153,14 @@ namespace ShooterMover.Application.Runs.Session
             collectedRunRewardsByChild.Add(
                 reward.GeneratedRewardChildStableId,
                 reward);
+
+            string strongboxError = AddStrongboxToResults(reward);
             return RewardCollectionResult(
-                RunSessionRewardCollectionStatus.Collected,
+                string.IsNullOrEmpty(strongboxError)
+                    ? RunSessionRewardCollectionStatus.Collected
+                    : RunSessionRewardCollectionStatus.Rejected,
                 reward,
-                string.Empty);
+                strongboxError);
         }
 
         public IReadOnlyList<RunSessionCollectedReward> ExportRewardClaims()
@@ -174,6 +185,46 @@ namespace ShooterMover.Application.Runs.Session
                     : left.PickupStableId.CompareTo(right.PickupStableId);
             });
             return new ReadOnlyCollection<RunSessionCollectedReward>(copy);
+        }
+
+        private string AddStrongboxToResults(
+            RunSessionCollectedReward reward)
+        {
+            if (reward.RewardKind != RewardGrantKind.Strongbox)
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                var added = RecordCollectedStrongbox(
+                    new RunStrongboxCollectionRequest(
+                        reward.CollectionOperationStableId,
+                        reward.RunStableId,
+                        reward.RunLifecycleGeneration,
+                        reward.ContentStableId,
+                        reward.GeneratedRewardChildStableId,
+                        reward.GeneratedRewardChildStableId,
+                        reward.DropOperationStableId));
+                if (added == null)
+                {
+                    return "run-strongbox-results-null";
+                }
+                if (added.Succeeded)
+                {
+                    return string.Empty;
+                }
+                return string.IsNullOrWhiteSpace(added.RejectionCode)
+                    ? "run-strongbox-results-rejected"
+                    : added.RejectionCode;
+            }
+            catch (Exception exception)
+            {
+                return "run-strongbox-results-exception:"
+                    + exception.GetType().Name
+                    + ":"
+                    + exception.Message;
+            }
         }
 
         private long CurrentLifecycleCollectionCount()
