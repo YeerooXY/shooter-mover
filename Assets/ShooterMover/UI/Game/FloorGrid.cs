@@ -114,7 +114,7 @@ namespace ShooterMover.UI.Game
             return accepted / fixedDeltaTime;
         }
 
-        public bool TryFindNearestPosition(
+        public bool TryFindNearestCellCenter(
             Vector2 origin,
             float radius,
             out Vector2 position)
