@@ -15,11 +15,16 @@ namespace ShooterMover.UI.Game
     [DisallowMultipleComponent]
     public sealed class PlayerFloorGuard : MonoBehaviour
     {
+        private const float SolidSkin = 0.01f;
+        private const float MovementTolerance = 0.000001f;
+
         private readonly List<Vector2Int> roomCells = new List<Vector2Int>();
+        private readonly RaycastHit2D[] solidHits = new RaycastHit2D[16];
 
         private Rigidbody2D body;
         private CircleCollider2D bodyCollider;
         private FloorGrid floor;
+        private ContactFilter2D solidFilter;
         private Vector2 lastValidPosition;
         private bool hasLastValidPosition;
         private bool bound;
@@ -44,6 +49,8 @@ namespace ShooterMover.UI.Game
                     "player-floor-guard-collider-must-share-body");
             }
 
+            solidFilter = ContactFilter2D.NoFilter();
+            solidFilter.useTriggers = false;
             bound = true;
         }
 
@@ -169,7 +176,7 @@ namespace ShooterMover.UI.Game
 
             lastValidPosition = currentPosition;
             hasLastValidPosition = true;
-            body.linearVelocity = floor.LimitVelocity(
+            body.linearVelocity = ChooseSafeVelocity(
                 currentCenter,
                 requestedVelocity,
                 fixedDeltaTime,
@@ -179,6 +186,115 @@ namespace ShooterMover.UI.Game
         private void FixedUpdate()
         {
             ApplyMovement(Time.fixedDeltaTime);
+        }
+
+        private Vector2 ChooseSafeVelocity(
+            Vector2 center,
+            Vector2 requestedVelocity,
+            float fixedDeltaTime,
+            float radius)
+        {
+            Vector2 accepted = LimitCandidate(
+                center,
+                requestedVelocity,
+                fixedDeltaTime,
+                radius);
+            Vector2 horizontal = LimitCandidate(
+                center,
+                new Vector2(requestedVelocity.x, 0f),
+                fixedDeltaTime,
+                radius);
+            Vector2 vertical = LimitCandidate(
+                center,
+                new Vector2(0f, requestedVelocity.y),
+                fixedDeltaTime,
+                radius);
+
+            if (Mathf.Abs(requestedVelocity.x) >= Mathf.Abs(requestedVelocity.y))
+            {
+                accepted = Longer(accepted, horizontal);
+                accepted = Longer(accepted, vertical);
+            }
+            else
+            {
+                accepted = Longer(accepted, vertical);
+                accepted = Longer(accepted, horizontal);
+            }
+
+            return accepted;
+        }
+
+        private Vector2 LimitCandidate(
+            Vector2 center,
+            Vector2 velocity,
+            float fixedDeltaTime,
+            float radius)
+        {
+            Vector2 floorSafe = floor.LimitVelocity(
+                center,
+                velocity,
+                fixedDeltaTime,
+                radius);
+            return LimitAgainstSolidColliders(
+                floorSafe,
+                fixedDeltaTime);
+        }
+
+        private Vector2 LimitAgainstSolidColliders(
+            Vector2 velocity,
+            float fixedDeltaTime)
+        {
+            if (fixedDeltaTime <= 0f
+                || velocity.sqrMagnitude <= MovementTolerance)
+            {
+                return Vector2.zero;
+            }
+
+            Vector2 displacement = velocity * fixedDeltaTime;
+            float distance = displacement.magnitude;
+            if (distance <= MovementTolerance)
+            {
+                return Vector2.zero;
+            }
+
+            Vector2 direction = displacement / distance;
+            int hitCount = body.Cast(
+                direction,
+                solidFilter,
+                solidHits,
+                distance + SolidSkin);
+            float allowedDistance = distance;
+            for (int index = 0; index < hitCount; index++)
+            {
+                RaycastHit2D hit = solidHits[index];
+                if (hit.collider == null
+                    || hit.collider.isTrigger
+                    || ReferenceEquals(hit.collider, bodyCollider)
+                    || ReferenceEquals(hit.rigidbody, body))
+                {
+                    continue;
+                }
+
+                // A real wall can already be touching or slightly overlapping the player
+                // after the previous physics solve. Do not let a zero-distance cast block
+                // movement that clearly points away from that wall.
+                if (hit.distance <= SolidSkin
+                    && Vector2.Dot(direction, hit.normal) > 0f)
+                {
+                    continue;
+                }
+
+                allowedDistance = Mathf.Min(
+                    allowedDistance,
+                    Mathf.Max(0f, hit.distance - SolidSkin));
+            }
+
+            if (allowedDistance <= MovementTolerance)
+            {
+                return Vector2.zero;
+            }
+
+            return direction * (allowedDistance / fixedDeltaTime);
         }
 
         private bool TryRestoreValidPosition(
@@ -238,6 +354,13 @@ namespace ShooterMover.UI.Game
             Vector3 scale = bodyCollider.transform.lossyScale;
             float largestScale = Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.y));
             return Mathf.Max(0.01f, bodyCollider.radius * largestScale);
+        }
+
+        private static Vector2 Longer(Vector2 current, Vector2 candidate)
+        {
+            return candidate.sqrMagnitude > current.sqrMagnitude + MovementTolerance
+                ? candidate
+                : current;
         }
     }
 }
