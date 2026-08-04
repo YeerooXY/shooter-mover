@@ -43,6 +43,22 @@ namespace ShooterMover.Tests.EditMode.Flow
         }
 
         [Test]
+        public void PlayerCanMoveBackOutAfterCrossingBoundary()
+        {
+            guard.LoadFloor(
+                new[] { Vector2Int.zero },
+                Vector2.zero);
+            body.position = new Vector2(0.2f, 0f);
+            body.linearVelocity = new Vector2(-2f, 0f);
+
+            guard.ApplyMovement(0.02f);
+
+            Assert.That(body.position, Is.EqualTo(Vector2.zero));
+            Assert.That(body.linearVelocity.x, Is.LessThan(-1.9f));
+            Assert.That(body.linearVelocity.y, Is.EqualTo(0f).Within(0.001f));
+        }
+
+        [Test]
         public void RoomLoadMovesInvalidSpawnToNearestFloor()
         {
             guard.LoadFloor(
