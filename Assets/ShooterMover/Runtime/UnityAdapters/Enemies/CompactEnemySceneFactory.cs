@@ -55,13 +55,34 @@ namespace ShooterMover.UnityAdapters.Enemies
                 throw new InvalidOperationException(
                     "compact-enemy-scene-factory-not-registered");
             }
+            if (gameObject == null)
+            {
+                throw new ArgumentNullException(nameof(gameObject));
+            }
+            if (roomOwner == null)
+            {
+                throw new ArgumentNullException(nameof(roomOwner));
+            }
+            if (roomStableId == null)
+            {
+                throw new ArgumentNullException(nameof(roomStableId));
+            }
+            if (placement == null)
+            {
+                throw new ArgumentNullException(nameof(placement));
+            }
 
             factory(
-                gameObject ?? throw new ArgumentNullException(nameof(gameObject)),
-                roomOwner ?? throw new ArgumentNullException(nameof(roomOwner)),
-                roomStableId ?? throw new ArgumentNullException(nameof(roomStableId)),
-                placement ?? throw new ArgumentNullException(nameof(placement)),
+                gameObject,
+                roomOwner,
+                roomStableId,
+                placement,
                 enemyLevel);
+
+            CompactEnemyRoomClamp clamp =
+                gameObject.GetComponent<CompactEnemyRoomClamp>()
+                ?? gameObject.AddComponent<CompactEnemyRoomClamp>();
+            clamp.Configure(roomOwner, roomStableId);
         }
     }
 }
