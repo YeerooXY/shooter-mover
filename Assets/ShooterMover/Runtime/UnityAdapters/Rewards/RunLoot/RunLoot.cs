@@ -77,10 +77,10 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
             this.pickup = pickup;
             this.authorityHost = authorityHost;
             this.presenter = presenter;
+            transform.localScale = presentation.LocalScale;
             EnsureComponents(presentation);
             if (presentation.Sprite != null)
                 spriteRenderer.sprite = presentation.Sprite;
-            transform.localScale = presentation.LocalScale;
             EnsureLabel(presentation.Label);
             transform.position = new Vector3(
                 (float)pickup.WorldSpawnContext.PositionX,
@@ -217,8 +217,12 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
             {
                 if (rectangle == null)
                     rectangle = gameObject.AddComponent<BoxCollider2D>();
+                float scaleX = Mathf.Max(0.01f, Mathf.Abs(transform.localScale.x));
+                float scaleY = Mathf.Max(0.01f, Mathf.Abs(transform.localScale.y));
                 rectangle.isTrigger = true;
-                rectangle.size = presentation.TriggerSize;
+                rectangle.size = new Vector2(
+                    presentation.TriggerSize.x / scaleX,
+                    presentation.TriggerSize.y / scaleY);
                 rectangle.enabled = true;
                 if (circle != null) circle.enabled = false;
                 collectionTrigger = rectangle;
@@ -408,7 +412,11 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
         {
             if (collectionTrigger != null) collectionTrigger.enabled = visible;
             if (spriteRenderer != null) spriteRenderer.enabled = visible;
-            if (labelText != null) labelText.gameObject.SetActive(visible);
+            if (labelText != null)
+            {
+                labelText.gameObject.SetActive(
+                    visible && !string.IsNullOrWhiteSpace(labelText.text));
+            }
             gameObject.SetActive(visible);
         }
     }
