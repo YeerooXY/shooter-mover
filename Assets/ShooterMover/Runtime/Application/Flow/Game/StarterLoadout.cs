@@ -41,12 +41,16 @@ namespace ShooterMover.Application.Flow.Game
     /// </summary>
     public static class StarterLoadout
     {
-        public const string StarterGunDefinitionId = "rattler.mk1";
-        public const string SweeperGunDefinitionId = "sweeper.mk1";
-        public const string VoltspikeGunDefinitionId = "voltspike.mk1";
-        public const string PrismataGunDefinitionId = "prismata.mk1";
-        public const string CrownfallGunDefinitionId = "crownfall.mk1";
-        public const string NullstarGunDefinitionId = "nullstar.mk1";
+        public const string DefaultGunId = "gun_rattler_mk1_01";
+
+        private static readonly string[] ExtraGunIds =
+        {
+            "gun_shotgun_mk1_01",
+            "gun_arc_rifle_mk1_01",
+            "gun_blaster_mk1_01",
+            "gun_sniper_mk1_01",
+            "gun_teknova_singularity_mk1_01",
+        };
 
         private static readonly StableId HoldingsAuthorityStableId =
             StableId.Parse("authority.production-player-holdings");
@@ -66,54 +70,18 @@ namespace ShooterMover.Application.Flow.Game
                 throw new ArgumentNullException(nameof(classDefinitionStableId));
             }
 
-            GunMark starter;
-            if (!GunCatalogProvider.Current.TryGetMark(
-                    StarterGunDefinitionId,
-                    out starter)
-                || starter == null)
+            GunMark defaultGun = ResolveAuthoredGun(DefaultGunId);
+            var extraGuns = new List<GunMark>(ExtraGunIds.Length);
+            for (int index = 0; index < ExtraGunIds.Length; index++)
             {
-                throw new InvalidOperationException(
-                    "The authored starter gun is missing.");
-            }
-
-            GunMark sweeper;
-            if (!GunCatalogProvider.Current.TryGetMark(
-                    SweeperGunDefinitionId,
-                    out sweeper)
-                || sweeper == null)
-            {
-                throw new InvalidOperationException(
-                    "The authored Sweeper gun is missing.");
-            }
-
-            string[] trialGunDefinitionIds =
-            {
-                VoltspikeGunDefinitionId,
-                PrismataGunDefinitionId,
-                CrownfallGunDefinitionId,
-                NullstarGunDefinitionId,
-            };
-            var trialGuns = new List<GunMark>(trialGunDefinitionIds.Length);
-            for (int index = 0; index < trialGunDefinitionIds.Length; index++)
-            {
-                GunMark trial;
-                if (!GunCatalogProvider.Current.TryGetMark(
-                        trialGunDefinitionIds[index],
-                        out trial)
-                    || trial == null)
-                {
-                    throw new InvalidOperationException(
-                        "The authored trial gun is missing: "
-                        + trialGunDefinitionIds[index]);
-                }
-                trialGuns.Add(trial);
+                extraGuns.Add(ResolveAuthoredGun(ExtraGunIds[index]));
             }
 
             GunSlots layout =
                 GunMountPolicy.ResolveLayout(
                     classDefinitionStableId);
             var owned = new List<GunItem>(
-                layout.ConfigurablePositions.Count + 1);
+                layout.ConfigurablePositions.Count + extraGuns.Count);
             var equippedByMount = new Dictionary<StableId, StableId>();
             var used = new HashSet<StableId>();
             Func<StableId> factory = instanceIdFactory;
@@ -132,23 +100,17 @@ namespace ShooterMover.Application.Flow.Game
                 used.Add(instanceId);
                 owned.Add(GunItem.CreateUnmodified(
                     instanceId,
-                    starter.Blueprint.DefinitionId));
+                    defaultGun.Blueprint.DefinitionId));
                 equippedByMount.Add(position.MountStableId, instanceId);
             }
 
-            StableId sweeperInstanceId = NextOpaqueId(factory, used);
-            used.Add(sweeperInstanceId);
-            owned.Add(GunItem.CreateUnmodified(
-                sweeperInstanceId,
-                sweeper.Blueprint.DefinitionId));
-
-            for (int index = 0; index < trialGuns.Count; index++)
+            for (int index = 0; index < extraGuns.Count; index++)
             {
-                StableId trialInstanceId = NextOpaqueId(factory, used);
-                used.Add(trialInstanceId);
+                StableId instanceId = NextOpaqueId(factory, used);
+                used.Add(instanceId);
                 owned.Add(GunItem.CreateUnmodified(
-                    trialInstanceId,
-                    trialGuns[index].Blueprint.DefinitionId));
+                    instanceId,
+                    extraGuns[index].Blueprint.DefinitionId));
             }
 
             var mountBindings = new List<EquippedGun>(
@@ -298,6 +260,20 @@ namespace ShooterMover.Application.Flow.Game
                 genericHoldings,
                 canonicalGunInventory,
                 canonicalMounts);
+        }
+
+        private static GunMark ResolveAuthoredGun(string definitionId)
+        {
+            GunMark gun;
+            if (!GunCatalogProvider.Current.TryGetMark(
+                    definitionId,
+                    out gun)
+                || gun == null)
+            {
+                throw new InvalidOperationException(
+                    "The authored starter gun is missing: " + definitionId);
+            }
+            return gun;
         }
 
         private static StableId NextOpaqueId(
