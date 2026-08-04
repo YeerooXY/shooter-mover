@@ -41,15 +41,15 @@ namespace ShooterMover.Application.Flow.Game
     /// </summary>
     public static class StarterLoadout
     {
-        public const string DefaultGunId = "gun_rattler_mk1_01";
+        public const string DefaultGunId = "rattler.mk1";
 
         private static readonly string[] ExtraGunIds =
         {
-            "gun_shotgun_mk1_01",
-            "gun_arc_rifle_mk1_01",
-            "gun_blaster_mk1_01",
-            "gun_sniper_mk1_01",
-            "gun_teknova_singularity_mk1_01",
+            "shotgun.mk1",
+            "arc_rifle.mk1",
+            "blaster.mk1",
+            "sniper.mk1",
+            "teknova_singularity.mk1",
         };
 
         private static readonly StableId HoldingsAuthorityStableId =

@@ -21,12 +21,12 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                 .ToArray();
             string[] expected =
             {
-                "gun_arc_rifle_mk1_01",
-                "gun_blaster_mk1_01",
-                "gun_rattler_mk1_01",
-                "gun_shotgun_mk1_01",
-                "gun_sniper_mk1_01",
-                "gun_teknova_singularity_mk1_01",
+                "arc_rifle.mk1",
+                "blaster.mk1",
+                "rattler.mk1",
+                "shotgun.mk1",
+                "sniper.mk1",
+                "teknova_singularity.mk1",
             };
 
             Assert.That(actual, Is.EqualTo(expected));
@@ -38,7 +38,16 @@ namespace ShooterMover.Tests.EditMode.Flow.Hub
                         && item.GunDefinitionId.Value
                             == StarterLoadout.DefaultGunId)),
                 Is.True);
-            Assert.That(actual, Does.Not.Contain("rattler.mk1"));
+
+            Assert.That(actual, Does.Not.Contain("gun_rattler_mk1_01"));
+            Assert.That(actual, Does.Not.Contain("gun_shotgun_mk1_01"));
+            Assert.That(actual, Does.Not.Contain("gun_arc_rifle_mk1_01"));
+            Assert.That(actual, Does.Not.Contain("gun_blaster_mk1_01"));
+            Assert.That(actual, Does.Not.Contain("gun_sniper_mk1_01"));
+            Assert.That(
+                actual,
+                Does.Not.Contain("gun_teknova_singularity_mk1_01"));
+
             Assert.That(actual, Does.Not.Contain("sweeper.mk1"));
             Assert.That(actual, Does.Not.Contain("voltspike.mk1"));
             Assert.That(actual, Does.Not.Contain("prismata.mk1"));
