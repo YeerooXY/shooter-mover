@@ -315,9 +315,8 @@ namespace ShooterMover.UI.Game
             }
             try
             {
-                return rooms.Query
-                    .GetRoomProjection(roomStableId)
-                    .IsCleared;
+                var room = rooms.Query.GetRoomProjection(roomStableId);
+                return room.IsVisited && room.IsCleared;
             }
             catch (KeyNotFoundException)
             {
