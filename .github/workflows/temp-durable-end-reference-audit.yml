@@ -43,6 +43,7 @@ jobs:
             'run-end-pending-durable-operation-conflict'
             '041bd07be4dc4619a1f66f16bc12a76e'
             '324931b3e3ad4e46a67b7d891295b877'
+            'DROP_PERSIST_PROOF_V1.md'
           )
 
           found=0
@@ -54,8 +55,8 @@ jobs:
             fi
           done
 
-          if git ls-files | grep -E '(^|/)RunSessionDurableEnd(V1)?(Tests)?\.cs(\.meta)?$'; then
-            echo 'A durable-end source or test file still exists.'
+          if git ls-files | grep -E '(^|/)RunSessionDurableEnd(V1)?(Tests)?\.cs(\.meta)?$|(^|/)DROP_PERSIST_PROOF_V1\.md$'; then
+            echo 'A retired durable-end source, test, or architecture file still exists.'
             found=1
           fi
 
