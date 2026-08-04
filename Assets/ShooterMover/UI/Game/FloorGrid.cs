@@ -368,8 +368,12 @@ namespace ShooterMover.UI.Game
             float minY,
             float maxY)
         {
-            float x = Mathf.Max(minX - point.x, 0f, point.x - maxX);
-            float y = Mathf.Max(minY - point.y, 0f, point.y - maxY);
+            float x = Mathf.Max(
+                0f,
+                Mathf.Max(minX - point.x, point.x - maxX));
+            float y = Mathf.Max(
+                0f,
+                Mathf.Max(minY - point.y, point.y - maxY));
             return x * x + y * y;
         }
 
@@ -380,7 +384,7 @@ namespace ShooterMover.UI.Game
         {
             Vector2 segment = end - start;
             float lengthSquared = segment.sqrMagnitude;
-            if (lengthSquared <= GeometryTolerance)
+            if (lengthSquared <= GeometryTolerance * GeometryTolerance)
             {
                 return (point - start).sqrMagnitude;
             }
