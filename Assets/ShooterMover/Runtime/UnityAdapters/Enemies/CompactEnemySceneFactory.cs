@@ -6,6 +6,7 @@ using UnityEngine;
 
 namespace ShooterMover.UnityAdapters.Enemies
 {
+    [Obsolete("Use EnemySetup with EnemySpawner.SetSetup.")]
     public delegate void CompactEnemySceneFactoryDelegate(
         GameObject gameObject,
         LevelRooms roomOwner,
@@ -13,22 +14,21 @@ namespace ShooterMover.UnityAdapters.Enemies
         RoomPlacedEntityDefinition placement,
         int enemyLevel);
 
-    public delegate void EnemyCollisionRulesFactory(GameObject gameObject);
-
     /// <summary>
-    /// Tiny composition seam between room-owned GameObjects and the gameplay assembly that
-    /// can access the live player-damage authority. It carries no enemy catalogue or rules.
+    /// Temporary source-compatible bridge for callers that have not yet moved to
+    /// EnemySpawner. New code must use EnemySpawner directly.
     /// </summary>
+    [Obsolete("Use EnemySpawner. This compatibility bridge will be removed.")]
     public static class CompactEnemySceneFactory
     {
-        private static CompactEnemySceneFactoryDelegate factory;
-        private static EnemyCollisionRulesFactory collisionRulesFactory;
+        private static CompactEnemySceneFactoryDelegate legacySetup;
+        private static EnemySetup setupAdapter;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Reset()
         {
-            factory = null;
-            collisionRulesFactory = null;
+            legacySetup = null;
+            setupAdapter = null;
         }
 
         public static void Register(CompactEnemySceneFactoryDelegate configuredFactory)
@@ -38,31 +38,38 @@ namespace ShooterMover.UnityAdapters.Enemies
                 throw new ArgumentNullException(nameof(configuredFactory));
             }
 
-            if (factory != null && factory != configuredFactory)
+            if (legacySetup != null)
             {
-                throw new InvalidOperationException(
-                    "compact-enemy-scene-factory-already-registered");
+                if (legacySetup != configuredFactory)
+                {
+                    throw new InvalidOperationException(
+                        "compact-enemy-scene-factory-already-registered");
+                }
+                return;
             }
 
-            factory = configuredFactory;
+            legacySetup = configuredFactory;
+            setupAdapter = delegate(
+                GameObject gameObject,
+                LevelRooms roomOwner,
+                StableId roomStableId,
+                RoomPlacedEntityDefinition placement,
+                int enemyLevel)
+            {
+                legacySetup(
+                    gameObject,
+                    roomOwner,
+                    roomStableId,
+                    placement,
+                    enemyLevel);
+            };
+            EnemySpawner.SetSetup(setupAdapter);
         }
 
         public static void SetCollisionRules(
             EnemyCollisionRulesFactory configuredFactory)
         {
-            if (configuredFactory == null)
-            {
-                throw new ArgumentNullException(nameof(configuredFactory));
-            }
-
-            if (collisionRulesFactory != null
-                && collisionRulesFactory != configuredFactory)
-            {
-                throw new InvalidOperationException(
-                    "enemy-collision-rules-already-set");
-            }
-
-            collisionRulesFactory = configuredFactory;
+            EnemySpawner.SetCollisionRules(configuredFactory);
         }
 
         public static void Configure(
@@ -72,44 +79,12 @@ namespace ShooterMover.UnityAdapters.Enemies
             RoomPlacedEntityDefinition placement,
             int enemyLevel)
         {
-            if (factory == null)
-            {
-                throw new InvalidOperationException(
-                    "compact-enemy-scene-factory-not-registered");
-            }
-            if (gameObject == null)
-            {
-                throw new ArgumentNullException(nameof(gameObject));
-            }
-            if (roomOwner == null)
-            {
-                throw new ArgumentNullException(nameof(roomOwner));
-            }
-            if (roomStableId == null)
-            {
-                throw new ArgumentNullException(nameof(roomStableId));
-            }
-            if (placement == null)
-            {
-                throw new ArgumentNullException(nameof(placement));
-            }
-
-            factory(
+            EnemySpawner.SetUp(
                 gameObject,
                 roomOwner,
                 roomStableId,
                 placement,
                 enemyLevel);
-
-            if (collisionRulesFactory != null)
-            {
-                collisionRulesFactory(gameObject);
-            }
-
-            CompactEnemyRoomClamp clamp =
-                gameObject.GetComponent<CompactEnemyRoomClamp>()
-                ?? gameObject.AddComponent<CompactEnemyRoomClamp>();
-            clamp.Configure(roomOwner, roomStableId);
         }
     }
 }
