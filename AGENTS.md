@@ -2,6 +2,14 @@
 
 This product repository uses the AI Assembly Line repository-first lifecycle.
 
+## Mandatory implementation contract
+
+Before creating an implementation plan, splitting an implementation task, editing production code, or reviewing an implementation change, read and follow `IMPLEMENTATION_RULES.md`.
+
+Every implementation plan must include the mandatory implementation-rules section defined there. A plan that omits that section is not ready for implementation.
+
+`IMPLEMENTATION_RULES.md` governs exact naming, bounded feature context, small implementation steps, simplicity, plan-conflict handling, commit checkpoints, minimal completion documentation, and literal review against the approved plan.
+
 ## Start from committed state
 
 Before ordinary implementation work, read:
