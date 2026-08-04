@@ -184,7 +184,7 @@ namespace ShooterMover.UI.Game.Enemies
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]
         private static void Install()
         {
-            CompactEnemySceneFactory.SetCollisionRules(
+            EnemySpawner.SetCollisionRules(
                 gameObject =>
                 {
                     CompactEnemy enemy = gameObject.GetComponent<CompactEnemy>()
