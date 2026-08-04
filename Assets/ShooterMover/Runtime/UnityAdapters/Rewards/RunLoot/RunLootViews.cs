@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using ShooterMover.Contracts.Rewards;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Rewards.Model;
@@ -206,11 +207,14 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
 
     /// <summary>
     /// Typed presentation lookup. Exact content mappings win; a reward-kind fallback may
-    /// serve ordinary content. No pickup type controller or GameObject-name lookup exists.
+    /// serve ordinary content. Strongbox fallbacks retain their visual but derive a readable
+    /// tier label and rectangular collection footprint from the exact tier identity.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class RunLootViews : MonoBehaviour
     {
+        private static readonly Vector2 StrongboxTriggerSize = new Vector2(1.2f, 1.1f);
+
         [SerializeField] private RunLootPresentationEntry[] entries =
             new RunLootPresentationEntry[0];
 
@@ -251,6 +255,13 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
                 return false;
             }
             if (!fallback.IsUsable(out diagnostic)) return false;
+
+            if (pickup.Reward.Kind == RewardGrantKind.Strongbox)
+            {
+                entry = ResolveStrongboxPresentation(pickup, fallback);
+                return true;
+            }
+
             entry = fallback;
             return true;
         }
@@ -267,6 +278,35 @@ namespace ShooterMover.UnityAdapters.Rewards.RunLoots
             IEnumerable<RunLootPresentationEntry> configuredEntries)
         {
             Configure(configuredEntries);
+        }
+
+        private static RunLootPresentationEntry ResolveStrongboxPresentation(
+            RunLootSnapshot pickup,
+            RunLootPresentationEntry fallback)
+        {
+            var resolved = new RunLootPresentationEntry();
+            resolved.ConfigureRectangle(
+                RewardGrantKind.Strongbox,
+                pickup.Reward.ContentStableId,
+                fallback.Prefab,
+                fallback.Sprite,
+                new Vector3(0.85f, 0.62f, 1f),
+                StrongboxTriggerSize,
+                StrongboxLabel(pickup.Reward.ContentStableId));
+            return resolved;
+        }
+
+        private static string StrongboxLabel(StableId tierStableId)
+        {
+            string value = tierStableId == null ? string.Empty : tierStableId.ToString();
+            int separator = value.LastIndexOf('.');
+            string slug = separator >= 0 && separator < value.Length - 1
+                ? value.Substring(separator + 1)
+                : value;
+            slug = slug.Replace('-', ' ').Replace('_', ' ').Trim();
+            if (slug.Length == 0) return "Strongbox";
+            return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(
+                slug.ToLowerInvariant()) + " Strongbox";
         }
     }
 }
