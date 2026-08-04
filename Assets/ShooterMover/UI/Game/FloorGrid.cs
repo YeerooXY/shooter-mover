@@ -16,6 +16,7 @@ namespace ShooterMover.UI.Game
         private const float GeometryTolerance = 0.0001f;
 
         private readonly HashSet<Vector2Int> cells;
+        private readonly List<Boundary> boundaries;
 
         public FloorGrid(IEnumerable<Vector2Int> floorCells)
         {
@@ -25,6 +26,7 @@ namespace ShooterMover.UI.Game
             }
 
             cells = new HashSet<Vector2Int>(floorCells);
+            boundaries = BuildBoundaries(cells);
         }
 
         public bool HasCells
@@ -34,27 +36,27 @@ namespace ShooterMover.UI.Game
 
         public bool FitsCircle(Vector2 center, float radius)
         {
-            if (!HasCells || !IsFinite(center) || !IsFinite(radius) || radius < 0f)
+            if (!HasCells
+                || !IsFinite(center)
+                || !IsFinite(radius)
+                || radius < 0f
+                || !ContainsPoint(center))
             {
                 return false;
             }
-            if (radius <= GeometryTolerance)
-            {
-                return ContainsPoint(center);
-            }
 
-            int minX = Mathf.FloorToInt(center.x - radius - TileHalfSize);
-            int maxX = Mathf.CeilToInt(center.x + radius + TileHalfSize);
-            int minY = Mathf.FloorToInt(center.y - radius - TileHalfSize);
-            int maxY = Mathf.CeilToInt(center.y + radius + TileHalfSize);
-
-            for (int y = minY; y <= maxY; y++)
+            float safeRadius = Mathf.Max(0f, radius - GeometryTolerance);
+            float radiusSquared = safeRadius * safeRadius;
+            for (int index = 0; index < boundaries.Count; index++)
             {
-                for (int x = minX; x <= maxX; x++)
+                Boundary boundary = boundaries[index];
+                if (!CouldBeNear(center, boundary, safeRadius)) continue;
+                if (DistancePointToSegmentSquared(
+                        center,
+                        boundary.Start,
+                        boundary.End) < radiusSquared)
                 {
-                    var cell = new Vector2Int(x, y);
-                    if (!CircleOverlapsCell(center, radius, cell)) continue;
-                    if (!cells.Contains(cell)) return false;
+                    return false;
                 }
             }
             return true;
@@ -87,8 +89,7 @@ namespace ShooterMover.UI.Game
             }
 
             // Rigidbody2D follows one straight velocity during this physics step.
-            // Each candidate is therefore checked as that exact continuous segment,
-            // rather than as sampled or piecewise movement that could cut a corner.
+            // Every candidate is checked as that exact continuous center path.
             Vector2 accepted = SweepStraight(center, displacement, radius);
             Vector2 horizontal = SweepStraight(
                 center,
@@ -127,15 +128,13 @@ namespace ShooterMover.UI.Game
             bool found = false;
             float bestDistance = float.PositiveInfinity;
             Vector2Int bestCell = default(Vector2Int);
-
             foreach (Vector2Int cell in cells)
             {
                 Vector2 candidate = new Vector2(cell.x, cell.y);
                 if (!FitsCircle(candidate, radius)) continue;
 
                 float distance = (candidate - origin).sqrMagnitude;
-                if (found
-                    && distance > bestDistance + GeometryTolerance)
+                if (found && distance > bestDistance + GeometryTolerance)
                 {
                     continue;
                 }
@@ -196,32 +195,18 @@ namespace ShooterMover.UI.Game
             if (!FitsCircle(end, radius)) return false;
 
             float safeRadius = Mathf.Max(0f, radius - GeometryTolerance);
-            if (safeRadius <= GeometryTolerance)
-            {
-                return true;
-            }
-
-            int minX = Mathf.FloorToInt(
-                Mathf.Min(start.x, end.x) - safeRadius - TileHalfSize);
-            int maxX = Mathf.CeilToInt(
-                Mathf.Max(start.x, end.x) + safeRadius + TileHalfSize);
-            int minY = Mathf.FloorToInt(
-                Mathf.Min(start.y, end.y) - safeRadius - TileHalfSize);
-            int maxY = Mathf.CeilToInt(
-                Mathf.Max(start.y, end.y) + safeRadius + TileHalfSize);
             float radiusSquared = safeRadius * safeRadius;
-
-            for (int y = minY; y <= maxY; y++)
+            for (int index = 0; index < boundaries.Count; index++)
             {
-                for (int x = minX; x <= maxX; x++)
+                Boundary boundary = boundaries[index];
+                if (!CouldBeNear(start, end, boundary, safeRadius)) continue;
+                if (DistanceSegmentToSegmentSquared(
+                        start,
+                        end,
+                        boundary.Start,
+                        boundary.End) < radiusSquared)
                 {
-                    var cell = new Vector2Int(x, y);
-                    if (cells.Contains(cell)) continue;
-                    if (SegmentDistanceToCellSquared(start, end, cell)
-                        < radiusSquared)
-                    {
-                        return false;
-                    }
+                    return false;
                 }
             }
             return true;
@@ -248,133 +233,150 @@ namespace ShooterMover.UI.Game
             return false;
         }
 
-        private static float SegmentDistanceToCellSquared(
+        private static List<Boundary> BuildBoundaries(
+            HashSet<Vector2Int> floorCells)
+        {
+            var result = new List<Boundary>();
+            foreach (Vector2Int cell in floorCells)
+            {
+                float left = cell.x - TileHalfSize;
+                float right = cell.x + TileHalfSize;
+                float bottom = cell.y - TileHalfSize;
+                float top = cell.y + TileHalfSize;
+
+                if (!floorCells.Contains(cell + Vector2Int.left))
+                {
+                    result.Add(new Boundary(
+                        new Vector2(left, bottom),
+                        new Vector2(left, top)));
+                }
+                if (!floorCells.Contains(cell + Vector2Int.right))
+                {
+                    result.Add(new Boundary(
+                        new Vector2(right, bottom),
+                        new Vector2(right, top)));
+                }
+                if (!floorCells.Contains(cell + Vector2Int.down))
+                {
+                    result.Add(new Boundary(
+                        new Vector2(left, bottom),
+                        new Vector2(right, bottom)));
+                }
+                if (!floorCells.Contains(cell + Vector2Int.up))
+                {
+                    result.Add(new Boundary(
+                        new Vector2(left, top),
+                        new Vector2(right, top)));
+                }
+            }
+            return result;
+        }
+
+        private static bool CouldBeNear(
+            Vector2 point,
+            Boundary boundary,
+            float distance)
+        {
+            return point.x >= boundary.MinimumX - distance
+                && point.x <= boundary.MaximumX + distance
+                && point.y >= boundary.MinimumY - distance
+                && point.y <= boundary.MaximumY + distance;
+        }
+
+        private static bool CouldBeNear(
             Vector2 start,
             Vector2 end,
-            Vector2Int cell)
+            Boundary boundary,
+            float distance)
         {
-            float minX = cell.x - TileHalfSize;
-            float maxX = cell.x + TileHalfSize;
-            float minY = cell.y - TileHalfSize;
-            float maxY = cell.y + TileHalfSize;
-            if (SegmentIntersectsRectangle(
-                    start,
-                    end,
-                    minX,
-                    maxX,
-                    minY,
-                    maxY))
+            return Mathf.Max(start.x, end.x) >= boundary.MinimumX - distance
+                && Mathf.Min(start.x, end.x) <= boundary.MaximumX + distance
+                && Mathf.Max(start.y, end.y) >= boundary.MinimumY - distance
+                && Mathf.Min(start.y, end.y) <= boundary.MaximumY + distance;
+        }
+
+        private static float DistanceSegmentToSegmentSquared(
+            Vector2 firstStart,
+            Vector2 firstEnd,
+            Vector2 secondStart,
+            Vector2 secondEnd)
+        {
+            if (SegmentsIntersect(
+                    firstStart,
+                    firstEnd,
+                    secondStart,
+                    secondEnd))
             {
                 return 0f;
             }
 
             float distance = Mathf.Min(
-                DistancePointToRectangleSquared(
-                    start,
-                    minX,
-                    maxX,
-                    minY,
-                    maxY),
-                DistancePointToRectangleSquared(
-                    end,
-                    minX,
-                    maxX,
-                    minY,
-                    maxY));
+                DistancePointToSegmentSquared(
+                    firstStart,
+                    secondStart,
+                    secondEnd),
+                DistancePointToSegmentSquared(
+                    firstEnd,
+                    secondStart,
+                    secondEnd));
             distance = Mathf.Min(
                 distance,
                 DistancePointToSegmentSquared(
-                    new Vector2(minX, minY),
-                    start,
-                    end));
-            distance = Mathf.Min(
-                distance,
-                DistancePointToSegmentSquared(
-                    new Vector2(minX, maxY),
-                    start,
-                    end));
-            distance = Mathf.Min(
-                distance,
-                DistancePointToSegmentSquared(
-                    new Vector2(maxX, minY),
-                    start,
-                    end));
+                    secondStart,
+                    firstStart,
+                    firstEnd));
             return Mathf.Min(
                 distance,
                 DistancePointToSegmentSquared(
-                    new Vector2(maxX, maxY),
-                    start,
-                    end));
+                    secondEnd,
+                    firstStart,
+                    firstEnd));
         }
 
-        private static bool SegmentIntersectsRectangle(
-            Vector2 start,
-            Vector2 end,
-            float minX,
-            float maxX,
-            float minY,
-            float maxY)
+        private static bool SegmentsIntersect(
+            Vector2 firstStart,
+            Vector2 firstEnd,
+            Vector2 secondStart,
+            Vector2 secondEnd)
         {
-            float minimumTime = 0f;
-            float maximumTime = 1f;
-            Vector2 movement = end - start;
-            return ClipAxis(
-                    start.x,
-                    movement.x,
-                    minX,
-                    maxX,
-                    ref minimumTime,
-                    ref maximumTime)
-                && ClipAxis(
-                    start.y,
-                    movement.y,
-                    minY,
-                    maxY,
-                    ref minimumTime,
-                    ref maximumTime);
-        }
+            Vector2 first = firstEnd - firstStart;
+            Vector2 second = secondEnd - secondStart;
+            Vector2 between = secondStart - firstStart;
+            float cross = Cross(first, second);
+            float collinear = Cross(between, first);
 
-        private static bool ClipAxis(
-            float start,
-            float movement,
-            float minimum,
-            float maximum,
-            ref float minimumTime,
-            ref float maximumTime)
-        {
-            if (Mathf.Abs(movement) <= GeometryTolerance)
+            if (Mathf.Abs(cross) <= GeometryTolerance)
             {
-                return start >= minimum && start <= maximum;
+                if (Mathf.Abs(collinear) > GeometryTolerance)
+                {
+                    return false;
+                }
+
+                float lengthSquared = first.sqrMagnitude;
+                if (lengthSquared <= GeometryTolerance * GeometryTolerance)
+                {
+                    return (firstStart - secondStart).sqrMagnitude
+                        <= GeometryTolerance * GeometryTolerance;
+                }
+
+                float start = Vector2.Dot(between, first) / lengthSquared;
+                float end = start + Vector2.Dot(second, first) / lengthSquared;
+                if (start > end)
+                {
+                    float swap = start;
+                    start = end;
+                    end = swap;
+                }
+                return end >= -GeometryTolerance
+                    && start <= 1f + GeometryTolerance;
             }
 
-            float first = (minimum - start) / movement;
-            float second = (maximum - start) / movement;
-            if (first > second)
-            {
-                float swap = first;
-                first = second;
-                second = swap;
-            }
-
-            minimumTime = Mathf.Max(minimumTime, first);
-            maximumTime = Mathf.Min(maximumTime, second);
-            return minimumTime <= maximumTime;
-        }
-
-        private static float DistancePointToRectangleSquared(
-            Vector2 point,
-            float minX,
-            float maxX,
-            float minY,
-            float maxY)
-        {
-            float x = Mathf.Max(
-                0f,
-                Mathf.Max(minX - point.x, point.x - maxX));
-            float y = Mathf.Max(
-                0f,
-                Mathf.Max(minY - point.y, point.y - maxY));
-            return x * x + y * y;
+            float firstTime = Cross(between, second) / cross;
+            float secondTime = Cross(between, first) / cross;
+            return firstTime >= -GeometryTolerance
+                && firstTime <= 1f + GeometryTolerance
+                && secondTime >= -GeometryTolerance
+                && secondTime <= 1f + GeometryTolerance;
         }
 
         private static float DistancePointToSegmentSquared(
@@ -395,16 +397,9 @@ namespace ShooterMover.UI.Game
             return (point - nearest).sqrMagnitude;
         }
 
-        private static float DistancePointToCellSquared(
-            Vector2 point,
-            Vector2Int cell)
+        private static float Cross(Vector2 first, Vector2 second)
         {
-            return DistancePointToRectangleSquared(
-                point,
-                cell.x - TileHalfSize,
-                cell.x + TileHalfSize,
-                cell.y - TileHalfSize,
-                cell.y + TileHalfSize);
+            return first.x * second.y - first.y * second.x;
         }
 
         private static Vector2 Longer(Vector2 current, Vector2 candidate)
@@ -412,16 +407,6 @@ namespace ShooterMover.UI.Game
             return candidate.sqrMagnitude > current.sqrMagnitude + GeometryTolerance
                 ? candidate
                 : current;
-        }
-
-        private static bool CircleOverlapsCell(
-            Vector2 center,
-            float radius,
-            Vector2Int cell)
-        {
-            float safeRadius = Mathf.Max(0f, radius - GeometryTolerance);
-            return DistancePointToCellSquared(center, cell)
-                < safeRadius * safeRadius;
         }
 
         private static bool ComesBefore(Vector2Int candidate, Vector2Int current)
@@ -438,6 +423,26 @@ namespace ShooterMover.UI.Game
         private static bool IsFinite(float value)
         {
             return !float.IsNaN(value) && !float.IsInfinity(value);
+        }
+
+        private readonly struct Boundary
+        {
+            public Boundary(Vector2 start, Vector2 end)
+            {
+                Start = start;
+                End = end;
+                MinimumX = Mathf.Min(start.x, end.x);
+                MaximumX = Mathf.Max(start.x, end.x);
+                MinimumY = Mathf.Min(start.y, end.y);
+                MaximumY = Mathf.Max(start.y, end.y);
+            }
+
+            public Vector2 Start { get; }
+            public Vector2 End { get; }
+            public float MinimumX { get; }
+            public float MaximumX { get; }
+            public float MinimumY { get; }
+            public float MaximumY { get; }
         }
     }
 }
