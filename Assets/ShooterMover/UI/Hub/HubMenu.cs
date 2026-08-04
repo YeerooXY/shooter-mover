@@ -9,7 +9,6 @@ using ShooterMover.Application.Persistence.Composition;
 using ShooterMover.Contracts.Flow.Session;
 using ShooterMover.Domain.Common;
 using ShooterMover.Domain.Guns;
-using ShooterMover.UI.Game;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
