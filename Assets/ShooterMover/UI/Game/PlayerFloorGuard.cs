@@ -8,8 +8,8 @@ namespace ShooterMover.UI.Game
 {
     /// <summary>
     /// Applies the final movement limit after walking and dashing have chosen a velocity.
-    /// Only authored Tile-layer cells count as floor. A future pit or trap may look like floor,
-    /// but remains non-walkable by being authored as an object or another visual layer.
+    /// Only authored Tile-layer cells count as floor. Floor-looking art on another layer
+    /// remains non-walkable.
     /// </summary>
     [DefaultExecutionOrder(1200)]
     [DisallowMultipleComponent]
@@ -121,7 +121,7 @@ namespace ShooterMover.UI.Game
             if (!floor.FitsCircle(requestedCenter, radius))
             {
                 Vector2 nearestCenter;
-                if (!floor.TryFindNearestPosition(
+                if (!floor.TryFindNearestCellCenter(
                         requestedCenter,
                         radius,
                         out nearestCenter))
