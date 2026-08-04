@@ -45,6 +45,7 @@ namespace ShooterMover.UI.Game
         private string routeFingerprint;
         private PlayerMarker playerMarker;
         private Rigidbody2D playerBody;
+        private PlayerFloorGuard playerFloorGuard;
         private Func<bool> runCompletion;
         private Func<MissionRunCompletionState, bool> runFailure;
         private MissionRunCompletionState? acceptedIncompleteState;
@@ -509,9 +510,10 @@ namespace ShooterMover.UI.Game
             {
                 throw Failure("playable-level-player-rigidbody-missing");
             }
-            if (player.GetComponent<Collider2D>() == null)
+            CircleCollider2D playerCollider = player.GetComponent<CircleCollider2D>();
+            if (playerCollider == null)
             {
-                throw Failure("playable-level-player-collider-missing");
+                throw Failure("playable-level-player-circle-collider-missing");
             }
             playerBody.gravityScale = 0f;
             playerBody.freezeRotation = true;
@@ -520,6 +522,10 @@ namespace ShooterMover.UI.Game
                 player.GetComponent<TopDownMovement>()
                 ?? player.AddComponent<TopDownMovement>();
             movement.Bind(playerBody, playerSpeed);
+
+            playerFloorGuard = player.GetComponent<PlayerFloorGuard>()
+                ?? player.AddComponent<PlayerFloorGuard>();
+            playerFloorGuard.Bind(playerBody, playerCollider);
         }
 
         private void ConfigureRunRewards(
@@ -611,6 +617,10 @@ namespace ShooterMover.UI.Game
             {
                 throw Failure("playable-level-current-room-missing");
             }
+            if (playerFloorGuard == null)
+            {
+                throw Failure("playable-level-player-floor-guard-missing");
+            }
 
             RoomSpawnPointDefinition spawn = ResolveCurrentSpawn();
             Vector2 position = new Vector2(
@@ -628,9 +638,11 @@ namespace ShooterMover.UI.Game
                     position += towardRoom.normalized * 2f;
                 }
             }
-            playerBody.position = position;
             playerBody.rotation = (float)spawn.LocalRotationDegrees;
-            playerBody.linearVelocity = Vector2.zero;
+            playerFloorGuard.LoadRoom(
+                roomBootstrap.ImportedBundle,
+                roomRuntime.CurrentRoomStableId,
+                position);
             RebuildOwnedBindings();
         }
 
