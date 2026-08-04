@@ -56,6 +56,44 @@ namespace ShooterMover.Tests.EditMode.Progression.Skills
         }
 
         [Test]
+        public void MedicHealingIsExclusiveAndAddsTwentyFiveHealthPerRank()
+        {
+            Assert.That(MedicHealing.HealthAtRank(0), Is.EqualTo(25));
+            Assert.That(MedicHealing.HealthAtRank(1), Is.EqualTo(50));
+            Assert.That(MedicHealing.HealthAtRank(3), Is.EqualTo(100));
+
+            RankedSkillDefinition healing;
+            Assert.That(catalog.TryGet(MedicHealing.SkillId, out healing), Is.True);
+            Assert.That(healing.IsEligible("combat_medic"), Is.True);
+            Assert.That(healing.IsEligible("striker"), Is.False);
+            Assert.That(healing.IsEligible("juggernaut"), Is.False);
+
+            authority.Seed(RankedSkillAllocationSnapshot.Empty(
+                "medic",
+                "combat_medic",
+                catalog));
+            SkillAllocationResult accepted = authority.Allocate(
+                new AllocateSkillRankCommand(
+                    "medic-heal-1",
+                    "medic",
+                    MedicHealing.SkillId,
+                    0,
+                    1));
+            Assert.That(accepted.Accepted, Is.True);
+
+            SkillAllocationResult rejected = authority.Allocate(
+                new AllocateSkillRankCommand(
+                    "wrong-healer",
+                    "p1",
+                    MedicHealing.SkillId,
+                    0,
+                    1));
+            Assert.That(
+                rejected.Rejection,
+                Is.EqualTo(SkillAllocationRejection.WrongClass));
+        }
+
+        [Test]
         public void WrongClassAndStaleVersionAreRejectedWithoutMutation()
         {
             var wrongClass = authority.Allocate(new AllocateSkillRankCommand("wrong", "p1", "striker.thruster_recovery", 1, 10));

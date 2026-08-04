@@ -589,6 +589,13 @@ namespace ShooterMover.UI.Game
             return result;
         }
 
+        public PlayerActorHealingResult ApplyHealing(
+            PlayerActorHealingCommand command)
+        {
+            EnsureBound();
+            return authority.ApplyHealing(command);
+        }
+
         /// <summary>
         /// Immediate retry seam for deterministic validation and explicit recovery callers.
         /// The accepted-transition latch is set only after the production transition accepts.

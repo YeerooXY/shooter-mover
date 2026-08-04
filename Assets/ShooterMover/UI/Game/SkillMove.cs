@@ -147,6 +147,13 @@ namespace ShooterMover.UI.Game
                 ?? player.gameObject.AddComponent<SkillArmor>();
             armor.Bind(health, skills.ArmorReduction);
 
+            if (MedicHeal.IsMedic(allocation.ClassId))
+            {
+                MedicHeal medicHeal = player.GetComponent<MedicHeal>()
+                    ?? player.gameObject.AddComponent<MedicHeal>();
+                medicHeal.Bind(health, allocation);
+            }
+
             bound = true;
             enabled = false;
             return true;

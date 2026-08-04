@@ -266,10 +266,12 @@ namespace ShooterMover.Domain.Progression.Skills
                 null, fifteen(1m), new[] { new SkillEffectDescriptor("combat.damage", SkillModifierKind.Percentage, 1m) }, null);
             var cash = new RankedSkillDefinition("generic.cash_drop_size", "economy", 15, null, null, null,
                 null, fifteen(1m), new[] { new SkillEffectDescriptor("rewards.cash", SkillModifierKind.Percentage, 1m) }, null);
+            var healing = new RankedSkillDefinition(MedicHealing.SkillId, "defense", 15, new[] { "combat_medic" }, null, null,
+                null, Enumerable.Repeat(1m, 15), new[] { new SkillEffectDescriptor("healing.med_pack_health", SkillModifierKind.Flat, MedicHealing.HealthPerRank) }, null);
             var recovery = new RankedSkillDefinition("striker.thruster_recovery", "mobility", 15, new[] { "striker" }, null, null, null, fifteen(0.01m), new[] { new SkillEffectDescriptor("movement.thruster_recovery", SkillModifierKind.Percentage, 1m) }, new[] { new SkillRankMilestone(5, new[] { new SkillEffectDescriptor("movement.recovery_delay", SkillModifierKind.Flat, -0.1m) }) });
             var efficiency = new RankedSkillDefinition("striker.movement_efficiency", "mobility", 15, new[] { "striker" }, new[] { new SkillPrerequisite("generic.movement_speed", 3) }, null, null, fifteen(0.01m), new[] { new SkillEffectDescriptor("movement.energy_efficiency", SkillModifierKind.Percentage, 1m) }, null);
             var synergy = new SkillSynergyDefinition("striker.third_movement_charge", new[] { new SkillSynergyRequirement(recovery.Id, 8), new SkillSynergyRequirement(efficiency.Id, 8) }, new[] { new SkillEffectDescriptor("movement.maximum_charges", SkillModifierKind.IntegerCapacity, 1m) });
-            return new RankedSkillCatalog("skills.schema.v2", "fixture.003", new[] { armor, speed, health, damage, cash, recovery, efficiency }, new[] { synergy });
+            return new RankedSkillCatalog("skills.schema.v2", "fixture.003", new[] { armor, speed, health, damage, cash, healing, recovery, efficiency }, new[] { synergy });
         }
     }
 }
