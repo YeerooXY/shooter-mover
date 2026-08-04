@@ -5,8 +5,7 @@ namespace ShooterMover.Application.Guns.Catalog
 {
     /// <summary>
     /// Production catalogue selected by GunCatalogProvider. The generated Weapon Maker projection
-    /// is the sole production content authority; the retired hand-built catalogue is not used as a
-    /// runtime fallback when publication is missing or invalid.
+    /// is the sole production content authority. Missing or invalid publication fails closed.
     /// </summary>
     public static class AuthoredGunCatalogue
     {
@@ -56,7 +55,8 @@ namespace ShooterMover.Application.Guns.Catalog
                 throw new InvalidOperationException(
                     "authored-gun-catalog-generated-count-mismatch");
             }
-            return GunCatalogue.CreateAuthoredView(families);
+
+            return AuthoredGunCatalogueProjection.Create(families);
         }
     }
 }

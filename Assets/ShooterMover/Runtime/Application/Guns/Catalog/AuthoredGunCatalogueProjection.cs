@@ -1,14 +1,47 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using ShooterMover.Domain.Common;
+using ShooterMover.Domain.Equipment;
 using ShooterMover.Domain.Guns;
 using ShooterMover.Domain.Guns.Catalog;
 using ShooterMover.Domain.Guns.Execution;
 
 namespace ShooterMover.Application.Guns.Catalog
 {
-    public static partial class GunCatalogue
+    /// <summary>
+    /// Projects validated Weapon Maker families into the compatibility catalogues consumed by
+    /// Strongboxes, equipment, Inventory, Shop, and the authoritative simulator.
+    /// Content/Weapons remains the only authored gun-content authority.
+    /// </summary>
+    internal static class AuthoredGunCatalogueProjection
     {
+        private const string CatalogueVersion = "gun-catalogue-001";
+        private const string CatalogueStatus =
+            "production-provisional-system-matrix";
+        private const string AuthoredArchetypeId =
+            "gun-archetype.provisional-system-matrix";
+
+        public static GunCatalogueView Create(
+            IReadOnlyList<GunFamily> families)
+        {
+            if (families == null)
+            {
+                throw new ArgumentNullException(nameof(families));
+            }
+            if (families.Count == 0)
+            {
+                throw new ArgumentException(
+                    "The authored gun catalogue requires at least one family.",
+                    nameof(families));
+            }
+
+            return new GunCatalogueView(
+                families,
+                BuildGunCatalog(families),
+                BuildEquipmentCatalog(families));
+        }
+
         private static GunCatalog BuildGunCatalog(
             IReadOnlyList<GunFamily> families)
         {
@@ -25,10 +58,10 @@ namespace ShooterMover.Application.Guns.Catalog
                     StringComparer.Ordinal)
                 {
                     {
-                        ProvisionalArchetypeId,
+                        AuthoredArchetypeId,
                         new GunArchetypeDefinition(
-                            ProvisionalArchetypeId,
-                            "PROVISIONAL canonical system-test matrix; typed mechanics remain authoritative in Gun.",
+                            AuthoredArchetypeId,
+                            "Weapon Maker authored gun; canonical mechanics remain authoritative in Gun.",
                             1d,
                             4d,
                             1,
@@ -98,7 +131,7 @@ namespace ShooterMover.Application.Guns.Catalog
             if (!validation.IsValid)
             {
                 throw new InvalidOperationException(
-                    "The provisional gun catalogue failed flat-schema validation: "
+                    "The authored gun catalogue failed flat-schema validation: "
                     + (validation.Issues.Count == 0
                         ? "unknown"
                         : validation.Issues[0].ToString()));
@@ -138,7 +171,7 @@ namespace ShooterMover.Application.Guns.Catalog
             return new GunFamilyDefinition(
                 family.FamilyId,
                 family.DisplayName,
-                ProvisionalArchetypeId,
+                AuthoredArchetypeId,
                 damageCategory,
                 "PROVISIONAL",
                 mk1.DropAnchorLevel,
@@ -151,7 +184,7 @@ namespace ShooterMover.Application.Guns.Catalog
                 1d,
                 "StrongboxAndCrafting",
                 family.GunCategoryId.ToString(),
-                "Permanent family rarity; canonical definitions carry the provisional fire mode, delivery, guidance, effect, and damage-channel test data.",
+                "Generated from Content/Weapons; family rarity and canonical mechanics come from authored JSON.",
                 GunCatalogAvailability.Live,
                 new[]
                 {
@@ -171,12 +204,12 @@ namespace ShooterMover.Application.Guns.Catalog
                     out legacyPierce))
             {
                 throw new InvalidOperationException(
-                    "The provisional flat projection requires whole-number Pierce.");
+                    "The authored flat projection requires whole-number Pierce.");
             }
             if (blueprint.Projectile == null)
             {
                 throw new InvalidOperationException(
-                    "The provisional flat projection currently requires travelling deliveries.");
+                    "The authored flat projection currently requires travelling deliveries.");
             }
 
             double directDps = blueprint.BaseStats.DirectDamage
@@ -186,16 +219,13 @@ namespace ShooterMover.Application.Guns.Catalog
             string damageCategory =
                 GunDamageCategoryConversion.ToCatalogValue(
                     blueprint.BaseStats.DamageCategory);
-            string note = mark.IsCombatTuningProvisional
-                ? BuildProvisionalCombatNote(blueprint)
-                : "Confirmed Rattler MK1 starter values: physical automatic rifle, rate of fire 4, damage 1, Pierce 1, no spread.";
             return new GunDefinitionData(
                 blueprint.DefinitionId.ToString(),
                 blueprint.DisplayName,
                 family.FamilyId,
                 mark.Mark,
                 damageCategory,
-                ProvisionalArchetypeId,
+                AuthoredArchetypeId,
                 "PROVISIONAL",
                 Math.Max(1, mark.DropAnchorLevel - 15),
                 mark.DropAnchorLevel,
@@ -237,7 +267,7 @@ namespace ShooterMover.Application.Guns.Catalog
                 0d,
                 0d,
                 family.GunCategoryId.ToString(),
-                note,
+                "Generated from Content/Weapons. Canonical Gun owns runtime mechanics and presentation.",
                 GunCatalogAvailability.Live,
                 new[]
                 {
@@ -256,7 +286,7 @@ namespace ShooterMover.Application.Guns.Catalog
                     != category)
                 {
                     throw new InvalidOperationException(
-                        "The provisional test matrix expects one damage channel per family: "
+                        "One authored family must use one damage channel: "
                         + family.FamilyId);
                 }
             }
@@ -264,35 +294,91 @@ namespace ShooterMover.Application.Guns.Catalog
             return GunDamageCategoryConversion.ToCatalogValue(category);
         }
 
-        private static string BuildProvisionalCombatNote(
-            Gun blueprint)
+        private static EquipmentCatalog BuildEquipmentCatalog(
+            IReadOnlyList<GunFamily> families)
         {
-            string behavior = blueprint.Delivery.Type.ToString();
-            if (blueprint.ShotPattern.ProjectilesPerShot > 1)
+            var definitions = new List<EquipmentDefinition>(
+                families.Count * 3);
+            for (int familyIndex = 0;
+                 familyIndex < families.Count;
+                 familyIndex++)
             {
-                behavior += " shotgun-spread";
-            }
-            if (blueprint.Guidance.Mode == GunGuidanceMode.Homing)
-            {
-                behavior += " seeking";
-            }
-            if (blueprint.BaseStats.DamageOverTime != null)
-            {
-                behavior += " damage-over-time";
-            }
-            if (blueprint.Delivery.Effects.Explosion != null)
-            {
-                behavior += " explosion";
+                GunFamily family = families[familyIndex];
+                EquipmentQualityTier quality = EquipmentQualityTier.Create(
+                    StableId.Create(
+                        "equipment-quality",
+                        family.CatalogRarity),
+                    UppercaseFirst(family.CatalogRarity),
+                    ResolveQualityRank(family.CatalogRarity));
+
+                for (int markIndex = 0;
+                     markIndex < family.Marks.Count;
+                     markIndex++)
+                {
+                    GunMark mark = family.Marks[markIndex];
+                    definitions.Add(EquipmentDefinition.Create(
+                        mark.EquipmentDefinitionId,
+                        EquipmentCategoryIds.Gun,
+                        StableId.Create(
+                            "gun-family",
+                            StableFamilyToken(family.FamilyId)),
+                        mark.Blueprint.DisplayName,
+                        mark.Blueprint.DefinitionId.ToRuntimeReference(),
+                        InclusiveIntRange.Create(1, 200),
+                        4,
+                        new[] { quality },
+                        Array.Empty<StableId>()));
+                }
             }
 
-            return "PROVISIONAL SYSTEM-TEST PROFILE. "
-                + blueprint.FireSettings.Mode
-                + ", "
-                + behavior
-                + ", "
-                + GunDamageCategoryConversion.ToCatalogValue(
-                    blueprint.BaseStats.DamageCategory)
-                + " damage. Balance is not approved.";
+            EquipmentCatalogBuildResult result = EquipmentCatalog.Build(
+                definitions,
+                GunAugments.Definitions);
+            if (!result.IsValid || result.Catalog == null)
+            {
+                throw new InvalidOperationException(
+                    "The authored gun/equipment catalogue projection was rejected.");
+            }
+            return result.Catalog;
+        }
+
+        private static string StableFamilyToken(string familyId)
+        {
+            if (string.IsNullOrWhiteSpace(familyId))
+            {
+                throw new ArgumentException(
+                    "A gun family ID is required.",
+                    nameof(familyId));
+            }
+            return familyId.Replace('_', '-');
+        }
+
+        private static int ResolveQualityRank(string rarity)
+        {
+            switch (rarity)
+            {
+                case "common":
+                    return 1;
+                case "rare":
+                    return 2;
+                case "epic":
+                    return 3;
+                case "legendary":
+                    return 4;
+                case "artifact":
+                    return 5;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(rarity));
+            }
+        }
+
+        private static string UppercaseFirst(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return string.Empty;
+            }
+            return char.ToUpperInvariant(value[0]) + value.Substring(1);
         }
     }
 }

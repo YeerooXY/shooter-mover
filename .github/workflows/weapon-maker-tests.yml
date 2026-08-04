@@ -28,6 +28,29 @@ jobs:
         with:
           node-version: 20
 
+      - name: Reject retired hand-built gun catalogue
+        shell: bash
+        run: |
+          retired=(
+            Assets/ShooterMover/Runtime/Application/Guns/Catalog/GunCatalogue.Content.cs
+            Assets/ShooterMover/Runtime/Application/Guns/Catalog/GunCatalogue.Pr288.Generated.cs
+            Assets/ShooterMover/Runtime/Application/Guns/Catalog/GunCatalogue.StrongboxTestPool.cs
+            Assets/ShooterMover/Runtime/Application/Guns/Catalog/GunCatalogue.LowLevelStrongboxTestPool.cs
+          )
+          for path in "${retired[@]}"; do
+            if [[ -e "$path" ]]; then
+              echo "Retired gun catalogue source returned: $path"
+              exit 1
+            fi
+          done
+          if grep -R -E \
+            'class[[:space:]]+GunCatalogue([[:space:]:{]|$)' \
+            Assets/ShooterMover/Runtime/Application/Guns/Catalog \
+            --include='*.cs'; then
+            echo "Retired GunCatalogue authority type returned."
+            exit 1
+          fi
+
       - name: Check scripts
         run: |
           node --check tools/item-maker/validate-weapon-folder.js
