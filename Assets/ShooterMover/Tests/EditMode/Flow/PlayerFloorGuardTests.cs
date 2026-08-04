@@ -59,6 +59,43 @@ namespace ShooterMover.Tests.EditMode.Flow
         }
 
         [Test]
+        public void PlayerCanEscapeBetweenWallAndMissingFloor()
+        {
+            guard.LoadFloor(
+                new[]
+                {
+                    Vector2Int.zero,
+                    Vector2Int.left,
+                    Vector2Int.down,
+                },
+                Vector2.zero);
+
+            GameObject wall = new GameObject("Corner Wall");
+            try
+            {
+                BoxCollider2D wallCollider = wall.AddComponent<BoxCollider2D>();
+                wallCollider.size = new Vector2(1f, 0.4f);
+                wall.transform.position = new Vector3(0f, 0.5f, 0f);
+
+                // Simulate the previous physics step nudging the player partly into the
+                // missing-floor side while a real wall is already touching from above.
+                body.position = new Vector2(0.2f, 0f);
+                body.linearVelocity = new Vector2(-2f, -2f);
+                Physics2D.SyncTransforms();
+
+                guard.ApplyMovement(0.02f);
+
+                Assert.That(body.position, Is.EqualTo(Vector2.zero));
+                Assert.That(body.linearVelocity.x, Is.LessThan(-0.5f));
+                Assert.That(body.linearVelocity.y, Is.LessThan(-0.5f));
+            }
+            finally
+            {
+                Object.DestroyImmediate(wall);
+            }
+        }
+
+        [Test]
         public void RoomLoadMovesInvalidSpawnToNearestFloor()
         {
             guard.LoadFloor(
