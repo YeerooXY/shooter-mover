@@ -19,7 +19,7 @@ The plan must define:
 - exact scope and player-facing result;
 - exact namespaces and file paths;
 - exact class, struct, enum, interface, method, property, field, and event names when known;
-- exact stable IDs, JSON keys, persisted identifiers, and resource paths;
+- exact IDs, JSON keys, persisted identifiers, and resource paths;
 - existing types and systems that must be reused;
 - the source of truth for every important value;
 - expected data and call flow;
@@ -204,7 +204,7 @@ ShooterMover.Rooms.Reward
 
 Keep the feature name where it prevents genuine ambiguity, especially:
 
-- persisted IDs such as `strongbox.gold`;
+- IDs such as `strongbox.gold`;
 - cross-feature events such as `StrongboxOpened`;
 - shared namespaces or APIs where the shorter name is unclear;
 - two genuinely different current concepts with otherwise identical names.
@@ -250,7 +250,9 @@ These words are not universally forbidden, but they often hide unclear ownership
 
 ## Variables and methods
 
-Variables describe what they contain:
+Variables describe what they contain. Booleans read as questions. Methods begin with clear actions.
+
+Prefer:
 
 ```text
 currentHealth
@@ -258,34 +260,19 @@ maximumHealth
 equippedWeapon
 moneyEarned
 remainingDashCharges
-```
-
-Avoid vague names such as `data`, `info`, `result`, `value`, `obj`, `thing`, `temp`, and `stateData` unless the tiny local scope makes the meaning obvious.
-
-Booleans read as questions:
-
-```text
 isAlive
 hasTarget
 canFire
 shouldDropLoot
-wasRoomCompleted
-```
-
-Methods begin with clear actions:
-
-```text
 Fire
 Reload
 TakeDamage
 SpawnEnemy
 AddMoney
 SaveProfile
-CompleteRoom
-RefreshWeaponList
 ```
 
-Avoid vague names such as `Process`, `Execute`, `Apply`, `Handle`, or `UpdateData` without a specific object or behaviour.
+Avoid vague names such as `data`, `info`, `result`, `value`, `obj`, `thing`, `temp`, `Process`, `Execute`, `Apply`, or `Handle` unless the tiny local scope makes the meaning obvious.
 
 ---
 
@@ -362,12 +349,7 @@ Production code changed:
 - none
 ```
 
-Then:
-
-1. amend the plan;
-2. review the amendment;
-3. commit the amendment;
-4. continue implementation in a later pass.
+Then amend, review, and commit the plan before implementation continues.
 
 Do not silently choose a different design.
 
@@ -422,19 +404,9 @@ to:
 - [x] Step 4 — Transfer room rewards
 ```
 
-An optional reference is allowed:
+An optional commit or PR reference is allowed.
 
-```markdown
-- [x] Step 4 — Transfer room rewards — commit `abc1234`
-```
-
-Do not create duplicate implementation reports, handoff essays, architecture summaries, or extra Markdown files unless:
-
-- the plan requires one;
-- a public workflow or content format changed;
-- migration or persistence behaviour must be recorded;
-- a milestone gate requires durable evidence;
-- Nemo explicitly requests it.
+Do not create duplicate implementation reports, handoff essays, architecture summaries, or extra Markdown files unless the plan, a migration, a milestone gate, or Nemo explicitly requires one.
 
 ---
 
@@ -542,7 +514,7 @@ Simplify the plan before continuing unless the complexity is clearly justified.
 
 ## Authoritative names and paths
 
-## Stable IDs and persisted keys
+## IDs and persisted keys
 
 ## Source of truth
 
